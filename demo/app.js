@@ -2,7 +2,8 @@
 // then the power and honesty results (claims.json). Below: explore a design (grid.json, tissue.json, four sliders).
 // Every file is local, so a served checkout replays the committed results with no network (schemas in README.md).
 import { createTissue } from "./tissue.js";
-import { createSpeedRace, workflowHTML, pairRatio } from "./race.js";
+import { createSpeedRace, workflowHTML } from "./race.js";
+import { fleetPair } from "./fleet.js";
 import { drawRegion, drawKM } from "./bio.js";
 import { claimTexts, bioTexts, gridTexts, dialRanges } from "./claims.js";
 import { drawChart, pct, fovLabel } from "./chart.js";
@@ -113,18 +114,19 @@ async function hero() {
     ["data/baseline.json", "data/claims.json", "data/biomarker.json"].map(getJSON));
   if (bl.status === "fulfilled") panel("race", () => {
     const d = bl.value, races = [];
-    // Until the design point is timed, the measured pairs (#75's ladder file) race, each on its own scale.
-    if (!d.rows.some((r) => r.seconds > 0 && !["PENDING", "UNMEASURED"].includes(r.label)) && d.interim?.length) {
+    // Until the design point is timed, #75's measured fleet races: 1 A100 against 8, Atlas's cleared line beside it.
+    // The single-study kernel pair is not shown: its cleared 3.19× is not in the data (lead, 19:00Z: relabel or drop).
+    const pair = fleetPair(d.interim?.find((g) => g.rows.some((r) => r.id === "fleet-1")));
+    if (!d.rows.some((r) => r.seconds > 0 && !["PENDING", "UNMEASURED"].includes(r.label)) && pair) {
       $("speed-title").textContent = "How fast, measured so far";
       $("speed-dp").hidden = false;
-      for (const g of d.interim) {
-        const head = document.createElement("p"), lanes = document.createElement("div");
-        head.className = "sr-head"; head.title = g.unit;
-        const ratio = pairRatio(g);
-        head.textContent = ratio ? `${g.title} · ${ratio}` : g.title;
-        $("speed-interim").append(head, lanes);
-        races.push(createSpeedRace(lanes, g, { reducedMotion }));
-      }
+      const head = document.createElement("p"), group = document.createElement("div"), lanes = document.createElement("div");
+      const scope = document.createElement("p");
+      head.className = "sr-head"; head.textContent = "1,000 studies: 1 A100 against 8";
+      group.className = "sr-group"; scope.className = "sr-scope"; scope.textContent = pair.line;
+      group.append(lanes, scope);
+      $("speed-interim").append(head, group);
+      races.push(createSpeedRace(lanes, { rows: pair.rows }, { reducedMotion }));
     } else $("speed-task").textContent = d.task;
     races.push(createSpeedRace($("speed-race"), d, { reducedMotion }));
     $("workflow").innerHTML = workflowHTML(d.workflow);
