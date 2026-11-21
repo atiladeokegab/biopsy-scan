@@ -42,7 +42,7 @@ modal-gpu-tests: install
 	uv run modal run gpu/modal_app.py::run_tests --gpu $(GPU)
 
 modal-ladder: install
-	uv run modal run gpu/modal_app.py::run_ladder --gpu $(GPU) --reps $(REPS) --containers $(CONTAINERS) --studies $(STUDIES)
+	uv run modal run gpu/modal_app.py::run_ladder --gpu $(GPU) --reps $(REPS) --containers $(CONTAINERS) --studies $(STUDIES) --fleet "$(LADDER_FLEET)"
 
 modal-ab: install
 	uv run modal run gpu/modal_app.py::run_ab --gpu $(GPU) --reps 3

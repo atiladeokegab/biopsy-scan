@@ -557,14 +557,17 @@ def _tests(gpu: str) -> dict:
     return result
 
 
-def _fleet(gpu: str, containers: int, studies: int) -> dict:
+def _fleet(gpu: str, containers: int, studies: int, fleet: str = "") -> dict:
     """Studies 0..n-1 on 1 container, then sharded over N; merged features must be bit-identical."""
     import numpy as np
 
     fn = fleet_shard.with_options(gpu=gpu)
     seeds = list(range(studies))
     runs, merged = {}, {}
-    for n in sorted({1, containers}):
+    for n in sorted({1, containers, *(int(x) for x in fleet.split(",") if x)}):
+        hours = (n * 150 + studies * 0.75) / 3600  # per container ~2.5 min start-up and prep; ~0.75 s/study on 1 GPU
+        _spend(f"fleet N={n} x {gpu}, {studies} studies", hours * _gpu_rate(gpu),
+               f"{hours:.2f} GPU-h x ${_gpu_rate(gpu):.2f}/h")
         shards = [a.tolist() for a in np.array_split(seeds, n)]  # contiguous, larger first: reimage.fleet.shard_bounds
         parts, wall = _timed_call(lambda: list(fn.map(shards, order_outputs=True)))
         merged[n] = np.concatenate([p["features"] for p in parts])
@@ -606,7 +609,7 @@ def run_tests(gpu: str = DEFAULT_GPU):
 
 
 @app.local_entrypoint()
-def run_ladder(gpu: str = DEFAULT_GPU, reps: int = 5, containers: int = 4, studies: int = 16):
+def run_ladder(gpu: str = DEFAULT_GPU, reps: int = 5, containers: int = 4, studies: int = 16, fleet: str = ""):
     """make modal-ladder: kernel timing, fleet scaling and the R-15 hook, into one MEASURED file."""
     _launch()
     _check_gpu(gpu)
@@ -616,7 +619,7 @@ def run_ladder(gpu: str = DEFAULT_GPU, reps: int = 5, containers: int = 4, studi
     kernel, wall = _timed_call(time_kernel.with_options(gpu=gpu).remote, reps)
     kernel["modal_wall_s"] = wall
     kernel["startup_and_transfer_s"] = wall - kernel["in_function_s"]
-    payload = {"kind": "ladder", "kernel": kernel, "fleet": _fleet(gpu, containers, studies),
+    payload = {"kind": "ladder", "kernel": kernel, "fleet": _fleet(gpu, containers, studies, fleet),
                "screen": screen_hook.with_options(gpu=gpu).remote(),
                "baseline_note": "numpy_reference runs in the same container as the GPU row; the EPYC rungs are in "
                                 "bench/results/cpu-ladder.json (same DESIGN, other host)"}
