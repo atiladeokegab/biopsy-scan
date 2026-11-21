@@ -123,7 +123,7 @@ def charts(summaries, out_dir, *, cohort, fov_um=None, eps=0.1, hr=2.0):
             x, y = rows.patients.to_numpy(), rows[metric].to_numpy()
             ax.errorbar(x, y, yerr=[y - rows[metric + "_lo"], rows[metric + "_hi"] - y],
                         marker="o", capsize=2, label="All available" if k is None else f"{int(k)} regions/patient", color=f"C{i}")
-        ax.axvline(source_n, color="0.4", linestyle=":", linewidth=1)
+        ax.axvline(source_n, color="0.4", linestyle=":", linewidth=1, label=f"Source cohort ({source_n})")
         ax.set(title=title, xlabel="Simulated patients", ylim=(-0.02, 1.02))
         ax.grid(alpha=0.2)
     axes[0].set_ylabel("Probability under the source model")
@@ -145,7 +145,7 @@ def charts(summaries, out_dir, *, cohort, fov_um=None, eps=0.1, hr=2.0):
               for r in df.itertuples()]
     ax.set(xticks=np.arange(len(df)), xticklabels=labels, xlabel="Design: patients / regions per patient",
            ylabel="Held-out global-null rejection rate", ylim=(-0.01, max(0.2, df.omnibus_fwer_hi.max(), df.fwer_hi.max()) + 0.03),
-           title=f"SYNTHETIC — {cohort.title()}: null validation; {fov}; mis-call {eps:.0%} (95% intervals)")
+           title=f"SYNTHETIC — {cohort.title()}: null validation\n{fov}; mis-call {eps:.0%} (95% intervals)")
     ax.tick_params(axis="x", rotation=60)
     ax.legend(frameon=False, fontsize=8)
     ax.grid(axis="y", alpha=0.2)
