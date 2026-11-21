@@ -1,6 +1,6 @@
 {
   "schema": "preflight-baseline/1",
-  "task": "One design point on real Charville tissue: FWER and power from 1,000 simulated studies each, end to end",
+  "task": "One design point on real Charville tissue: FWER and power from 1,000 simulated studies each; in-container study and scoring wall time (load, outcome prep, adjacency, warm-up and the cutoff and rate summary excluded)",
   "rows": [
     {
       "id": "lab-cpu",
@@ -13,7 +13,7 @@
       "gpu": null,
       "source": "bench/results/modal-design-20261121T194458Z.json",
       "startup_s": 164.0,
-      "note": "2,000 studies; re-imaging 64.8% of compute"
+      "note": "2,000 studies; re-imaging 64.8% of summed worker wall time"
     },
     {
       "id": "preflight-cpu",
@@ -26,7 +26,7 @@
       "gpu": null,
       "source": "bench/results/modal-design-20261121T194458Z.json",
       "startup_s": 227.2,
-      "note": "3,000 studies; re-imaging 98.0% of compute"
+      "note": "3,000 studies; re-imaging 98.0% of summed worker wall time"
     },
     {
       "id": "gpu-1",
@@ -39,7 +39,7 @@
       "gpu": "1x NVIDIA A100-SXM4-40GB",
       "source": "bench/results/modal-design-20261121T194458Z.json",
       "startup_s": 228.5,
-      "note": "3,000 studies; re-imaging 99.9% of compute"
+      "note": "3,000 studies; re-imaging 99.9% of elapsed stage wall time"
     },
     {
       "id": "hybrid",
@@ -52,7 +52,7 @@
       "gpu": "1x NVIDIA A100-SXM4-40GB",
       "source": "bench/results/modal-design-20261121T194458Z.json",
       "startup_s": 227.1,
-      "note": "3,000 studies; re-imaging 99.6% of compute"
+      "note": "3,000 studies; re-imaging 99.6% of elapsed stage wall time"
     }
   ],
   "workflow": {
@@ -139,7 +139,7 @@
     }
   ],
   "scope": {
-    "comparison": "Compute MEASURED on one container class (Modal A100 + 8 cores + 64 GiB); outcomes SYNTHETIC (atlas/simulation.py at 79a7792); FWER and power are ESTIMATE. Seconds: re-imaging and scoring only; start-up apart; the threshold summary not counted. Parity: X sha256 on every shared study; z in full for the A100 lane, through per-study maxT for the hybrid",
-    "calibration": "Lab: 1,000 within-strata shuffles in every study. Preflight lanes: one threshold from 1,000 independent calibration nulls, timed inside their lanes"
+    "comparison": "Compute MEASURED on one container class (Modal A100 + 8 cores + 64 GiB); outcomes SYNTHETIC (atlas/simulation.py at 79a7792); FWER and power are ESTIMATE. Seconds: in-container study and scoring wall time; load, outcome prep, adjacency and warm-up apart in start-up; the cutoff and rate summary not timed. The lab and batched lanes run different test and calibration procedures, not equal statistical work. Parity: X sha256 on every shared study; z in full for the A100 lane, through per-study maxT for the hybrid",
+    "calibration": "Lab: 1,000 within-strata shuffles in every study. Preflight lanes: one threshold from 1,000 independent calibration nulls; evaluating those studies is timed inside each lane, computing the cutoff from them is not"
   }
 }

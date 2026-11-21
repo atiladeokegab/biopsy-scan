@@ -17,7 +17,8 @@ Arms:
          in blocks on the GPU (stats.screen.screen_studies).
   hybrid the numba arm's re-imaging on the CPU pool feeding the gpu arm's batched GPU scoring.
 CPU stages run studies in a pool of single-thread workers; the gpu arm is one process.
-Parity: X bit-identical across arms (sha256 per study) and z of gpu and hybrid vs numba within 1e-9.
+Parity: X bit-identical across arms (sha256 per study); z of gpu vs numba within 1e-9 on every z when both run
+together; hybrid (and any --compare-with arm) checked through each study's maxT only.
 """
 from __future__ import annotations
 

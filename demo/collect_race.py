@@ -48,11 +48,14 @@ def four_arms(name, d):
     lab = d["labels"]
     yield "scope", {"comparison": f"Compute {lab['compute']} on one container class ({d['arms']['lab']['container_class']}); "
                                   f"outcomes {lab['outcomes']}; FWER and power are {lab['rates'].split(' ')[0]}. "
-                                  "Seconds: re-imaging and scoring only; start-up apart; the threshold summary not "
-                                  "counted. Parity: X sha256 on every shared study; z in full for the A100 lane, "
-                                  "through per-study maxT for the hybrid",
+                                  "Seconds: in-container study and scoring wall time; load, outcome prep, adjacency "
+                                  "and warm-up apart in start-up; the cutoff and rate summary not timed. The lab and "
+                                  "batched lanes run different test and calibration procedures, not equal statistical "
+                                  "work. Parity: X sha256 on every shared study; z in full for the A100 lane, through "
+                                  "per-study maxT for the hybrid",
                     "calibration": "Lab: 1,000 within-strata shuffles in every study. Preflight lanes: one threshold "
-                                   "from 1,000 independent calibration nulls, timed inside their lanes"}
+                                   "from 1,000 independent calibration nulls; evaluating those studies is timed inside "
+                                   "each lane, computing the cutoff from them is not"}
     for rid, a in ARMS.items():
         v = d["arms"][a]
         st, gpu = v["stages"], a in ("gpu", "hybrid")
@@ -60,7 +63,8 @@ def four_arms(name, d):
                     "hardware": v["container_class"], "cores": None if a == "gpu" else v["workers"],
                     "gpu": f"1x {v['host']['gpu'].split(',')[0]}" if gpu else None, "source": name,
                     "startup_s": round(st["end_to_end_in_container_s"] - st["compute_wall_s"], 1),
-                    "note": f"{st['evaluated_studies']:,} studies; re-imaging {100 * v['split']['reimage_share']:.1f}% of compute"}
+                    "note": f"{st['evaluated_studies']:,} studies; re-imaging {100 * v['split']['reimage_share']:.1f}% "
+                            + ("of elapsed stage wall time" if gpu else "of summed worker wall time")}
 
 
 def refused(d):
