@@ -104,7 +104,7 @@ def fit_model(cells, reference, *, feature=None, hr=2.0, shape=1.5, target=None)
     if probability(lo) < target or probability(hi) > target:
         raise ValueError("target event fraction is outside the declared censoring model's support")
     log_scale = brentq(lambda value: probability(value) - target, lo, hi, xtol=1e-12)
-    return {"feature": selected, "source_mean": mu, "source_sd": sd,
+    return {"feature": selected, "n_features": X.shape[1], "source_mean": mu, "source_sd": sd,
             "source_z": standardized, "strata": strata, "hr": float(hr), "shape": float(shape),
             "log_scale": float(log_scale), "target_event_fraction": target,
             "expected_event_fraction": probability(log_scale), "censoring": censoring,
