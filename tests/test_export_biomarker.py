@@ -69,3 +69,11 @@ def test_build_refuses_a_source_unlike_the_one_the_statistic_saw(tmp_path, monke
         eb.RESULT.write_text(json.dumps(_saved(cells, **override)))
         with pytest.raises(ValueError, match=match):
             eb.build(tmp_path)
+
+
+def test_source_fingerprint_sees_which_patient_owns_each_region():
+    # Swapping region ownership changes truth_v2's per-patient values, so it must change the fingerprint.
+    from audit.charville_v2 import _source_fingerprint
+    a, b = _tiny_cells(), _tiny_cells()
+    a["patient_of_region"], b["patient_of_region"] = np.array([0, 1], np.int32), np.array([1, 0], np.int32)
+    assert _source_fingerprint(a, a["channel_stats"]) != _source_fingerprint(b, b["channel_stats"])
