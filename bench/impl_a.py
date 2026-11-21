@@ -107,6 +107,35 @@ def cpu_model() -> str:
     return platform.processor() or "unknown"
 
 
+def _num(v):
+    return float(v) if np.isfinite(v) else None  # strict JSON: an unfittable candidate is null
+
+
+def measure(cohort, patient_ids, time, event, strata, C, c_names, X, names, cores: int) -> dict:
+    """Time fit_all with 1 worker and with `cores` workers on one cohort's arrays; results must be identical."""
+    args = (np.asarray(time, float), np.asarray(event, float), np.asarray(strata), np.asarray(C, float), np.asarray(X, float))
+    out = {"cohort": cohort, "patients": len(time), "events": int(np.sum(event)), "candidates": X.shape[1],
+           "clinical": list(c_names), "fingerprints": fingerprints(patient_ids, *args), "timings": []}
+    res = None
+    for w in sorted({1, cores}):
+        before = os.getloadavg()
+        t0 = clock.perf_counter()
+        r = fit_all(*args, workers=w)
+        wall = clock.perf_counter() - t0
+        if res is not None:  # the A-14.1 property on real data: the worker count never changes a result
+            for k in r:
+                np.testing.assert_array_equal(r[k], res[k])
+        res = r
+        out["timings"].append({"workers": w, "wall_s": wall, "label": "MEASURED",
+                               "load_avg_1m_before": before[0], "load_avg_1m_after": os.getloadavg()[0]})
+    out["wall_s"] = out["timings"][-1]["wall_s"]
+    out["pool_speedup_vs_1_worker"] = out["timings"][0]["wall_s"] / out["wall_s"]
+    out["fitted"] = int(np.isfinite(res["p"]).sum())
+    out["outputs"] = [{"feature": f, "coef": _num(a), "se": _num(b), "wald_p": _num(d), "n": int(e)}
+                      for f, a, b, d, e in zip(names, res["coef"], res["se"], res["p"], res["n"])]
+    return out
+
+
 def run_cohort(cohort: str, cores: int) -> dict:
     from core import cohorts
     from core.grammar import feature_names, grammar
@@ -115,28 +144,23 @@ def run_cohort(cohort: str, cores: int) -> dict:
     c = cohorts.load(cohort)
     X = truth(c)
     C, c_names = clinical(cohort, c["patient_names"])
-    args = (c["time"], c["event"].astype(float), c["strata"], C, X)
-    out = {"cohort": cohort, "patients": len(c["time"]), "events": int(c["event"].sum()),
-           "candidates": X.shape[1], "clinical": c_names,
-           "fingerprints": fingerprints(c["patient_names"], *args), "timings": []}
-    res = None
-    for w in sorted({1, cores}):
-        t0 = clock.perf_counter()
-        r = fit_all(*args, workers=w)
-        wall = clock.perf_counter() - t0
-        if res is not None:  # the A-14.1 property on real data: worker count never changes a result
-            for k in r:
-                np.testing.assert_array_equal(r[k], res[k])
-        res = r
-        out["timings"].append({"workers": w, "wall_s": wall, "label": "MEASURED", "load_avg_after": os.getloadavg()})
-    t1 = out["timings"][0]["wall_s"]
-    out["pool_speedup_vs_1_worker"] = t1 / out["timings"][-1]["wall_s"]
-    out["wall_s"] = out["timings"][-1]["wall_s"]
     names = feature_names(grammar(c["type_names"]))
-    out["fitted"] = int(np.isfinite(res["p"]).sum())
-    out["outputs"] = [{"feature": f, "coef": a, "se": b, "wald_p": d, "n": int(e)}
-                      for f, a, b, d, e in zip(names, *(res[k].tolist() for k in ("coef", "se", "p")), res["n"])]
-    return out
+    return measure(cohort, c["patient_names"], c["time"], c["event"], c["strata"], C, c_names, X, names, cores)
+
+
+def report(cohorts: list[dict], cores: int) -> dict:
+    return {
+        "what": "R-14 Implementation A: one statsmodels PHReg Cox fit per candidate (clinical C plus the candidate), "
+                "stratified by coverslip group, Breslow ties, complete cases per candidate",
+        "outputs_timed": "coefficient, SE and Wald p-value per candidate",
+        "comparison": "workflow: quote against R-15's score screen only as a workflow comparison, never as the "
+                      "equal-work speed-up, and only for runs with identical fingerprints",
+        "timing": "wall time of fit_all (pool start, all fits, results back); excludes loading and the feature build",
+        "cpu_model": cpu_model(), "cores_used": cores,
+        "versions": {"python": platform.python_version(), "numpy": np.__version__, "scipy": scipy.__version__,
+                     "pandas": pd.__version__, "statsmodels": statsmodels.__version__},
+        "cohorts": cohorts,
+    }
 
 
 def main(argv=None):
@@ -145,20 +169,9 @@ def main(argv=None):
     ap.add_argument("--cores", type=int, default=len(os.sched_getaffinity(0)))
     ap.add_argument("--output", required=True)
     a = ap.parse_args(argv)
-    report = {
-        "what": "R-14 Implementation A: one statsmodels PHReg Cox fit per candidate (clinical C plus the candidate), "
-                "stratified by coverslip group, Breslow ties, complete cases per candidate",
-        "outputs_timed": "coefficient, SE and Wald p-value per candidate",
-        "comparison": "workflow: quote against R-15's score screen only as a workflow comparison, never as the "
-                      "equal-work speed-up, and only for runs with identical fingerprints",
-        "timing": "wall time of fit_all (pool start, all fits, results back); excludes loading and the feature build",
-        "cpu_model": cpu_model(), "cores_used": a.cores, "load_avg_before": os.getloadavg(),
-        "versions": {"python": platform.python_version(), "numpy": np.__version__, "scipy": scipy.__version__,
-                     "pandas": pd.__version__, "statsmodels": statsmodels.__version__},
-        "cohorts": [run_cohort(c, a.cores) for c in a.cohort],
-    }
-    Path(a.output).write_text(json.dumps(report, indent=1, allow_nan=True) + "\n")
-    for c in report["cohorts"]:
+    rep = report([run_cohort(c, a.cores) for c in a.cohort], a.cores)
+    Path(a.output).write_text(json.dumps(rep, indent=1, allow_nan=False) + "\n")
+    for c in rep["cohorts"]:
         print(f"{c['cohort']}: {c['patients']} patients, {c['candidates']} candidates ({c['fitted']} fitted), "
               + ", ".join(f"{t['workers']} workers {t['wall_s']:.2f} s" for t in c["timings"]))
 
