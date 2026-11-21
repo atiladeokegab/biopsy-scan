@@ -69,6 +69,9 @@ def compare(summary: list[dict], meta: dict, m: int, *, cohort: str) -> dict:
         verdict = f"Mixed: the formula overstates at {len(over)} and understates at {len(under)} of {len(points)} patient counts."
     else:
         verdict = f"The formula falls inside the simulation's 95% interval at all {len(points)} patient counts."
+    inside = len(points) - len(over) - len(under)
+    if inside and (over or under):
+        verdict = verdict[:-1] + f"; inside it at the other {inside}."
     design = {k: rows[0][k] for k in ("regions_per_patient", "fov_um", "eps", "backend")}
     return {
         "schema": "preflight-vs-schoenfeld/1", "cohort": cohort, "verdict": verdict,
@@ -89,18 +92,19 @@ def compare(summary: list[dict], meta: dict, m: int, *, cohort: str) -> dict:
 
 
 def svg(res: dict) -> str:
-    W, H, L, R, T, B = 900, 560, 80, 220, 70, 120
+    W, H, L, R, T, B = 900, 600, 80, 220, 70, 160
     pts = res["points"]
     x0, x1 = min(p["patients"] for p in pts), max(p["patients"] for p in pts)
     X = lambda v: L + (W - L - R) * (v - x0) / max(1, x1 - x0)  # noqa: E731
     Y = lambda v: T + (H - T - B) * (1 - v)  # noqa: E731
     d = res["design"]
+    fov = d["fov_um"] if isinstance(d["fov_um"], str) else f'{d["fov_um"]:g} µm'
     out = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" font-family="sans-serif" font-size="13">',
            f'<rect width="{W}" height="{H}" fill="#fff"/>',
            f'<text x="12" y="26" font-size="17" font-weight="bold">Textbook power formula vs Preflight, {escape(res["cohort"].title())}</text>',
            (f'<text x="12" y="48" fill="#444">HR {res["hr_per_sd"]:g} per SD planted · alpha {res["alpha"]:g}, '
             f'Bonferroni over {res["features_m"]} features · event fraction {res["events"]}/{res["patients_source"]} · '
-            f'design: {escape(str(d["regions_per_patient"]))} region(s), {escape(str(d["fov_um"]))} µm field, '
+            f'design: {escape(str(d["regions_per_patient"]))} region(s), {escape(fov)} field, '
             f'{float(d["eps"]):.0%} mis-called</text>')]
     for v in (0, 0.25, 0.5, 0.75, 1):
         out += [f'<line x1="{L}" x2="{W - R}" y1="{Y(v):.1f}" y2="{Y(v):.1f}" stroke="#ddd"/>',
@@ -116,18 +120,21 @@ def svg(res: dict) -> str:
         line = " ".join(f"{X(p['patients']):.1f},{Y(p[key]):.1f}" for p in pts)
         out.append(f'<polyline points="{line}" fill="none" stroke="{colour}" stroke-width="2.5"{dash}/>')
         out += [f'<circle cx="{X(p["patients"]):.1f}" cy="{Y(p[key]):.1f}" r="3.5" fill="{colour}"/>' for p in pts]
-    last = pts[-1]
-    out += [f'<text x="{W - R + 10}" y="{Y(last["analytic_power"]) + 4:.1f}" fill="#b5462f" font-weight="bold">ANALYTIC (formula)</text>',
-            f'<text x="{W - R + 10}" y="{Y(last["sim_power"]) + 4:.1f}" fill="#2f7d4f" font-weight="bold">MEASURED (sim)</text>',
-            f'<text x="{W - R + 10}" y="{Y(last["sim_power"]) + 20:.1f}" fill="#2f7d4f" font-size="11">band: 95% interval</text>']
+    ya, ys = Y(pts[-1]["analytic_power"]) + 4, Y(pts[-1]["sim_power"]) + 4
+    if abs(ya - ys) < 36:  # end labels would overlap: the sim label (two lines) goes below the formula's, or above
+        ys = ya + 20 if ys >= ya else ya - 36
+    out += [f'<text x="{W - R + 10}" y="{ya:.1f}" fill="#b5462f" font-weight="bold">ANALYTIC (formula)</text>',
+            f'<text x="{W - R + 10}" y="{ys:.1f}" fill="#2f7d4f" font-weight="bold">MEASURED (sim)</text>',
+            f'<text x="{W - R + 10}" y="{ys + 16:.1f}" fill="#2f7d4f" font-size="11">band: 95% interval</text>']
     fw = [p["sim_fwer"] for p in pts]
     n = pts[0]["sim_n"]
-    out += [f'<text x="12" y="{H - 50}" font-weight="bold">{escape(res["verdict"])}</text>',
-            (f'<text x="12" y="{H - 32}" fill="#555" font-size="11">MEASURED (sim) = model-based Monte Carlo: {n:,} planted-effect studies per point, '
-             f're-imaged from real cells, maxT at one calibrated threshold per design; null-study FWER {min(fw):.3f}-{max(fw):.3f}.</text>'),
-            ('<text x="12" y="' + str(H - 14) + '" fill="#555" font-size="11">ANALYTIC = Schoenfeld (1983) events formula for a per-SD covariate '
-             '(Hsieh and Lavori 2000), D = patients x event fraction, Bonferroni; it assumes exact, whole-tissue measurement.</text>'),
-            "</svg>"]
+    foot = [f"MEASURED (sim) = model-based Monte Carlo: {n:,} planted-effect studies per point, re-imaged cell by cell",
+            f"from real tissue, maxT at one calibrated threshold per design; null-study FWER {min(fw):.3f} to {max(fw):.3f}.",
+            "ANALYTIC = Schoenfeld (1983) events formula for a per-SD covariate (Hsieh and Lavori 2000),",
+            "D = patients x event fraction, Bonferroni; it assumes exact, whole-tissue measurement."]
+    out += [f'<text x="12" y="{H - 94}" font-weight="bold">{escape(res["verdict"])}</text>']
+    out += [f'<text x="12" y="{H - 70 + 17 * i}" fill="#555" font-size="12">{escape(t)}</text>' for i, t in enumerate(foot)]
+    out.append("</svg>")
     return "\n".join(out) + "\n"
 
 

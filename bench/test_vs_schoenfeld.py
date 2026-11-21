@@ -26,6 +26,8 @@ def test_verdict_follows_the_data_either_way():
     assert hi["verdict"].startswith("The formula overstates power at 2 of 2")
     lo = compare([row(80, 1.0, 0.99, 1.0), row(300, 1.0, 0.99, 1.0)], META, 630, cohort="charville")
     assert lo["verdict"].startswith("The formula understates power at 2 of 2")
+    mixed = compare([row(80, 0.0, 0.0, 0.01), row(300, 0.97, 0.9, 1.0)], META, 630, cohort="charville")
+    assert mixed["verdict"].endswith("at 1 of 2 patient counts (outside the simulation's 95% interval); inside it at the other 1.")
     s = svg(hi)
     assert "MEASURED (sim)" in s and "ANALYTIC (formula)" in s and s.count("<polyline") == 2
 
