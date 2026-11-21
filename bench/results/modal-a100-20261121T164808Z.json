@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "status": "MEASURED",
+  "runner": "modal",
+  "gpu_requested": "A100",
+  "commit": "d6dc39c2f32ee7b4f387abf4a32a14edfe34dd56",
+  "dirty": true,
+  "utc": "20261121T164808Z",
+  "kind": "gpu_tests",
+  "gpu_tests": {
+    "exit_code": 0,
+    "passed": 39,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 1,
+    "skips": [
+      "test_gpu_selection_never_reports_cpu_fallback: this check requires CUDA to be unavailable"
+    ],
+    "files": [
+      "reimage/test_backends.py",
+      "reimage/test_expression.py",
+      "reimage/test_fleet.py"
+    ],
+    "summary": [
+      "39 passed, 1 skipped, 1 warning in 115.20s (0:01:55)"
+    ],
+    "in_function_s": 116.691596101,
+    "gpu": {
+      "model": "NVIDIA A100-SXM4-40GB",
+      "memory": "40960 MiB",
+      "driver": "620.70.06",
+      "count": 1,
+      "cuda_driver_api": null,
+      "cuda_runtime": "12.4",
+      "all": [
+        "NVIDIA A100-SXM4-40GB, 40960 MiB, 620.70.06"
+      ],
+      "modal_task_id": "ta-01M7ZG0FPG83W3JG00SGXA7D2R"
+    },
+    "modal_wall_s": 121.84557707281783,
+    "startup_and_transfer_s": 5.15398097181783
+  }
+}

@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "status": "MEASURED",
+  "runner": "modal",
+  "gpu_requested": "A100",
+  "commit": "f032ff31a40e70ffdde0b75c20e38e3ba149517b",
+  "dirty": false,
+  "launched_utc": "2026-11-21T17:17:29Z",
+  "utc": "20261121T172046Z",
+  "kind": "design_point",
+  "studies": 32,
+  "unit": "one design point: 32 Charville studies end to end (re-image, score, call), bench/real_cpu.py DESIGN",
+  "methods": "One design point, the speed unit: S simulated Charville studies end to end, by the lab's way and by ours.\n\nLab way, per study: re-image with fresh cKDTree recounts (bench.lab_today.tree_region, the 7.52 s/study path\nin cpu-ladder.json), then a 1,000-shuffle conditional maxT test (stats.permutation_test); call = p <= alpha.\n\nOur way, per design: re-image with the CSR kernel (CPU or GPU), score each study once, score one independent\nnull study per study (the same re-imaged X with outcomes shuffled within strata, so X carries no signal), take\none threshold from the S null maxima (stats.threshold), and call = maxT > threshold.\n\nBoth use the drawn patients' real Charville outcomes, so their calls can be compared study by study.\n",
+  "slots": {
+    "a_lab_all_cores": {
+      "label": "MEASURED",
+      "seconds": 33.372255177,
+      "measured_studies": 32,
+      "measured_seconds": 33.372255177,
+      "basis": "measured",
+      "workers": 48,
+      "host": {
+        "cpu": "unknown",
+        "logical_cpus": 48,
+        "python": "3.11.5",
+        "numpy": "2.4.6",
+        "gpu": null,
+        "cores_per_socket": 48,
+        "sockets": 1
+      },
+      "positives": 16
+    },
+    "b_ours_cpu_all_cores": {
+      "label": "MEASURED",
+      "seconds": 21.54138143200001,
+      "workers": 48,
+      "host": {
+        "cpu": "unknown",
+        "logical_cpus": 48,
+        "python": "3.11.5",
+        "numpy": "2.4.6",
+        "gpu": null,
+        "cores_per_socket": 48,
+        "sockets": 1
+      }
+    },
+    "c_ours_1_gpu": {
+      "label": "MEASURED",
+      "seconds": 27.69360785100001,
+      "gpu": [
+        "NVIDIA A100-SXM4-40GB"
+      ]
+    },
+    "d_ours_n_gpu": {
+      "label": "MEASURED",
+      "runs": {
+        "1": {
+          "containers_requested": 1,
+          "containers_seen": 1,
+          "gpus": [
+            "NVIDIA A100-SXM4-40GB"
+          ],
+          "compute_s": 27.69360785100001,
+          "modal_wall_s": 102.97363408003002,
+          "startup_and_transfer_s": 5.370595634030025,
+          "preparation_s_slowest": {
+            "load": 0.227666712,
+            "adjacency": 61.94262085300001,
+            "warm_up_and_parity": 6.146392405
+          },
+          "parity_exact_all": true,
+          "bit_identical_to_N1": true,
+          "speedup_vs_N1": 1.0,
+          "efficiency": 1.0
+        },
+        "2": {
+          "containers_requested": 2,
+          "containers_seen": 2,
+          "gpus": [
+            "NVIDIA A100 80GB PCIe",
+            "NVIDIA A100-SXM4-40GB"
+          ],
+          "compute_s": 14.281609692999993,
+          "modal_wall_s": 86.76366183999926,
+          "startup_and_transfer_s": 5.056707168999253,
+          "preparation_s_slowest": {
+            "load": 0.08761542899999997,
+            "adjacency": 59.645393282,
+            "warm_up_and_parity": 6.234548949999997
+          },
+          "parity_exact_all": true,
+          "bit_identical_to_N1": true,
+          "speedup_vs_N1": 1.9391096974575486,
+          "efficiency": 0.9695548487287743
+        }
+      }
+    }
+  },
+  "e_gpu_parity": {
+    "exact_all_containers": true,
+    "suite": "bench/results/modal-a100-20261121T164808Z.json: 39 passed, 1 skipped"
+  },
+  "f_same_call": {
+    "b_ours_cpu": "24 of 32",
+    "c_ours_1_gpu": "24 of 32"
+  },
+  "calls": {
+    "b_ours_cpu": {
+      "threshold": 4.350901188976146,
+      "positives": 8,
+      "agreement_with_lab": {
+        "same_call": 24,
+        "of": 32,
+        "both_positive": 8,
+        "lab_only": 8,
+        "ours_only": 0,
+        "alpha": 0.05
+      }
+    },
+    "c_ours_1_gpu": {
+      "threshold": 4.350901188976146,
+      "positives": 8,
+      "agreement_with_lab": {
+        "same_call": 24,
+        "of": 32,
+        "both_positive": 8,
+        "lab_only": 8,
+        "ours_only": 0,
+        "alpha": 0.05
+      }
+    }
+  },
+  "score_backend": "cupy",
+  "timing": "seconds = in-container compute for the whole unit; start-up, data load and adjacency apart"
+}

@@ -2,7 +2,7 @@
 // then the power and honesty results (claims.json). Below: explore a design (grid.json, tissue.json, four sliders).
 // Every file is local, so a served checkout replays the committed results with no network (schemas in README.md).
 import { createTissue } from "./tissue.js";
-import { createSpeedRace, workflowHTML, pairRatio } from "./race.js";
+import { createSpeedRace, workflowHTML } from "./race.js";
 import { drawRegion, drawKM } from "./bio.js";
 import { claimTexts, bioTexts, gridTexts, dialRanges } from "./claims.js";
 import { drawChart, pct, fovLabel } from "./chart.js";
@@ -118,11 +118,14 @@ async function hero() {
       $("speed-title").textContent = "How fast, measured so far";
       $("speed-dp").hidden = false;
       for (const g of d.interim) {
-        const head = document.createElement("p"), lanes = document.createElement("div");
-        head.className = "sr-head"; head.title = g.unit;
-        const ratio = pairRatio(g);
-        head.textContent = ratio ? `${g.title} · ${ratio}` : g.title;
-        $("speed-interim").append(head, lanes);
+        const head = document.createElement("p"), group = document.createElement("div"), lanes = document.createElement("div");
+        head.className = "sr-head"; head.title = g.unit; head.textContent = g.title;
+        group.className = "sr-group"; group.append(lanes);
+        if (g.scope_line) { // Atlas's cleared scope line, beside its bars (numbers from the file, via collect_race.py)
+          const scope = document.createElement("p");
+          scope.className = "sr-scope"; scope.textContent = g.scope_line; group.append(scope);
+        }
+        $("speed-interim").append(head, group);
         races.push(createSpeedRace(lanes, g, { reducedMotion }));
       }
     } else $("speed-task").textContent = d.task;

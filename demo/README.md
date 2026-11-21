@@ -154,9 +154,12 @@ A row no file feeds keeps its committed value.
 ```
 
 `interim` (optional): measured groups shown until the design point is timed, each racing on its own scale,
-from the Modal runner's `"kind": "ladder"` file (#75): one study, NumPy against 1 GPU in the same container, and
-16 studies on 1 against 4 GPU containers, compute only with start-up apart. Today it was filled by
-`python3 -I demo/collect_race.py <path to #75's bench/results/modal-a100-20261121T171213Z.json>`; once #75
+from the one Modal `"kind": "ladder"` file Atlas cleared (#75, `CLEARED_LADDER` in `collect_race.py`): one study's
+feature step, NumPy against 1 GPU in the same container, and 1,000 studies on 1 A100 against 8 (compute span,
+start-up apart). Each group carries its `scope_line`, Atlas's cleared wording with the file's numbers, printed beside
+its bars; the page computes no ratio of its own. Any other ladder file, or a 1-vs-8 pair that is not bit-identical,
+fully overlapped and on one GPU model, feeds nothing. Today it was filled by
+`python3 -I demo/collect_race.py <path to #75's bench/results/modal-a100-20261121T183709Z.json>`; once #75
 merges, Pages refills it from the tree.
 
 The checker rejects a number without a label or source, a PENDING or UNMEASURED row with a number, and checks

@@ -11,9 +11,10 @@ A bench file feeds the race in one of two ways:
      is kept apart in "calls_s". A generic "race" list feeds nothing. Or
   2. R-14's impl-a shape (cpu_model, cohorts[].timings[]): the Charville 3,780-candidate Cox screen fills the
      "workflow" footnote only. It is different work, so it is never a race bar and never part of a ratio.
-  3. the Modal runner's "kind": "ladder" file (#75): fills "interim", two measured pairs shown until the
-     design point is timed: one study on 1 GPU against NumPy in the same container, and 16 studies on 1 against
-     4 containers (compute only; start-up in startup_s). Each group races on its own scale.
+  3. the Modal runner's "kind": "ladder" file (#75), only the one Atlas cleared (CLEARED_LADDER): fills "interim",
+     two measured pairs shown until the design point is timed: one study's feature step on 1 GPU against NumPy in
+     the same container, and 1,000 studies on 1 A100 against 8 (compute span; start-up in startup_s). Each group
+     races on its own scale, with Atlas's cleared scope line, numbers from the file, beside its bars.
 A row no file feeds keeps its committed value (PENDING until measured). check_data.py then validates the result.
 It also writes demo/data/claims.json, the power and honesty numbers the page shows, from
 bench/results/vs-schoenfeld-300.json and results/charville-v2.json, so the page replays committed results offline.
@@ -28,6 +29,7 @@ CLAIMS = ROOT / "demo" / "data" / "claims.json"
 PLANNED_PATIENTS = 200  # the demo's study: "they plan 200 patients"
 DESIGN_STUDIES = 1000  # the race's declared unit: one design point, 1,000 simulated studies (baseline.json task)
 TIMED = ("MEASURED", "ESTIMATE")
+CLEARED_LADDER = "modal-a100-20261121T183709Z.json"  # Atlas cleared this run (lead, 2026-11-21 19:00Z)
 SLOTS = {"lab-cpu": "a_lab_all_cores", "preflight-cpu": "b_ours_cpu_all_cores", "gpu-1": "c_ours_1_gpu"}
 
 
@@ -75,7 +77,12 @@ def rows_from(path, d):
         else:
             yield from design_point(name, d)
     if d.get("kind") == "ladder" and d.get("status") == "MEASURED":
-        yield "interim", interim(name, d)
+        why = None if path.name == CLEARED_LADDER else "not the ladder run Atlas cleared"
+        groups = None if why else interim(name, d)
+        if groups:
+            yield "interim", groups
+        else:
+            print(f"{name}: refused for the race: {why or 'its 1-vs-8 A100 pair is not clean'}", file=sys.stderr)
     if "cpu_model" in d:
         for c in d.get("cohorts", []):
             if c.get("cohort") == "charville" and c.get("candidates") == 3780 and c.get("timings"):
@@ -89,31 +96,34 @@ def rows_from(path, d):
 
 
 def interim(name, d):
-    """The ladder file's kernel pair and fleet pair, copied as measured; no ratio is kept."""
+    """The cleared ladder file's kernel pair and 1-vs-8 fleet pair, copied as measured, or None if either is not clean."""
     k, f, lab = d["kernel"], d["fleet"], d["status"]
-    rows = k["rows"]
-    fleet = []
-    for n, r in sorted(f["runs"].items(), key=lambda kv: int(kv[0])):
-        g = sorted(set(r["gpus"]))
-        each = r["studies_per_container"][0]
-        fleet.append({"id": f"fleet-{n}", "method": f"{n} GPU container{'s' if int(n) > 1 else ''}, "
-                      + (f"{each} studies each" if int(n) > 1 else f"all {each} studies"),
-                      "role": "baseline" if n == "1" else "screen",
-                      "label": lab, "seconds": round(r["compute_s_max"], 2), "startup_s": round(r["startup_and_transfer_s"], 1),
-                      "note": "longest shard's compute", "hardware": "Modal", "gpu": f"{r['containers_seen']}x {' / '.join(g)}", "cores": None, "source": name})
+    rows, runs = k["rows"], f["runs"]
+    one, eight = runs.get("1"), runs.get("8")
+    clean = lambda r, n: (r and r["containers_seen"] == n and r["gpus"] == one["gpus"] and len(r["gpus"]) == 1
+                          and r["all_overlapped"] and r["seed_coverage_exact"] and r["bit_identical_to_1"])
+    if not (k.get("parity_exact") is True and f["studies"] == DESIGN_STUDIES and clean(one, 1) and clean(eight, 8)):
+        return None
+    gpu = one["gpus"][0].removeprefix("NVIDIA ")
+    fleet = [{"id": f"fleet-{n}", "method": "1 A100, all 1,000 studies" if n == 1 else f"{n} A100s, {r['studies_per_container'][0]} studies each",
+              "role": "baseline" if n == 1 else "screen", "label": lab, "seconds": round(r["compute_span_s"], 2),
+              "startup_s": round(r["startup_and_transfer_s"], 1), "note": "compute span", "hardware": "Modal",
+              "gpu": f"{n}x {r['gpus'][0]}", "cores": None, "source": name} for n, r in ((1, one), (8, eight))]
     return [
-        {"title": "One study: re-imaging and feature extraction only (scoring not timed)", "unit": k["unit"],
-         "same_scope": True, "rows": [
+        {"title": "One study", "unit": k["unit"], "same_scope": True,
+         "scope_line": f"{lab}, {k['speedup_median']:.2f}× faster: feature step only, NumPy vs GPU, same container, "
+                  f"median of {len(rows['gpu']['samples_s'])}, exact parity", "rows": [
             {"id": "kernel-numpy", "method": "NumPy reference, same container", "role": "baseline", "label": lab,
              "seconds": round(rows["numpy_reference"]["median_s"], 3), "hardware": "Modal GPU container, on its CPU",
              "cores": None, "gpu": None, "note": f"median of {len(rows['numpy_reference']['samples_s'])}", "source": name},
             {"id": "kernel-gpu", "method": "The same step on 1 GPU", "role": "screen", "label": lab,
              "seconds": round(rows["gpu"]["median_s"], 3), "hardware": "Modal", "cores": None, "gpu": k["gpu"]["model"],
              "note": f"median of {len(rows['gpu']['samples_s'])}, exact parity", "source": name}]},
-        # shortcut: this file times each shard, not the overlap, so no ratio; use the compute span once the
-        # corrected harness's file lands.
-        {"title": f"{f['studies']} studies on a fleet: longest-shard compute only, overlap not verified",
-         "unit": f["note"], "same_scope": False, "rows": fleet}]
+        {"title": "1,000 studies: 1 A100 against 8", "unit": f["note"], "same_scope": True,
+         "scope_line": f"{lab}, observed {one['compute_span_s'] / eight['compute_span_s']:.1f}× compute-span reduction "
+                  f"{one['compute_span_s']:.1f}→{eight['compute_span_s']:.1f} s for {f['studies']:,} Charville "
+                  f"re-imaging/feature-generation studies, 8 {gpu} vs 1, one sweep; outputs bit-identical; "
+                  "inference outside timing", "rows": fleet}]
 
 
 def main(extra):

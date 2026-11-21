@@ -73,32 +73,56 @@ def test_checker_validates_each_field_on_its_own():
     assert _check(base | {"rows": [_row()], "workflow": _row(seconds=None)}), "a timed footnote needs seconds"
 
 
+def _run(n, span, gpus=("NVIDIA A100-SXM4-40GB",), **o):
+    return {"containers_requested": n, "containers_seen": n, "gpus": list(gpus), "studies_per_container": [1000 // n] * n,
+            "compute_s_max": span - 1, "compute_span_s": span, "startup_and_transfer_s": 30.0 / n, "all_overlapped": True,
+            "seed_coverage_exact": True, "bit_identical_to_1": True, **o}
+
+
+# The shape of Atlas's cleared run (bench/results/modal-a100-20261121T183709Z.json on #75), values from that file.
+CLEARED = "modal-a100-20261121T183709Z.json"
 LADDER = {"kind": "ladder", "status": "MEASURED",
-          "kernel": {"unit": "one study: sampling, crop, recount, features", "gpu": {"model": "NVIDIA H100"},
-                     "rows": {"numpy_reference": {"median_s": 2.88046, "samples_s": [1] * 5},
-                              "gpu": {"median_s": 0.87341, "samples_s": [1] * 5}}},
-          "fleet": {"studies": 16, "design": "bench/real_cpu.py DESIGN", "note": "compute only", "runs": {
-              "4": {"gpus": ["A100-40", "A100-80"], "containers_seen": 4, "studies_per_container": [4] * 4,
-                    "compute_s_max": 3.7977, "startup_and_transfer_s": 5.0945},
-              "1": {"gpus": ["A100-40"], "containers_seen": 1, "studies_per_container": [16],
-                    "compute_s_max": 11.4448, "startup_and_transfer_s": 90.293}}}}
+          "kernel": {"unit": "one study: sampling, crop, recount, features", "gpu": {"model": "NVIDIA A100-SXM4-40GB"},
+                     "parity_exact": True, "speedup_median": 3.1863154273577705,
+                     "rows": {"numpy_reference": {"median_s": 2.235254685000001, "samples_s": [1] * 5},
+                              "gpu": {"median_s": 0.7015170769999912, "samples_s": [1] * 5}}},
+          "fleet": {"studies": 1000, "design": "bench/real_cpu.py DESIGN on Charville", "note": "compute only", "runs": {
+              "1": _run(1, 843.7230155467987, startup_and_transfer_s=34.70365832602988),
+              "4": _run(4, 192.30906319618225),
+              "8": _run(8, 128.19890642166138, startup_and_transfer_s=6.983653898236668),
+              "16": _run(16, 202.8938708305359, gpus=("NVIDIA A100-SXM4-40GB", "NVIDIA A100-SXM4-80GB"))}}}
 
 
 def test_ladder_feeds_interim_compute_only_with_startup_apart():
-    """The lead's interim race: kernel 0.873 vs 2.880 s/study, fleet 3.80 vs 11.44 s compute, from the file."""
-    [(rid, groups)] = cr.rows_from(Path("modal-a100-x.json"), LADDER)
+    """The lead (19:00Z): 1 A100 against 8 on the 1,000 studies, the compute span, start-up apart; no 16-GPU bar."""
+    [(rid, groups)] = cr.rows_from(Path(CLEARED), LADDER)
     assert rid == "interim"
     k, f = ({r["id"]: r for r in g["rows"]} for g in groups)
-    assert (k["kernel-numpy"]["seconds"], k["kernel-gpu"]["seconds"], k["kernel-gpu"]["gpu"]) == (2.88, 0.873, "NVIDIA H100")
-    assert [r["id"] for r in groups[1]["rows"]] == ["fleet-1", "fleet-4"]
-    assert (f["fleet-1"]["seconds"], f["fleet-1"]["startup_s"]) == (11.44, 90.3), "start-up is apart, never in seconds"
-    assert (f["fleet-4"]["seconds"], f["fleet-4"]["gpu"]) == (3.8, "4x A100-40 / A100-80")
-    assert all(r["source"] == "bench/results/modal-a100-x.json" for g in groups for r in g["rows"])
+    assert (k["kernel-numpy"]["seconds"], k["kernel-gpu"]["seconds"]) == (2.235, 0.702)
+    assert [r["id"] for r in groups[1]["rows"]] == ["fleet-1", "fleet-8"], "no 16-GPU bar, no mixed 40/80 GB"
+    assert (f["fleet-1"]["seconds"], f["fleet-1"]["startup_s"]) == (843.72, 34.7), "start-up is apart, never in seconds"
+    assert (f["fleet-8"]["seconds"], f["fleet-8"]["gpu"]) == (128.2, "8x NVIDIA A100-SXM4-40GB")
+    assert f["fleet-8"]["method"] == "8 A100s, 125 studies each" and f["fleet-8"]["note"] == "compute span"
+    assert all(r["source"] == f"bench/results/{CLEARED}" for g in groups for r in g["rows"])
     assert not any("speedup" in key or "ratio" in key for g in groups for r in g["rows"] for key in r)
     b = json.loads((ROOT / "demo" / "data" / "baseline.json").read_text())
     assert _check(b | {"interim": groups}) is None
     assert _check(b | {"interim": [groups[0] | {"rows": [k["kernel-gpu"] | {"label": "PENDING"}]}]}), "PENDING with a number"
-    assert list(cr.rows_from(Path("x.json"), LADDER | {"status": "FAILED"})) == []
+    assert _check(b | {"interim": [groups[1] | {"scope_line": ""}]}), "a group's scope line, if any, is text"
+    assert list(cr.rows_from(Path(CLEARED), LADDER | {"status": "FAILED"})) == []
+
+
+def test_only_the_cleared_fleet_run_feeds_the_page():
+    """Atlas cleared one file; any other ladder file, or one whose 1-vs-8 pair is not clean, feeds nothing."""
+    assert list(cr.rows_from(Path("modal-a100-20261121T171213Z.json"), LADDER)) == []
+    runs = LADDER["fleet"]["runs"]
+    for bad in ({"bit_identical_to_1": False}, {"all_overlapped": False}, {"seed_coverage_exact": False},
+                {"gpus": ["NVIDIA A100-SXM4-80GB"]}, {"containers_seen": 7}):
+        broken = LADDER | {"fleet": LADDER["fleet"] | {"runs": runs | {"8": runs["8"] | bad}}}
+        assert list(cr.rows_from(Path(CLEARED), broken)) == [], bad
+    no8 = LADDER | {"fleet": LADDER["fleet"] | {"runs": {"1": runs["1"]}}}
+    assert list(cr.rows_from(Path(CLEARED), no8)) == []
+    assert list(cr.rows_from(Path(CLEARED), LADDER | {"kernel": LADDER["kernel"] | {"parity_exact": False}})) == []
 
 
 # The shape #75's gpu/modal_app.py run_design_point writes (origin/modal-gpu 25fcaca, lines 704-760), values invented.
@@ -141,12 +165,17 @@ def test_design_point_fills_the_four_rows_only_when_measured_at_1000_studies():
 
 
 def test_interim_titles_say_exactly_what_ran():
-    """Atlas #79 re-check (a): the kernel step is feature generation only, never 're-imaged and scored'."""
-    [(_, groups)] = cr.rows_from(Path("m.json"), LADDER)
-    assert groups[0]["title"] == "One study: re-imaging and feature extraction only (scoring not timed)"
-    assert groups[1]["same_scope"] is False and "longest-shard compute" in groups[1]["title"]
+    """The lead (19:00Z): Atlas's cleared scope lines, word for word, each beside its bars; numbers from the file."""
+    [(_, groups)] = cr.rows_from(Path(CLEARED), LADDER)
+    assert groups[0]["scope_line"] == ("MEASURED, 3.19× faster: feature step only, NumPy vs GPU, "
+                                  "same container, median of 5, exact parity")
+    assert groups[1]["scope_line"] == ("MEASURED, observed 6.6× compute-span reduction 843.7→128.2 s for 1,000 Charville "
+                                  "re-imaging/feature-generation studies, 8 A100-SXM4-40GB vs 1, one sweep; "
+                                  "outputs bit-identical; inference outside timing")
     b = json.loads((ROOT / "demo" / "data" / "baseline.json").read_text())
-    assert not any("scored" in g["title"] for g in b.get("interim", []))
+    shown = " ".join(g["title"] + " " + g.get("scope_line", "") for g in b.get("interim", []))
+    assert "scored" not in shown and "% of ideal" not in shown and "efficiency" not in shown
+    assert [g.get("scope_line") for g in b["interim"]] == [g["scope_line"] for g in groups], "rerun python3 -I demo/collect_race.py"
 
 
 def test_claims_are_traced_to_their_files():
