@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "cohort": "upmc",
+  "split": "discovery",
+  "locked_patients_used": false,
+  "exploratory": true,
+  "already_seen": true,
+  "already_seen_disclosure": "Both cohorts' outcomes have been examined by reviewers already; all real-data results are already-seen and exploratory, not confirmatory.",
+  "clinical_claims": false,
+  "seed": 0,
+  "code_revision": "56af8c027df03f4c3885552a7cfc76694aa2a9bc",
+  "status": "UNMEASURED",
+  "reason": "UPMC raw files missing in data_dir (run on Modal with mounted data)",
+  "m": 0,
+  "r16_rule": {
+    "id": "R-16 pEMT tumour bordered by fibroblasts (UPMC)",
+    "expressible": true,
+    "feature": "Tumor (Podo+)|Stromal / Fibroblast|25um|fraction",
+    "focal": "Tumor (Podo+)",
+    "neighbour": "Stromal / Fibroblast",
+    "radius_um": 25,
+    "statistic": "fraction",
+    "direction": "higher is worse: hazard ratio > 1; a top rank with HR < 1 counts as not rediscovered",
+    "pEMT_proxy": "Podoplanin-positive tumour cells (UPMC type 'Tumor (Podo+)'). Podoplanin is a pEMT-programme gene in HNSCC. Slug is not in the UPMC panel. Vimentin is, but the grammar has no marker-gated focal type, so Vimentin+ tumour is not a candidate column",
+    "fibroblast_proxy": "UPMC type 'Stromal / Fibroblast'. aSMA is a marker, not a type, so it stays out of the primary candidate",
+    "deviations": [
+      "The plan's 26 um becomes 25 um, the nearest grammar radius",
+      "The plan's '>30% fibroblasts' threshold becomes the continuous fraction the screen tests"
+    ],
+    "outcomes_opened": false,
+    "rule_sha256": "a70424447055052d19610332a478fb46da68d87a9f2f30b350cc3c14a4bada1e"
+  },
+  "step1_panels": {
+    "status": "UNMEASURED",
+    "reason": "UPMC raw files missing in data_dir (run on Modal with mounted data)",
+    "r16_rule_sha256": "a70424447055052d19610332a478fb46da68d87a9f2f30b350cc3c14a4bada1e",
+    "m": 0,
+    "n_panels": 0,
+    "panels": []
+  },
+  "step2_formats": {
+    "status": "UNMEASURED",
+    "reason": "UPMC raw files missing in data_dir (run on Modal with mounted data)",
+    "r16_rule_sha256": "a70424447055052d19610332a478fb46da68d87a9f2f30b350cc3c14a4bada1e",
+    "single_slide": {
+      "status": "UNMEASURED",
+      "reason": "UPMC raw files missing in data_dir (run on Modal with mounted data)"
+    },
+    "serial_section": {
+      "0": {
+        "misreg_um": 0.0,
+        "status": "UNMEASURED",
+        "reason": "UPMC raw files missing in data_dir (run on Modal with mounted data)"
+      },
+      "25": {
+        "misreg_um": 25.0,
+        "status": "UNMEASURED",
+        "reason": "UPMC raw files missing in data_dir (run on Modal with mounted data)"
+      },
+      "50": {
+        "misreg_um": 50.0,
+        "status": "UNMEASURED",
+        "reason": "UPMC raw files missing in data_dir (run on Modal with mounted data)"
+      },
+      "75": {
+        "misreg_um": 75.0,
+        "status": "UNMEASURED",
+        "reason": "UPMC raw files missing in data_dir (run on Modal with mounted data)"
+      },
+      "100": {
+        "misreg_um": 100.0,
+        "status": "UNMEASURED",
+        "reason": "UPMC raw files missing in data_dir (run on Modal with mounted data)"
+      }
+    },
+    "tiles": {
+      "100": {
+        "tile_um": 100.0,
+        "status": "UNMEASURED",
+        "reason": "UPMC raw files missing in data_dir (run on Modal with mounted data)"
+      },
+      "150": {
+        "tile_um": 150.0,
+        "status": "UNMEASURED",
+        "reason": "UPMC raw files missing in data_dir (run on Modal with mounted data)"
+      },
+      "200": {
+        "tile_um": 200.0,
+        "status": "UNMEASURED",
+        "reason": "UPMC raw files missing in data_dir (run on Modal with mounted data)"
+      }
+    }
+  },
+  "labels": {
+    "step1_panels": "UNMEASURED",
+    "step2_formats": "UNMEASURED"
+  },
+  "wall_s": 0.1417075260542333
+}
