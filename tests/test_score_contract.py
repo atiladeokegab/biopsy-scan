@@ -73,6 +73,41 @@ def test_batch_and_patient_order_preserve_scores(adverse_score_case):
     np.testing.assert_allclose(result["z"][2], result["z"][0], atol=1e-12)
 
 
+def test_stratum_specific_offsets_do_not_create_evidence(adverse_score_case):
+    """Changing only each batch's feature baseline leaves the conditional test unchanged."""
+    X, time, event, strata = adverse_score_case
+    shifted = X.copy()
+    for group, offset in zip(np.unique(strata), [13, -70, 11, 101]):
+        shifted[strata == group] += offset
+    before = stats.score(X, time, event, strata)
+    after = stats.score(shifted, time, event, strata)
+    for key in ("U", "V", "z"):
+        np.testing.assert_allclose(after[key], before[key], atol=1e-10)
+
+
+@pytest.mark.parametrize("seed", range(20))
+def test_unseen_tied_studies_match_exact_enumeration(seed):
+    """Unseen event patterns and group baselines match all small-group permutations."""
+    rng = np.random.default_rng(21000 + seed)
+    strata = np.array([17] * 4 + [-3] * 3 + [99], dtype=np.int32)
+    time = rng.integers(1, 5, 8).astype(np.float64)
+    event = rng.integers(0, 2, 8).astype(bool)
+    X = np.column_stack([rng.integers(-5, 6, (8, 2)), np.ones(8)]).astype(np.float64)
+    residual = breslow_residual(time, event, strata)
+    expected_U = X.T @ residual
+    expected_V = np.zeros(3)
+    for group in np.unique(strata):
+        rows = np.flatnonzero(strata == group)
+        scores = [X[list(order)].T @ residual[rows] for order in permutations(rows)]
+        expected_V += np.var(scores, axis=0)
+    expected_z = np.divide(expected_U, np.sqrt(expected_V), out=np.zeros(3),
+                           where=expected_V > 1e-20)
+    result = stats.score(X, time, event, strata)
+    np.testing.assert_allclose(result["U"], expected_U, atol=1e-12)
+    np.testing.assert_allclose(result["V"], expected_V, atol=1e-12)
+    np.testing.assert_allclose(result["z"], expected_z, atol=1e-12)
+
+
 def test_every_patient_censored_has_no_evidence():
     """An entirely event-free cohort produces zeros, never NaN or a discovery."""
     X = np.arange(24, dtype=np.float64).reshape(8, 3)

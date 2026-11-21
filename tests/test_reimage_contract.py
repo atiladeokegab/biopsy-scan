@@ -5,7 +5,7 @@ from importlib import import_module
 import numpy as np
 import pytest
 
-from core.grammar import RADII_UM
+from core.grammar import RADII_UM, features
 from core.reimage_ref import crop_mask, miscall, reimage_region
 from core.truth import neighbours
 
@@ -114,3 +114,36 @@ def test_miscall_cdf_boundaries():
     observed = miscall(np.array([0, 0, 0, 0, 1, 2], dtype=np.int8), M,
                        np.array([0, 0.25, 0.749, 0.75, 0.9, 0.1]))
     np.testing.assert_array_equal(observed, [0, 1, 1, 2, 0, 2])
+
+
+def test_patient_features_weight_focal_cells_across_regions():
+    """One focal with fraction zero and three with fraction one give 3/4, not 1/2."""
+    xy_a = np.array([[0, 0], [10, 0]], dtype=float)
+    xy_b = np.array([[0, 0], [10, 0], [1000, 0], [1010, 0], [2000, 0], [2010, 0]], dtype=float)
+    S_a, m_a = direct_region(xy_a, np.array([1, 2]), np.ones(2, dtype=bool), [1], 3)
+    S_b, m_b = direct_region(xy_b, np.array([1, 0, 1, 0, 1, 0]),
+                             np.ones(6, dtype=bool), [1], 3)
+    X = features((S_a + S_b)[None], (m_a + m_b)[None])
+    assert X.dtype == np.float64
+    np.testing.assert_allclose(X.reshape(1, 1, 3, 3, 2)[0, 0, 0, :, 0], 0.75)
+
+
+def test_absent_focal_type_is_missing_not_zero():
+    """An unobserved focal type has undefined features, rather than evidence of absence."""
+    X = features(np.zeros((1, 1, 2, 3, 2)), np.zeros((1, 1), dtype=np.int64))
+    assert X.shape == (1, 12)
+    assert np.isnan(X).all()
+
+
+@pytest.mark.parametrize("seed", range(20))
+def test_unseen_irregular_regions_match_geometry(count_kernel, seed):
+    """Unseen sparse, coincident and partly hidden cells retain exact neighbour counts."""
+    rng = np.random.default_rng(43000 + seed)
+    xy = (rng.integers(-8, 9, (12, 2)) * 12.5).astype(np.float32)
+    xy[1] = xy[0]  # Two distinct cells can have exactly the same position.
+    observed = rng.integers(0, 3, 12).astype(np.int8)
+    visible = rng.random(12) < (seed % 5) / 4
+    module, name = count_kernel.split(":")
+    kernel = getattr(import_module(module), name)
+    actual = kernel(neighbours(xy), observed, visible, 3)
+    np.testing.assert_array_equal(actual, direct_counts(xy, observed, visible, 3))
