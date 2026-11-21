@@ -9,68 +9,82 @@
 </head>
 <body>
   <header class="bar">
-    <span class="mark" aria-hidden="true"></span>
     <span class="wordmark">Preflight</span>
     <span class="team">Team Dry Lab</span>
   </header>
 
   <main>
     <section class="hero" aria-labelledby="title">
-      <p class="eyebrow">GPU study simulator · spatial biology</p>
+      <p class="eyebrow">GPU study simulator</p>
       <h1 id="title">Can my study find it?</h1>
-      <div class="headline" id="headline">
-        <p class="big"><span id="hl-studies">1,000</span> studies simulated in <span id="hl-gpu" class="num">— s</span></p>
-        <p class="sub" id="hl-sub">on one GPU, against <span id="hl-cpu">—</span> for the same algorithm on every CPU core.</p>
-        <p class="badge" id="hl-badge" hidden>UNMEASURED · placeholder until the benchmark runs</p>
+      <p class="tagline">Thousands of studies, simulated in seconds, before you image a slide.</p>
+      <p class="badge" id="synthetic" hidden></p>
+    </section>
+
+    <div class="error" id="error" role="alert" hidden></div>
+
+    <section class="stage" aria-label="Study design">
+      <figure class="tissue">
+        <canvas id="tissue" tabindex="0" role="img" aria-label="Tissue from each patient, stacked"></canvas>
+        <figcaption>
+          <span class="legend"><i class="t"></i>Tumour <i class="s"></i>Stroma <i class="m"></i>Immune <i class="f"></i>Field of view</span>
+          <span id="tissue-caption"></span>
+          <span class="hint">Drag, or focus and use the arrow keys, to turn it. <button type="button" id="spin" class="link" aria-pressed="false">Pause rotation</button></span>
+        </figcaption>
+      </figure>
+
+      <div class="panel">
+        <h2>Your study design</h2>
+        <form id="design" class="sliders">
+          <div class="slider">
+            <label for="patients">Patients</label>
+            <output id="patients-out" for="patients">160</output>
+            <input id="patients" name="patients" type="range" min="20" max="300" step="10" value="160">
+          </div>
+          <div class="slider">
+            <label for="regions">Regions per patient</label>
+            <output id="regions-out" for="regions">2</output>
+            <input id="regions" name="regions" type="range" min="1" max="8" step="1" value="2">
+          </div>
+          <div class="slider">
+            <label for="fov">Field of view</label>
+            <output id="fov-out" for="fov">full region</output>
+            <input id="fov" name="fov" type="range" min="250" max="2250" step="250" value="2250">
+          </div>
+          <div class="slider">
+            <label for="miscall">Mis-call rate</label>
+            <output id="miscall-out" for="miscall">0%</output>
+            <input id="miscall" name="miscall" type="range" min="0" max="30" step="1" value="0">
+          </div>
+          <button id="run" type="submit" class="go">Can my study find it?</button>
+        </form>
+
+        <div class="answer" id="answer" aria-live="polite">
+          <p class="power"><span id="power">—</span><small>power</small></p>
+          <p class="verdict" id="verdict"></p>
+          <p class="detail"><span id="ident">—</span> also name the right pattern. <span id="snap"></span></p>
+        </div>
       </div>
     </section>
 
-    <section class="panel" aria-labelledby="design-title">
-      <h2 id="design-title">Your study design</h2>
-      <form id="design" class="sliders">
-        <div class="slider">
-          <label for="patients">Patients</label>
-          <output id="patients-out" for="patients">160</output>
-          <input id="patients" name="patients" type="range" min="20" max="300" step="10" value="160">
-        </div>
-        <div class="slider">
-          <label for="regions">Regions per patient</label>
-          <output id="regions-out" for="regions">2</output>
-          <input id="regions" name="regions" type="range" min="1" max="8" step="1" value="2">
-        </div>
-        <div class="slider">
-          <label for="fov">Field of view</label>
-          <output id="fov-out" for="fov">full region</output>
-          <input id="fov" name="fov" type="range" min="250" max="2250" step="250" value="2250">
-        </div>
-        <div class="slider">
-          <label for="miscall">Mis-call rate</label>
-          <output id="miscall-out" for="miscall">0%</output>
-          <input id="miscall" name="miscall" type="range" min="0" max="30" step="1" value="0">
-        </div>
-        <button id="run" type="submit" class="go">Can my study find it?</button>
-      </form>
+    <section class="race" aria-labelledby="race-title">
+      <h2 id="race-title">The same <span id="race-n">1,000</span> studies, two ways</h2>
+      <div class="lanes">
+        <figure class="lane">
+          <figcaption><strong>CPU</strong> one study at a time</figcaption>
+          <canvas id="cpu" aria-hidden="true"></canvas>
+          <p class="count" id="cpu-count"></p>
+        </figure>
+        <figure class="lane">
+          <figcaption><strong>GPU</strong> thousands at once</figcaption>
+          <canvas id="gpu" aria-hidden="true"></canvas>
+          <p class="count" id="gpu-count"></p>
+        </figure>
+      </div>
+      <p class="race-key"><i class="hit"></i>found the pattern <i class="miss"></i>missed it <span id="race-speed"></span></p>
     </section>
 
-    <section class="results" aria-labelledby="results-title">
-      <h2 id="results-title" class="sr-only">Result</h2>
-      <p class="synthetic" id="synthetic" hidden>SYNTHETIC grid · placeholder numbers from a toy model, not re-imaged studies</p>
-      <div class="error" id="error" role="alert" hidden></div>
-      <div class="answer" id="answer" aria-live="polite">
-        <p class="verdict" id="verdict">Set a design, then press the button.</p>
-        <div class="stats">
-          <div class="stat">
-            <p class="stat-value" id="power">—</p>
-            <p class="stat-label">Power<span>studies that detect the pattern</span></p>
-          </div>
-          <div class="stat">
-            <p class="stat-value" id="ident">—</p>
-            <p class="stat-label">Identification<span>studies that name the right pattern</span></p>
-          </div>
-        </div>
-        <p class="snap" id="snap"></p>
-      </div>
-
+    <section class="results" aria-labelledby="chart-title">
       <figure class="chart">
         <figcaption id="chart-title">Power against patients, one line per regions-per-patient</figcaption>
         <div id="chart"></div>
@@ -80,6 +94,6 @@
   </main>
 
   <footer class="foot">Thousands of studies, simulated in seconds, before you image a slide.</footer>
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
