@@ -17,7 +17,10 @@ import statistics
 from pathlib import Path
 
 HARNESS = {"pr": 120, "branch": "reimage-fast-b9", "commit": "0b27ea1f79db7d45a7be0c35b2866f0dce338d3d",
+           "previous_commit": "a29f1b7bb3c1f0d747121b52c04b285aa1bd6d93",
            "runner": "bench/modal_design.py (unchanged, run from a detached checkout)"}
+# 0b27ea1 is the head that merges (fused crop fix) and is what the published ratio uses; a29f1b7's fused runs sit beside it.
+PREVIOUS = "fused_a29f1b7"
 
 
 ONE_ARM = {"all": False, "this_run": "one arm"}  # the runner's parity for a single-arm run without --compare-with
@@ -85,6 +88,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--lab", nargs="+", required=True)
     ap.add_argument("--fused", nargs="+", required=True)
+    ap.add_argument("--fused-previous", nargs="*", default=[], help="fused runs at HARNESS previous_commit")
     ap.add_argument("--spend", required=True)
     ap.add_argument("--prior", required=True, help="a MEASURED modal-design result from #113/#120 at the same seeds")
     ap.add_argument("--output", required=True)
@@ -97,9 +101,12 @@ def main(argv=None):
     if prior["status"] != "MEASURED":
         raise ValueError("--prior must be MEASURED")
     repeats = {"lab": [extract(p, "lab", prior) for p in a.lab], "fused": [extract(p, "fused", prior) for p in a.fused]}
-    commits = {x["source_commit"] for reps in repeats.values() for x in reps}
-    if commits != {HARNESS["commit"]}:
-        raise ValueError(f"every repeat must run #120 at {HARNESS['commit']}, got {commits}")
+    if a.fused_previous:
+        repeats[PREVIOUS] = [extract(p, "fused", prior) for p in a.fused_previous]
+    for arm, reps in repeats.items():
+        want = HARNESS["previous_commit" if arm == PREVIOUS else "commit"]
+        if {x["source_commit"] for x in reps} != {want}:
+            raise ValueError(f"{arm} repeats must run #120 at {want}")
     s = summarize(repeats)
     spend = json.loads(Path(a.spend).read_text())
     doc = {
@@ -120,7 +127,10 @@ def main(argv=None):
         "headline": (f"Over {s['lab']['n']} independent repeats each: lab {s['lab']['median']:.3f} s/study "
                      f"(range {s['lab']['min']:.3f}-{s['lab']['max']:.3f}), fused {s['fused']['median']:.4f} s/study "
                      f"(range {s['fused']['min']:.4f}-{s['fused']['max']:.4f}); ratio {s['ratio']['median']:.1f}x "
-                     f"(range {s['ratio']['min']:.1f}-{s['ratio']['max']:.1f}x)."),
+                     f"(range {s['ratio']['min']:.1f}-{s['ratio']['max']:.1f}x), all at #120 0b27ea1."
+                     + (f" Fused at a29f1b7 (before the crop fix): {s[PREVIOUS]['median']:.4f} s/study "
+                        f"(range {s[PREVIOUS]['min']:.4f}-{s[PREVIOUS]['max']:.4f}, {s[PREVIOUS]['n']} repeats)."
+                        if PREVIOUS in s else "")),
         "summary": s, "repeats": repeats,
         "spend": {"log": a.spend, "running_total_usd": spend["running_total_usd"]},
     }

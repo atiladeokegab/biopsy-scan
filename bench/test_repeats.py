@@ -66,7 +66,7 @@ def test_the_committed_summary_matches_its_raw_repeats():
     raw_dir = Path(__file__).parent / "results" / "repeats-raw"
     for arm, reps in r["repeats"].items():  # every stored repeat is exactly what its committed raw file says
         for x in reps:
-            again = rp.extract(raw_dir / x["file"], arm)
+            again = rp.extract(raw_dir / x["file"], "fused" if arm == rp.PREVIOUS else arm)
             assert {k: v for k, v in x.items() if k != "parity_vs_prior"} == again
     for arm, reps in r["repeats"].items():
         for x in reps:
