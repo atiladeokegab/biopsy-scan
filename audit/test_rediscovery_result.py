@@ -181,20 +181,38 @@ def test_a_dirty_tree_never_reads_a_cohort(cli, monkeypatch):
 
 
 def test_the_split_preflight_fails_closed_before_any_read(cli, monkeypatch, tmp_path):
-    """The old loader (no split=) and an unapproved manifest are both refused before any cohort read."""
+    """Each preflight condition alone refuses before any cohort read; all of them together pass.
+    locked_regions is stubbed, so no test reads or hashes a real data file."""
     import core.cohorts
 
     monkeypatch.setattr(rs, "_split_preflight", REAL_PREFLIGHT)
-    old = lambda cohort, data_dir=None: cli["reads"].append("unsplit")  # noqa: E731
-    monkeypatch.setattr(core.cohorts, "load", old)
-    assert cli["run"]("--events", "4", "--out", str(cli["dir"] / "r.json")) == 2
-    assert cli["reads"] == []
-    monkeypatch.setattr(core.cohorts, "load", lambda cohort, data_dir=None, split="discovery": cli["reads"].append(split))
-    other = {"sha256": "0" * 64}
-    (tmp_path / "lock.json").write_text(json.dumps(other))
-    monkeypatch.setattr(core.cohorts, "LOCK_FILE", tmp_path / "lock.json")
     monkeypatch.setattr(core.cohorts, "locked_regions", lambda *a, **k: set())
-    assert cli["run"]("--events", "4", "--out", str(cli["dir"] / "r.json")) == 2
+    lock = tmp_path / "lock.json"
+    monkeypatch.setattr(core.cohorts, "LOCK_FILE", lock)
+    split_load = core.cohorts.load
+    approved = {"sha256": rs.APPROVED_SPLIT["manifest_sha256"]}
+    out = str(cli["dir"] / "r.json")
+
+    lock.write_text(json.dumps(approved))
+    assert REAL_PREFLIGHT() == approved["sha256"]  # the positive control: every condition holds
+    monkeypatch.setattr(core.cohorts, "load", lambda cohort, data_dir=None: cli["reads"].append("unsplit"))
+    assert cli["run"]("--events", "4", "--out", out) == 2  # the pre-R-13 loader
+    monkeypatch.setattr(core.cohorts, "load", split_load)
+    monkeypatch.setattr(core.cohorts, "SPLITS", ("discovery", "all"))
+    assert cli["run"]("--events", "4", "--out", out) == 2  # no locked split
+    monkeypatch.setattr(core.cohorts, "SPLITS", ("discovery", "locked", "all"))
+    monkeypatch.setattr(core.cohorts, "LOCK_FILE", None)
+    assert cli["run"]("--events", "4", "--out", out) == 2  # no manifest
+    monkeypatch.setattr(core.cohorts, "LOCK_FILE", lock)
+    lock.write_text(json.dumps({"sha256": "0" * 64}))
+    assert cli["run"]("--events", "4", "--out", out) == 2  # a different locked set
+    lock.write_text(json.dumps(approved))
+
+    def tampered(*a, **k):
+        raise ValueError("sha256 does not match its content")
+
+    monkeypatch.setattr(core.cohorts, "locked_regions", tampered)
+    assert cli["run"]("--events", "4", "--out", out) == 2  # an edited manifest or labels
     assert cli["reads"] == []
 
 
