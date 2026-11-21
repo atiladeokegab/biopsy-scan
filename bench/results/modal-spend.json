@@ -239,6 +239,71 @@
       },
       "running_total_usd": 41.156,
       "counted": "actual (container x wall)"
+    },
+    {
+      "utc": "2026-11-21T20:02Z",
+      "run": "modal-scaling 8 null studies, cores [1, 8]",
+      "containers": 2,
+      "est_usd": 0.17,
+      "source_commit": "4617c32fbc22329f8bf34ed35986998088f29f5f",
+      "basis": "ceiling: each container's timeout x (cores x $0.0000131 + GiB x $0.00000222) per s; task cap $5.0, $0 spent before",
+      "running_total_usd": 41.326,
+      "actual": {
+        "modal_wall_s": 90.1,
+        "result": "bench/results/modal-scaling-20261121T200238Z.json",
+        "est_usd": 0.017,
+        "basis": "single-attempt estimate at list price: each container x local wall (includes image build and queueing); invoice not verified"
+      },
+      "counted": "est_usd (the pre-run estimate; actual.est_usd is the post-run single-attempt estimate)"
+    },
+    {
+      "utc": "2026-11-21T20:05Z",
+      "run": "modal-scaling 8 null studies, cores [1, 8]",
+      "containers": 2,
+      "est_usd": 0.17,
+      "source_commit": "b1ed7426c20698bab7e31edb1069ec2de880a417",
+      "basis": "ceiling: each container's timeout x (cores x $0.0000131 + GiB x $0.00000222) per s; task cap $5.0, $0.02 spent before",
+      "running_total_usd": 41.496,
+      "actual": {
+        "modal_wall_s": 77.2,
+        "result": "bench/results/modal-scaling-20261121T200516Z.json",
+        "est_usd": 0.015,
+        "basis": "single-attempt estimate at list price: each container x local wall (includes image build and queueing); invoice not verified"
+      },
+      "counted": "est_usd (the pre-run estimate; actual.est_usd is the post-run single-attempt estimate)"
+    },
+    {
+      "utc": "2026-11-21T20:08Z",
+      "run": "modal-scaling 8 null studies, cores [1, 8]",
+      "containers": 2,
+      "est_usd": 0.17,
+      "source_commit": "f92cc456967cef3081d01a1e313419e06f98e347",
+      "basis": "ceiling: each container's timeout x (cores x $0.0000131 + GiB x $0.00000222) per s; task cap $5.0, $0.03 spent before",
+      "running_total_usd": 41.666,
+      "actual": {
+        "modal_wall_s": 85.1,
+        "result": "bench/results/modal-scaling-20261121T200810Z.json",
+        "est_usd": 0.016,
+        "basis": "single-attempt estimate at list price: each container x local wall (includes image build and queueing); invoice not verified"
+      },
+      "counted": "est_usd (the pre-run estimate; actual.est_usd is the post-run single-attempt estimate)"
+    },
+    {
+      "utc": "2026-11-21T20:10Z",
+      "run": "modal-scaling 1000 null studies, cores [1, 2, 4, 8, 16, 32, 64]",
+      "containers": 7,
+      "est_usd": 2.59,
+      "source_commit": "2207648fb9c7932d6928c42d2ca93f2f91fcc7fb",
+      "basis": "ceiling: each container's timeout x (cores x $0.0000131 + GiB x $0.00000222) per s; task cap $5.0, $0.05 spent before",
+      "running_total_usd": 44.256,
+      "actual": {
+        "modal_wall_s": 1306.2,
+        "result": "bench/results/modal-scaling-20261121T201008Z.json",
+        "est_usd": 3.008,
+        "basis": "single-attempt estimate at list price: each container x local wall (includes image build and queueing); invoice not verified"
+      },
+      "note": "single-attempt estimates at list price, not billing ceilings (est_usd: each container once to its timeout; actual: containers x local wall); one container was preempted and restarted by Modal; invoice not verified",
+      "counted": "est_usd (the pre-run estimate; actual.est_usd is the post-run single-attempt estimate)"
     }
   ],
   "container_usd_per_hour_H100": 4.58,

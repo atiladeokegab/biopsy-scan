@@ -1,0 +1,169 @@
+{
+  "status": "FAILED",
+  "failures": [
+    "parity: X or z differs from the 8-core point"
+  ],
+  "source_commit": "4617c32fbc22329f8bf34ed35986998088f29f5f",
+  "labels": {
+    "compute": "MEASURED",
+    "sweep": "one sweep, every core count launched at once",
+    "outcomes": "SYNTHETIC (atlas/simulation.py)",
+    "claims": "times and ratios only: speedup_vs_1_core = studies wall at 1 core / at n cores"
+  },
+  "workload": {
+    "arm": "numba (build-9's bench/design_batch.py at 093c1ee, copied unchanged)",
+    "stream": "null",
+    "studies": 8,
+    "root_seed": 20261121,
+    "stream_seed": 202,
+    "design": {
+      "patients": 159,
+      "regions_per_patient": 2,
+      "fov_um": 400.0,
+      "eps": 0.1,
+      "seed": 0
+    },
+    "timed": "studies_wall_s: the pool's re-imaging and Cox scoring of every study; excludes data load, study preparation, adjacency and JIT warm-up (each recorded per point)"
+  },
+  "container_class": {
+    "1": "Modal CPU container, cpu=(1, 1) physical cores as request and hard limit, 16 GiB, no GPU, modal.Image.debian_slim(python_version='3.11') + uv_sync of this repo",
+    "8": "Modal CPU container, cpu=(8, 8) physical cores as request and hard limit, 16 GiB, no GPU, modal.Image.debian_slim(python_version='3.11') + uv_sync of this repo"
+  },
+  "parity": {
+    "reference_cores": 8,
+    "basis": "sha256 of X and of z per study, bit for bit",
+    "by_cores": {
+      "1": {
+        "studies": 8,
+        "same_studies": true,
+        "x_identical": true,
+        "z_identical": false
+      },
+      "8": {
+        "studies": 8,
+        "same_studies": true,
+        "x_identical": true,
+        "z_identical": true
+      }
+    },
+    "all": false,
+    "against_build9_8core": {
+      "x_identical": true,
+      "maxT_identical": true,
+      "compared": 8
+    }
+  },
+  "curve": null,
+  "points": {
+    "1": {
+      "host": {
+        "cpu_model": "unknown",
+        "cpu_count": 2,
+        "affinity_size": 2,
+        "cgroup_cpu_max": null,
+        "load_average_start": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "modal_task_id": "ta-01M7ZV8ABXHEBHMDMFQPMQV2ER",
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1",
+          "NUMBA_NUM_THREADS": "1",
+          "NUMBA_THREADING_LAYER": "workqueue"
+        },
+        "load_average_end": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "8": {
+      "host": {
+        "cpu_model": "unknown",
+        "cpu_count": 8,
+        "affinity_size": 8,
+        "cgroup_cpu_max": null,
+        "load_average_start": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "modal_task_id": "ta-01M7ZV8AA1B5CT9CJGKKFSHXNR",
+        "thread_environment": {
+          "OMP_NUM_THREADS": "8",
+          "OPENBLAS_NUM_THREADS": "8",
+          "MKL_NUM_THREADS": "8",
+          "NUMBA_NUM_THREADS": "1",
+          "NUMBA_THREADING_LAYER": "workqueue"
+        },
+        "load_average_end": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    }
+  },
+  "studies": [
+    {
+      "i": 0,
+      "x_sha": "0bf01f9bd6ffab192883fff2bf29aca5710e4592f5b8754f40527c53030541d0",
+      "z_sha": "8ef610f8d07065d18b953676e86c92af1fe5ee65473a3e9d6b9758a61003fe32",
+      "maxT": 3.198580350436865
+    },
+    {
+      "i": 1,
+      "x_sha": "1ab75b8e7576ba64a6bcda6559a476aafca69af72dd459028e97e9a6c196fbc5",
+      "z_sha": "24089728ba5dee4cafe69766b4e56c12e114948519cca1aade00b57c66700f5f",
+      "maxT": 3.342401380346125
+    },
+    {
+      "i": 2,
+      "x_sha": "25813b18b73d5738727f1360c39923a99ad95a6f483491763f4b10263e2dd31a",
+      "z_sha": "de31e021ec2b4ac9cd987e54cec5f4fbc6fc8992b08bc8e1a89baae1e55bdbd1",
+      "maxT": 3.313067635341934
+    },
+    {
+      "i": 3,
+      "x_sha": "c7b719a40164dcadecc206bf316dbeb47dc192132060325aab3c0ea87258bef8",
+      "z_sha": "0a6cb262e238a334348e0350ce7978d32a483cdad2a43d941734cc9d9f9b3ba1",
+      "maxT": 3.3322329203321197
+    },
+    {
+      "i": 4,
+      "x_sha": "522f0ec1e54755959a78fefb073832b7979ee9a3babdb3e7cc800fee2b80c206",
+      "z_sha": "bc0050d5d1c21d26b5ab49c97219b7a8f8621f41cd5d0ffc742d46b2b188af7a",
+      "maxT": 3.122042702499409
+    },
+    {
+      "i": 5,
+      "x_sha": "6bc7358f3b75f3375b5baeb58d60bc737be57a4b37948eee955f7475db927d7d",
+      "z_sha": "61876eaee9ad0d39e9f33f12700a5c40f18b461feefc1acdafbbae2450337ccf",
+      "maxT": 4.284556470256985
+    },
+    {
+      "i": 6,
+      "x_sha": "34142f0fcf76086707dc1a82e840d0c6217e1649d480f3b018874573716c29fd",
+      "z_sha": "3a7ba32d57a3299740c61cf627c329b83c589dd08d79f47db05f6b2cec745aff",
+      "maxT": 3.0640206651982522
+    },
+    {
+      "i": 7,
+      "x_sha": "d1d12784531189665cad8c4074b412f24b2a9c4653c6b10092272d040177226c",
+      "z_sha": "f682b1613ced95d9fd71e052eea403079c816013a6bafbf4e3b99b27c9a8b42a",
+      "maxT": 3.2818259681623565
+    }
+  ],
+  "errors": {},
+  "modal": {
+    "app": "preflight-modal-scaling",
+    "started_utc": "2026-11-21T20:02:38.301451+00:00",
+    "finished_utc": "2026-11-21T20:04:08.435413+00:00",
+    "wall_s": 90.133962,
+    "build9_reference": "origin/modal-design-b9:bench/results/modal-design-20261121T185537Z.json"
+  }
+}
