@@ -36,7 +36,8 @@ TIMED = ("MEASURED", "ESTIMATE")
 CLEARED_LADDER = "modal-a100-20261121T183709Z.json"  # Atlas cleared this run (lead, 2026-11-21 19:00Z)
 SLOTS = {"lab-cpu": "a_lab_all_cores", "preflight-cpu": "b_ours_cpu_all_cores", "gpu-1": "c_ours_1_gpu"}
 ARMS = {"lab-cpu": "lab", "preflight-cpu": "numba", "gpu-1": "gpu", "hybrid": "hybrid"}  # the four declared lanes
-FUSED = {"fused-cpu": "fused"}  # the fifth lane: a --compare-with run that adds the fused arm to the four-arm file
+FUSED = {"fused-cpu": "fused"}
+LEGACY_MAXT = "064bd6e95f721c8be7747d4cfef5eb5bd4bbd79d"  # 205536Z's code: prior_parity before maxT_compared existed  # the fifth lane: a --compare-with run that adds the fused arm to the four-arm file
 
 
 def four_arms(name, d):
@@ -65,6 +66,8 @@ def four_arms(name, d):
     # the five-arm file fills only its new lane; the four-arm file it copies from refreshes the other four
     for rid, a in (FUSED if "fused" in d["arms"] else ARMS).items():
         v = d["arms"][a]
+        if a == "fused" and any("maxT_compared" not in d["parity"]["against_prior"]["fused"][b] for b in ARMS.values() if b != "lab"):
+            print(f"{name}: {rid}: maxT coverage inferred from X coverage (legacy file, prior_parity at 064bd6e)", file=sys.stderr)
         st, gpu = v["stages"], a in ("gpu", "hybrid")
         yield rid, {"seconds": round(st["compute_wall_s"], 2), "label": lab["compute"],
                     "hardware": v["container_class"], "cores": None if a == "gpu" else v["workers"],
@@ -81,8 +84,9 @@ def fused_parity(d):
     Z_TOL (1e-9) of every batched arm's (the lab's maxT is its permutation statistic: X only, as prior_parity).
     Bound to the plan, never to observed counts: from the design, the lab plans 2,000 studies (it skips
     calibration) and each batched arm 3,000; x_compared and maxT_compared must equal it, and so must the fused
-    arm's evaluated_studies. A file without maxT_compared (written before it existed, e.g. 205536Z from
-    064bd6e) compared maxT over exactly the studies x_compared counts, so x_compared stands for it."""
+    arm's evaluated_studies. A file without maxT_compared is refused, except the legacy one written at
+    LEGACY_MAXT (205536Z), whose prior_parity compared maxT over exactly the studies x_compared counts (lead
+    ruling on #120)."""
     prior = d["parity"].get("against_prior", {}).get("fused", {})
     per, streams = d["design"].get("studies_per_stream"), d["design"].get("streams") or {}
     plan = lambda a: per * len([s for s in streams if not (a == "lab" and s == "calibration")])
@@ -94,8 +98,13 @@ def fused_parity(d):
             return False
         rel = e.get("maxT_max_rel_diff")
         return a == "lab" or (e.get("maxT_within_tol") is True and isinstance(rel, (int, float)) and 0 <= rel <= 1e-9
-                              and e.get("maxT_compared", e["x_compared"]) == plan(a))
+                              and e.get("maxT_compared", e["x_compared"] if legacy_maxT(d) else None) == plan(a))
     return prior.get("all") is True and all(ok(a) for a in ARMS.values())
+
+
+def legacy_maxT(d):
+    """The one file whose maxT coverage is inferred from its X coverage: recorded code sha 064bd6e, in full."""
+    return d.get("source_commit") == LEGACY_MAXT
 
 
 def refused(d):
