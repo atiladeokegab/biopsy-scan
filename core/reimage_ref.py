@@ -16,6 +16,8 @@ def confusion_matrix(K: int, eps: float) -> np.ndarray:
     """Default mis-call model: keep the type with prob 1 - eps, else a uniform other type."""
     if not 0.0 <= eps <= 1.0:
         raise ValueError("eps must be in [0, 1]")
+    if K == 1 or eps == 0:
+        return np.eye(K)  # nothing to mis-call into, or no mis-calls
     return np.full((K, K), eps / (K - 1)) + np.eye(K) * (1.0 - eps - eps / (K - 1))
 
 

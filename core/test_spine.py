@@ -177,3 +177,14 @@ def test_injected_region_kernel_gives_identical_x_in_draw_order():
     assert np.array_equal(X, reimage(cells, design, 11), equal_nan=True)
     looks = [look for row in draw(cells, design, 11)["looks"] for look in row]
     assert [(c, u[0]) for _, c, u in looks] == [(c, u0) for _, c, u0 in seen]
+
+
+def test_single_type_cohort_identity_k1():
+    c = {"cell_type": np.zeros(2, np.int8), "x": np.array([0, 10], np.float32),
+         "y": np.zeros(2, np.float32), "region_id": np.zeros(2, np.int32),
+         "patient_of_region": np.zeros(1, np.int32)}
+    X0 = truth(c)
+    assert np.array_equal(X0, np.ones((1, 6)))
+    assert np.array_equal(reimage(c, {}, 0), X0)
+    assert np.array_equal(reimage(c, {"eps": 0.3}, 0), X0)
+    assert np.array_equal(confusion_matrix(1, 0.3), np.eye(1))
