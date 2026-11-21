@@ -1,7 +1,11 @@
 {
  "schema": "preflight-real-check/1",
  "cohort": "charville",
- "status": "MEASURED",
+ "labels": {
+  "counts": "MEASURED",
+  "outcomes": "SYNTHETIC",
+  "power": "ESTIMATE"
+ },
  "source": {
   "patients": 159,
   "events": 38,
@@ -22,24 +26,25 @@
  "screen": "maxT over stats.score z (legacy R4 Cox U, permutation variance), rejecting above the ceil((B+1)(1-alpha)) null order statistic (stats.threshold) calibrated at the same n and arm",
  "arms": {
   "simulator": {
-   "label": "MEASURED (sim)",
+   "label": "ESTIMATE (sim)",
    "outcomes": "atlas.simulation: Weibull k=1.5 PH, scale tuned to the cohort event fraction, stratum reverse-KM censoring at the administrative horizon"
   },
   "empirical": {
-   "label": "MEASURED (plasmode)",
+   "label": "ESTIMATE (plasmode)",
    "outcomes": "the real cohort's stratum Kaplan-Meier baseline raised to HR**z (planted PH), T past the curve censored; the same stratum reverse-KM censoring"
   }
  },
  "bootstrap": "patients drawn with replacement from the real 159; study i shares patients and seeds across arms",
- "comparison": "difference = sim - plasmode power; paired conservative >=95% bounds (atlas.runner.paired_interval)",
+ "comparison": "difference = sim - plasmode power; paired conservative >=95% bounds (atlas.runner.paired_interval); a sensitivity comparison: an interval containing zero means no difference detected, not equivalence",
  "scope": "Real data exists only at the full-tissue design (all regions, full core, no mis-calls), where re-imaging is the identity; this checks the simulator's outcome model and calibrated-threshold power against the real cohort's own survival curve, not the imaging-noise model.",
+ "limits": "HR 2 per SD is the imposed model parameter: on the discrete KM baseline, S0(t) ** r imposes proportional negative-log survival; it is not a fitted Cox HR. Both arms plant SYNTHETIC outcomes on the same empirical source. Intervals condition on that source, the fitted models and the realised calibration thresholds; they exclude source-estimation and calibration-fitting uncertainty. The stratum marginal KM is assumed to be the feature-zero baseline, not an identified conditional baseline. Each arm is calibrated separately, so this compares two procedures under two outcome models; it does not validate transfer of the simulator's cutoff or observed real-world power. A difference interval containing zero means no difference was detected; it is not equivalence, and its width is not a detection-power calculation.",
  "points": [
   {
    "patients": 50,
    "difference": 0.0175,
    "difference_lo": -0.009592335371396046,
    "difference_hi": 0.04452224299870586,
-   "agree": true,
+   "difference_interval_contains_zero": true,
    "discordant": 305,
    "patients_sha256": "a5b5302b537a1aee0a556cbf5bf17cdcd3614699ec01c7994992f8faebec7f23",
    "simulator": {
@@ -70,7 +75,7 @@
    "difference": -0.007000000000000006,
    "difference_lo": -0.04407559095288052,
    "difference_hi": 0.030102228081369586,
-   "agree": true,
+   "difference_interval_contains_zero": true,
    "discordant": 634,
    "patients_sha256": "ce97a3e9489344e0ffe1786f7b2506457c9dc35c4786088d97ae40ab55d62ec6",
    "simulator": {
@@ -101,7 +106,7 @@
    "difference": -0.013000000000000012,
    "difference_lo": -0.055497060291968325,
    "difference_hi": 0.029545977614071073,
-   "agree": true,
+   "difference_interval_contains_zero": true,
    "discordant": 912,
    "patients_sha256": "077eca6bc70988009ec0e23f327fedca1026c60c1c0305b1e477595bdeb6d37c",
    "simulator": {

@@ -7,9 +7,11 @@ Both arms bootstrap n patients (with replacement) from the real 159, give each i
 atlas screen: maxT over stats.score z, rejecting above a threshold calibrated from null studies at the same n.
 Study i uses the same patients and seeds in both arms, so the comparison is paired.
 
-MEASURED (sim): outcomes from the simulator, atlas.simulation (Weibull k=1.5 tuned to the cohort's event fraction,
+Counts are MEASURED; outcomes in both arms are SYNTHETIC (planted); every power is an ESTIMATE.
+
+ESTIMATE (sim): outcomes from the simulator, atlas.simulation (Weibull k=1.5 tuned to the cohort's event fraction,
 reverse-KM censoring). At the full-tissue design re-imaging is the identity, so this is what run_point predicts there.
-MEASURED (plasmode): the same, except that the baseline survival is the real cohort's own Kaplan-Meier curve per
+ESTIMATE (plasmode): the same, except that the baseline survival is the real cohort's own Kaplan-Meier curve per
 stratum, S_i(t) = S0(t) ** HR**z_i, instead of a fitted Weibull. Censoring is the same real reverse KM.
 
 Real data exists only at the full-tissue design (all regions, full core, no mis-calls), so this checks the outcome
@@ -34,9 +36,18 @@ import stats  # noqa: E402
 from atlas.runner import interval, paired_interval  # noqa: E402
 
 PATIENTS = (50, 100, 159)
+LABELS = {"counts": "MEASURED", "outcomes": "SYNTHETIC", "power": "ESTIMATE"}
 SCOPE = ("Real data exists only at the full-tissue design (all regions, full core, no mis-calls), where re-imaging is "
          "the identity; this checks the simulator's outcome model and calibrated-threshold power against the real "
          "cohort's own survival curve, not the imaging-noise model.")
+LIMITS = ("HR 2 per SD is the imposed model parameter: on the discrete KM baseline, S0(t) ** r imposes proportional "
+          "negative-log survival; it is not a fitted Cox HR. Both arms plant SYNTHETIC outcomes on the same empirical "
+          "source. Intervals condition on that source, the fitted models and the realised calibration thresholds; they "
+          "exclude source-estimation and calibration-fitting uncertainty. The stratum marginal KM is assumed to be the "
+          "feature-zero baseline, not an identified conditional baseline. Each arm is calibrated separately, so this "
+          "compares two procedures under two outcome models; it does not validate transfer of the simulator's cutoff "
+          "or observed real-world power. A difference interval containing zero means no difference was detected; it "
+          "is not equivalence, and its width is not a detection-power calculation.")
 
 
 def kaplan_meier(time, event):
@@ -108,10 +119,13 @@ def compare(sim, emp):
     """Paired difference sim - empirical in rejection rate, with atlas.runner's conservative >=95% bounds."""
     if sim["patients_sha256"] != emp["patients_sha256"] or sim["power_n"] != emp["power_n"]:
         raise ValueError("arms must be paired: the same patient draws in the same order")
-    delta = np.array(sim["rejects"], int) - np.array(emp["rejects"], int)
+    flags = [np.asarray(a["rejects"]) for a in (sim, emp)]
+    if any(f.shape != (sim["power_n"],) for f in flags):
+        raise ValueError("each arm needs exactly power_n paired rejection flags")
+    delta = flags[0].astype(int) - flags[1].astype(int)
     lo, hi = paired_interval(delta)
     return {"difference": sim["power"] - emp["power"], "difference_lo": lo, "difference_hi": hi,
-            "agree": bool(lo <= 0 <= hi), "discordant": int(np.sum(delta != 0)),
+            "difference_interval_contains_zero": bool(lo <= 0 <= hi), "discordant": int(np.sum(delta != 0)),
             "patients_sha256": sim["patients_sha256"]}
 
 
@@ -121,6 +135,8 @@ def identity_check(cells, X, seeds, n=3):
 
     design = {"cells": cells, "patients": n, "regions_per_patient": None, "fov_um": None, "eps": 0.0}
     batch = run(design, np.asarray(seeds, np.uint64))
+    if not len(seeds) or np.shape(batch) != (len(seeds), n, X.shape[1]):
+        raise ValueError(f"re-imaging returned shape {np.shape(batch)}, not {(len(seeds), n, X.shape[1])}")
     worst, equal = 0.0, True
     for study, s in zip(batch, seeds):
         ref = X[np.random.default_rng(int(s)).integers(0, len(X), n)]
@@ -129,6 +145,14 @@ def identity_check(cells, X, seeds, n=3):
         worst = max(worst, float(np.max(np.abs(study[both] - ref[both]), initial=0.0)))
     return {"studies": len(seeds), "patients_per_study": n, "max_abs_difference": worst,
             "equal": bool(equal and worst <= 1e-9)}
+
+
+def publish(res, out):
+    """Write the result only when the full-tissue identity held; otherwise nothing is published."""
+    check = res["identity_check"]
+    if check.get("equal") is not True or check.get("studies", 0) < 1:
+        raise ValueError(f"identity check failed, not publishing: {check}")
+    out.write_text(json.dumps(res, indent=1, allow_nan=False) + "\n")
 
 
 def main(argv=None):
@@ -163,26 +187,27 @@ def main(argv=None):
                           for k, arm in (("simulator", sim), ("empirical", emp))}})
         print(json.dumps({"patients": n, "sim": sim["power"], "empirical": emp["power"]}), flush=True)
     res = {
-        "schema": "preflight-real-check/1", "cohort": "charville", "status": "MEASURED",
+        "schema": "preflight-real-check/1", "cohort": "charville", "labels": LABELS,
         "source": {"patients": len(X), "events": int(source["event"].sum()), "strata": int(len(np.unique(source["strata"]))),
                    "features_m": int(X.shape[1]), "source_hash": meta["source_hash"], "grammar_hash": grammar},
         "design": {"regions_per_patient": "all", "fov_um": "full core", "eps": 0.0},
         "hr_per_sd": 2.0, "alpha": 0.05, "plant_feature": alt["feature"], "seed": a.seed,
         "screen": "maxT over stats.score z (legacy R4 Cox U, permutation variance), rejecting above the "
                   "ceil((B+1)(1-alpha)) null order statistic (stats.threshold) calibrated at the same n and arm",
-        "arms": {"simulator": {"label": "MEASURED (sim)",
+        "arms": {"simulator": {"label": "ESTIMATE (sim)",
                                "outcomes": "atlas.simulation: Weibull k=1.5 PH, scale tuned to the cohort event "
                                            "fraction, stratum reverse-KM censoring at the administrative horizon"},
-                 "empirical": {"label": "MEASURED (plasmode)",
+                 "empirical": {"label": "ESTIMATE (plasmode)",
                                "outcomes": "the real cohort's stratum Kaplan-Meier baseline raised to HR**z (planted "
                                            "PH), T past the curve censored; the same stratum reverse-KM censoring"}},
         "bootstrap": "patients drawn with replacement from the real 159; study i shares patients and seeds across arms",
-        "comparison": "difference = sim - plasmode power; paired conservative >=95% bounds (atlas.runner.paired_interval)",
-        "scope": SCOPE, "points": points,
+        "comparison": "difference = sim - plasmode power; paired conservative >=95% bounds (atlas.runner.paired_interval); "
+                      "a sensitivity comparison: an interval containing zero means no difference detected, not equivalence",
+        "scope": SCOPE, "limits": LIMITS, "points": points,
         "identity_check": identity_check(cells, X, [a.seed + i for i in range(2)]),
         "runtime_s": round(time.perf_counter() - start, 1),
     }
-    a.out.write_text(json.dumps(res, indent=1, allow_nan=False) + "\n")
+    publish(res, a.out)
     print(a.out)
     return res
 
