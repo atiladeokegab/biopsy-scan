@@ -1,13 +1,13 @@
-# sota-parallelism-nov21: PRD v1
+# sota-parallelism-nov21: PRD v2
 
-> C-001 is proposed, not approved: R-12 and the novelty goal are marked "proposed (C-001)"; R-11 moves to rank 12. Spec of record: v1.
+> Spec of record: v2 (C-001 applied). C-002 is proposed, not approved: every "5-minute" below was "2-3 minute" (founder, 2026-11-21 14:42Z), marked "proposed (C-002)".
 
 ## Problem
 Before a lab images a spatial-biology cohort it must choose how many patients, how many regions per patient, how large a field of view and how fine a cell typing. Each choice trades cost against the chance of finding a real survival-linked spatial pattern, and today a lab sizes that by guesswork or a textbook formula that ignores the imaging. Simulating it honestly means re-imaging thousands of studies cell by cell from real tissue, which is CPU-days with the per-study cKDTree recount and permutation test a lab runs today.
 
 ## Users
 - Lab scientist: sets patients, regions per patient, field of view and mis-call rate, presses Run the studies, and sees power and identification rate for that design before imaging a slide
-- Judge: hears a live 2-3 minute pitch with a clean PDF deck; the demo video is the backup; scores correctness and assumptions, fundamental reshaping, meaningful performance improvement and scientific value
+- Judge: hears a live 5-minute pitch with a clean PDF deck; the demo video is the backup; scores correctness and assumptions, fundamental reshaping, meaningful performance improvement and scientific value _(proposed, C-002)_
 - Teammate agent (any laptop): reads this PRD and its GitHub issues to build one requirement without asking
 
 ## Goals
@@ -25,7 +25,7 @@ Before a lab images a spatial-biology cohort it must choose how many patients, h
 - Every speed-up is quoted against rung 0, what a lab runs today
 - The tagline is the h1: "Thousands of studies, simulated in seconds, before you image a slide." The button reads "Run the studies". The phrase "Can my study find it?" appears nowhere in the project
 - Tests come from the goal: unseen geometries and tied studies, a planted signal and a hard negative; a check is believed only after it has been seen red
-- Novelty goal (not yet measured): Preflight aims to produce new biology by combining protein expression, cell morphology, neighbourhood relations and stromal architecture at single-cell resolution, with an algorithm parallelised on GPU clusters, much faster than on a CPU _(proposed, C-001)_
+- Novelty goal (not yet measured): Preflight aims to produce new biology by combining protein expression, cell morphology, neighbourhood relations and stromal architecture at single-cell resolution, with an algorithm parallelised on GPU clusters, much faster than on a CPU
 
 ## Non-goals
 - Segmentation, a backend service, or any clinical claim
@@ -56,7 +56,7 @@ Atilade (lead), Team Dry Lab
 - Tag: stopping_rule: build in rank order; stop when time runs out
 - Tag: conflict_rule: merged code and real data win over prose
 - Tag: labels: MEASURED, SYNTHETIC, UNMEASURED, ESTIMATE, ANALYTIC
-- Tag: submission: live 2-3 minute pitch with a PDF deck from the Slides artifact https://claude.ai/artifact/HsYFYZZygbAzNALjz2bm5Q; demo video is the backup
+- Tag: submission: live 5-minute pitch with a PDF deck from the Slides artifact https://claude.ai/artifact/HsYFYZZygbAzNALjz2bm5Q; demo video is the backup _(proposed, C-002)_
 - Tag: deck_design: design/deck/system.md (hub project dir)
 - Tag: plan_of_record: ~/hub/projects/sota-parallelism-nov21/IDEA.md (v6 and v5 overrides beat older text); coverage map prd-coverage.md beside it
 - Tag: freeze: code freeze 2026-11-22T16:00Z, submit 2026-11-22T17:00Z (HACKATHON.md UTC column)
@@ -114,23 +114,23 @@ Why: The judge's button: a lab's own knobs, an answer in seconds, Wi-Fi off
 - A-9.1@1 Scenario: given measured CPU 1 s and GPU 2 s, the race reports "GPU 2.0× slower", never faster (`demo/race.test.mjs`)
 - A-9.2@1 Scenario: the h1 is "Thousands of studies, simulated in seconds, before you image a slide.", the button reads "Run the studies", and grep finds no "Can my study find it?" anywhere in the repo. Not yet built: the page still uses the old phrase (`demo/copy.test.mjs`)
 
-### R-10 [P1 · Deck] Clean PDF deck for a live 2-3 minute pitch
+### R-10 [P1 · Deck] Clean PDF deck for a live 5-minute pitch _(proposed, C-002)_
 rank 10 · state approved · needs R-5, R-6, R-7 · touches `design/deck/system.md`, `docs/SUBMISSION.md`
 Why: The submission is a live pitch; the deck carries the numbers and the before/after
 - A-10.1@1 Scenario: the deck exports from the Slides artifact as PDF and follows design/deck/system.md; every figure carries MEASURED, SYNTHETIC, UNMEASURED, ESTIMATE or ANALYTIC. Not yet built: check by reading the exported PDF (`docs/SUBMISSION.md`)
 - A-10.2@1 Scenario: two before/after slides show the tissue's cell types: the true tissue, and the same tissue as a study sees it; one slide shows the fleet and the ladder against rung 0. Not yet built (`docs/SUBMISSION.md`)
 
 ### R-12 [P1 · Expression] Protein, morphology and stroma channels in the per-cell kernel (grammar v2, #41)
-rank 11 · state proposed (C-001) · needs R-1, R-2, R-3, R-6 · touches `core/`, `reimage/cpu.py`, `reimage/gpu.py`, `results/charville-v2.json`
+rank 11 · state proposed · needs R-1, R-2, R-3, R-6 · touches `core/`, `reimage/cpu.py`, `reimage/gpu.py`, `results/charville-v2.json`
 Why: The novelty goal: grammar v1 has only neighbourhood relations; v2 adds protein expression, morphology and stromal architecture from the same per-cell kernel, searched jointly with v1
 - A-12.1@1 Scenario: feature (t, j, r, m) is the mean of channel m over the visible type-j neighbours within r of each focal cell of type t, 0 when there are none; patient feature is the focal-cell-weighted mean, regions pooled; v2 columns are ordered t, j, r, m and appended after v1. Channels PD1, PDL1, Ki67, GranzymeB, HLA-DR, aSMA, CollagenIV, Vimentin, Podoplanin, SIZE take a cohort-wide z-score directly (no log1p; the source pre-normalises), z = 0 for a zero-variance channel, and any missing value fails loudly. Not yet built (`core/test_expression.py`)
 - A-12.2@1 Scenario: v1 outputs, hash and default ordering are byte-for-byte unchanged; CPU and GPU backends (CUDA simulator in CI) match the NumPy reference within a stated float tolerance; crop and mis-call change who the neighbours are, never a cell's expression; with v2 on, the fleet result is still bit-identical to one device. Not yet built (`reimage/test_expression.py`)
 - A-12.3@1 Scenario: maxT and omnibus run over v1+v2 jointly as one family; results/charville-v2.json on real Charville (159 patients, coverslip strata) gives v1 and v2 grammar hashes, the channel m, maxT, p and omnibus p, labelled exploratory (outcomes already seen), every number MEASURED or UNMEASURED. Not yet built (`audit/test_charville_v2.py`)
 
 ### R-11 [P2 · Submission] README, backup demo video and the submission form (#9-#12)
-rank 12 (proposed, C-001; was 11) · state approved · needs R-9, R-10 · touches `README.md`, `docs/film/`, `docs/SUBMISSION.md`
+rank 12 · state approved · needs R-9, R-10 · touches `README.md`, `docs/film/`, `docs/SUBMISSION.md`
 Why: The video is the backup if the live demo fails; the form is how the event receives us
-- A-11.1@1 Scenario: README states what it is, how to run it, and a screenshot from the final run; the demo video plays the same 2-3 minute story; every submission checklist row is done before 2026-11-22T17:00Z. Not yet built (`docs/SUBMISSION.md`)
+- A-11.1@2 Scenario: README states what it is, how to run it, and a screenshot from the final run; the demo video plays the same 5-minute story; every submission checklist row is done before 2026-11-22T17:00Z. Not yet built (`tests/test_submission.py`) _(proposed, C-002)_
 
 ## References
 - design: `design/deck/system.md` sha256 467717e415e3
