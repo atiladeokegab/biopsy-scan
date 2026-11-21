@@ -90,3 +90,20 @@ def test_prior_parity_needs_every_shared_study_not_one():
         prior[a]["studies"] = [full[0], {**full[1], "i": 10}, {**full[2], "i": 11}]
         out = db.prior_parity(new, prior)
         assert out[a]["x_compared"] == 1 and not out[a]["x_bitwise"] and not out["all"], a
+
+
+def test_prior_parity_binds_to_the_planned_studies_not_the_observed_ones():
+    """Lead ruling on #120 (last round): one real study each side, every observed count 1, is not parity."""
+    one = _arm("fused", {"null": [[1.0, 2.0]]})["records"]
+    prior = {a: {"studies": [{"stream": "null", "i": 0, "x_sha": "null0", "maxT": 2.0}]}
+             for a in ("lab", "numba", "gpu", "hybrid")}
+    out = db.prior_parity(one, prior, arm="fused", studies_per_stream=1000)
+    assert not out["all"] and all(not out[a]["x_bitwise"] for a in prior)
+    assert (out["lab"]["x_planned"], out["numba"]["x_planned"]) == (2000, 3000)
+    # the whole plan at 2 studies per stream passes, and reports maxT over every batched study
+    z = {s: [[1.0, 2.0 + i] for i in range(2)] for s in db.STREAMS}
+    new = _arm("fused", z)["records"]
+    full = {a: {"studies": [{"stream": r["stream"], "i": r["i"], "x_sha": r["x_sha"], "maxT": float(np.abs(r["z"]).max())}
+                            for r in new if a != "lab" or r["stream"] != "calibration"]} for a in prior}
+    out = db.prior_parity(new, full, arm="fused", studies_per_stream=2)
+    assert out["all"] and out["lab"]["x_compared"] == 4 and out["gpu"]["maxT_compared"] == 6

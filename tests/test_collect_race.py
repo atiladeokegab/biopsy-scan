@@ -375,3 +375,17 @@ def test_the_fused_lane_needs_full_coverage_not_one_compared_study():
     five["parity"] = _fused_parity()
     five["parity"]["against_prior"]["fused"]["lab"]["x_compared"] = 3000  # more than the lab ran: not its coverage
     assert list(cr.rows_from(Path("modal-design.json"), five)) == []
+
+
+def test_the_fused_lane_binds_to_the_planned_studies_even_when_every_observed_count_is_one():
+    """Lead ruling on #120 (last round): the plan comes from the design (2,000 lab, 3,000 batched), never from counts."""
+    five = _four()
+    five["design"] = {**five["design"], "streams": {"calibration": 101, "null": 202, "alternative": 303}}
+    five["arms"]["fused"] = {**five["arms"]["numba"], "source": "this run"}
+    for a in five["arms"]:
+        five["arms"][a]["stages"] = {**five["arms"][a]["stages"], "evaluated_studies": 1}
+    five["parity"] = _fused_parity()
+    for e in five["parity"]["against_prior"]["fused"].values():
+        if isinstance(e, dict):
+            e.update(x_compared=1, **({"maxT_compared": 1} if "maxT_within_tol" in e else {}))
+    assert list(cr.rows_from(Path("modal-design.json"), five)) == []
