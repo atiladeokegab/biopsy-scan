@@ -168,3 +168,139 @@ def test_cli_writes_strict_json_or_nothing(tmp_path, monkeypatch):
     assert e.value.code and not out.exists()
     eg.main([str(good), "--out", str(out)])
     json.loads(out.read_text(), parse_constant=lambda c: pytest.fail(f"non-strict JSON constant {c}"))
+
+
+# Finite-bank provenance (#40, after Atlas's #45)
+BANK_ROW = {"source_hash": "s" * 64, "grammar_hash": "g" * 64, "measurement_model": "finite-bank approximation",
+            "bank_draws": 64, "bank_seed": 20261121}
+
+
+def bank_rows():
+    """summaries() as #45 emits them: one bank per imaging design, the same bank at every patient count."""
+    rows = summaries()
+    for r in rows:
+        design = f"{r['regions_per_patient']}-{r['fov_um']}-{r['eps']}"
+        r.update(BANK_ROW, bank_key=f"key-{design}", bank_hash=f"hash-{design}")
+    return rows
+
+
+def test_bank_summary_round_trips_with_its_label_a_hashes_and_one_bank_per_imaging_design(tmp_path):
+    path = tmp_path / "points.parquet"
+    pd.DataFrame(bank_rows()).to_parquet(path)
+    grid = json.loads(json.dumps(eg.build_grid(eg.read_results(path), COHORT, 2, cohort_key="charville"),
+                                 allow_nan=False))
+    meta = grid["meta"]
+    assert (meta["measurement_model"], meta["bank_draws"]) == ("finite-bank approximation", 64)
+    assert (meta["source_hash"], meta["grammar_hash"]) == ("s" * 64, "g" * 64)
+    for text in (meta["method"], grid["note"]):
+        assert "finite-bank approximation" in text and "A=64" in text
+    for p in grid["points"] + meta["all_regions_points"]:
+        regions = None if p["regions"] == "all" else p["regions"]
+        fov = None if p["fov_um"] == "full" else float(p["fov_um"])
+        design = f"{regions}-{fov}-{p['miscall']}"
+        assert (p["bank_key"], p["bank_hash"], p["bank_seed"]) == (f"key-{design}", f"hash-{design}", 20261121)
+    assert len({p["bank_key"] for p in grid["points"]}) == 2 * 2 * 2  # distinct imaging banks all retained
+    assert [p["power"] for p in grid["points"]] == [p["power"] for p in build(summaries())["points"]]
+    assert check(grid, tmp_path).returncode == 0
+
+
+@pytest.mark.parametrize("column, value", [("source_hash", "t" * 64), ("grammar_hash", "h" * 64),
+                                           ("measurement_model", "direct"), ("bank_draws", 32)])
+def test_mixed_source_grammar_method_or_a_is_refused(column, value):
+    rows = bank_rows()
+    rows[3][column] = value
+    with pytest.raises(ValueError, match=f"rows mix {column}"):
+        build(rows)
+
+
+@pytest.mark.parametrize("change, message", [
+    ({"bank_key": "key-other"}, "imaging design"), ({"bank_hash": "hash-other"}, "imaging design"),
+    ({"bank_seed": 1}, "imaging design"), ({"bank_key": None}, "bank_key"), ({"bank_hash": np.nan}, "bank_hash"),
+])
+@pytest.mark.parametrize("row", [16, -1])  # P=160 on the 1-region line, and P=160 off the lines (4 regions)
+def test_one_imaging_design_keeps_one_bank_at_every_patient_count(change, message, row):
+    rows = bank_rows()
+    assert rows[row]["patients"] == 160
+    rows[row].update(change)  # P=40 has the same imaging design with the original bank
+    with pytest.raises(ValueError, match=message):
+        build(rows)
+
+
+def test_two_imaging_designs_cannot_share_one_bank():
+    rows = bank_rows()
+    for r in rows:
+        if r["eps"] == 0.1:
+            r["bank_key"] = r["bank_key"].replace("0.1", "0.0")
+            r["bank_hash"] = r["bank_hash"].replace("0.1", "0.0")
+    with pytest.raises(ValueError, match="share bank"):
+        build(rows)
+
+
+@pytest.mark.parametrize("change, message", [({"bank_draws": 1}, "bank_draws"), ({"measurement_model": "guess"}, "measurement_model"),
+                                             ({"source_hash": None}, "source_hash")])
+def test_bank_curve_needs_a_known_model_a_of_at_least_two_and_its_hashes(change, message):
+    rows = bank_rows()
+    for r in rows:
+        r.update(change)
+    with pytest.raises(ValueError, match=message):
+        build(rows)
+
+
+def test_bank_curve_needs_every_provenance_column():
+    for column in ("source_hash", "grammar_hash", "bank_draws", "bank_key"):
+        with pytest.raises(ValueError, match=column):
+            build(pd.DataFrame(bank_rows()).drop(columns=column))
+
+
+def test_legacy_and_direct_rows_still_export_without_bank_fields():
+    legacy = build(summaries())
+    assert "measurement_model" not in legacy["meta"] and "finite-bank" not in legacy["note"] + legacy["meta"]["method"]
+    assert not any("bank_key" in p for p in legacy["points"])
+    direct = bank_rows()
+    for r in direct:
+        r.update(measurement_model="direct", bank_draws=0, bank_seed=None, bank_key=None, bank_hash=None)
+    grid = build(direct)
+    assert grid["meta"]["measurement_model"] == "direct" and "finite-bank" not in grid["note"]
+    assert not any("bank_key" in p for p in grid["points"])
+    rows = summaries()
+    rows[0]["bank_key"] = "stray"
+    with pytest.raises(ValueError, match="direct"):
+        build(rows)
+
+
+REAL = ROOT / "atlas" / "results" / "production" / "charville" / "summary.parquet"
+
+
+@pytest.mark.skipif(not REAL.exists(), reason="Atlas's #5 production export not in this checkout")
+def test_real_atlas_export_keeps_its_12_banks_and_label(tmp_path):
+    df = eg.read_results(REAL)
+    grid = eg.build_grid(df, COHORT, 2, cohort_key="charville")
+    meta, everything = grid["meta"], grid["points"] + grid["meta"]["all_regions_points"]
+    assert (meta["measurement_model"], meta["bank_draws"]) == ("finite-bank approximation", 64)
+    assert (meta["source_hash"], meta["grammar_hash"]) == (df.source_hash.iloc[0], df.grammar_hash.iloc[0])
+    assert {p["bank_key"] for p in everything} == set(df.bank_key)
+    assert check(grid, tmp_path).returncode == 0
+
+
+def test_distinct_bank_keys_may_share_a_content_hash():
+    """#45 keys a bank by its imaging descriptor; two descriptors can image identical content (a FOV past the core)."""
+    rows = bank_rows()
+    for r in rows:
+        r["bank_hash"] = r["bank_hash"].replace("200.0", "None")  # FOV 200 and full core: same content, own keys
+    grid = build(rows)
+    pts = grid["points"] + grid["meta"]["all_regions_points"]
+    assert len({p["bank_key"] for p in pts}) == len({(p["regions"], p["fov_um"], p["miscall"]) for p in pts})
+    assert len({p["bank_hash"] for p in pts}) < len({p["bank_key"] for p in pts})
+
+
+def test_bank_seed_stays_an_exact_integer_through_parquet_and_json(tmp_path):
+    seed = 2**53 + 1  # not representable as a float64
+    rows = bank_rows()
+    for r in rows:
+        r["bank_seed"] = seed
+    path = tmp_path / "points.parquet"
+    pd.DataFrame(rows).to_parquet(path)
+    grid = eg.build_grid(eg.read_results(path), COHORT, 2, cohort_key="charville")
+    text = json.dumps(grid, allow_nan=False)
+    assert all(type(p["bank_seed"]) is int and p["bank_seed"] == seed for p in grid["points"])
+    assert str(seed) in text and all(p["bank_seed"] == seed for p in json.loads(text)["points"])

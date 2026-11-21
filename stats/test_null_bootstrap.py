@@ -39,6 +39,8 @@ def test_draws_follow_the_fitted_null_and_record_the_method():
     meta = screen(X, time, event, C, strata, n_perm=9, backend="numpy")["metadata"]
     assert meta["null"]["B"] == 9 and meta["null"]["name"] == "clinical-null parametric bootstrap"
     assert any("proportional hazards" in a for a in meta["null"]["assumptions"])
+    # A-15.5 names both assumptions in the result JSON: PH in C, and censoring independent of X given C
+    assert any("censoring independent of X given C" in a for a in meta["null"]["assumptions"])
     assert meta["clinical"]["shape"] == [200, 2] and len(meta["clinical"]["sha256"]) == 64
 
 
