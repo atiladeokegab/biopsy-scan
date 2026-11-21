@@ -20,20 +20,20 @@
     "side_um": 750.0,
     "mean_neighbours_100um": 298.36008333333336
   },
-  "prep_s": 10.396214976906776,
+  "prep_s": 9.171478146221489,
   "seed": 0,
   "rungs": {
     "numpy_reference": {
       "trials": 20,
-      "cold_s": 0.10504344711080194,
-      "amortised_s_per_trial": 0.10592942731454968,
-      "total_s": 2.1439445866271853,
+      "cold_s": 0.10607487708330154,
+      "amortised_s_per_trial": 0.10986635740846395,
+      "total_s": 2.256645380984992,
       "neighbour_reads": 143093970,
-      "reads_per_s": 66743315.518762,
-      "trials_per_s": 9.440247392545352
+      "reads_per_s": 63410038.28325992,
+      "trials_per_s": 9.101967368246992
     },
-    "numba_all_core": "pending: reimage/ (#2) not merged",
-    "gpu": "pending: reimage/ (#2) not merged"
+    "numba_all_core": "pending: reimage.cpu unavailable (ModuleNotFoundError: No module named 'reimage')",
+    "gpu": "pending: reimage.gpu unavailable (ModuleNotFoundError: No module named 'reimage')"
   },
   "unit": {
     "trial": "4 region looks: crop + mis-call + neighbour recount + region sums",
