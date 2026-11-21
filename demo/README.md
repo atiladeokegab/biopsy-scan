@@ -1,4 +1,4 @@
-# Demo: "Can my study find it?"
+# The Preflight demo
 
 One dark page with three linked views, driven by four sliders: patients, regions per patient,
 field of view and mis-call rate. It uses plain HTML, CSS and ES-module JS, with no build step and
