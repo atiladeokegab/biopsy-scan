@@ -25,6 +25,9 @@ def test_equal_work_json_labels_every_figure(tmp_path):
     batched = first["batched"]
     assert batched["studies"] == 4 and batched["runs"]["cpu"]["label"] == "MEASURED"
     assert (batched["equal_work_speedup"]["label"] == "MEASURED") == (batched["runs"]["gpu"]["label"] == "MEASURED")
+    # A-15.4: the R-14 full-fit time is reported apart, as a workflow comparison, never as the equal-work figure
+    assert "screen_vs_r14" in first["workflow_comparison"] and "not equal work" in first["workflow_comparison"]
+    assert not any("r14" in k.lower() or "workflow" in k.lower() for k in first["runs"])
 
 
 def _double(shift):
