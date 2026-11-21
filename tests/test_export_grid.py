@@ -280,3 +280,27 @@ def test_real_atlas_export_keeps_its_12_banks_and_label(tmp_path):
     assert (meta["source_hash"], meta["grammar_hash"]) == (df.source_hash.iloc[0], df.grammar_hash.iloc[0])
     assert {p["bank_key"] for p in everything} == set(df.bank_key)
     assert check(grid, tmp_path).returncode == 0
+
+
+def test_distinct_bank_keys_may_share_a_content_hash():
+    """#45 keys a bank by its imaging descriptor; two descriptors can image identical content (a FOV past the core)."""
+    rows = bank_rows()
+    for r in rows:
+        r["bank_hash"] = r["bank_hash"].replace("200.0", "None")  # FOV 200 and full core: same content, own keys
+    grid = build(rows)
+    pts = grid["points"] + grid["meta"]["all_regions_points"]
+    assert len({p["bank_key"] for p in pts}) == len({(p["regions"], p["fov_um"], p["miscall"]) for p in pts})
+    assert len({p["bank_hash"] for p in pts}) < len({p["bank_key"] for p in pts})
+
+
+def test_bank_seed_stays_an_exact_integer_through_parquet_and_json(tmp_path):
+    seed = 2**53 + 1  # not representable as a float64
+    rows = bank_rows()
+    for r in rows:
+        r["bank_seed"] = seed
+    path = tmp_path / "points.parquet"
+    pd.DataFrame(rows).to_parquet(path)
+    grid = eg.build_grid(eg.read_results(path), COHORT, 2, cohort_key="charville")
+    text = json.dumps(grid, allow_nan=False)
+    assert all(type(p["bank_seed"]) is int and p["bank_seed"] == seed for p in grid["points"])
+    assert str(seed) in text and all(p["bank_seed"] == seed for p in json.loads(text)["points"])
