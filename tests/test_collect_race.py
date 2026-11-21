@@ -303,14 +303,21 @@ def test_interim_seconds_display_as_the_raw_file_rounds():
     assert show(rows["kernel-numpy"]) == "2.24"
 
 
+def _fused_parity():
+    """bench/design_batch.prior_parity's shape: X for every arm; maxT for the batched arms (not the lab's permutation)."""
+    maxT = {"maxT_max_rel_diff": 1.6e-15, "maxT_within_tol": True}
+    return {"all": True, "against_prior": {"fused": {"lab": {"x_bitwise": True, "x_compared": 2000}, "all": True,
+                                                     **{a: {"x_bitwise": True, "x_compared": 3000, **maxT}
+                                                        for a in ("numba", "gpu", "hybrid")}}}}
+
+
 def test_the_five_arm_file_fills_only_the_fused_lane_and_only_with_full_x_parity():
     """Lead (21 Nov): a fifth lane, fused-cpu, from the --compare-with file, only with full X parity."""
     five = _four()
     for a in ("lab", "numba", "gpu", "hybrid"):
         five["arms"][a]["source"] = "bench/results/modal-design-four.json (source_commit x)"
     five["arms"]["fused"] = {**five["arms"]["numba"], "source": "this run"}
-    five["parity"] = {"all": True, "against_prior": {"fused": {a: {"x_bitwise": True, "x_compared": 3000}
-                                                               for a in ("lab", "numba", "gpu", "hybrid")}}}
+    five["parity"] = _fused_parity()
     rows = dict(cr.rows_from(Path("modal-design.json"), five))
     assert sorted(rows) == ["fused-cpu", "scope"]
     f = rows["fused-cpu"]
@@ -322,4 +329,34 @@ def test_the_five_arm_file_fills_only_the_fused_lane_and_only_with_full_x_parity
     five["parity"]["against_prior"]["fused"]["gpu"]["x_bitwise"] = False
     assert list(cr.rows_from(Path("modal-design.json"), five)) == []
     five["parity"]["against_prior"]["fused"]["gpu"] = {"x_bitwise": True, "x_compared": 0}
+    assert list(cr.rows_from(Path("modal-design.json"), five)) == []
+
+
+def test_a_four_arm_file_refreshes_every_lane_even_when_arms_are_copied_from_an_earlier_file():
+    """Prometheus #120 round 2 (1): 194458Z copies lab, numba and gpu from 185537Z; it must still refresh them."""
+    four = _four()
+    for a in ("lab", "numba", "gpu"):
+        four["arms"][a]["source"] = "bench/results/modal-design-earlier.json (source_commit x)"
+    assert sorted(dict(cr.rows_from(Path("modal-design.json"), four))) == ["gpu-1", "hybrid", "lab-cpu",
+                                                                           "preflight-cpu", "scope"]
+
+
+def test_the_fused_lane_needs_complete_maxT_parity_on_every_batched_arm():
+    """Prometheus #120 round 2 (2): partial or false maxT parity refuses the lane; X parity alone is not enough."""
+    five = _four()
+    five["arms"]["fused"] = {**five["arms"]["numba"], "source": "this run"}
+    five["parity"] = _fused_parity()
+    assert "fused-cpu" in dict(cr.rows_from(Path("modal-design.json"), five))
+    bad = [("numba", "maxT_within_tol", False), ("gpu", "maxT_max_rel_diff", 2e-9), ("hybrid", "maxT_max_rel_diff", None),
+           ("gpu", "maxT_within_tol", None), ("numba", "maxT_max_rel_diff", float("nan"))]
+    for arm, key, value in bad:
+        five["parity"] = _fused_parity()
+        e = five["parity"]["against_prior"]["fused"][arm]
+        e.pop(key) if value is None else e.update({key: value})
+        assert list(cr.rows_from(Path("modal-design.json"), five)) == [], (arm, key, value)
+    five["parity"] = _fused_parity()
+    five["parity"]["against_prior"]["fused"]["all"] = False
+    assert list(cr.rows_from(Path("modal-design.json"), five)) == []
+    five["parity"] = _fused_parity()
+    del five["parity"]["against_prior"]["fused"]["hybrid"]
     assert list(cr.rows_from(Path("modal-design.json"), five)) == []
