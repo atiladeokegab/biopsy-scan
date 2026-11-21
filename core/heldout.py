@@ -1,9 +1,10 @@
 """Lock the UPMC held-out patients before any search, and write the manifest the loaders guard on.
 
-The split unit is the clinical tuple (core.cohorts.UPMC_TUPLE). Every case number nests inside one
-tuple, so whole patients stay on one side under every identity reading: the case number, the tuple,
-the two tuples that hold two case numbers, and the unmapped regions. About FRACTION of the units in
-each event stratum (survival_status, any-cause death) are locked, drawn with the frozen SEED.
+The split unit is the clinical tuple (core.cohorts.UPMC_TUPLE), with tuples linked through a shared case
+number merged into one unit, so a whole patient stays on one side under every identity reading: the case
+number, the tuple, the two tuples that hold two case numbers, a case whose regions disagree on the tuple,
+and the unmapped regions. About FRACTION of the units in each event stratum (survival_status, any-cause
+death in the unit) are locked, drawn with the frozen SEED.
 
 Run: make heldout (after make data). Rebuilding reproduces the committed manifest or exits 1; it
 never overwrites a different lock.
@@ -25,15 +26,26 @@ SEED = 20261121
 FRACTION = 0.3
 
 
+def linked_units(lab: pd.DataFrame) -> pd.Series:
+    """Each region's split unit: its clinical tuple, or the smallest tuple of those linked through shared case numbers."""
+    case = lab.sample_label_visualizer.where(lab.sample_label_visualizer != "NA", "").str.split(" ").str[0]
+    tup = lab[UPMC_TUPLE].agg("|".join, axis=1)
+    key = case.where(case != "", "T:" + tup)
+    unit = tup
+    while True:  # propagate the smallest tuple through case and tuple links until nothing changes
+        new = unit.groupby(key).transform("min").groupby(tup).transform("min")
+        if new.equals(unit):
+            return unit
+        unit = new
+
+
 def build(labels: Path, seed: int = SEED, fraction: float = FRACTION) -> dict:
     """The manifest for one UPMC labels file: the grouping counts, the conflicts and the locked side."""
     raw = Path(labels).read_bytes()
     lab = pd.read_csv(labels, dtype=str, keep_default_na=False)
     pid, conflicts = upmc_patient_ids(lab)
-    unit = lab[UPMC_TUPLE].agg("|".join, axis=1)
-    units = pd.DataFrame({"unit": unit, "event": lab.survival_status}).drop_duplicates().sort_values("unit")
-    if units.unit.duplicated().any():
-        raise ValueError("a clinical tuple with two event values")
+    unit = linked_units(lab)
+    units = lab.survival_status.groupby(unit).max().rename("event").rename_axis("unit").reset_index()
     rng = np.random.default_rng(seed)
     locked_units, strata = set(), {}
     for ev, u in units.groupby("event", sort=True):
@@ -50,7 +62,7 @@ def build(labels: Path, seed: int = SEED, fraction: float = FRACTION) -> dict:
         "labels_sha256": hashlib.sha256(raw).hexdigest(),
         "rule": "core.cohorts.upmc_patient_ids: the case number where present; an NA region is T:<clinical tuple> "
                 "when no case-numbered region shares it; conflicts are unmapped and listed",
-        "unit": "clinical tuple: " + "|".join(UPMC_TUPLE),
+        "unit": "clinical tuple: " + "|".join(UPMC_TUPLE) + "; tuples sharing a case number form one unit",
         "stratified_by": "survival_status",
         "seed": seed,
         "fraction": fraction,

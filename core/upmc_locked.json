@@ -185,7 +185,7 @@
  ],
  "rule": "core.cohorts.upmc_patient_ids: the case number where present; an NA region is T:<clinical tuple> when no case-numbered region shares it; conflicts are unmapped and listed",
  "seed": 20261121,
- "sha256": "5e42680bc79543732e96387881e9fc7150ee351ce650262730bd373e7e9ea467",
+ "sha256": "05b38abae377177a097f2db0cd42188178c275a338aa44ec79c1be8ecd3969e3",
  "stratified_by": "survival_status",
- "unit": "clinical tuple: status|primary_outcome|recurred|hpvstatus|survival_status|survival_day"
+ "unit": "clinical tuple: status|primary_outcome|recurred|hpvstatus|survival_status|survival_day; tuples sharing a case number form one unit"
 }

@@ -41,8 +41,10 @@ def test_split_is_stratified_seeded_whole_units_and_hashed(data_dir):
     m = heldout.build(data_dir / "upmc_labels.csv")
     c = m["counts"]
     assert c["patients"] == 23 and c["regions_mapped"] == 25 and c["regions_unmapped"] == 5
-    # 26 tuples: 8 with an event (1 case + 1 two-tuple case + 6 singles), 18 without; 30% of each, rounded.
-    assert c["strata"] == {"0": {"units": 17, "locked": 5}, "1": {"units": 9, "locked": 3}}
+    # 26 tuples, 25 units (case 888 links tuples 500 and 501): 8 with an event (HN1-1, 888, 6 singles),
+    # 17 without; 30% of each, rounded.
+    assert c["units"] == 25
+    assert c["strata"] == {"0": {"units": 17, "locked": 5}, "1": {"units": 8, "locked": 2}}
     assert m == heldout.build(data_dir / "upmc_labels.csv")                       # frozen seed
     assert m["locked_regions"] != heldout.build(data_dir / "upmc_labels.csv", seed=1)["locked_regions"]
     assert m["sha256"] == cohorts.manifest_hash(m)
@@ -78,3 +80,16 @@ def test_rebuild_reproduces_the_manifest_byte_for_byte_and_never_overwrites(data
     out.write_text(out.read_text().replace('"seed": 20261121', '"seed": 1'))
     edited = out.read_bytes()
     assert heldout.main(data_dir / "upmc_labels.csv", out) == 1 and out.read_bytes() == edited
+
+
+@pytest.mark.parametrize("seed", range(8))
+def test_no_patient_is_on_both_sides_under_any_identity(data_dir, seed):
+    # Case 888's regions sit in two clinical tuples (500, 501); sampling tuples alone split it (seed 0).
+    m = heldout.build(data_dir / "upmc_labels.csv", seed=seed)
+    (data_dir / "lock.json").write_text(json.dumps(m))
+    case888 = {"UPMC_c006_v001_r001_reg009", "UPMC_c006_v001_r001_reg010"}
+    assert len(case888 & set(m["locked_regions"])) in (0, 2)
+    for identity in ("case", "tuple", "tuple+case", "patient"):
+        disc, lock = (set(cohorts.load_regions("upmc", data_dir, identity, split=s).patient_id)
+                      for s in ("discovery", "locked"))
+        assert not disc & lock, (identity, disc & lock)

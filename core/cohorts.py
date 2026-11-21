@@ -128,7 +128,8 @@ def load_regions(cohort: str, data_dir: Path = DATA_DIR, identity: str = "case",
     """One row per region: region_id, coverslip, group, case, patient_id, time_days, event.
 
     identity "case" (default): verified identity = the case number in the sample label; UPMC regions
-    labelled NA are dropped. Only this identity is used for patient-level inference and the
+    labelled NA are dropped, and so is a case whose regions disagree on the clinical tuple (a conflict
+    listed by upmc_patient_ids). Only this identity is used for patient-level inference and the
     regions-per-patient axis; Charville is the patient-level cohort.
     UPMC only, provisional and descriptive only: "tuple" = one patient per clinical tuple (79);
     "tuple+case" = also split the tuples holding two case numbers (81). One all-NA tuple spans
@@ -151,7 +152,8 @@ def load_regions(cohort: str, data_dir: Path = DATA_DIR, identity: str = "case",
         if identity == "tuple+case":
             n_cases = out.case.where(out.case != "").groupby(key).transform("nunique")
             key = key + np.where(n_cases > 1, "|" + out.case, "")
-        out["patient_id"] = {"case": out.case, "patient": upmc_patient_ids(lab)[0]}.get(identity, key)
+        pid = upmc_patient_ids(lab)[0]  # "" for a case with conflicting outcomes: dropped under "case" too
+        out["patient_id"] = {"case": out.case.where(pid == out.case, ""), "patient": pid}.get(identity, key)
         out["time_days"] = lab.survival_day.astype(float)
         out["event"] = lab.survival_status.astype(float)  # any-cause death
         if identity in ("case", "patient"):
