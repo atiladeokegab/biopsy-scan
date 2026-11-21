@@ -2,14 +2,15 @@
   "workspace_profile": "fhl-08",
   "cap_usd": 150,
   "rates_usd_per_hour": {
-    "A100": 2.5,
-    "H100": 3.95,
-    "L4": 0.8,
-    "cpu_core": 0.047,
-    "memory_gib": 0.008,
-    "source": "modal.com/pricing as known to the builder; conservative A100 80GB rate"
+    "A100": 2.0988,
+    "A100_80GB": 2.4984,
+    "H100": 3.9492,
+    "L4": 0.7992,
+    "cpu_core": 0.04716,
+    "memory_gib": 0.007992,
+    "source": "https://modal.com/pricing read 2026-11-21T17:36Z: per second A100 40 GB $0.000583, A100 80 GB $0.000694, H100 SXM5 $0.001097, L4 $0.000222, CPU $0.0000131/physical core, memory $0.00000222/GiB; x3600. Functions are preemptible by default; non-preemptible CPU and memory cost 3x. gpu='A100' runs gave A100-SXM4-40GB. Entries before this time used the earlier, higher unsourced rates (A100 $2.50/h)."
   },
-  "container_usd_per_hour_A100": 3.13,
+  "container_usd_per_hour_A100": 2.73,
   "entries": [
     {
       "utc": "2026-11-21T16:44Z",
@@ -61,5 +62,6 @@
       "basis": "0.11 GPU-h x $3.13/h",
       "running_total_usd": 7.9
     }
-  ]
+  ],
+  "container_usd_per_hour_H100": 4.58
 }

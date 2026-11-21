@@ -572,7 +572,9 @@ def run_ab(gpu: str = DEFAULT_GPU, reps: int = 3):
     print("  skipped:", result["skipped"] or "none")
 
 
-RATES = {"A100": 2.50, "H100": 3.95, "L4": 0.80, "cpu_core": 0.047, "memory_gib": 0.008}
+# modal.com/pricing, read 2026-11-21 17:36Z, per second x 3600: A100 40GB $0.000583, H100 $0.001097, L4 $0.000222,
+# physical core $0.0000131, GiB $0.00000222 (preemptible Function list price). gpu="A100" gave A100-SXM4-40GB.
+RATES = {"A100": 2.0988, "H100": 3.9492, "L4": 0.7992, "cpu_core": 0.04716, "memory_gib": 0.007992}
 SPEND = REPO / "bench" / "results" / "modal-spend.json"
 CAP_USD = 150.0
 
