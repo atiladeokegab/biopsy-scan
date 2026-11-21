@@ -182,8 +182,9 @@ def run_arm(arm: str, cells: dict, plan: dict, workers: int = 8, block: int = 12
     if arm == "gpu":
         recs = [one_study(j) for j in jobs]
     else:
-        with mp.get_context("fork").Pool(workers, initializer=_single_thread) as pool:
-            recs = pool.map(one_study, jobs, chunksize=1)
+        from concurrent.futures import ProcessPoolExecutor  # a dead worker raises instead of hanging, unlike mp.Pool
+        with ProcessPoolExecutor(workers, mp_context=mp.get_context("fork"), initializer=_single_thread) as pool:
+            recs = list(pool.map(one_study, jobs))
     studies_wall = perf_counter() - t
     score_wall = None
     if arm == "gpu":
