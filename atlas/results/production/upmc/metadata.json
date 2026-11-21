@@ -1,0 +1,73 @@
+{
+  "cohort": "upmc",
+  "result_label": "SYNTHETIC",
+  "source_n": 50,
+  "source_events": 10,
+  "source_regions": 188,
+  "source_cells": 1475395,
+  "source_hash": "cde7581e08b6359bfcf1e0520d0ee8a2171a6d76a3f089c077ad3e5e328c0fff",
+  "region_um": 1138.1630859375,
+  "region_width_median_um": 1010.7369995117188,
+  "region_height_median_um": 757.77001953125,
+  "region_um_definition": "maximum x/y bounding-box span across source regions",
+  "max_regions_per_patient": 8,
+  "grammar_hash": "adc93e69df4280df4ebc40432d4b3ca84ffb4d8e83513ae1ce883feff981915a",
+  "budget": {
+    "calibration": 10000,
+    "null": 10000,
+    "alternative": 1000,
+    "nested": 20,
+    "direct": 20,
+    "permutations": 999,
+    "batch": 8
+  },
+  "hr_per_source_sd": 2.0,
+  "seed": 20261121,
+  "backend": "numpy",
+  "numpy_version": "2.4.6",
+  "topology_encoding": "uint8 upper-radius cache",
+  "inference": "model-based Monte Carlo under the empirical verified source; no clinical claim",
+  "planned_fov_um": [
+    200,
+    400,
+    600,
+    800,
+    1000,
+    null
+  ],
+  "requested_fov_um": [
+    null,
+    200.0,
+    400.0,
+    600.0,
+    800.0,
+    1000.0
+  ],
+  "censoring_tail": "administrative horizon at stratum maximum follow-up",
+  "mc_interval_scope": "conditional on source, acquisition bank and realized calibration; excludes source and bank-construction uncertainty",
+  "method_check_scope": "paired differences with conservative 95% bounds; interval containing zero does not establish equivalence",
+  "direct_check_scope": "bank and direct imaging use the same bank-derived cutoff",
+  "code_fingerprint": "19d1f91b650f4017b4aef9df78c7bbaccfbf90a397dfc9ee848bc7572a99ae76",
+  "reference_generator": {
+    "code_fingerprint": "286e1ac0ca834863aed3e8974ddda1862f6d452954a7d97d4ed3ae0170522fec",
+    "backend": "numpy",
+    "software": {
+      "numpy": "2.4.6",
+      "scipy": "1.17.1",
+      "numba": "0.68.1"
+    }
+  },
+  "inference_scope": "descriptive verified-source simulation only",
+  "run_id": "73c5475038153bc5a114099d7506f748a6cd4da999965cd18ae9e0b1ccd0e25d",
+  "completed_designs": 96,
+  "completed_fov_um": [
+    null,
+    200.0,
+    400.0,
+    600.0,
+    800.0,
+    1000.0
+  ],
+  "measurement_model": "finite-bank approximation",
+  "bank_draws": 64
+}
