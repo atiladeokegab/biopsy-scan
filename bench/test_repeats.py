@@ -82,3 +82,21 @@ def test_the_committed_summary_matches_its_raw_repeats():
     for arm, reps in r["repeats"].items():
         for x in reps:
             assert x["wall_per_study_s"] == pytest.approx(x["studies_wall_s"] / x["evaluated_studies"])
+
+
+def test_every_raw_repeat_is_in_the_spend_ledger_and_the_totals_split_actual_from_estimate():
+    found = sorted((Path(__file__).parent / "results").glob("repeats-*.json"))
+    if not found:
+        pytest.skip("no committed repeats result yet")
+    r = json.loads(found[-1].read_text())
+    ledger = json.loads((Path(__file__).parent.parent / r["spend"]["log"]).read_text())
+    ran = {Path(e["actual"]["result"]).name for e in ledger["entries"] if "result" in e["actual"]}
+    for v in r["repeats"].values():  # a lost ledger line would under-report the spend
+        for x in v:
+            assert x["file"].split("-", 3)[3] in ran, x["file"]
+    done, aborted = ledger["completed_usd"], ledger["aborted_usd"]
+    assert "MEASURED" in done["label"] and "ESTIMATE" in aborted["label"]
+    assert ledger["running_total_usd"] == pytest.approx(done["value"] + aborted["value"])
+    assert ledger["running_total_usd"] == pytest.approx(sum(e["actual"]["est_usd"] for e in ledger["entries"]))
+    assert r["spend"] == {"log": r["spend"]["log"], **{k: ledger[k] for k in
+                          ("running_total_usd", "completed_usd", "aborted_usd")}}

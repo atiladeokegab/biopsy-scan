@@ -137,7 +137,7 @@ def main(argv=None):
                         f"(range {s[PREVIOUS]['min']:.4f}-{s[PREVIOUS]['max']:.4f}, {s[PREVIOUS]['n']} repeats)."
                         if PREVIOUS in s else "")),
         "summary": s, "repeats": repeats,
-        "spend": {"log": a.spend, "running_total_usd": spend["running_total_usd"]},
+        "spend": {"log": a.spend, **{k: spend[k] for k in ("running_total_usd", "completed_usd", "aborted_usd")}},
     }
     out.write_text(json.dumps(doc, indent=2, allow_nan=False) + "\n")
     print(doc["headline"])

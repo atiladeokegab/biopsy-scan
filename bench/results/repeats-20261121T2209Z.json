@@ -598,6 +598,16 @@
   },
   "spend": {
     "log": "bench/results/modal-spend-repeats.json",
-    "running_total_usd": 2.592
+    "running_total_usd": 2.897,
+    "completed_usd": {
+      "value": 2.646,
+      "runs": 10,
+      "label": "MEASURED wall x rate (upper bound: includes queueing)"
+    },
+    "aborted_usd": {
+      "value": 0.251,
+      "runs": 3,
+      "label": "ESTIMATE: local wall from start to abort x rate"
+    }
   }
 }
