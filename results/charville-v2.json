@@ -8,7 +8,7 @@
   "inference_scope": "patient_level_exploratory",
   "seed": 0,
   "code_revision": "cfb03bb681b6809da855c24d0e311be2af631d3e",
-  "source_fingerprint": "18ca20163744826337e9280213cf75a068191e24886440244a3558067a558632",
+  "source_fingerprint": "f481c33aab31a96e5e769a24aa19af5a6b9e23d0fc248347209969ad34e370dc",
   "grammar_v1_hash": "772f6a845266470456af96f92d0573cc1bec72432ad74d789439baff066c2156",
   "grammar_v2_hash": "26a745f831ef71ec2c8ae5bf65f3668d29fd0f53ab97699cf52ac0cc13f11564",
   "channels": [

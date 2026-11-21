@@ -22,8 +22,10 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
-      - name: validate the demo data
-        run: python3 -I demo/check_data.py demo/data
+      - name: fill the speed race from bench/results, then validate the demo data
+        run: |
+          python3 -I demo/collect_race.py
+          python3 -I demo/check_data.py demo/data
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -1,0 +1,89 @@
+{
+ "label": "MEASURED",
+ "comparison": "workflow comparison: CPU algorithmic speed-up (fit once, score every candidate) against one full Cox fit per candidate; not a GPU speed-up, not equal work",
+ "cohort": "charville",
+ "features": "v2",
+ "fingerprints": {
+  "patient_rows": "d6a5bb66450dc402b8145af053bc04a3bc01a96c051f6457369348aabdad25a9",
+  "X": "af18604288184da1562ae5c86edd25750de4b488310341c5bc2bf3f585d42cdb",
+  "C": "49a9e619c3b1590fe236cfe933b24a129ce730d805e78a8fb844ff75bfb99d93"
+ },
+ "shape": {
+  "patients": 159,
+  "candidates": 3780,
+  "clinical": 0
+ },
+ "machine": {
+  "cpu": "AMD EPYC 7B13",
+  "cores": 8,
+  "python": "3.11.17"
+ },
+ "order": "interleaved A, B per rep, one process, one window",
+ "arms": {
+  "A": {
+   "what": "R-14 bench.impl_a.time_full_run: statsmodels PHReg per candidate",
+   "workers": 8,
+   "median_s": 32.35925068799406,
+   "min_s": 30.955654934979975,
+   "max_s": 34.94704971276224
+  },
+  "B": {
+   "what": "R-15 stats.screen(n_perm=0, backend='numpy'): one null fit per NaN mask",
+   "threads": "numpy BLAS on the same affinity",
+   "masks": 2,
+   "median_s": 0.8031571293249726,
+   "min_s": 0.2707186029292643,
+   "max_s": 0.8551184879615903
+  }
+ },
+ "speedup_median": 40.29006218894048,
+ "speedup_range": [
+  36.20042762585017,
+  129.08994555462266
+ ],
+ "reps": [
+  {
+   "rep": 1,
+   "arm": "A",
+   "wall_s": 30.955654934979975,
+   "load_1min_before": 51.890625,
+   "load_1min_after": 50.97998046875
+  },
+  {
+   "rep": 1,
+   "arm": "B",
+   "wall_s": 0.2707186029292643,
+   "load_1min_before": 50.97998046875,
+   "load_1min_after": 50.97998046875
+  },
+  {
+   "rep": 2,
+   "arm": "A",
+   "wall_s": 32.35925068799406,
+   "load_1min_before": 50.97998046875,
+   "load_1min_after": 48.197265625
+  },
+  {
+   "rep": 2,
+   "arm": "B",
+   "wall_s": 0.8551184879615903,
+   "load_1min_before": 48.197265625,
+   "load_1min_after": 48.197265625
+  },
+  {
+   "rep": 3,
+   "arm": "A",
+   "wall_s": 34.94704971276224,
+   "load_1min_before": 48.197265625,
+   "load_1min_after": 50.673828125
+  },
+  {
+   "rep": 3,
+   "arm": "B",
+   "wall_s": 0.8031571293249726,
+   "load_1min_before": 50.673828125,
+   "load_1min_after": 50.673828125
+  }
+ ],
+ "caveat": "shared VM; read each rep beside its load average"
+}

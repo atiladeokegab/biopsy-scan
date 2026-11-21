@@ -1,0 +1,532 @@
+{
+  "schema_version": 1,
+  "status": "MEASURED",
+  "question": "Why was Numba at 8 threads slower than single-thread NumPy in bench/results/cpu-ladder.json (3.26 s vs 2.98 s per study)?",
+  "source_commit": "53f0b1fc2e1394326d52cc436c22841dd4431b8e",
+  "harness": "bench/numba_negative.py; one fresh subprocess per configuration; fixed seeds; seed 0 warm-up excluded; first call (JIT compile or cache load) reported separately and excluded",
+  "design": {
+    "patients": 159,
+    "regions_per_patient": 2,
+    "fov_um": 400.0,
+    "eps": 0.1,
+    "seed": 0
+  },
+  "workload": {
+    "status": "MEASURED",
+    "region_calls_per_study": 291,
+    "cells_per_region_median": 2192,
+    "visible_fraction_mean": 0.5503000492819259
+  },
+  "conditions": {
+    "status": "MEASURED",
+    "host": "AMD EPYC 7B13, 8 logical CPUs, shared hackathon VM",
+    "load_average_1min_range": [
+      48.10888671875,
+      174.2724609375
+    ],
+    "note": "Run queue was 9x to 20x the CPU count throughout; every row records its own load. Absolute seconds are not comparable with cpu-ladder.json (load 10 to 26 then); ratios within a row are paired and alternated."
+  },
+  "rows": [
+    {
+      "label": "threads-1",
+      "status": "MEASURED",
+      "source_run": "numba-negative-raw2",
+      "numba_threads": 1,
+      "threading_layer": "omp",
+      "thread_environment": {
+        "NUMBA_NUM_THREADS": "1",
+        "NUMBA_THREADING_LAYER": null,
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1"
+      },
+      "studies_timed": 2,
+      "seeds": [
+        1,
+        2
+      ],
+      "numpy_s_per_study": 21.70300911157392,
+      "numba_s_per_study": 5.3483954078983516,
+      "numpy_count_kernel_s_per_study": 17.13586924271658,
+      "numba_count_kernel_s_per_study": 2.4344728435389698,
+      "numba_process_cpu_s_per_study": 1.4399999999999986,
+      "numba_over_numpy": 0.24643566154363936,
+      "kernel_only_ms_per_region_call": 6.003187231629882,
+      "kernel_only_cpu_over_wall": 0.36635750808983425,
+      "empty_parallel_launch_us": 3.7810992436720334,
+      "empty_parallel_launch_cpu_over_wall": 9.088431420013462,
+      "first_call_s_excluded": {
+        "numpy": 31.68158640526235,
+        "numba": 12.9473314168863
+      },
+      "load_average_1min_during_numba": [
+        150.20458984375,
+        146.82470703125
+      ],
+      "load_average_1min_during_numpy": [
+        174.2724609375,
+        141.47314453125
+      ]
+    },
+    {
+      "label": "threads-8",
+      "status": "MEASURED",
+      "source_run": "numba-negative-raw2",
+      "numba_threads": 8,
+      "threading_layer": "omp",
+      "thread_environment": {
+        "NUMBA_NUM_THREADS": "8",
+        "NUMBA_THREADING_LAYER": null,
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1"
+      },
+      "studies_timed": 2,
+      "seeds": [
+        1,
+        2
+      ],
+      "numpy_s_per_study": 22.0111280370038,
+      "numba_s_per_study": 56.67151679797098,
+      "numpy_count_kernel_s_per_study": 17.790716082789004,
+      "numba_count_kernel_s_per_study": 48.30600943043828,
+      "numba_process_cpu_s_per_study": 27.25,
+      "numba_over_numpy": 2.574675714152323,
+      "kernel_only_ms_per_region_call": 152.01721370021758,
+      "kernel_only_cpu_over_wall": 0.5447927073517267,
+      "empty_parallel_launch_us": 52004.90562878933,
+      "empty_parallel_launch_cpu_over_wall": 0.7764268848225632,
+      "first_call_s_excluded": {
+        "numpy": 10.521712990943342,
+        "numba": 44.84990115975961
+      },
+      "load_average_1min_during_numba": [
+        100.11083984375,
+        98.26806640625
+      ],
+      "load_average_1min_during_numpy": [
+        106.01171875,
+        97.94873046875
+      ]
+    },
+    {
+      "label": "threads-8-workqueue",
+      "status": "MEASURED",
+      "source_run": "numba-negative-raw2",
+      "numba_threads": 8,
+      "threading_layer": "workqueue",
+      "thread_environment": {
+        "NUMBA_NUM_THREADS": "8",
+        "NUMBA_THREADING_LAYER": "workqueue",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1"
+      },
+      "studies_timed": 2,
+      "seeds": [
+        1,
+        2
+      ],
+      "numpy_s_per_study": 15.085802185581997,
+      "numba_s_per_study": 6.837375402916223,
+      "numpy_count_kernel_s_per_study": 11.624725800706074,
+      "numba_count_kernel_s_per_study": 5.2783494086470455,
+      "numba_process_cpu_s_per_study": 1.7049999999999992,
+      "numba_over_numpy": 0.4532324710880095,
+      "kernel_only_ms_per_region_call": 8.809752755916815,
+      "kernel_only_cpu_over_wall": 0.3198579453793435,
+      "empty_parallel_launch_us": 4481.843557477612,
+      "empty_parallel_launch_cpu_over_wall": 0.11501158193390225,
+      "first_call_s_excluded": {
+        "numpy": 10.432056343182921,
+        "numba": 10.078926732763648
+      },
+      "load_average_1min_during_numba": [
+        89.658203125,
+        88.67333984375
+      ],
+      "load_average_1min_during_numpy": [
+        90.228515625,
+        88.619140625
+      ]
+    },
+    {
+      "label": "threads-8-blas-unpinned",
+      "status": "MEASURED",
+      "source_run": "numba-negative-raw2",
+      "numba_threads": 8,
+      "threading_layer": "omp",
+      "thread_environment": {
+        "NUMBA_NUM_THREADS": "8",
+        "NUMBA_THREADING_LAYER": null,
+        "OMP_NUM_THREADS": null,
+        "OPENBLAS_NUM_THREADS": null,
+        "MKL_NUM_THREADS": null
+      },
+      "studies_timed": 2,
+      "seeds": [
+        1,
+        2
+      ],
+      "numpy_s_per_study": 9.429362394846976,
+      "numba_s_per_study": 50.486926591955125,
+      "numpy_count_kernel_s_per_study": 7.3826107191853225,
+      "numba_count_kernel_s_per_study": 43.0836321064271,
+      "numba_process_cpu_s_per_study": 26.095,
+      "numba_over_numpy": 5.354224864614979,
+      "kernel_only_ms_per_region_call": 144.91035711961155,
+      "kernel_only_cpu_over_wall": 0.5560968452610112,
+      "empty_parallel_launch_us": 46305.14509540653,
+      "empty_parallel_launch_cpu_over_wall": 0.7992699127082948,
+      "first_call_s_excluded": {
+        "numpy": 12.791938171256334,
+        "numba": 51.61897440161556
+      },
+      "load_average_1min_during_numba": [
+        72.23828125,
+        71.81640625
+      ],
+      "load_average_1min_during_numpy": [
+        73.216796875,
+        70.4404296875
+      ]
+    },
+    {
+      "label": "threads-2",
+      "status": "MEASURED",
+      "source_run": "numba-negative-raw2",
+      "numba_threads": 2,
+      "threading_layer": "omp",
+      "thread_environment": {
+        "NUMBA_NUM_THREADS": "2",
+        "NUMBA_THREADING_LAYER": null,
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1"
+      },
+      "studies_timed": 2,
+      "seeds": [
+        1,
+        2
+      ],
+      "numpy_s_per_study": 14.045701777329668,
+      "numba_s_per_study": 11.131079114973545,
+      "numpy_count_kernel_s_per_study": 11.67032244661823,
+      "numba_count_kernel_s_per_study": 7.098655419424176,
+      "numba_process_cpu_s_per_study": 3.3099999999999996,
+      "numba_over_numpy": 0.7924900650346683,
+      "kernel_only_ms_per_region_call": 7.771534986051497,
+      "kernel_only_cpu_over_wall": 0.5173519213279371,
+      "empty_parallel_launch_us": 6.191477281940761,
+      "empty_parallel_launch_cpu_over_wall": 0.0,
+      "first_call_s_excluded": {
+        "numpy": 12.531398118007928,
+        "numba": 10.826736052986234
+      },
+      "load_average_1min_during_numba": [
+        62.294921875,
+        60.71142578125
+      ],
+      "load_average_1min_during_numpy": [
+        61.47802734375,
+        61.59228515625
+      ]
+    },
+    {
+      "label": "threads-8",
+      "status": "MEASURED",
+      "source_run": "numba-negative-raw3",
+      "numba_threads": 8,
+      "threading_layer": "omp",
+      "thread_environment": {
+        "NUMBA_NUM_THREADS": "8",
+        "NUMBA_THREADING_LAYER": null,
+        "OMP_NUM_THREADS": "1",
+        "OMP_WAIT_POLICY": null,
+        "OPENBLAS_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1"
+      },
+      "studies_timed": 2,
+      "seeds": [
+        1,
+        2
+      ],
+      "numpy_s_per_study": 18.201581874862313,
+      "numba_s_per_study": 37.53759591560811,
+      "numpy_count_kernel_s_per_study": 14.869527225149795,
+      "numba_count_kernel_s_per_study": 31.067158492049202,
+      "numba_process_cpu_s_per_study": 25.6,
+      "numba_over_numpy": 2.0623260205449623,
+      "kernel_only_ms_per_region_call": 114.2800095398299,
+      "kernel_only_cpu_over_wall": 0.7409304554650846,
+      "empty_parallel_launch_us": 47322.076724528546,
+      "empty_parallel_launch_cpu_over_wall": 0.8104148870550141,
+      "first_call_s_excluded": {
+        "numpy": 12.980405637063086,
+        "numba": 49.23420654190704
+      },
+      "load_average_1min_during_numba": [
+        67.5380859375,
+        67.29345703125
+      ],
+      "load_average_1min_during_numpy": [
+        68.26123046875,
+        66.28271484375
+      ]
+    },
+    {
+      "label": "threads-8-omp-passive-wait",
+      "status": "MEASURED",
+      "source_run": "numba-negative-raw3",
+      "numba_threads": 8,
+      "threading_layer": "omp",
+      "thread_environment": {
+        "NUMBA_NUM_THREADS": "8",
+        "NUMBA_THREADING_LAYER": null,
+        "OMP_NUM_THREADS": "1",
+        "OMP_WAIT_POLICY": "PASSIVE",
+        "OPENBLAS_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1"
+      },
+      "studies_timed": 2,
+      "seeds": [
+        1,
+        2
+      ],
+      "numpy_s_per_study": 8.717887799721211,
+      "numba_s_per_study": 2.476034570019692,
+      "numpy_count_kernel_s_per_study": 7.13871430256404,
+      "numba_count_kernel_s_per_study": 1.2833425723947585,
+      "numba_process_cpu_s_per_study": 1.4399999999999995,
+      "numba_over_numpy": 0.2840177147151255,
+      "kernel_only_ms_per_region_call": 3.2360361684177747,
+      "kernel_only_cpu_over_wall": 0.7327279106951087,
+      "empty_parallel_launch_us": 193.0056981537555,
+      "empty_parallel_launch_cpu_over_wall": 0.3560958199380031,
+      "first_call_s_excluded": {
+        "numpy": 9.429808061104268,
+        "numba": 1.892901049926877
+      },
+      "load_average_1min_during_numba": [
+        60.13623046875,
+        60.13623046875
+      ],
+      "load_average_1min_during_numpy": [
+        61.11083984375,
+        59.96484375
+      ]
+    },
+    {
+      "label": "threads-1",
+      "status": "MEASURED",
+      "source_run": "numba-negative-raw4",
+      "numba_threads": 1,
+      "threading_layer": "omp",
+      "thread_environment": {
+        "NUMBA_NUM_THREADS": "1",
+        "NUMBA_THREADING_LAYER": null,
+        "OMP_NUM_THREADS": "1",
+        "OMP_WAIT_POLICY": null,
+        "OPENBLAS_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1"
+      },
+      "studies_timed": 2,
+      "seeds": [
+        1,
+        2
+      ],
+      "numpy_s_per_study": 7.285384542541578,
+      "numba_s_per_study": 4.44625983806327,
+      "numpy_count_kernel_s_per_study": 5.842619521776214,
+      "numba_count_kernel_s_per_study": 2.000383456237614,
+      "numba_process_cpu_s_per_study": 1.3999999999999995,
+      "numba_over_numpy": 0.6102985795876944,
+      "kernel_only_ms_per_region_call": 4.021760202701047,
+      "kernel_only_cpu_over_wall": 0.5041303575417122,
+      "empty_parallel_launch_us": 3.3599654167788136,
+      "empty_parallel_launch_cpu_over_wall": 0.0,
+      "first_call_s_excluded": {
+        "numpy": 8.731394110247493,
+        "numba": 3.0111928209662437
+      },
+      "load_average_1min_during_numba": [
+        52.86572265625,
+        51.51513671875
+      ],
+      "load_average_1min_during_numpy": [
+        53.7802734375,
+        51.51513671875
+      ]
+    },
+    {
+      "label": "threads-8",
+      "status": "MEASURED",
+      "source_run": "numba-negative-raw4",
+      "numba_threads": 8,
+      "threading_layer": "omp",
+      "thread_environment": {
+        "NUMBA_NUM_THREADS": "8",
+        "NUMBA_THREADING_LAYER": null,
+        "OMP_NUM_THREADS": "1",
+        "OMP_WAIT_POLICY": null,
+        "OPENBLAS_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1"
+      },
+      "studies_timed": 2,
+      "seeds": [
+        1,
+        2
+      ],
+      "numpy_s_per_study": 9.705862899078056,
+      "numba_s_per_study": 27.81318198214285,
+      "numpy_count_kernel_s_per_study": 7.688802274642512,
+      "numba_count_kernel_s_per_study": 23.538575378712267,
+      "numba_process_cpu_s_per_study": 24.54,
+      "numba_over_numpy": 2.8656063114990817,
+      "kernel_only_ms_per_region_call": 80.82487810998387,
+      "kernel_only_cpu_over_wall": 0.9481276581848916,
+      "empty_parallel_launch_us": 47762.95540931145,
+      "empty_parallel_launch_cpu_over_wall": 0.8259575121185863,
+      "first_call_s_excluded": {
+        "numpy": 7.753220726270229,
+        "numba": 30.705018340609968
+      },
+      "load_average_1min_during_numba": [
+        48.40185546875,
+        48.10888671875
+      ],
+      "load_average_1min_during_numpy": [
+        50.04296875,
+        55.02392578125
+      ]
+    },
+    {
+      "label": "threads-8-omp-passive-wait",
+      "status": "MEASURED",
+      "source_run": "numba-negative-raw4",
+      "numba_threads": 8,
+      "threading_layer": "omp",
+      "thread_environment": {
+        "NUMBA_NUM_THREADS": "8",
+        "NUMBA_THREADING_LAYER": null,
+        "OMP_NUM_THREADS": "1",
+        "OMP_WAIT_POLICY": "PASSIVE",
+        "OPENBLAS_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1"
+      },
+      "studies_timed": 2,
+      "seeds": [
+        1,
+        2
+      ],
+      "numpy_s_per_study": 11.960308579960838,
+      "numba_s_per_study": 5.0209835425484926,
+      "numpy_count_kernel_s_per_study": 9.777450228342786,
+      "numba_count_kernel_s_per_study": 2.733163529075682,
+      "numba_process_cpu_s_per_study": 1.5350000000000001,
+      "numba_over_numpy": 0.4198038461115468,
+      "kernel_only_ms_per_region_call": 3.591485092691642,
+      "kernel_only_cpu_over_wall": 0.6315051235291651,
+      "empty_parallel_launch_us": 854.4854394118605,
+      "empty_parallel_launch_cpu_over_wall": 0.1608652860932865,
+      "first_call_s_excluded": {
+        "numpy": 9.259043474681675,
+        "numba": 2.7128391778096557
+      },
+      "load_average_1min_during_numba": [
+        57.732421875,
+        57.11279296875
+      ],
+      "load_average_1min_during_numpy": [
+        57.93701171875,
+        57.42431640625
+      ]
+    }
+  ],
+  "earlier_partial_run": {
+    "status": "MEASURED",
+    "note": "First attempt, 3 seeds per configuration, stopped by its own 25-minute timeout after 4 configurations; only the printed means survive. Load average 45 to 84.",
+    "numpy_s_per_study": {
+      "1": 19.17,
+      "2": 20.303,
+      "4": 20.748,
+      "8": 20.462
+    },
+    "numba_s_per_study": {
+      "1": 7.969,
+      "2": 12.652,
+      "4": 28.142,
+      "8": 53.04
+    }
+  },
+  "verdicts": {
+    "cause": {
+      "status": "MEASURED",
+      "finding": "GNU OpenMP (Numba's omp threading layer) busy-waits its idle workers. On a VM whose run queue is 9x to 20x its 8 CPUs, every one of the 291 parallel region calls per study waits for 8 spinning workers to be scheduled. The same 8 threads with OMP_WAIT_POLICY=PASSIVE, or with Numba's workqueue layer, are faster than NumPy.",
+      "evidence": [
+        "Empty prange launch: 3.4 to 3.8 us at 1 thread, 6.2 us at 2, 47,000 to 52,000 us at 8 with the omp layer's default active wait; 4,482 us with workqueue; 193 and 855 us with OMP_WAIT_POLICY=PASSIVE",
+        "Numba process CPU per study: 1.4 s at 1 thread; 24.5 to 27.3 s at 8 threads with active wait; 1.4 to 1.7 s at 8 threads with passive wait or workqueue, for identical outputs (parity asserted every study)",
+        "Numba over NumPy per study, paired: 0.25 and 0.61 at 1 thread; 0.79 at 2; 2.06 to 2.87 at 8 with active wait (three runs); 0.45 at 8 with workqueue; 0.28 and 0.42 at 8 with passive wait",
+        "Count kernel alone: 4.0 to 6.0 ms per region call at 1 thread; 81 to 152 ms at 8 with active wait; 8.8 ms with workqueue; 3.2 to 3.6 ms with passive wait"
+      ]
+    },
+    "candidates": {
+      "jit_compile_in_timing": {
+        "status": "MEASURED",
+        "verdict": "ruled out",
+        "evidence": "cpu-ladder.json already excludes the first call (first_call_excluded_from_rows: true); here the first call is timed separately and seed 0 is a warm-up; cache=True kernels load from cache"
+      },
+      "thread_oversubscription_numba_x_blas": {
+        "status": "MEASURED",
+        "verdict": "ruled out",
+        "evidence": "8 threads with OMP/OPENBLAS/MKL threads unset: 50.5 s per study vs 56.7 s pinned to 1, same within load noise; the timed path has no BLAS call"
+      },
+      "vm_load_average": {
+        "status": "MEASURED",
+        "verdict": "necessary condition, not the fix",
+        "evidence": "Load average 48 to 150 throughout. Under the same load, passive wait turns the 8-thread loss (2.1x to 2.9x slower than NumPy) into a 2.4x to 3.5x win. Oversubscription by other processes is what makes active spinning expensive"
+      },
+      "work_too_small_per_thread": {
+        "status": "MEASURED",
+        "verdict": "contributes, secondary",
+        "evidence": "Median region 2,192 cells, 55% visible after the 400 um crop: about 150 visible cells per thread per call, 6 ms of single-thread work. Even with workqueue, 8 threads (6.8 s) did not beat 1 thread (5.3 s) under this load"
+      },
+      "memory_bandwidth": {
+        "status": "MEASURED",
+        "verdict": "ruled out",
+        "evidence": "Same kernel, same 8 threads, same memory traffic: 81 to 152 ms per call with active wait against 3.2 to 3.6 ms with passive wait. An empty kernel with no memory traffic reproduces the 47 to 52 ms launch cost"
+      },
+      "race_safe_reduction": {
+        "status": "MEASURED",
+        "verdict": "ruled out by the code",
+        "evidence": "reimage/cpu.py _counts writes only out[i] inside prange(i): no reduction variable, no atomics, no shared accumulator"
+      }
+    },
+    "side_effect": {
+      "status": "ESTIMATE",
+      "finding": "Not established. NumPy beside active-wait Numba took 18.2 s and 9.7 s per study in two runs; beside passive-wait Numba, 8.7 s and 12.0 s. Load moved too much between runs to separate the effects."
+    },
+    "fixes": [
+      {
+        "status": "MEASURED",
+        "fix": "Set OMP_WAIT_POLICY=PASSIVE (or NUMBA_THREADING_LAYER=workqueue) for every Numba run on a shared machine",
+        "effect": "8-thread Numba 2.48 s vs NumPy 8.72 s, and 5.02 s vs 11.96 s, per study under load 50 to 60"
+      },
+      {
+        "status": "MEASURED",
+        "fix": "Or run Numba single-threaded per study and parallelise across studies (one worker per core)",
+        "effect": "1-thread Numba 5.35 s vs NumPy 21.7 s, and 4.45 s vs 7.29 s, per study under load 50 to 150"
+      },
+      {
+        "status": "ESTIMATE",
+        "fix": "Batch all 291 regions of a study into one prange call so each study pays one fork-join instead of 291",
+        "effect": "not built or measured"
+      },
+      {
+        "status": "ESTIMATE",
+        "fix": "Re-run bench/real_cpu.py with the fix on a quiet host (load average below 8) before quoting a speed-up",
+        "effect": "the cpu-ladder.json 8-thread rows (3.26 s vs 2.98 s) were taken at load 10 to 26 with active wait; they are not a property of the kernel"
+      }
+    ]
+  }
+}
