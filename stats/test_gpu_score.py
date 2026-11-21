@@ -32,7 +32,7 @@ def _cohort(seed=1, n=120, p=300):
 ROOT = str(Path(__file__).resolve().parents[1])
 SIM_PARITY = """
 import numpy as np
-from stats import screen
+from stats import screen, screen_batch
 rng = np.random.default_rng(1)
 n, p = 24, 5
 C = rng.integers(0, 2, (n, 2)).astype(float)
@@ -49,6 +49,11 @@ for clinical in (C, None):
     for key in ("U", "V", "z", "null_maxT"):
         np.testing.assert_allclose(gpu[key], cpu[key], rtol=1e-9, atol=1e-9, err_msg=key)
     assert gpu["metadata"]["backend"] == "gpu (numba.cuda)"
+    T, E = np.round(rng.exponential(size=(3, n)), 1), (rng.random((3, n)) < 0.6).astype(float)
+    cpu = screen_batch(X, T, E, clinical, s, backend="numpy")
+    gpu = screen_batch(X, T, E, clinical, s, backend="gpu")
+    for key in ("U", "V", "z", "maxT"):
+        np.testing.assert_allclose(gpu[key], cpu[key], rtol=1e-9, atol=1e-9, err_msg="batch " + key)
 print("GPU_SCREEN_PARITY_OK")
 """
 
@@ -61,7 +66,7 @@ def _run(script, sim):
 
 
 def test_numba_gpu_kernel_equals_cpu_under_cuda_simulator():
-    """Adjusted and zero-covariate U, V, z and bootstrap maxT, within 1e-9."""
+    """Adjusted and zero-covariate U, V, z, bootstrap maxT and screen_batch, within 1e-9."""
     proc = _run(SIM_PARITY, sim=True)
     assert proc.returncode == 0, proc.stderr or proc.stdout
     assert "GPU_SCREEN_PARITY_OK" in proc.stdout
