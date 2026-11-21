@@ -33,7 +33,59 @@
       "est_hours": 4.3,
       "est_usd": 13.46,
       "basis": "6 containers; per point ~209 s at P=40 scaled with the local P=40..300 runtimes (about 0.75 x linear in patients), summed: ~4.3 container-hours x $3.13/h",
-      "running_total_usd": 15.03
+      "running_total_usd": 15.03,
+      "actual": {
+        "modal_wall_s_per_point": {
+          "400": 1226.5,
+          "500": 1513.6,
+          "600": 1767.1,
+          "700": 2089.3,
+          "800": 2363.5,
+          "1000": 2946.0
+        },
+        "container_s_total": 11906.0,
+        "est_usd": 10.35,
+        "basis": "sum of per-point Modal call wall time (local log) x $3.13/h; image build time not included",
+        "result": "bench/results/modal-power-a100-40gb-20261121T181639Z.json"
+      }
+    },
+    {
+      "utc": "2026-11-21T17:48Z",
+      "run": "gpu/power_at_scale.py --patients 40 --gpu A100-40GB",
+      "containers": 1,
+      "note": "P=40 reproduction with the A100-40GB pin; launched twice by mistake (a background launch I wrongly thought had died), both kept",
+      "actual": {
+        "modal_wall_s": 223.1,
+        "est_usd": 0.19,
+        "basis": "223.1 s x $3.13/h; image build time not included",
+        "result": "bench/results/modal-power-a100-40gb-20261121T175225Z.json"
+      }
+    },
+    {
+      "utc": "2026-11-21T17:48Z",
+      "run": "gpu/power_at_scale.py --patients 40 --gpu A100-40GB",
+      "containers": 1,
+      "note": "the duplicate launch",
+      "actual": {
+        "modal_wall_s": 236.0,
+        "est_usd": 0.21,
+        "basis": "236.0 s x $3.13/h; image build time not included",
+        "result": "bench/results/modal-power-a100-40gb-20261121T175238Z.json"
+      }
+    },
+    {
+      "utc": "2026-11-21T17:56Z",
+      "run": "gpu/power_at_scale.py --patients 40 --gpu A100-40GB",
+      "containers": 1,
+      "note": "P=40 after the read-only volume mount; Modal served an A100-SXM4-80GB for this A100-40GB request",
+      "actual": {
+        "modal_wall_s": 220.9,
+        "est_usd": 0.19,
+        "basis": "220.9 s x $3.13/h; image build time not included",
+        "result": "bench/results/modal-power-a100-40gb-20261121T175943Z.json"
+      }
     }
-  ]
+  ],
+  "actual_total_usd": 11.14,
+  "actual_total_basis": "sum of per-entry actuals (container wall time x $3.13/h); ESTIMATE, not a Modal invoice; excludes image builds"
 }
