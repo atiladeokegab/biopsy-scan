@@ -26,8 +26,9 @@ sys.path.insert(0, str(ROOT))  # python -I drops the cwd
 import pandas as pd  # noqa: E402
 
 NAMES = {"charville": "Charville", "upmc": "UPMC"}
-# The power grid describes study designs, not a discovery search, so it reads both sides of the locked
-# UPMC split (core/heldout.py); the only caller allowed to, and every grid records it in meta.
+# The cohort block (marker counts) describes study designs, not a discovery search, so it reads both sides of
+# the locked UPMC split (core/heldout.py); the only caller allowed to. meta records it apart from the split the
+# simulation results were drawn from, which comes from the results' own split column ("unknown" when absent).
 SPLIT = "all"
 REGION_LINES = (1, 2, 4, 8)
 SOURCE = ("source_n", "source_events", "source_regions")  # region_um is kept in meta when supplied
@@ -113,6 +114,16 @@ def _point(r, where):
     return p
 
 
+def input_split(df: pd.DataFrame) -> str:
+    """The split the simulation results were drawn from, as their own split column states it."""
+    if "split" not in df.columns or df.split.isna().all():
+        return "unknown"  # a legacy table without provenance: never claimed as any split
+    values = df.split.drop_duplicates()
+    if len(values) != 1 or values.iloc[0] not in ("discovery", "locked", "all"):
+        raise ValueError(f"results state split {sorted(map(str, values))}; need one of discovery, locked, all")
+    return str(values.iloc[0])
+
+
 def build_grid(df: pd.DataFrame, cohort: dict, max_regions: int, *, cohort_key: str,
                hr: float | None = None, measured: bool = False, source_name: str = "atlas results") -> dict:
     missing = [c for c in NEED if c not in df.columns]
@@ -169,7 +180,8 @@ def build_grid(df: pd.DataFrame, cohort: dict, max_regions: int, *, cohort_key: 
         note += " Marked SYNTHETIC until the full atlas run on the real cohort."
     axes = {k: _axis([p[k] for p in points]) for k in ("patients", "regions", "fov_um", "miscall")}
     order = lambda p: tuple(axes[k].index(p[k]) for k in axes)  # noqa: E731
-    meta = {"method": METHOD, "source": source_name, "split": SPLIT, "model": model, "region_lines": lines,
+    meta = {"method": METHOD, "source": source_name, "cohort_split": SPLIT, "input_split": input_split(df),
+            "model": model, "region_lines": lines,
             "max_regions_per_patient": max_regions, "cohorts": {cohort_key: facts},
             "all_regions_points": all_regions, "points_off_region_lines": dropped}
     return {"schema": "preflight-grid/1", "source": "MEASURED" if measured else "SYNTHETIC", "note": note,
