@@ -38,6 +38,7 @@
    "units": 24,
    "unmapped_regions": 6
   },
+  "patient_events": 27,
   "patients": 80,
   "regions": 308,
   "regions_mapped": 302,
@@ -184,7 +185,7 @@
  ],
  "rule": "core.cohorts.upmc_patient_ids: the case number where present; an NA region is T:<clinical tuple> when no case-numbered region shares it; conflicts are unmapped and listed",
  "seed": 20261121,
- "sha256": "f8b2437f622e488bc5b0e51c770dd718f57bfb0002b95f630e984d5f7f301eaa",
+ "sha256": "5e42680bc79543732e96387881e9fc7150ee351ce650262730bd373e7e9ea467",
  "stratified_by": "survival_status",
  "unit": "clinical tuple: status|primary_outcome|recurred|hpvstatus|survival_status|survival_day"
 }

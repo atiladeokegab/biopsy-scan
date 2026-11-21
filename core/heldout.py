@@ -63,6 +63,7 @@ def build(labels: Path, seed: int = SEED, fraction: float = FRACTION) -> dict:
             "patients": int(pid[mapped].nunique()),
             "regions_mapped": int(mapped.sum()),
             "regions_unmapped": int((~mapped).sum()),
+            "patient_events": int(pid[mapped & (lab.survival_status == "1")].nunique()),
             "units": len(units),
             "strata": strata,
             "locked": side(lock),
