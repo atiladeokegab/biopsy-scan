@@ -68,7 +68,31 @@ runs to separate the two effects.
 1. Set `OMP_WAIT_POLICY=PASSIVE`, or `NUMBA_THREADING_LAYER=workqueue`, for every Numba run on a shared machine (MEASURED: 2.48 s against 8.72 s, and 5.02 s against 11.96 s, per study at 8 threads).
 2. Or run Numba with 1 thread per study and spread whole studies across cores (MEASURED: 5.35 s against 21.7 s, and 4.45 s against 7.29 s, per study at 1 thread).
 3. Batch a study's 291 regions into one `prange` call, so each study pays one fork-join instead of 291 (ESTIMATE: not built).
-4. Re-run `bench/real_cpu.py` with fix 1 on a quiet host (load below 8) before quoting any CPU speed-up (ESTIMATE). The ladder's 8-thread rows were taken at load 10 to 26 with active waiting, so they describe the scheduler, not the kernel.
+4. Re-run `bench/real_cpu.py` with fix 1 on a quiet host (load below 8) before quoting any 100-study CPU speed-up (ESTIMATE). The per-study comparison has now been rerun on a dedicated host; see below. The ladder's 8-thread rows were taken at load 10 to 26 with active waiting, so they describe the scheduler, not the kernel.
 
 The absolute seconds here are not comparable with `cpu-ladder.json` because the load differed.
 Only the paired ratios within a row are.
+
+## Quiet-host rerun on Modal
+
+`bench/modal_quiet_cpu.py` reran the same comparison on a dedicated Modal container: 8 cores, 16 GiB,
+no GPU. It used the same worker, design and seeds (warm-up seed 0, timed seeds 1 and 2). There
+were 5 interleaved rounds; each round started one fresh process per Numba mode, in rotated order.
+The raw data is in `bench/results/modal-quiet-cpu-20261121T180327Z.json`. Each cell below is the median over 10 studies, with the range.
+
+| Numba mode, 8 threads | Numba s/study | NumPy s/study (same process) | Numba / NumPy | Empty launch |
+|---|---|---|---|---|
+| omp, default (active wait) | 0.76 (0.70 to 0.81) | 3.12 (2.87 to 4.75) | 0.24 (0.16 to 0.26) | 13 µs |
+| omp, `OMP_WAIT_POLICY=PASSIVE` | 1.13 (0.97 to 1.23) | 3.09 (2.85 to 3.41) | 0.36 (0.31 to 0.40) | 101 µs |
+| workqueue | 1.22 (1.14 to 1.27) | 3.00 (2.88 to 3.42) | 0.40 (0.35 to 0.42) | 227 µs |
+
+All of these are MEASURED. On a host with no competing load, Numba with 8 threads was about
+4 times faster than NumPy per study in every mode, and parity held in every study. The default
+active wait was the fastest: with no competition for the cores, spinning costs nothing and
+hands work over quickest. That confirms the cause above. Active waiting is the best choice on a
+dedicated host and the worst on an oversubscribed one. PASSIVE is the safe default when the host is shared.
+
+The container runs under Modal's sandbox, which reports a load average of 0 and hides the CPU
+model. "Quiet" therefore means 8 dedicated cores, not an observed idle host (MEASURED: Numba's
+range across 10 studies was 11% to 23% of the median, by mode). The run cost about $0.05 of container
+time, logged in `bench/results/modal-spend.json`.
