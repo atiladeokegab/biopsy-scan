@@ -14,7 +14,7 @@ Every number in this README carries one label: **MEASURED**, **ESTIMATE**, **SYN
 
 ## The problem
 
-After surgery for head and neck cancer, about half of patients relapse. The choice of radiotherapy, chemotherapy or watching still rests mostly on stage and margins. The Helsinki study behind MultivisionDx (Punovuori et al., *Cell* 2024) showed the tissue knows more. Partial-EMT tumour cells surrounded by immune-rich stroma meant about 90% five-year survival. The same cells surrounded by fibroblasts meant about 21%. Stage cannot see that. The arrangement of cells can.
+After surgery for head and neck cancer, about half of patients relapse. The choice of radiotherapy, chemotherapy or watching still rests mostly on stage and margins. The Helsinki study behind MultivisionDx (Punovuori et al., *Cell* 2024; [code](https://github.com/WickstromLab/Punovuori-et-al.-Cell-2024)) showed the tissue knows more. Partial-EMT tumour cells surrounded by immune-rich stroma meant about 90% five-year survival. The same cells surrounded by fibroblasts meant about 21%. Stage cannot see that. The arrangement of cells can.
 
 Finding a pattern like that takes enough patients. Real cohorts are small:
 
@@ -27,20 +27,25 @@ A lab that trusts the formula images 200 patients and most likely finds nothing.
 
 The plan has two halves. **Decode** finds the biomarker in 40-marker fluorescence. **Translate** turns it into one or two stains a hospital lab can run. The full plan is the founder's "Rebuilding the MultivisionDx Pipeline on GPUs". The parts buildable by code freeze are proposed as spec change C-003 (PR #60), which is **not yet approved**.
 
+The Helsinki team examined 18 compound signatures. Preflight searches 3,780 patterns: 630 neighbourhood patterns in grammar v1, plus protein, size and stroma channels in v2.
+
+One screen of 3,780 patterns fits on a laptop. The GPU load is the simulation around it: thousands of simulated studies, each re-imaged cell by cell from real tissue, and each running its own screen with 10,000 shuffles. The screen is the per-study kernel, batched across studies. The fleet spreads the studies across GPUs.
+
 We build it twice and compare:
 
 | | Implementation A: the CPU baseline | Implementation B: the GPU build |
 |---|---|---|
-| Re-imaging studies | What a lab runs today (rung 0): per study, a fresh cKDTree recount and 1,000 permutations on one core | Numba and CUDA kernels that give the same output cell for cell; studies sharded across GPUs |
-| Finding candidates | One statsmodels PHReg Cox fit per candidate, on all CPU cores | Fit once, then score every candidate as one matrix product |
+| Re-imaging each study | What a lab runs today (rung 0): per study, a fresh cKDTree recount and 1,000 permutations on one core | Numba and CUDA kernels that give the same output cell for cell |
+| Screening each study | One statsmodels PHReg Cox fit per pattern, on all CPU cores | Fit once, then score all 3,780 patterns as one matrix product |
 | Honest correction | The same shuffles, run on all CPU cores | 10,000 shuffles as one matrix product, maximum taken on the fly |
+| Thousands of studies | One after another | Batched on each GPU, and sharded across GPUs by the fleet |
 
 Speed-ups count only at equal output. Re-imaging ratios are against rung 0. A GPU screen ratio is against the same statistic and the same shuffles on all CPU cores. The full-fit comparison with Implementation A is reported as a workflow comparison, not a speed-up.
 
 **Decode, in plain words:**
 
 1. **R1. Every radius for the price of one.** Build each cell's neighbour list once at the largest radius, sorted by distance. Every smaller radius is a running total.
-2. **R2. Every candidate is a column.** A candidate is a cell state, a neighbourhood and a threshold. Each becomes one column of a patients-by-candidates matrix, so choosing a cut-off is covered by the same correction.
+2. **R2. Every candidate is a column.** A candidate is a cell state, a neighbourhood and a threshold. Each becomes one column of a patients-by-candidates matrix: 3,780 columns today. So choosing a cut-off is covered by the same correction.
 3. **R3. Fit once, score everything.** Fit the clinical-only survival model once. Each candidate's score is then one matrix-vector product.
 4. **R4. 10,000 shuffles as one matrix product.** Westfall–Young maxT asks how often the best shuffled candidate beats the real one. All shuffles become one product, streamed in blocks.
 5. **R5. The smallest panel.** Try every one- and two-marker panel (820 with UPMC's 40 markers) and score each on held-out folds.
@@ -51,7 +56,7 @@ Speed-ups count only at equal output. Re-imaging ratios are against rung 0. A GP
 1. **Distil the panel.** Find the fewest markers that keep the biomarker's predictive power, scored as held-out C-index retained.
 2. **Simulate each stain format.** Recompute the biomarker as single-slide IHC, as two serial sections misaligned by 0–100 µm, and on 100–200 µm tiles. This tells a lab whether two routine slides are enough.
 
-**Validation.** UPMC head and neck patients are split before any search. The locked patients are opened once, after the search is frozen, to score the Helsinki pattern (pEMT tumour bordered by fibroblasts). HANCOCK, a cohort with real brightfield IHC, is the next validation step; it is not claimed by freeze.
+**Validation.** Every real-data result here is exploratory: the outcomes had already been seen. UPMC cannot carry a survival claim. Strict case identity gives 50 patients and 10 events (16 and 4 locked); grouping by clinical record gives 80 patients and 27 events (23 and 8 locked). UPMC still hosts the Helsinki test, because pEMT is a head and neck signature and Charville is colorectal. Its patients are split before any search. The locked patients are opened once, after the search is frozen, to score the Helsinki pattern (pEMT tumour bordered by fibroblasts), and that result first reports Preflight's own power for so few patients. HANCOCK, a cohort with real brightfield IHC, is the next validation step; it is not claimed by freeze.
 
 ## Status
 
@@ -78,8 +83,8 @@ Each row has one status. **BUILT**: merged on `integration`. **IN REVIEW**: open
 | UPMC patient-level loader and locked held-out split (R-13) | IN REVIEW | #62 |
 | Helsinki candidate defined before the search (R-16 pre-registration) | IN REVIEW | #61 |
 | Implementation A analysis baseline: per-candidate PHReg on all cores (R-14) | PLANNED | C-003 |
-| R2–R4 on GPU: clinical-adjusted score screen, 10,000-shuffle maxT as one product, a valid adjusted null (R-15) | PLANNED | C-003 |
-| Rediscovery of the Helsinki pattern, scored on the locked UPMC patients (R-16) | PLANNED | C-003 |
+| R2–R4 on GPU as the per-study kernel: clinical-adjusted score screen, 10,000-shuffle maxT as one product, a valid adjusted null (R-15) | PLANNED | C-003 |
+| Rediscovery of the Helsinki pattern on the locked UPMC patients, with Preflight's power for that set first; exploratory, no survival claim (R-16) | PLANNED | C-003 |
 | R5 and Translate 1–2: minimal panels and IHC format simulation on UPMC (R-17) | PLANNED | C-003 |
 | The same screen rerun on Charville (R-18) | PLANNED | C-003 |
 | R6: learned features and knockoffs | NOT CLAIMED | |
