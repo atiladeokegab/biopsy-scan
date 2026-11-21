@@ -75,7 +75,7 @@ export function createRace(cpuCanvas, gpuCanvas, out) {
       // GPU: studies land in warp-sized batches of 32, sweeping left to right, all within GPU_SHOW_MS.
       const g = Math.min(n, Math.ceil((t / GPU_SHOW_MS) * n / 32) * 32);
       for (; gpuDone < g; gpuDone++) tile(gpu, gpuDone, found[gpuDone] ? HIT : MISS);
-      // CPU: one study after another; on the GPU's clock slowed by the measured ratio, else a fixed display pace.
+      // CPU: all cores; on the GPU's clock slowed by the measured ratio, else a fixed display pace.
       const tc = Math.min(t, CPU_SHOW_MS);
       const c = Math.min(n, Math.floor(measured ? (tc / (GPU_SHOW_MS * ratio)) * n : tc / UNMEASURED_CPU_MS));
       for (; cpuDone < c; cpuDone++) tile(cpu, cpuDone, found[cpuDone] ? HIT : MISS);
