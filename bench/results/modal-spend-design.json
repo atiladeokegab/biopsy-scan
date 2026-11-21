@@ -26,7 +26,26 @@
         "basis": "upper bound: 3 containers x 13 min; the gpu arm died at kernel compile in ~2 min",
         "note": "FAILED smoke: _study_moments used min/max (fixed in the next commit); the numba arm's forked workers aborted (GNU OpenMP after the parent's JIT warm-up) and looped until the app was stopped at 18:51Z"
       }
+    },
+    {
+      "utc": "2026-11-21T18:52Z",
+      "run": "modal-design 20/stream, arms ['lab', 'numba', 'gpu']",
+      "containers": 3,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 20.0,
+      "est_usd": 2.46,
+      "basis": "1860 s ceiling x per-arm $/h {'lab': 0.8887679999999998, 'numba': 0.8887679999999998, 'gpu': 2.987568}",
+      "source_commit": "7269abc2de5aeec7cf0e8235955b7ea06c4de287",
+      "container_class": "lab and numba without a GPU (smoke only)",
+      "actual": {
+        "modal_wall_s": 145.6,
+        "est_usd": 0.193,
+        "basis": "each container x local wall (an upper bound: includes queueing)",
+        "result": "bench/results/modal-design-20261121T185222Z.json"
+      }
     }
   ],
-  "running_total_usd": 1.03
+  "running_total_usd": 1.223
 }
