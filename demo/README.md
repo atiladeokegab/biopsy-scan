@@ -106,6 +106,32 @@ The checker enforces these rules:
 }
 ```
 
+## `data/baseline.json` (`preflight-baseline/1`): the baseline-vs-screen panel, hand-filled
+
+One row per method and machine, all timing the same `task`. To fill a PENDING row, set its
+`label`, `seconds`, `hardware` and `cores` or `gpu`, and keep `source` pointing at the PR or run.
+
+```jsonc
+{
+  "schema": "preflight-baseline/1",
+  "task": "Screen all 3,780 Charville v2 candidate patterns for a survival link",
+  "rows": [{
+    "method": "Standard: one Cox fit per candidate (statsmodels PHReg)",
+    "role": "baseline",          // "baseline" (the standard method) or "screen" (Preflight)
+    "label": "MEASURED",         // MEASURED, ESTIMATE, SYNTHETIC, UNMEASURED or PENDING
+    "seconds": 67.1,             // null when PENDING or UNMEASURED; required otherwise
+    "hardware": "AMD EPYC 7B13", // required when timed
+    "cores": 8,                  // cores, or "gpu": "NVIDIA L4"; one is required when timed
+    "gpu": null,
+    "source": "PR #64 (build-10)" // always required: where the number came from
+  }]
+}
+```
+
+The checker rejects a number without a label or source, and a PENDING or UNMEASURED row with a
+number. The page draws bars only for timed rows; a screen row gets "N× faster than the standard"
+only when it and the fastest baseline row are both MEASURED.
+
 ## How the page picks a grid point
 
 The slider ranges are:

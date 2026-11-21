@@ -1,0 +1,46 @@
+{
+  "schema": "preflight-baseline/1",
+  "task": "Screen all 3,780 Charville v2 candidate patterns for a survival link",
+  "rows": [
+    {
+      "method": "Standard: one Cox fit per candidate (statsmodels PHReg)",
+      "role": "baseline",
+      "label": "MEASURED",
+      "seconds": 67.1,
+      "hardware": "AMD EPYC 7B13",
+      "cores": 8,
+      "gpu": null,
+      "source": "PR #64 (build-10); the VM was loaded"
+    },
+    {
+      "method": "Standard: one Cox fit per candidate (statsmodels PHReg)",
+      "role": "baseline",
+      "label": "MEASURED",
+      "seconds": 222.8,
+      "hardware": "AMD EPYC 7B13",
+      "cores": 1,
+      "gpu": null,
+      "source": "PR #64 (build-10); the VM was loaded"
+    },
+    {
+      "method": "Preflight screen, CPU",
+      "role": "screen",
+      "label": "PENDING",
+      "seconds": null,
+      "hardware": null,
+      "cores": null,
+      "gpu": null,
+      "source": "R-15 (build-9)"
+    },
+    {
+      "method": "Preflight screen, GPU on Modal",
+      "role": "screen",
+      "label": "PENDING",
+      "seconds": null,
+      "hardware": null,
+      "cores": null,
+      "gpu": null,
+      "source": "build-modal"
+    }
+  ]
+}

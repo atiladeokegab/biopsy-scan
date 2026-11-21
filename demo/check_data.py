@@ -1,4 +1,4 @@
-"""Check demo/data/{grid,tissue,bench}.json against the schemas in demo/README.md.
+"""Check demo/data/{grid,tissue,bench,baseline}.json against the schemas in demo/README.md.
 
 Run: python3 -I demo/check_data.py [data_dir]. bench.json is optional (absent = UNMEASURED).
 Exit 0 when every present file is valid; otherwise it names the first problem.
@@ -86,8 +86,36 @@ def check_bench(b, w):
     return f"status {b['status']}"
 
 
+LABELS = ("MEASURED", "ESTIMATE", "SYNTHETIC", "UNMEASURED", "PENDING")
+
+
+def check_baseline(b, w):
+    need(b.get("schema") == "preflight-baseline/1", w, "schema must be 'preflight-baseline/1'")
+    need(isinstance(b.get("task"), str) and b["task"].strip(), w, "task: string, the job every row times")
+    rows = b.get("rows")
+    need(isinstance(rows, list) and rows, w, "rows: non-empty list")
+    for i, r in enumerate(rows):
+        at = f"rows[{i}]"
+        need(isinstance(r.get("method"), str) and r["method"].strip(), w, f"{at}.method: string")
+        need(r.get("role") in ("baseline", "screen"), w, f"{at}.role: 'baseline' or 'screen'")
+        # A number never travels without its label and its source.
+        need(r.get("label") in LABELS, w, f"{at}.label must be one of {LABELS}")
+        need(isinstance(r.get("source"), str) and r["source"].strip(), w, f"{at}.source: string, required")
+        s = r.get("seconds")
+        if r["label"] in ("PENDING", "UNMEASURED"):
+            need(s is None, w, f"{at}: a {r['label']} row has seconds: null, never a number")
+            continue
+        need(num(s) and s > 0, w, f"{at}.seconds: positive number when {r['label']}")
+        need(isinstance(r.get("hardware"), str) and r["hardware"].strip(), w, f"{at}.hardware: string when timed")
+        cores, gpu = r.get("cores"), r.get("gpu")
+        need((isinstance(cores, int) and cores > 0) or (isinstance(gpu, str) and gpu.strip()), w,
+             f"{at}: cores (positive int) or gpu (string) when timed")
+    timed = sum(r["seconds"] is not None for r in rows)
+    return f"{len(rows)} rows, {timed} timed"
+
+
 for name, check, required in (("grid.json", check_grid, True), ("tissue.json", check_tissue, True),
-                              ("bench.json", check_bench, False)):
+                              ("bench.json", check_bench, False), ("baseline.json", check_baseline, True)):
     path = DIR / name
     if not path.exists():
         need(not required, path, "missing")
