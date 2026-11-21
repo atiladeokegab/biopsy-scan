@@ -145,6 +145,13 @@
       "est_usd": 0.05,
       "basis": "CPU only, 8 cores + 16 GiB, 332 s container time, ~$0.047 at sourced rates, $3 cap; result bench/results/modal-quiet-cpu-20261121T180327Z.json; ledger bench/results/modal-spend-numba.json (PR #94)",
       "running_total_usd": 35.3
+    },
+    {
+      "utc": "2026-11-21T19:10Z",
+      "run": "OTHER AGENT, logged for the lead: Atlas PR45 continuation (app ap-Ls4TsdCuuxTlgBBF6xUaNu)",
+      "est_usd": 0.9018,
+      "basis": "estimated_cpu_memory_usd in atlas/results/production/modal-execution.json at 04ffa170; CPU/RAM only, excludes image builds, storage and network; invoice not verified. The earlier 'Atlas T-1219 CPU resume' entry (<= $3.03) names no app id, so an overlap cannot be ruled out from this ledger",
+      "running_total_usd": 36.2
     }
   ],
   "container_usd_per_hour_H100": 4.58,
