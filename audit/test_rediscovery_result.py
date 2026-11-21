@@ -183,6 +183,17 @@ def test_the_cli_opens_the_locked_set_once_whatever_the_output_name(cli):
     assert cli["reads"] == ["discovery", "locked"] and not (cli["dir"] / "b.json").exists()
 
 
+def test_a_bad_output_path_never_consumes_the_opening(cli):
+    """Review round 2 on #81: a missing --out parent used to burn the opening with no result, then block the retry."""
+    (cli["dir"] / "a_file").write_text("")
+    assert cli["run"]("--events", "4", "--out", str(cli["dir"] / "a_file" / "r.json")) == 2  # parent is a file
+    assert cli["reads"] == ["discovery"] and not list(cli["dir"].glob("upmc-locked-opened.*"))
+    nested = cli["dir"] / "new" / "dir" / "r.json"
+    assert cli["run"]("--events", "4", "--out", str(nested)) == 0  # a missing parent is created
+    assert json.loads(nested.read_text())["locked"]["status"] == "UNMEASURED"
+    assert cli["reads"] == ["discovery", "discovery", "locked"]
+
+
 def test_the_locked_set_stays_closed_without_a_measured_discovery_rank(cli, monkeypatch):
     monkeypatch.setattr(rs, "rank_on_discovery", lambda *a: {"status": "UNMEASURED", "reason": "no stats.screen"})
     assert cli["run"]("--events", "4", "--out", str(cli["dir"] / "r.json")) == 2
@@ -321,3 +332,6 @@ def test_hpv_conflicts_and_invalid_labels_are_refused(tmp_path):
         rs._hpv(cells, tmp_path)
     (tmp_path / "upmc_labels.csv").write_text("region_id,hpvstatus\nr1,1\nr2,NA\n")
     assert rs._hpv(cells, tmp_path)[0, 0] == 1.0
+    (tmp_path / "upmc_labels.csv").write_text("region_id,hpvstatus\nr1,1\nr1,0\nr2,1\n")  # last row used to win
+    with pytest.raises(ValueError, match="duplicate region_id"):
+        rs._hpv(cells, tmp_path)

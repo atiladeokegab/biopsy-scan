@@ -286,6 +286,9 @@ def _hpv(cells: dict, data_dir) -> np.ndarray:
     bad = sorted(set(lab.hpvstatus) - {"0", "1", "NA"})
     if bad:
         raise ValueError(f"hpvstatus must be 0, 1 or NA; found {bad}")
+    dup = sorted(set(lab.region_id[lab.region_id.duplicated()]))
+    if dup:
+        raise ValueError(f"duplicate region_id rows in the labels: {dup[:5]}")
     by_region = dict(zip(lab.region_id, lab.hpvstatus))
     C = np.full((len(cells["time"]), 1), np.nan)
     for r, p in zip(cells["region_names"], cells["patient_of_region"]):
@@ -369,16 +372,26 @@ def main(argv=None) -> int:
     record = {"code_sha": sha, "rule_sha256": RULE_SHA256, "manifest_sha256": manifest_sha,
               "design": APPROVED_SPLIT, "opened_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
               "discovery": discovery}
-    marker.parent.mkdir(parents=True, exist_ok=True)
-    with open(marker, "x") as f:  # atomic create: a second opening fails here, before any locked read
-        f.write(json.dumps(record, indent=1, allow_nan=False) + "\n")
+    try:  # reserve the result file first: a bad --out must not consume the once-only opening
+        a.out.parent.mkdir(parents=True, exist_ok=True)
+        out = open(a.out, "x")
+    except OSError as exc:
+        return _refuse(f"cannot reserve --out {a.out} ({exc}); the locked set stays closed")
+    try:
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        with open(marker, "x") as f:  # atomic create: a second opening fails here, before any locked read
+            f.write(json.dumps(record, indent=1, allow_nan=False) + "\n")
+    except OSError as exc:
+        out.close()
+        a.out.unlink()
+        return _refuse(f"cannot create the opening record {marker} ({exc})")
     locked = score_locked(load("upmc", split="locked"), RULE, RULE_SHA256, a.events)
     result = {"cohort": "upmc", "code_sha": sha, "rule_sha256": RULE_SHA256, "manifest_sha256": manifest_sha,
               "opening_record": marker.name, "label": LABEL, "discovery": discovery, "locked": locked,
               "charville_top_hit": upmc_marker_check(CHARVILLE_TOP_HIT)}
     text = json.dumps(result, indent=1, allow_nan=False) + "\n"
-    with open(a.out, "x") as f:
-        f.write(text)
+    with out:
+        out.write(text)
     print(text)
     return 0
 
