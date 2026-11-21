@@ -114,7 +114,7 @@ def _finish(xp, U, Ixx, Icx, M, a, C):
     V = Ixx
     if C.shape[1]:
         V = V - (Icx * _solve(xp, _rmul(_cross(xp, C, M, a), C), Icx)).sum(1)
-    good = V > 1e-12 * xp.maximum(1.0, Ixx)  # roundoff floor: constant columns give 0
+    good = V > 1e-10 * Ixx  # relative roundoff floor, so z does not depend on X's units
     z = xp.where(good, U / xp.sqrt(xp.where(good, V, 1.0)), 0.0)
     return U, xp.where(good, V, 0.0), z
 
@@ -216,6 +216,19 @@ def _fingerprint(a):
     return hashlib.sha256(np.ascontiguousarray(a, dtype=np.float64).tobytes()).hexdigest()
 
 
+def _centre_within_strata(Xg, codes):
+    """U and I are invariant to a per-stratum shift of X; centring within strata keeps the moments
+    free of cancellation, and a column constant within a stratum becomes exactly 0 there."""
+    out = np.empty_like(Xg)
+    for code in np.unique(codes):
+        ix = codes == code
+        sub = Xg[ix]
+        centred = sub - sub.mean(0)
+        centred[:, np.ptp(sub, axis=0) == 0] = 0.0
+        out[ix] = centred
+    return out
+
+
 def _groups(xp, X, C, codes, keep_all, events):
     """Candidates grouped by analysis mask: (columns, rows, device X, device C, device same) per mask."""
     masks, inverse = np.unique(keep_all.T, axis=0, return_inverse=True)
@@ -225,8 +238,7 @@ def _groups(xp, X, C, codes, keep_all, events):
         rows = np.flatnonzero(keep)
         if len(rows) < 2 or not events[:, rows].any():
             continue  # no information: U = V = z = 0
-        Xg = X[np.ix_(rows, cols)]
-        Xg = Xg - Xg.mean(0)  # U and I are shift-invariant; centring keeps roundoff small
+        Xg = _centre_within_strata(X[np.ix_(rows, cols)], codes[rows])
         Cg = C[rows]
         Cg = Cg[:, np.ptp(Cg, axis=0) > 0] if len(Cg) else Cg  # a constant covariate has no effect
         Cg = Cg - Cg.mean(0)

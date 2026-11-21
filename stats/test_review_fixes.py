@@ -55,7 +55,7 @@ def test_stratum_offsets_do_not_change_z():
     t, e = rng.exponential(size=n), (rng.random(n) < 0.7).astype(float)
     a = screen(X, t, e, None, s, n_perm=0, backend="numpy")
     b = screen(X + 1e8 * s[:, None], t, e, None, s, n_perm=0, backend="numpy")
-    np.testing.assert_allclose(b["z"], a["z"], rtol=1e-9)
+    np.testing.assert_allclose(b["z"], a["z"], rtol=1e-7)  # the shifted input itself keeps ~8 digits
 
 
 def test_resample_identity_does_not_depend_on_block_size():
@@ -96,3 +96,12 @@ def test_observed_monotone_clinical_fit_is_rejected_not_used():
     t, e = np.arange(1.0, 7.0), np.array([1, 1, 0, 0, 0, 0], dtype=float)
     with pytest.raises(ValueError, match="no finite maximum"):
         screen(np.random.default_rng(0).normal(size=(6, 2)), t, e, C, n_perm=0, backend="numpy")
+
+
+def test_column_constant_within_strata_scores_exactly_zero():
+    rng = np.random.default_rng(6)
+    s = rng.integers(0, 3, 30)
+    X = np.column_stack([0.1 * s + 0.3, rng.normal(size=30)])  # column 0 is a pure stratum offset
+    t, e = rng.exponential(size=30), (rng.random(30) < 0.7).astype(float)
+    out = screen(X, t, e, None, s, n_perm=0, backend="numpy")
+    assert out["z"][0] == 0.0 and out["V"][0] == 0.0 and out["z"][1] != 0.0
