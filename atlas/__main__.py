@@ -5,8 +5,9 @@ import hashlib
 import itertools
 import json
 import logging
+import multiprocessing
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import numpy as np
@@ -28,6 +29,38 @@ from .artifacts import (
 )
 from .bank import build_bank
 from .runner import DEFAULT_BUDGET, design_id, run_point
+
+_GROUP_INPUTS = None
+
+
+def run_group(group):
+    # Forked workers inherit immutable tissue/CSR arrays without serializing them.
+    cells, reference, fingerprint, out, n, nested_points, cohort, total, args, budget = _GROUP_INPUTS
+    bank = (build_bank(cells, group[0][1], args.bank_draws, args.seed, args.cache,
+                       batch_size=budget["batch"], grammar_hash=fingerprint) if args.bank_draws else None)
+    completed = []
+    for i, original in group:
+        design = {**original, "acquisition_bank": bank} if bank is not None else original
+        marker = out / "points" / f"{design_id(design)}.parquet"
+        evidence = out / "studies" / marker.name
+        if marker.exists() and evidence.exists():
+            summary = pd.read_parquet(marker).iloc[0].to_dict()
+            if bank is None or summary["bank_hash"] == bank["hash"]:
+                completed.append((i, summary))
+                continue
+        start = time.perf_counter()
+        point_budget = {**budget, "nested": budget["nested"] if i in nested_points else 0,
+                        "direct": budget["direct"] if i in nested_points else 0}
+        summary, trials, _ = run_point(cells, reference, design, hr=args.hr, budget=point_budget, seed=args.seed)
+        summary.update(grammar_hash=fingerprint, source_extrapolation=design["patients"] > n,
+                       resample_ratio=design["patients"] / n, runtime_s=time.perf_counter() - start,
+                       bank_load_or_build_s=0 if bank is None else bank["load_or_build_s"])
+        save_point(summary, trials, out)
+        completed.append((i, summary))
+        print(json.dumps({"cohort": cohort, "point": i + 1, "of": total,
+                          "power": summary["power"], "fwer": summary["fwer"],
+                          "runtime_s": summary["runtime_s"]}), flush=True)
+    return completed
 
 
 def reference_matrix(cells, path, metadata):
@@ -60,7 +93,7 @@ def main(argv=None):
     parser.add_argument("--seed", type=int, default=20261121)
     parser.add_argument("--backend", choices=["numpy", "cpu", "gpu"], default="cpu")
     parser.add_argument("--bank-draws", type=int, default=64, help="finite-bank approximation; 0 uses fresh direct imaging")
-    parser.add_argument("--workers", type=int, default=1, help="concurrent imaging groups; NumPy backend only")
+    parser.add_argument("--workers", type=int, default=1, help="forked imaging groups sharing source arrays; NumPy/Unix only")
     parser.add_argument("--out", type=Path, default=Path("atlas/results"))
     parser.add_argument("--cache", type=Path, default=Path("data/atlas-cache"))
     for name, value in DEFAULT_BUDGET.items():
@@ -68,6 +101,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.workers < 1 or (args.workers > 1 and args.backend != "numpy"):
         parser.error("workers must be positive; concurrent groups require backend numpy")
+    if args.workers > 1 and "fork" not in multiprocessing.get_all_start_methods():
+        parser.error("concurrent groups require Unix fork; use --workers 1 on this platform")
     if args.bank_draws != 0 and args.bank_draws < 2:
         parser.error("bank-draws must be 0 (direct) or >= 2")
     args.eps = list(dict.fromkeys(args.eps))
@@ -119,7 +154,7 @@ def main(argv=None):
             temporary.write_text(json.dumps({"run_id": run_id, **manifest}, indent=2) + "\n")
             temporary.replace(manifest_path)
         metadata["run_id"] = run_id
-        # Warm once before threads share the immutable neighbour arrays. Otherwise
+        # Warm once before workers share the immutable neighbour arrays. Otherwise
         # concurrent first acquisitions could build duplicate large source graphs.
         if args.workers > 1:
             L = layout(cells)
@@ -132,39 +167,12 @@ def main(argv=None):
             key = (design["regions_per_patient"], design["fov_um"], design["eps"])
             groups.setdefault(key, []).append((i, design))
 
-        total = len(designs)
-
-        def run_group(group, cells=cells, reference=reference, fingerprint=fingerprint, out=out,
-                      n=n, nested_points=nested_points, cohort=cohort, total=total):
-            # A bank is shared across N within this group and released on return.
-            bank = (build_bank(cells, group[0][1], args.bank_draws, args.seed, args.cache,
-                               batch_size=budget["batch"], grammar_hash=fingerprint) if args.bank_draws else None)
-            completed = []
-            for i, original in group:
-                design = {**original, "acquisition_bank": bank} if bank is not None else original
-                marker = out / "points" / f"{design_id(design)}.parquet"
-                evidence = out / "studies" / marker.name
-                if marker.exists() and evidence.exists():
-                    summary = pd.read_parquet(marker).iloc[0].to_dict()
-                    if bank is None or summary["bank_hash"] == bank["hash"]:
-                        completed.append((i, summary))
-                        continue
-                start = time.perf_counter()
-                point_budget = {**budget, "nested": budget["nested"] if i in nested_points else 0,
-                                "direct": budget["direct"] if i in nested_points else 0}
-                summary, trials, _ = run_point(cells, reference, design, hr=args.hr, budget=point_budget, seed=args.seed)
-                summary.update(grammar_hash=fingerprint, source_extrapolation=design["patients"] > n,
-                               resample_ratio=design["patients"] / n, runtime_s=time.perf_counter() - start,
-                               bank_load_or_build_s=0 if bank is None else bank["load_or_build_s"])
-                save_point(summary, trials, out)
-                completed.append((i, summary))
-                print(json.dumps({"cohort": cohort, "point": i + 1, "of": total,
-                                  "power": summary["power"], "fwer": summary["fwer"],
-                                  "runtime_s": summary["runtime_s"]}), flush=True)
-            return completed
-
+        global _GROUP_INPUTS
+        _GROUP_INPUTS = (cells, reference, fingerprint, out, n, nested_points, cohort, len(designs), args, budget)
         indexed = {}
-        with ThreadPoolExecutor(max_workers=args.workers) as executor:
+        pool = ThreadPoolExecutor if args.workers == 1 else ProcessPoolExecutor
+        options = {} if args.workers == 1 else {"mp_context": multiprocessing.get_context("fork")}
+        with pool(max_workers=args.workers, **options) as executor:
             futures = [executor.submit(run_group, group) for group in groups.values()]
             for future in as_completed(futures):
                 indexed.update(future.result())
