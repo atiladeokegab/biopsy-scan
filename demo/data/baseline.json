@@ -1,50 +1,58 @@
 {
   "schema": "preflight-baseline/1",
-  "task": "One design point: 1,000 simulated studies on real Charville tissue, end to end",
+  "task": "One design point on real Charville tissue: FWER and power from 1,000 simulated studies each, end to end",
   "rows": [
     {
       "id": "lab-cpu",
-      "method": "The lab way: a shuffle test in every study, all CPU cores",
+      "method": "The lab way: a 1,000-shuffle test in every study, 8 CPU cores",
       "role": "baseline",
-      "label": "PENDING",
-      "seconds": null,
-      "hardware": null,
-      "cores": null,
+      "label": "MEASURED",
+      "seconds": 1761.88,
+      "hardware": "Modal A100 + 8 cores + 64 GiB",
+      "cores": 8,
       "gpu": null,
-      "source": "build-modal"
+      "source": "bench/results/modal-design-20261121T194458Z.json",
+      "startup_s": 163.9,
+      "note": "2,000 studies; re-imaging 64.8% of compute"
     },
     {
       "id": "preflight-cpu",
-      "method": "Preflight: one calibrated threshold per design, CPU",
+      "method": "Preflight on 8 CPU cores (Numba): one calibrated threshold per design",
       "role": "screen",
-      "label": "PENDING",
-      "seconds": null,
-      "hardware": null,
-      "cores": null,
+      "label": "MEASURED",
+      "seconds": 375.26,
+      "hardware": "Modal A100 + 8 cores + 64 GiB",
+      "cores": 8,
       "gpu": null,
-      "source": "build-modal"
+      "source": "bench/results/modal-design-20261121T194458Z.json",
+      "startup_s": 224.6,
+      "note": "3,000 studies; re-imaging 98.0% of compute"
     },
     {
       "id": "gpu-1",
-      "method": "Preflight on 1 GPU",
+      "method": "Preflight on 1 A100: re-imaging and batched scoring",
       "role": "screen",
-      "label": "PENDING",
-      "seconds": null,
-      "hardware": null,
+      "label": "MEASURED",
+      "seconds": 2266.85,
+      "hardware": "Modal A100 + 8 cores + 64 GiB",
       "cores": null,
-      "gpu": null,
-      "source": "build-modal"
+      "gpu": "1x NVIDIA A100-SXM4-40GB",
+      "source": "bench/results/modal-design-20261121T194458Z.json",
+      "startup_s": 226.0,
+      "note": "3,000 studies; re-imaging 99.9% of compute"
     },
     {
-      "id": "gpu-16",
-      "method": "Preflight on 16 GPUs",
+      "id": "hybrid",
+      "method": "Preflight hybrid: re-imaging on 8 CPU cores feeding batched A100 scoring",
       "role": "screen",
-      "label": "PENDING",
-      "seconds": null,
-      "hardware": null,
-      "cores": null,
-      "gpu": null,
-      "source": "build-modal"
+      "label": "MEASURED",
+      "seconds": 377.67,
+      "hardware": "Modal A100 + 8 cores + 64 GiB",
+      "cores": 8,
+      "gpu": "1x NVIDIA A100-SXM4-40GB",
+      "source": "bench/results/modal-design-20261121T194458Z.json",
+      "startup_s": 222.3,
+      "note": "3,000 studies; re-imaging 99.6% of compute"
     }
   ],
   "workflow": {
@@ -129,5 +137,9 @@
         }
       ]
     }
-  ]
+  ],
+  "scope": {
+    "comparison": "Compute MEASURED on one container class (Modal A100 + 8 cores + 64 GiB); outcomes SYNTHETIC (atlas/simulation.py at 79a7792); FWER and power are ESTIMATE",
+    "calibration": "Lab: 1,000 within-strata shuffles in every study. Preflight lanes: one threshold from 1,000 independent calibration nulls, timed inside their lanes"
+  }
 }

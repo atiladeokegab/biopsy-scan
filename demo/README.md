@@ -115,13 +115,16 @@ The checker enforces these rules:
 
 ## `data/baseline.json` (`preflight-baseline/1`): the speed race, filled by `collect_race.py`
 
-Four rows, all timing the same `task`: one design point, 1,000 simulated studies on real Charville, end to end
-(demo-plan-v3, revision 16:58Z). Never edit a time by hand: `python3 -I demo/collect_race.py` (run by `make demo`
-and by Pages before every deploy) fills rows from `bench/results/*.json`. Only build-modal's `"kind": "design_point"`
-file (#75's `gpu/modal_app.py`; slots `a_lab_all_cores`, `b_ours_cpu_all_cores`, `c_ours_1_gpu`,
-`d_ours_n_gpu.runs["16"]`) fills the four rows (ids `lab-cpu`, `preflight-cpu`, `gpu-1`, `gpu-16`), and only when it
+Four rows, the four declared arms, all timing the same `task`: one design point on real Charville, FWER and power
+from 1,000 simulated studies each, end to end. There is no 16-GPU lane. Never edit a time by hand:
+`python3 -I demo/collect_race.py` (run by `make demo` and by Pages before every deploy) fills rows from
+`bench/results/*.json`. `bench/modal_design.py`'s four-arm file (arms `lab`, `numba`, `gpu`, `hybrid` on one container
+class) fills `lab-cpu`, `preflight-cpu`, `gpu-1` and `hybrid` only when it is MEASURED at 1,000 studies per stream
+with full parity; `seconds` is the arm's whole design-point compute and `startup_s` its outcome prep and adjacency.
+build-modal's `"kind": "design_point"` file (#75's `gpu/modal_app.py`; slots `a_lab_all_cores`,
+`b_ours_cpu_all_cores`, `c_ours_1_gpu`) can fill the first three rows, only when it
 says `"status": "MEASURED"`, `"studies": 1000` and carries its `scope`; a FAILED run, a 32-study trial or a generic
-`race` list is refused. `seconds` is in-container compute (`gpu-16`: the measured compute span across containers);
+`race` list is refused. `seconds` is in-container compute;
 start-up goes in `startup_s` and the threshold-and-calls step in `calls_s`, each printed apart and never counted.
 GPU lanes need `e_gpu_parity.exact_all_containers`. The file's `scope` (WORKFLOW comparison, EXPLORATORY
 calibration) is copied to `baseline.json` and printed above the race; `check_data` refuses timed rows without it.
