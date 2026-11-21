@@ -40,7 +40,8 @@
       0.0,
       0.0,
       0.0
-    ]
+    ],
+    "cores_note": "Modal reserved requested_cores (8.0); the container saw cpu_count 24 CPUs in its affinity mask. Numba ran 8 threads."
   },
   "neighbour_build_s": 70.731054224,
   "runs": [
@@ -2275,5 +2276,7 @@
     "started_utc": "2026-11-21T18:03:27.715303+00:00",
     "finished_utc": "2026-11-21T18:08:59.593252+00:00",
     "wall_s": 331.877949
-  }
+  },
+  "runner_commit": "061d64c77887581d9454666a4efd29c7807acdf7",
+  "source_commit_note": "Added after the run. The run used the worktree at source_commit (e02f185) with this runner still uncommitted; the runner file as run is byte-identical to runner_commit, and the worker, reimage/ and core/ are unchanged between the two commits. The runner now refuses to start on a dirty tracked tree."
 }

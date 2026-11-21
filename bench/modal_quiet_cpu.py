@@ -1,6 +1,10 @@
 """Quiet-host rerun of the Numba-vs-NumPy comparison on a dedicated 8-core Modal CPU container.
 
-    MODAL_PROFILE=<profile> uv run --with modal modal run bench/modal_quiet_cpu.py
+    DATA_DIR=<dir> MODAL_PROFILE=<profile> uv run --with modal modal run bench/modal_quiet_cpu.py
+
+DATA_DIR (default: data/ in the repo, as in core/cohorts.py) must hold charville_labels.csv and
+charville_cells.npz; both are copied into the image. Commit first: the run refuses a dirty tracked
+tree, so source_commit is exactly the code that ran, this runner included.
 
 Same code as bench/numba_negative.py (its worker is reused unchanged), same design and seeds.
 Five interleaved rounds; each round starts one fresh process per mode in rotated order. Each process
@@ -10,6 +14,7 @@ Writes bench/results/modal-quiet-cpu-<utc>.json. Imports only modal and the stan
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -18,7 +23,7 @@ import modal
 
 REPO = Path(__file__).resolve().parents[1]
 APP_DIR, DATA_DIR = "/root/preflight", "/data"
-LOCAL_DATA = Path("/home/atilade/code/sota-parallelism-nov21/.worktrees/r14-cpu-baseline/data")
+LOCAL_DATA = Path(os.environ.get("DATA_DIR", REPO / "data"))  # in the container this is /data, already holding the copies
 CORES, MEMORY_MIB, TIMEOUT_S, ROUNDS = 8.0, 16384, 2700, 5
 MODES = {  # every mode pins BLAS/OMP pools to 1 and asks for 8 Numba threads unless it says otherwise
     "numba-8-omp-default": {"NUMBA_NUM_THREADS": "8", "NUMBA_THREADING_LAYER": "omp"},
@@ -92,10 +97,14 @@ def rerun() -> dict:
 
 @app.local_entrypoint()
 def main():
+    git = lambda *a: subprocess.run(["git", *a], cwd=REPO, capture_output=True, text=True, check=True).stdout.strip()
+    git("ls-files", "--error-unmatch", "bench/modal_quiet_cpu.py")  # the runner itself must be committed
+    if git("status", "--porcelain", "--untracked-files=no"):
+        raise SystemExit("commit or stash tracked changes first: source_commit must be the code that runs")
+    commit = git("rev-parse", "HEAD")
     start = datetime.now(timezone.utc)
     out = rerun.remote()
     end = datetime.now(timezone.utc)
-    commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=REPO, capture_output=True, text=True).stdout.strip()
     out.update({"status": "MEASURED", "source_commit": commit, "harness": "bench/numba_negative.py worker, unchanged",
                 "modal": {"app": "preflight-quiet-cpu", "cpu": CORES, "memory_mib": MEMORY_MIB,
                           "started_utc": start.isoformat(), "finished_utc": end.isoformat(),
