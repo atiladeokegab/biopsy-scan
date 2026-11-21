@@ -106,3 +106,10 @@ def test_the_committed_result_labels_every_number_and_keeps_counts():
         assert p["agree"] == (p["difference_lo"] <= 0 <= p["difference_hi"])
     assert res["identity_check"]["studies"] >= 1 and res["identity_check"]["equal"] is True
     assert "not the imaging-noise model" in res["scope"]
+
+
+def test_compare_goes_red_when_the_arms_really_differ():
+    arm = lambda flags: {"patients_sha256": "x", "power_n": len(flags), "power": sum(flags) / len(flags),  # noqa: E731
+                         "rejects": flags}
+    c = rc.compare(arm([True] * 400), arm([False] * 300 + [True] * 100))
+    assert c["difference"] == 0.75 and c["difference_lo"] > 0 and not c["agree"] and c["discordant"] == 300

@@ -1,0 +1,138 @@
+{
+ "schema": "preflight-real-check/1",
+ "cohort": "charville",
+ "status": "MEASURED",
+ "source": {
+  "patients": 159,
+  "events": 38,
+  "strata": 4,
+  "features_m": 630,
+  "source_hash": "2ca08fb03ed2ecd51e552a5ab1bbe6caede58f54c07971ed35af08c10db4aa1b",
+  "grammar_hash": "772f6a845266470456af96f92d0573cc1bec72432ad74d789439baff066c2156"
+ },
+ "design": {
+  "regions_per_patient": "all",
+  "fov_um": "full core",
+  "eps": 0.0
+ },
+ "hr_per_sd": 2.0,
+ "alpha": 0.05,
+ "plant_feature": 0,
+ "seed": 20261121,
+ "screen": "maxT over stats.score z (legacy R4 Cox U, permutation variance), rejecting above the ceil((B+1)(1-alpha)) null order statistic (stats.threshold) calibrated at the same n and arm",
+ "arms": {
+  "simulator": {
+   "label": "MEASURED (sim)",
+   "outcomes": "atlas.simulation: Weibull k=1.5 PH, scale tuned to the cohort event fraction, stratum reverse-KM censoring at the administrative horizon"
+  },
+  "empirical": {
+   "label": "MEASURED (plasmode)",
+   "outcomes": "the real cohort's stratum Kaplan-Meier baseline raised to HR**z (planted PH), T past the curve censored; the same stratum reverse-KM censoring"
+  }
+ },
+ "bootstrap": "patients drawn with replacement from the real 159; study i shares patients and seeds across arms",
+ "comparison": "difference = sim - plasmode power; paired conservative >=95% bounds (atlas.runner.paired_interval)",
+ "scope": "Real data exists only at the full-tissue design (all regions, full core, no mis-calls), where re-imaging is the identity; this checks the simulator's outcome model and calibrated-threshold power against the real cohort's own survival curve, not the imaging-noise model.",
+ "points": [
+  {
+   "patients": 50,
+   "difference": 0.0175,
+   "difference_lo": -0.009592335371396046,
+   "difference_hi": 0.04452224299870586,
+   "agree": true,
+   "discordant": 305,
+   "patients_sha256": "a5b5302b537a1aee0a556cbf5bf17cdcd3614699ec01c7994992f8faebec7f23",
+   "simulator": {
+    "calibration_n": 2000,
+    "threshold": 3.4874529136492995,
+    "power": 0.0945,
+    "power_count": 189,
+    "power_n": 2000,
+    "power_lo": 0.08203138293797992,
+    "power_hi": 0.10817141749229192,
+    "mean_events": 11.8335,
+    "patients_sha256": "a5b5302b537a1aee0a556cbf5bf17cdcd3614699ec01c7994992f8faebec7f23"
+   },
+   "empirical": {
+    "calibration_n": 2000,
+    "threshold": 3.5818073713116436,
+    "power": 0.077,
+    "power_count": 154,
+    "power_n": 2000,
+    "power_lo": 0.06569308623395358,
+    "power_hi": 0.08956462417469714,
+    "mean_events": 12.6305,
+    "patients_sha256": "a5b5302b537a1aee0a556cbf5bf17cdcd3614699ec01c7994992f8faebec7f23"
+   }
+  },
+  {
+   "patients": 100,
+   "difference": -0.007000000000000006,
+   "difference_lo": -0.04407559095288052,
+   "difference_hi": 0.030102228081369586,
+   "agree": true,
+   "discordant": 634,
+   "patients_sha256": "ce97a3e9489344e0ffe1786f7b2506457c9dc35c4786088d97ae40ab55d62ec6",
+   "simulator": {
+    "calibration_n": 2000,
+    "threshold": 3.6758791102053965,
+    "power": 0.212,
+    "power_count": 424,
+    "power_n": 2000,
+    "power_lo": 0.19426962185144098,
+    "power_hi": 0.23057864490009275,
+    "mean_events": 23.641,
+    "patients_sha256": "ce97a3e9489344e0ffe1786f7b2506457c9dc35c4786088d97ae40ab55d62ec6"
+   },
+   "empirical": {
+    "calibration_n": 2000,
+    "threshold": 3.7137498480593507,
+    "power": 0.219,
+    "power_count": 438,
+    "power_n": 2000,
+    "power_lo": 0.20104724165561752,
+    "power_hi": 0.23778023413677438,
+    "mean_events": 25.095,
+    "patients_sha256": "ce97a3e9489344e0ffe1786f7b2506457c9dc35c4786088d97ae40ab55d62ec6"
+   }
+  },
+  {
+   "patients": 159,
+   "difference": -0.013000000000000012,
+   "difference_lo": -0.055497060291968325,
+   "difference_hi": 0.029545977614071073,
+   "agree": true,
+   "discordant": 912,
+   "patients_sha256": "077eca6bc70988009ec0e23f327fedca1026c60c1c0305b1e477595bdeb6d37c",
+   "simulator": {
+    "calibration_n": 2000,
+    "threshold": 3.704920877748945,
+    "power": 0.451,
+    "power_count": 902,
+    "power_n": 2000,
+    "power_lo": 0.4290278330175822,
+    "power_hi": 0.47311602845944545,
+    "mean_events": 38.1565,
+    "patients_sha256": "077eca6bc70988009ec0e23f327fedca1026c60c1c0305b1e477595bdeb6d37c"
+   },
+   "empirical": {
+    "calibration_n": 2000,
+    "threshold": 3.7649755773180735,
+    "power": 0.464,
+    "power_count": 928,
+    "power_n": 2000,
+    "power_lo": 0.44196020070974795,
+    "power_hi": 0.486145489961479,
+    "mean_events": 40.034,
+    "patients_sha256": "077eca6bc70988009ec0e23f327fedca1026c60c1c0305b1e477595bdeb6d37c"
+   }
+  }
+ ],
+ "identity_check": {
+  "studies": 2,
+  "patients_per_study": 3,
+  "max_abs_difference": 0.0,
+  "equal": true
+ },
+ "runtime_s": 956.2
+}
