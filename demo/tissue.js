@@ -134,7 +134,7 @@ export function createTissue(canvas, tissue, { reducedMotion }) {
     for (const sl of slabs) sl.squares.position.y = lift;
     if (t >= 1) drop = null;
     // Far enough to fit the stack's height, and its width on narrow (phone) canvases.
-    const dist = Math.max(330 + shown * 30 + R * 0.6, (R * 1.5) / (0.574 * camera.aspect));
+    const dist = Math.max(330 + shown * 30 + R * 0.6, (R * 1.9) / (0.574 * camera.aspect));
     camera.position.set(Math.sin(yaw) * Math.cos(pitch) * dist, Math.sin(pitch) * dist, Math.cos(yaw) * Math.cos(pitch) * dist);
     camera.lookAt(0, 0, 0);
     renderer.render(scene, camera);

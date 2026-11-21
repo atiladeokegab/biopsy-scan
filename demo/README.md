@@ -1,41 +1,71 @@
 # Demo: "Can my study find it?"
 
-A static page: plain HTML, CSS and JS, no build step, no network calls. It reads one file,
-`demo/data/grid.json`, and works with Wi-Fi off.
+One dark page with three linked views, driven by four sliders: patients, regions per patient,
+field of view and mis-call rate. It uses plain HTML, CSS and ES-module JS, with no build step and
+no network calls. three.js r170 is vendored in `vendor/three/` (MIT, licence alongside), so the
+page works with Wi-Fi off.
 
 ```bash
 python3 -m http.server 8000 -d demo     # then open http://localhost:8000
 ```
 
-Browsers block `fetch` from `file://`, so double-clicking `index.html` shows an error card with
-this command instead of the page.
+Browsers block `fetch` and modules from `file://`. If you double-click `index.html`, the page
+shows this command instead.
 
-The grid shipped here is **SYNTHETIC** (`demo/synth_grid.py`, a toy attenuation model). The page
-labels it SYNTHETIC on screen until the atlas (#5) replaces the file with `"source": "MEASURED"`.
+1. **Tissue (3D).** Each patient is one thin slab of cells, coloured tumour, stroma or immune, and
+   the slabs are stacked. The view orbits slowly; drag it, or focus it and use the arrow keys.
+   The patients slider sets how many slabs show (one per 25 patients, up to the patients in
+   `tissue.json`).
+   - The field-of-view squares drop onto each slab, one per region per patient. Cells outside
+     every square dim.
+   - The mis-call slider recolours that fraction of cells at random, so you can see the noise.
+2. **The race.** The same N studies run on the CPU (one at a time) and on the GPU (all at once).
+   Each tile is one study: green if it found the pattern, grey if it missed. The share of green
+   tiles is the grid point's power.
+   - Timing comes only from `bench.json`. Without a MEASURED bench, both lanes say UNMEASURED
+     and no speed ratio is shown.
+   - With one, both lanes run on one clock: the GPU lane finishes in 1.4 s on screen, and the CPU
+     lane is slowed by the measured ratio.
+3. **The answer.** Power and identification rate for the grid point nearest the sliders, and the
+   one chart: power against patients, one line per regions value. The chart marks the current
+   design (white ring) and our cohort (green).
 
-Check a grid file: `python3 -I demo/check_grid.py [path]` (exit 0 when valid). The repo's pytest
-collects only `core/` and `tests/`, so this check is not in `make smoke` yet.
+Check the data: `python3 -I demo/check_data.py [data_dir]` exits 0 when every file present is
+valid. The repo's pytest collects only `core/` and `tests/`, so this check is not in
+`make smoke` yet.
 
-## `grid.json` schema (`preflight-grid/1`)
+Regenerate the placeholders: `python3 -I demo/synth_data.py`. It writes the **SYNTHETIC**
+`grid.json` (a toy attenuation model) and `tissue.json` (random tumour nests with an immune rim).
+The page labels both SYNTHETIC until each file says `"source": "MEASURED"`.
 
-One file, written by the atlas (#5). The headline comes from bench (#3); until it is measured,
-leave `status` as `UNMEASURED` and the page shows a placeholder.
+## `data/tissue.json` (`preflight-tissue/1`): written from the core loaders
+
+```jsonc
+{
+  "schema": "preflight-tissue/1",
+  "source": "MEASURED",                // or "SYNTHETIC": shown on screen as a warning
+  "note": "free text",
+  "region_um": 2500,                   // side of the square every patient's region is drawn in
+  "patients": [                        // one slab each, drawn in this order (about 12 is plenty)
+    { "id": "CHV-017",
+      "cells": [                       // subsample to about 3k cells per patient
+        { "x": 812, "y": 1450, "type": "tumour" }   // microns from the region corner; tumour | stroma | immune
+      ] }
+  ]
+}
+```
+
+## `data/grid.json` (`preflight-grid/1`): written by the atlas (#5)
 
 ```jsonc
 {
   "schema": "preflight-grid/1",
-  "source": "MEASURED",               // or "SYNTHETIC": shown on screen as a warning
+  "source": "MEASURED",               // or "SYNTHETIC"
   "note": "free text shown under the chart",
-  "studies_per_point": 1000,          // re-imaged studies behind each point
+  "studies_per_point": 1000,          // simulated studies behind each point; also the race's tile count
   "effect_hr_per_sd": 2.0,            // the planted effect every point uses
   "cohort": {                         // "our cohort", marked on the chart
     "name": "Charville", "patients": 162, "regions": 2, "fov_um": "full", "miscall": 0.0
-  },
-  "headline": {
-    "status": "MEASURED",             // or "UNMEASURED" (then the seconds may be null)
-    "studies": 1000,
-    "gpu_seconds": 4.2,               // end to end, one design point, on the GPU
-    "cpu_seconds": 3600               // same algorithm, all CPU cores
   },
   "axes": {                           // every value a point may take, ascending
     "patients": [20, 40, 80, 160, 300],
@@ -51,13 +81,35 @@ leave `status` as `UNMEASURED` and the page shows a placeholder.
 }
 ```
 
-Rules the checker enforces: every point's values are on `axes`; no duplicate design points;
-`power` and `identification_rate` are in 0..1 and identification never exceeds power.
+The checker enforces these rules:
+- Every point's values are on `axes`.
+- There are no duplicate design points.
+- `power` and `identification_rate` are in 0..1, and identification never exceeds power.
 
-## How the page picks a point
+## `data/bench.json` (`preflight-bench/1`): written by bench (#3), optional
 
-The sliders cover patients 20 to 300, regions 1 to 8, field of view 250 to 2000 µm plus full,
-and mis-call 0 to 30%. The button finds the grid point nearest to the sliders, measuring each axis
-in steps along its own `axes` list (so 1 to 2 regions counts the same as 4 to 8), and says when the
-point it shows differs from what was asked. The chart draws power against patients, one line per
-`regions` value, at the chosen point's field of view and mis-call rate, with the cohort marked.
+```jsonc
+{
+  "schema": "preflight-bench/1",
+  "status": "MEASURED",               // or "UNMEASURED"; a missing file also means UNMEASURED
+  "studies": 1000,                    // studies in the timed design point
+  "cpu_seconds": 3600,                // end to end, same algorithm, all CPU cores
+  "gpu_seconds": 4.2                  // end to end on the GPU
+}
+```
+
+## How the page picks a grid point
+
+The slider ranges are:
+- patients 20 to 300;
+- regions 1 to 8;
+- field of view 250 to 2000 µm, plus full region;
+- mis-call 0 to 30%.
+
+The page picks the grid point nearest the sliders, measuring each axis in steps along its own
+`axes` list, so going from 1 to 2 regions counts the same as going from 4 to 8. It says when the
+point it shows differs from what was asked. The chart uses that point's field of view and
+mis-call rate.
+
+The page opens at our cohort's patients and regions, with two 1 mm fields and 10% mis-called, so
+the fields of view and the noise are visible from the first second.
