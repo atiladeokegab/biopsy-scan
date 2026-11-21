@@ -269,7 +269,7 @@ def _four(**over):
     arm = lambda a, w: {"container_class": "Modal A100 + 8 cores + 64 GiB", "workers": w, "split": {"reimage_share": 0.98},
                         "host": {"gpu": "NVIDIA A100-SXM4-40GB, 40960 MiB, 610"},
                         "stages": {**stages, "evaluated_studies": 2000 if a == "lab" else 3000}}
-    d = {"status": "MEASURED", "design": {"studies_per_stream": 1000}, "parity": {"all": True},
+    d = {"status": "MEASURED", "design": {"studies_per_stream": 1000, "streams": {"calibration": 101, "null": 202, "alternative": 303}}, "parity": {"all": True},
          "labels": {"compute": "MEASURED", "outcomes": "SYNTHETIC (atlas/simulation.py at 79a7792)", "rates": "ESTIMATE (x)"},
          "arms": {a: arm(a, 1 if a == "gpu" else 8) for a in ("lab", "numba", "gpu", "hybrid")}}
     return d | over
@@ -283,7 +283,7 @@ def test_the_four_arm_file_fills_exactly_the_four_declared_lanes():
     assert rows["gpu-1"]["cores"] is None and rows["lab-cpu"]["gpu"] is None and rows["lab-cpu"]["seconds"] == 372.0
     three = _four()
     del three["arms"]["hybrid"]
-    for bad in (three, _four(status="FAILED"), _four(parity={"all": False}), _four(design={"studies_per_stream": 20})):
+    for bad in (three, _four(status="FAILED"), _four(parity={"all": False}), _four(design={"studies_per_stream": 20, "streams": {}})):
         assert list(cr.rows_from(Path("modal-design.json"), bad)) == []
 
 
@@ -380,7 +380,6 @@ def test_the_fused_lane_needs_full_coverage_not_one_compared_study():
 def test_the_fused_lane_binds_to_the_planned_studies_even_when_every_observed_count_is_one():
     """Lead ruling on #120 (last round): the plan comes from the design (2,000 lab, 3,000 batched), never from counts."""
     five = _four()
-    five["design"] = {**five["design"], "streams": {"calibration": 101, "null": 202, "alternative": 303}}
     five["arms"]["fused"] = {**five["arms"]["numba"], "source": "this run"}
     for a in five["arms"]:
         five["arms"][a]["stages"] = {**five["arms"][a]["stages"], "evaluated_studies": 1}

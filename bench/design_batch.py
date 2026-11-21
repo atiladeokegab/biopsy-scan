@@ -310,22 +310,29 @@ def complete(st: dict, load_s, warm_s, warm_score_s) -> dict:
     return st
 
 
-def prior_parity(records: list, prior_arms: dict) -> dict:
+def planned_ids(arm: str, studies_per_stream: int) -> set:
+    """The design's study IDs for an arm: every stream, except the lab skips calibration (as run_arm)."""
+    return {(s, i) for s in STREAMS if not (arm == "lab" and s == "calibration") for i in range(studies_per_stream)}
+
+
+def prior_parity(records: list, prior_arms: dict, *, arm: str, studies_per_stream: int) -> dict:
     """A new arm against a committed result's arms: X sha256 per shared study; batched maxT within Z_TOL.
 
-    Full coverage: every study of the arm that ran fewer (the lab's 2,000; 3,000 otherwise) must be shared,
-    or x_bitwise is False. maxT is compared over the same shared studies, so its coverage is X's."""
+    Bound to the plan, never to observed counts: the compared studies must be exactly the planned IDs both arms
+    share (2,000 with the lab, 3,000 otherwise at 1,000 per stream), or x_bitwise is False. maxT is compared over
+    the same studies (maxT_compared)."""
     new = {(r["stream"], r["i"]): r for r in records}
     out, ok = {}, True
     for a, o in prior_arms.items():
         old = {(s["stream"], s["i"]): s for s in o["studies"]}
+        plan = planned_ids(arm, studies_per_stream) & planned_ids(a, studies_per_stream)
         common = [k for k in new if k in old]
-        full = bool(common) and len(common) == min(len(new), len(old))
+        full = bool(plan) and set(common) == plan
         e = {"x_bitwise": full and all(new[k]["x_sha"] == old[k]["x_sha"] for k in common),
-             "x_compared": len(common)}
+             "x_compared": len(common), "x_planned": len(plan)}
         if a != "lab" and common:  # the lab's maxT is its permutation statistic, not compared
             d = max(abs(float(np.abs(new[k]["z"]).max()) - old[k]["maxT"]) / max(1.0, old[k]["maxT"]) for k in common)
-            e.update(maxT_max_rel_diff=d, maxT_within_tol=bool(d <= Z_TOL))
+            e.update(maxT_max_rel_diff=d, maxT_within_tol=bool(d <= Z_TOL), maxT_compared=len(common))
         ok &= e["x_bitwise"] and e.get("maxT_within_tol", True)
         out[a] = e
     out["all"] = bool(ok)

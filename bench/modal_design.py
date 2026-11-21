@@ -195,7 +195,8 @@ def main(studies: int = 20, cap_usd: float = 20.0, cpu_arms_on_cpu: bool = False
     else:  # one new arm has nothing to match in this run: its parity is against the prior run's arms
         par = db.parity(arms) if len(arms) > 1 else {"all": bool(prior), "this_run": "one arm"}
     if prior and arms:
-        par["against_prior"] = {a: db.prior_parity(o["records"], prior["arms"]) for a, o in arms.items()}
+        par["against_prior"] = {a: db.prior_parity(o["records"], prior["arms"], arm=a, studies_per_stream=studies)
+                              for a, o in arms.items()}
         par["all"] = bool(par["all"] and all(v["all"] for v in par["against_prior"].values()))
         par["scope"] = ("against the prior run: X sha256 on every shared study, and z only through each study's "
                         "maxT (the prior file stores maxT, not z); not full z parity")

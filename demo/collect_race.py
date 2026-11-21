@@ -79,16 +79,22 @@ def four_arms(name, d):
 def fused_parity(d):
     """Full parity for the fused arm: X sha256 equal to every other arm on every shared study, and maxT within
     Z_TOL (1e-9) of every batched arm's (the lab's maxT is its permutation statistic: X only, as prior_parity).
-    Full coverage: x_compared is every shared study, the smaller arm's evaluated_studies (2,000 lab, 3,000
-    batched); prior_parity compares maxT over those same studies, so maxT coverage is X's."""
+    Bound to the plan, never to observed counts: from the design, the lab plans 2,000 studies (it skips
+    calibration) and each batched arm 3,000; x_compared and maxT_compared must equal it, and so must the fused
+    arm's evaluated_studies. A file without maxT_compared (written before it existed, e.g. 205536Z from
+    064bd6e) compared maxT over exactly the studies x_compared counts, so x_compared stands for it."""
     prior = d["parity"].get("against_prior", {}).get("fused", {})
-    n = {a: v["stages"].get("evaluated_studies") for a, v in d["arms"].items()}
+    per, streams = d["design"].get("studies_per_stream"), d["design"].get("streams") or {}
+    plan = lambda a: per * len([s for s in streams if not (a == "lab" and s == "calibration")])
+    if not isinstance(per, int) or not plan("fused") > 0 or d["arms"]["fused"]["stages"].get("evaluated_studies") != plan("fused"):
+        return False
     def ok(a):
-        e, shared = prior.get(a, {}), min(n[a] or 0, n["fused"] or 0)
-        if e.get("x_bitwise") is not True or not shared > 0 or e.get("x_compared") != shared:
+        e = prior.get(a, {})
+        if e.get("x_bitwise") is not True or e.get("x_compared") != plan(a):
             return False
         rel = e.get("maxT_max_rel_diff")
-        return a == "lab" or (e.get("maxT_within_tol") is True and isinstance(rel, (int, float)) and 0 <= rel <= 1e-9)
+        return a == "lab" or (e.get("maxT_within_tol") is True and isinstance(rel, (int, float)) and 0 <= rel <= 1e-9
+                              and e.get("maxT_compared", e["x_compared"]) == plan(a))
     return prior.get("all") is True and all(ok(a) for a in ARMS.values())
 
 
