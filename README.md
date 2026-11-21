@@ -12,10 +12,12 @@ Decode searches every spatial pattern in multiplex tissue (3,780 today) with an 
 | | The score statistic equals statsmodels PHReg (Breslow ties), and its variance equals exhaustive permutations | TESTED | `stats/test_reference.py`, `tests/test_score_contract.py` |
 | | 39 of 39 GPU tests pass on a real NVIDIA A100-SXM4-40GB: kernels, expression channels and the fleet | MEASURED | `bench/results/modal-a100-20261121T164808Z.json` (PR #75, in review) |
 | | When nothing is there, the search raises a false alarm in 28 of 700 null studies: 4.0% (95% CI 2.7–5.7%), inside the promised 5% | ESTIMATE | `bench/results/vs-schoenfeld-300.json` |
-| **Reshaping for parallelism** | Every study is independent: the kernel re-images a batch of studies with one GPU warp per cell, and the fleet shards studies across GPUs with results bit-identical to one device | TESTED (CUDA simulator) | `reimage/test_backends.py`, `reimage/test_fleet.py` |
+| **Reshaping for parallelism** | Every study is independent: the kernel re-images a batch of studies with one GPU warp per cell, and the fleet shards studies across GPUs with results bit-identical to one device | TESTED (CUDA simulator); MEASURED bit-identical on 4 A100s | `reimage/test_backends.py`, `reimage/test_fleet.py`, `bench/results/modal-a100-20261121T171213Z.json` (PR #75) |
 | | Testing all 3,780 patterns is one matrix product per study, U = X'r. One screen with 10,000 shuffles is about 38 million tests | TESTED (CPU) | `stats/test_reference.py` |
 | **Speed vs the statsmodels baseline** | Baseline: one statsmodels PHReg Cox fit for each of the 3,780 Charville patterns takes 63.84 s on 8 workers and 298.30 s on 1 | MEASURED | `bench/results/impl-a-charville-amd-epyc-7b13.json` (#64) |
-| | The GPU score screen on the same 3,780 patterns on an A100 (a workflow comparison, since the baseline fits full models), and studies per second at 1, 2, 4 and 8 GPUs | PENDING | Modal runs on an A100 |
+| | Re-imaging on one A100: 0.873 s per study against 2.880 s for the NumPy reference in the same container, ×3.3, with identical output | MEASURED | `bench/results/modal-a100-20261121T171213Z.json` (PR #75) |
+| | Fleet: 16 studies on 4 A100 containers (one an 80 GB card) take 3.80 s against 11.44 s on 1, ×3.0 (75% scaling efficiency), bit-identical. Start-up, data load and the one-time neighbour search are excluded | MEASURED | `bench/results/modal-a100-20261121T171213Z.json` (PR #75) |
+| | The GPU score screen on the 3,780 patterns (a workflow comparison, since the baseline fits full models), and the fleet at 8 and 16 GPUs | PENDING | Modal runs on A100s |
 | **Scientific value** | At 200 patients the textbook formula promises 80% power. Simulated on real tissue, the same design finds the pattern 27% of the time (95% CI 22–32%) | ANALYTIC vs ESTIMATE | `bench/results/vs-schoenfeld-300.json` |
 | | After 3,780 tests on Charville, the strongest pattern (PD1 on macrophages within 100 µm of "Tumor 5" cells, z = 3.96) is not significant: maxT-adjusted p = 0.098 | MEASURED | `results/charville-v2.json` |
 | | Numba on 8 threads was no faster than NumPy on a loaded shared VM: 3.26 vs 2.98 s per study | MEASURED | `bench/results/cpu-ladder.json` |
@@ -77,7 +79,7 @@ Requirements: [docs/PRD.md](docs/PRD.md) (v4).
 
 ## What is next, and the limits
 
-- **GPU numbers are PENDING.** The CUDA kernels pass on a real A100 (39 of 39 tests, PR #75); A100 and fleet timings land from the Modal runs. No GPU ratio is quoted until then.
+- **The GPU numbers cover re-imaging only.** The kernel and a 4-container fleet of 16 studies are MEASURED; the GPU score screen and larger fleets are PENDING. The fleet times exclude set-up: each container first builds its neighbour lists on CPU (about 60 s), so at 16 studies the wall clock is 76.6 s on 4 containers against 164.6 s on 1 (MEASURED, same file).
 - **The GPU screen (R-15)** with clinical covariates and a refit bootstrap null is in build, as are the rediscovery of the Helsinki pattern on locked UPMC patients (R-16), minimal panels and stain-format simulation (R-17), and the Charville rerun (R-18). Issues #66 to #71.
 - **Real data is exploratory.** Both cohorts' outcomes were seen before the event. UPMC cannot carry a survival claim: 80 patients and 27 deaths, 23 and 8 locked (MEASURED, PR #62).
 - **The demo's power chart is SYNTHETIC** until the design atlas (#45) replaces `demo/data/grid.json`. Its tissue is real Charville cells.
