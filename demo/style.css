@@ -45,7 +45,7 @@ h1, h2 { color: var(--text-head); }
 
 /* Rail: title, sliders, then the button with the answer under it */
 .rail { grid-area: rail; padding: var(--space-5); }
-h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-weight: 800; letter-spacing: -0.02em; }
+h1 { font-size: var(--text-lg); line-height: var(--leading-snug); font-weight: 700; letter-spacing: -0.01em; } /* the tagline is the title */
 .sliders { display: grid; gap: var(--space-3); margin-top: var(--space-5); }
 .slider { display: grid; grid-template-columns: 1fr auto; align-items: baseline; row-gap: var(--space-1); }
 .slider label { color: var(--text-body); }

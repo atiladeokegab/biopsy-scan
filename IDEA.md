@@ -202,7 +202,7 @@ Expected 50–200× over 8 cores and 10–30× over a 64-core node. These are es
 | P1 | `atlas/` | Simulator, threshold shortcut and its nested check, grid runner, outputs | Atlas charts per cohort, plus a calibration chart with intervals |
 | P1 | `bench/` | The ladder: the same kernel on CPU and GPU, end to end; roofline; scaling | Measured charts |
 | P1 | `audit/` | Real-data maxT and omnibus; leave-one-patient-out; leakage audit | Results, labelled already-seen |
-| P1 | `demo/` | "Can my study find it?" page; saved-run replay; deck | Opens on the number; works with Wi-Fi off |
+| P1 | `demo/` | The Preflight demo page; saved-run replay; deck | Opens on the number; works with Wi-Fi off |
 | P2 | `atlas/` | Stress-test slices; source bootstrap | Shown as bands |
 | P2 | `stats/` | Step-down maxT, under the stated assumption | Shown on one slice |
 
@@ -238,7 +238,7 @@ Expected 50–200× over 8 cores and 10–30× over a 64-core node. These are es
 
 **One chart:** power against patients, one line per regions-per-patient setting, at a fixed effect size, with our cohort marked.
 
-**The spark:** one big button, "Can my study find it?". A judge sets patients, regions per patient, field of view and mis-call rate. The GPU re-images 1,000 studies in seconds and returns power and identification rate. Cached grid fallback.
+**The spark:** one big button, "Run the studies". A judge sets patients, regions per patient, field of view and mis-call rate. The GPU re-images 1,000 studies in seconds and returns power and identification rate. Cached grid fallback.
 
 | t | On screen |
 |---|---|
