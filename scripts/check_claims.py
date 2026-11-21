@@ -41,6 +41,8 @@ def render(value, rule):
         return f"{100 * value:.{int(n)}f}"
     if kind == "comma":
         return f"{value:,.{int(n)}f}" if n else f"{value:,}"
+    if kind == "spct":
+        return f"{100 * value:+.{int(n)}f}"
     if kind == "sci":
         return f"{value:.{int(n)}e}"
     if kind == "word":

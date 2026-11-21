@@ -13,7 +13,8 @@
   "median_ratio": "{over, items, group, num, den, pick}: for each group of `over` (by `group`), the median over its `items` of num/den; then the min or max of those medians, then the rule",
   "distinct": "[list path, key]: the number of distinct values of key across the list",
   "len": "the length of the list at the path",
-  "sci:N": "scientific notation with N decimals (2.3e-15)"
+  "sci:N": "scientific notation with N decimals (2.3e-15)",
+  "spct:N": "like pct:N with an explicit sign (+0.2, -0.7)"
  },
  "claims": [
   {
@@ -848,7 +849,7 @@
    "label": "MEASURED",
    "label_path": "labels.compute",
    "id": "race-7.0x",
-   "claim": "Preflight on 8 CPU cores (Numba) is 7.0× faster per evaluated study than the lab way (0.881 s vs 0.125 s); a workflow comparison, since the lab runs a per-study permutation test and Preflight one calibrated threshold",
+   "claim": "Preflight on 8 CPU cores (Numba) is 7.0× faster per evaluated study than the lab way (0.881 s vs 0.125 s; Preflight's 3,000 studies include its 1,000 calibration nulls); totals for the same design-point output 4.70× (1,761.88 s vs 375.26 s); different procedures",
    "values": [
     {
      "name": "speedup",
@@ -870,9 +871,65 @@
      "path": "arms.numba.stages.wall_per_study_s",
      "rule": "fixed:3",
      "expect": "0.125"
+    },
+    {
+     "name": "per_stream",
+     "path": "design.studies_per_stream",
+     "rule": "comma",
+     "expect": "1,000"
+    },
+    {
+     "name": "numba_studies",
+     "path": "arms.numba.stages.evaluated_studies",
+     "rule": "comma",
+     "expect": "3,000"
+    },
+    {
+     "name": "calib",
+     "path": "arms.numba.summary.studies.calibration",
+     "rule": "comma",
+     "expect": "1,000"
+    },
+    {
+     "name": "lab_studies",
+     "path": "arms.lab.stages.evaluated_studies",
+     "rule": "comma",
+     "expect": "2,000"
+    },
+    {
+     "name": "lab_calib",
+     "path": "arms.lab.summary.studies.calibration",
+     "rule": "eq",
+     "expect": "0"
+    },
+    {
+     "name": "lab_total",
+     "path": "arms.lab.stages.compute_wall_s",
+     "rule": "comma:2",
+     "expect": "1,761.88"
+    },
+    {
+     "name": "numba_total",
+     "path": "arms.numba.stages.compute_wall_s",
+     "rule": "fixed:2",
+     "expect": "375.26"
+    },
+    {
+     "name": "total_ratio",
+     "ratio": [
+      "arms.lab.stages.compute_wall_s",
+      "arms.numba.stages.compute_wall_s"
+     ],
+     "rule": "fixed:2",
+     "expect": "4.70"
     }
    ],
-   "quotes": []
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "(Charville, one A100 + 8-core container class, `{per_stream}` studies per stream, one sweep, #113) | In-container study and scoring wall time per evaluated study (excludes load, prep, adjacency, warm-up, cutoff and rate summary): lab `{lab} s` vs Preflight on 8 CPU cores (Numba) `{numba} s`, `{speedup}×` per evaluated study; Preflight's `{numba_studies}` studies include its `{calib}` calibration nulls, the lab's `{lab_studies}` have none. Totals for the same design-point output: lab `{lab_total} s` vs Preflight `{numba_total} s`, `{total_ratio}×`. Different procedures: per-study permutation vs one calibrated threshold."
+    }
+   ]
   },
   {
    "source": "bench/results/modal-design-20261121T194458Z.json",
@@ -916,7 +973,12 @@
      "expect": "98.0"
     }
    ],
-   "quotes": []
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "Hybrid (CPU re-imaging feeding A100 scoring) `{hybrid} s` per study, a tie with Numba: re-imaging is `{hybrid_share}%` and `{numba_share}%` of their time."
+    }
+   ]
   },
   {
    "source": "bench/results/modal-design-20261121T194458Z.json",
@@ -951,7 +1013,134 @@
      "expect": "True"
     }
    ],
-   "quotes": []
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "Numba vs A100 z agree to `{gpu}` relative; hybrid checked through each study's maxT (**{label}**)"
+    }
+   ]
+  },
+  {
+   "id": "race-power-gap",
+   "claim": "Power 15.3% (153/1,000) with Preflight's one calibrated threshold vs 20.3% (203/1,000) with the lab's per-study permutation: different procedures, a method difference, not a speed artefact",
+   "source": "bench/results/modal-design-20261121T194458Z.json",
+   "pr": 113,
+   "label": "ESTIMATE (FWER and power: binomial rates with Wilson 95% intervals)",
+   "label_path": "labels.rates",
+   "values": [
+    {
+     "name": "p",
+     "path": "arms.numba.summary.power.rate",
+     "rule": "pct:1",
+     "expect": "15.3"
+    },
+    {
+     "name": "k",
+     "path": "arms.numba.summary.power.k",
+     "rule": "eq",
+     "expect": "153"
+    },
+    {
+     "name": "n",
+     "path": "arms.numba.summary.power.n",
+     "rule": "comma",
+     "expect": "1,000"
+    },
+    {
+     "name": "lab_p",
+     "path": "arms.lab.summary.power.rate",
+     "rule": "pct:1",
+     "expect": "20.3"
+    },
+    {
+     "name": "lab_k",
+     "path": "arms.lab.summary.power.k",
+     "rule": "eq",
+     "expect": "203"
+    },
+    {
+     "name": "lab_n",
+     "path": "arms.lab.summary.power.n",
+     "rule": "comma",
+     "expect": "1,000"
+    },
+    {
+     "name": "rates_label",
+     "path": "labels.rates",
+     "rule": "word",
+     "expect": "ESTIMATE"
+    },
+    {
+     "name": "compute_label",
+     "path": "labels.compute",
+     "rule": "eq",
+     "expect": "MEASURED"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "(`{n}` alternative studies each, #113) | Power `{p}%` (`{k}/{n}`) with Preflight's one calibrated threshold vs `{lab_p}%` (`{lab_k}/{lab_n}`) with the lab's per-study permutation: different procedures, so a method difference, not a speed artefact (rates **{rates_label}**, compute **{compute_label}**)"
+    }
+   ]
+  },
+  {
+   "id": "event-count-calibration",
+   "claim": "Two event-count bins give power 15.5% vs 15.3% pooled: paired gain +0.2 pp [-0.7, +1.1], no clear recovery of the power gap",
+   "source": "bench/results/event-count-calibration.json",
+   "pr": 117,
+   "label": "ESTIMATE",
+   "label_path": "labels.power",
+   "values": [
+    {
+     "name": "two",
+     "path": "methods.two_bins.power.rate",
+     "rule": "pct:1",
+     "expect": "15.5"
+    },
+    {
+     "name": "pooled",
+     "path": "methods.pooled.power.rate",
+     "rule": "pct:1",
+     "expect": "15.3"
+    },
+    {
+     "name": "gain",
+     "path": "methods.two_bins.paired_vs_pooled.alternative.difference",
+     "rule": "spct:1",
+     "expect": "+0.2"
+    },
+    {
+     "name": "lo",
+     "path": "methods.two_bins.paired_vs_pooled.alternative.paired_bootstrap95[0]",
+     "rule": "spct:1",
+     "expect": "-0.7"
+    },
+    {
+     "name": "hi",
+     "path": "methods.two_bins.paired_vs_pooled.alternative.paired_bootstrap95[1]",
+     "rule": "spct:1",
+     "expect": "+1.1"
+    },
+    {
+     "name": "n",
+     "path": "methods.two_bins.paired_vs_pooled.alternative.n",
+     "rule": "comma",
+     "expect": "1,000"
+    },
+    {
+     "name": "primary",
+     "path": "primary",
+     "rule": "eq",
+     "expect": "two_bins"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "same `{n}` alternative studies, #117) | Power `{two}%` two-bin vs `{pooled}%` pooled: paired gain `{gain}` pp `[{lo}, {hi}]` (paired bootstrap 95%), no clear recovery of the power gap (**{label}**)"
+    }
+   ]
   }
  ],
  "stale": [
