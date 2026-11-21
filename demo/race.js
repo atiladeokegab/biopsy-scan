@@ -17,20 +17,18 @@ function layout(canvas, n) {
   const w = canvas.clientWidth, h = canvas.clientHeight;
   canvas.width = Math.round(w * dpr);
   canvas.height = Math.round(h * dpr);
-  // Largest square tile (with a 1px gap) such that n tiles fit in w x h.
-  let size = Math.floor(Math.sqrt((w * h) / n));
-  while (size > 2 && Math.floor(w / size) * Math.floor(h / size) < n) size--;
-  // Column by column, so both lanes reveal left to right (docs/design.md, motion 2).
-  const rows = Math.floor(h / size), cols = Math.ceil(n / rows);
+  // Near-square tiles that fill the whole lane; filled column by column, so both lanes reveal
+  // left to right (docs/design.md, motion 2).
+  const rows = Math.max(1, Math.round(Math.sqrt((n * h) / w))), cols = Math.ceil(n / rows);
   const g = canvas.getContext("2d");
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  return { g, size, rows, ox: (w - cols * size) / 2, oy: (h - rows * size) / 2 };
+  return { g, tw: w / cols, th: h / rows, rows };
 }
 
 function tile(L, i, colour) {
-  const gap = L.size > 5 ? 1 : 0.5;
+  const gap = Math.min(L.tw, L.th) > 5 ? 1 : 0.5;
   L.g.fillStyle = colour;
-  L.g.fillRect(L.ox + Math.floor(i / L.rows) * L.size, L.oy + (i % L.rows) * L.size, L.size - gap, L.size - gap);
+  L.g.fillRect(Math.floor(i / L.rows) * L.tw, (i % L.rows) * L.th, L.tw - gap, L.th - gap);
 }
 
 export function createRace(cpuCanvas, gpuCanvas, out) {

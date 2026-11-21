@@ -7,7 +7,7 @@ export const fovLabel = (v) => (v === "full" ? "full core" : `${v} µm`);
 const plural = (k) => `${k} region${k > 1 ? "s" : ""}`;
 
 export function drawChart(box, grid, sel) {
-  const W = Math.max(300, box.clientWidth), H = W < 560 ? 280 : 340;
+  const W = Math.max(300, box.clientWidth), H = Math.round(Math.min(340, Math.max(220, W * 0.6)));
   const m = { l: 44, r: W < 560 ? 64 : 90, t: 18, b: 40 };
   const xs = grid.axes.patients, x1 = Math.max(...xs);
   const X = (v) => m.l + (v / x1) * (W - m.l - m.r);

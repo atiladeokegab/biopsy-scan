@@ -11,30 +11,19 @@
 <body>
   <header class="bar">
     <span class="wordmark">Preflight</span>
+    <span class="sub">Thousands of studies, simulated in seconds, before you image a slide.</span>
     <span class="team">Team Dry Lab</span>
     <span class="tag" id="provenance">SYNTHETIC</span>
   </header>
 
-  <main>
-    <section class="hero" aria-labelledby="title">
+  <div class="error" id="error" role="alert" hidden></div>
+
+  <main class="app">
+
+    <section class="rail" aria-labelledby="title">
       <h1 id="title">Can my study find it?</h1>
-      <p class="tagline">Thousands of studies, simulated in seconds, before you image a slide.</p>
-    </section>
-
-    <div class="error" id="error" role="alert" hidden></div>
-
-    <section class="stage" aria-label="Study design">
-      <figure class="tissue">
-        <canvas id="tissue" tabindex="0" role="img" aria-label="Tissue from each patient, stacked"></canvas>
-        <figcaption>
-          <span class="legend"><span><i class="t"></i>Tumour</span> <span><i class="s"></i>Stroma</span> <span><i class="m"></i>Immune</span> <span><i class="f"></i>Field of view</span></span>
-          <span id="tissue-caption">Preparing tissue slabs...</span>
-          <span class="hint"><span class="hint-text">Drag, or focus and use the arrow keys, to turn it.</span> <button type="button" id="spin" class="link" aria-pressed="false">Pause rotation</button></span>
-        </figcaption>
-      </figure>
-
-      <div class="panel">
-        <form id="design" class="sliders" aria-label="Your study design">
+      <form id="design" aria-label="Your study design">
+        <div class="sliders">
           <div class="slider">
             <label for="patients">Patients</label>
             <output id="patients-out" for="patients">159</output>
@@ -52,19 +41,33 @@
           </div>
           <div class="slider">
             <label for="miscall">Mis-call rate</label>
-            <output id="miscall-out" for="miscall">0%</output>
-            <input id="miscall" name="miscall" type="range" min="0" max="30" step="1" value="0">
+            <output id="miscall-out" for="miscall">10%</output>
+            <input id="miscall" name="miscall" type="range" min="0" max="30" step="1" value="10">
           </div>
-          <button id="run" type="submit" class="go">Can my study find it?</button>
-        </form>
-
-        <div class="answer" id="answer" aria-live="polite">
-          <p class="power"><span id="power">—</span><small>power</small></p>
-          <p class="verdict" id="verdict">Evaluating design...</p>
-          <p class="detail"><span id="ident">—</span> also name the right pattern. <span id="snap"></span></p>
         </div>
-      </div>
+        <div class="decide">
+          <button id="run" type="submit" class="go">Can my study find it?</button>
+          <div class="answer" id="answer" aria-live="polite">
+            <p class="power"><span id="power">—</span><small>power</small></p>
+            <p class="ident"><span id="ident">—</span> also name the right pattern.</p>
+            <p class="verdict" id="verdict">Evaluating design...</p>
+            <p class="snap" id="snap"></p>
+          </div>
+        </div>
+      </form>
     </section>
+
+    <figure class="tissue">
+      <figcaption class="card-head">
+        <span><strong>Patient tissue</strong> <span id="tissue-caption">Preparing tissue slabs...</span></span>
+        <span class="hint"><span class="hint-text">Drag or use the arrow keys to turn.</span> <button type="button" id="spin" class="link" aria-pressed="false">Pause rotation</button></span>
+      </figcaption>
+      <canvas id="tissue" tabindex="0" role="img" aria-label="Tissue cores from six patients, side by side"></canvas>
+      <p class="legend">
+        <span><i class="t"></i>Tumour</span> <span><i class="s"></i>Stroma</span> <span><i class="m"></i>Immune</span>
+        <span><i class="f"></i>Field of view</span> <span id="miscall-key">10% of cells mis-called, drawn in another class's colour</span>
+      </p>
+    </figure>
 
     <section class="race" aria-labelledby="race-title">
       <h2 id="race-title">The same <span id="race-n">1,000</span> studies, two ways</h2>
@@ -80,19 +83,18 @@
           <p class="count" id="gpu-count"></p>
         </figure>
       </div>
-      <p class="race-key"><i class="hit"></i>found the pattern <i class="miss"></i>missed it <span id="race-speed"></span></p>
+      <p class="race-key"><span><i class="hit"></i>found the pattern</span> <span><i class="miss"></i>missed it</span></p>
+      <p class="race-speed" id="race-speed"></p>
     </section>
 
-    <section class="results" aria-labelledby="chart-title">
-      <figure class="chart">
-        <figcaption id="chart-title">Power against patients, one line per regions-per-patient</figcaption>
-        <div id="chart"></div>
-        <p class="note" id="note"></p>
-      </figure>
-    </section>
+    <figure class="chart">
+      <figcaption id="chart-title">Power against patients, one line per regions-per-patient</figcaption>
+      <div id="chart"></div>
+      <p class="note" id="note"></p>
+    </figure>
   </main>
 
-  <footer class="foot">Preflight · Team Dry Lab · Thousands of studies, simulated in seconds, before you image a slide.</footer>
+  <footer class="foot">Preflight, by Team Dry Lab.</footer>
   <script type="module" src="app.js"></script>
 </body>
 </html>

@@ -70,13 +70,13 @@ function update({ restartRace }) {
   $("regions-out").value = want.regions;
   $("fov-out").value = fovLabel(want.fov_um);
   $("miscall-out").value = pct(want.miscall);
+  $("miscall-key").textContent = `${pct(want.miscall)} of cells mis-called, drawn in another class's colour`;
 
   if (view3d) {
     const slabs = view3d.update(want);
     $("tissue-caption").textContent =
-      `${slabs} of ${want.patients} patients shown · ` +
-      (want.fov_um === "full" ? "whole core imaged" : `${want.regions} × ${want.fov_um} µm field${want.regions > 1 ? "s" : ""} per patient`) +
-      ` · ${pct(want.miscall)} mis-called`;
+      `${slabs} of ${want.patients} patients, ` +
+      (want.fov_um === "full" ? "whole core imaged" : `${want.regions} × ${want.fov_um} µm field${want.regions > 1 ? "s" : ""} each`);
   }
 
   const p = nearest(want);

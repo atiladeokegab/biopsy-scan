@@ -1,4 +1,4 @@
-// TISSUE: one thin slab of real (or SYNTHETIC) cells per patient, stacked, with field-of-view squares.
+// TISSUE: one thin slab of real (or SYNTHETIC) cells per patient, six side by side, with field-of-view squares.
 // One Points draw call per slab; colours are rewritten on the CPU when the design changes (~30k cells).
 import * as THREE from "./vendor/three/three.module.min.js";
 import { tok } from "./chart.js";
@@ -6,8 +6,9 @@ import { tok } from "./chart.js";
 // The scene is sized in core widths, and each slab is cut to its own core, not microns: every core (720 µm real, 2500 µm synthetic) is
 // R world units across, so dots stay fine and slabs keep their spacing whatever region_um is.
 const R = 250; // world units across one core
-const GAP = R * 0.16; // between slabs
-const DOT = R * 0.01; // point size: a fine dot at any core size
+const PITCH = R * 1.12; // centre to centre of neighbouring cores
+const COLS = 3, SHOWN = 6; // six patients, three by two
+const DOT = R * 0.016; // point size: a fine dot at real-cell density, at any core size
 const TYPES = ["tumour", "stroma", "immune"]; // CSS tokens --tumour, --stroma, --immune
 const DIM = 0.14; // how much of a cell's colour survives outside every field of view
 
@@ -81,7 +82,7 @@ export function createTissue(canvas, tissue, { reducedMotion }) {
     return { group, pts, col, pos, type, flip, other, squares, spots, n, core };
   });
 
-  let yaw = 0.6, pitch = 0.42, spin = !reducedMotion, dragging = null, drop = null, shown = 0;
+  let yaw = 0.6, pitch = 0.5, spin = !reducedMotion, dragging = null, drop = null, shown = 0;
 
   function squareLoop(w, h) {
     const g = new THREE.BufferGeometry().setFromPoints(
@@ -95,10 +96,11 @@ export function createTissue(canvas, tissue, { reducedMotion }) {
     const full = d.fov_um === "full";
     const s = full ? Infinity : d.fov_um / UM;
     const k = full ? 1 : d.regions;
-    shown = Math.max(1, Math.min(slabs.length, Math.round(d.patients / 25)));
+    shown = Math.min(SHOWN, slabs.length);
+    const rows = Math.ceil(shown / COLS);
     slabs.forEach((sl, i) => {
       sl.group.visible = i < shown;
-      sl.group.position.y = (i - (shown - 1) / 2) * GAP;
+      sl.group.position.set(((i % COLS) - (COLS - 1) / 2) * PITCH, 0, (Math.floor(i / COLS) - (rows - 1) / 2) * PITCH);
       sl.squares.children.forEach((c) => c.geometry.dispose());
       sl.squares.clear();
       // Each field of view is clamped to the core: never wider than it, never hanging off its edge.
@@ -142,9 +144,12 @@ export function createTissue(canvas, tissue, { reducedMotion }) {
     const lift = 70 * (1 - t) ** 3;
     for (const sl of slabs) sl.squares.position.y = lift;
     if (t >= 1) drop = null;
-    // Far enough to fit the stack's height, and its width on narrow (phone) canvases.
-    const dist = Math.max(330 + shown * 30 + R * 0.6, (R * 1.9) / (0.574 * camera.aspect));
-    camera.position.set(Math.sin(yaw) * Math.cos(pitch) * dist, Math.sin(pitch) * dist, Math.cos(yaw) * Math.cos(pitch) * dist);
+    // Each core turns in place, so the camera only has to fit the fixed grid of cores (plus a turning core's corners).
+    for (const sl of slabs) sl.group.rotation.y = yaw;
+    const half = Math.tan((camera.fov * Math.PI) / 360);
+    const hw = ((COLS - 1) / 2) * PITCH + R * 0.62, hd = (Math.ceil(shown / COLS) / 2) * PITCH + R * 0.1;
+    const dist = Math.max((hw * 1.04) / (half * camera.aspect), (hd * Math.sin(pitch) * 1.2 + R * 0.1) / half);
+    camera.position.set(0, Math.sin(pitch) * dist, Math.cos(pitch) * dist);
     camera.lookAt(0, 0, 0);
     renderer.render(scene, camera);
     requestAnimationFrame(frame);
@@ -154,7 +159,7 @@ export function createTissue(canvas, tissue, { reducedMotion }) {
   canvas.addEventListener("pointermove", (e) => {
     if (!dragging) return;
     yaw -= (e.clientX - dragging.x) * 0.008;
-    pitch = Math.max(0.08, Math.min(1.45, pitch + (e.clientY - dragging.y) * 0.006));
+    pitch = Math.max(0.3, Math.min(1.35, pitch + (e.clientY - dragging.y) * 0.006));
     dragging = { x: e.clientX, y: e.clientY };
   });
   const stop = () => (dragging = null);
@@ -165,7 +170,7 @@ export function createTissue(canvas, tissue, { reducedMotion }) {
     if (!step) return;
     e.preventDefault();
     yaw += step[0];
-    pitch = Math.max(0.08, Math.min(1.45, pitch + step[1]));
+    pitch = Math.max(0.3, Math.min(1.35, pitch + step[1]));
   });
 
   requestAnimationFrame(frame);
