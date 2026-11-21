@@ -55,9 +55,9 @@ def stage(dest: Path) -> Path:
 
 def verify(dest: Path) -> Path:
     """Every file in dest is one of PIN's tracked files, byte-identical by its git blob hash, and none is missing."""
-    tree = subprocess.run(["git", "-C", str(REPO), "ls-tree", "-r", PIN], capture_output=True, text=True,
-                          check=True).stdout.splitlines()
-    want = {line.split("\t", 1)[1]: line.split()[2] for line in tree if line.split()[0] in ("100644", "100755")}
+    tree = subprocess.run(["git", "-C", str(REPO), "ls-tree", "-r", "-z", PIN], capture_output=True, text=True,
+                          check=True).stdout.split("\0")
+    want = {e.split("\t", 1)[1]: e.split()[2] for e in tree if e and e.split()[0] in ("100644", "100755")}
     got = {str(f.relative_to(dest)): f for f in dest.rglob("*") if f.is_file() or f.is_symlink()}
     if set(got) != set(want):
         raise RuntimeError(f"staged files differ from {PIN[:12]}: {sorted(set(got) ^ set(want))[:5]}")
@@ -68,11 +68,42 @@ def verify(dest: Path) -> Path:
     return dest
 
 
+def snapshot_sha256() -> dict:
+    """The 7 full sha256 lines in bench/atlas_snapshot/README.md, checked against the #53 record's 12-char prefixes."""
+    lines = [ln.split() for ln in (SNAPSHOT.parent / "README.md").read_text().splitlines()
+             if len(ln.split()) == 2 and len(ln.split()[0]) == 64 and ln.split()[1].startswith("atlas/")]
+    full = {name: digest for digest, name in lines}
+    record = json.loads(RECORD.read_text())["simulated"]["atlas_code"]["sha256_12"]
+    if {k: v[:12] for k, v in full.items()} != record:
+        raise RuntimeError("bench/atlas_snapshot/README.md does not match the #53 record")
+    return full
+
+
+def verify_snapshot(dest: Path, full: dict | None = None) -> Path:
+    """dest holds exactly the snapshot's files, each matching its full sha256."""
+    full = full or snapshot_sha256()
+    got = {f"atlas/{f.name}": hashlib.sha256(f.read_bytes()).hexdigest() for f in dest.iterdir()
+           if f.name != "__pycache__"}
+    if got != full:
+        raise RuntimeError(f"atlas snapshot in {dest} differs from the committed #53 snapshot")
+    return dest
+
+
+def stage_snapshot(dest: Path) -> Path:
+    """The snapshot as committed at HEAD (never the working tree), verified."""
+    rel = SNAPSHOT.relative_to(REPO).as_posix()
+    archive = subprocess.run(["git", "-C", str(REPO), "archive", "HEAD", rel], capture_output=True, check=True).stdout
+    with tarfile.open(fileobj=io.BytesIO(archive)) as tar:
+        tar.extractall(dest, filter="data")
+    return verify_snapshot(dest / rel)
+
+
 if modal.is_local():
     src = stage(Path(tempfile.mkdtemp(prefix="preflight-power-")))
-    # only tracked files: the pinned commit's verified archive and the committed snapshot's 7 .py files
+    snap = stage_snapshot(Path(tempfile.mkdtemp(prefix="preflight-power-snap-")))
+    # only tracked files: the pinned commit's verified archive and HEAD's committed, verified snapshot
     image = image.uv_sync(str(src)).workdir(APP_DIR).add_local_dir(src, APP_DIR, ignore=["data", "demo", "results"])
-    image = image.add_local_dir(SNAPSHOT, f"{APP_DIR}/atlas", ignore=["**/__pycache__"])
+    image = image.add_local_dir(snap, f"{APP_DIR}/atlas")
 
 
 def gpu_info() -> dict:
@@ -85,15 +116,12 @@ def gpu_info() -> dict:
 
 @app.function(image=image, volumes={FOREIGN: data}, gpu="A100-40GB", timeout=4 * 3600, memory=32768, cpu=8.0,
               single_use_containers=True)
-def power_point(patients: int, backend: str, snapshot_sha256_12: dict) -> dict:
+def power_point(patients: int, backend: str, snapshot_sha256: dict) -> dict:
     """One design point, start to finish, in this container: calibrate, null, planted; the atlas's own summary."""
     import pandas as pd
 
     entered = time.perf_counter()
-    got = {f"atlas/{p.name}": hashlib.sha256(p.read_bytes()).hexdigest()[:12]
-           for p in sorted(Path(APP_DIR, "atlas").glob("*.py"))}
-    if got != snapshot_sha256_12:
-        raise RuntimeError(f"atlas snapshot differs from the 300 run's record: {got}")
+    verify_snapshot(Path(APP_DIR, "atlas"), snapshot_sha256)
     Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
     for name in ("charville_labels.csv", "charville_raw_data.zip"):  # raw inputs only; never the volume's caches
         shutil.copy(Path(FOREIGN, name), Path(DATA_DIR, name))
@@ -118,7 +146,7 @@ def _jsonable(x):
 
 @app.local_entrypoint()
 def run(patients: str, gpu: str = "A100-40GB", backend: str = "gpu"):
-    record = json.loads(RECORD.read_text())["simulated"]["atlas_code"]["sha256_12"]
+    record = snapshot_sha256()
     counts = [int(p) for p in patients.split(",")]
     git = lambda *a: subprocess.run(["git", "-C", str(REPO), *a], capture_output=True, text=True).stdout.strip()  # noqa: E731
     launched = {"commit": git("rev-parse", "HEAD"), "pin": PIN,
@@ -126,7 +154,7 @@ def run(patients: str, gpu: str = "A100-40GB", backend: str = "gpu"):
     fn = power_point.with_options(gpu=gpu)
     t0 = time.perf_counter()
     walls, points = {}, []
-    for p, result in zip(counts, fn.map(counts, kwargs={"backend": backend, "snapshot_sha256_12": record},
+    for p, result in zip(counts, fn.map(counts, kwargs={"backend": backend, "snapshot_sha256": record},
                                         return_exceptions=True, order_outputs=True)):
         if isinstance(result, Exception):
             points.append({"patients": p, "error": repr(result)})

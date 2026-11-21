@@ -21,3 +21,16 @@ def test_staging_is_fresh_and_verified(tmp_path):
     (src / "core" / "extra.py").write_text("")
     with pytest.raises(RuntimeError, match="staged files differ"):
         pas.verify(src)
+
+
+def test_snapshot_upload_is_the_committed_seven_files_only(tmp_path):
+    stray = pas.SNAPSHOT / "untracked_stray.py"
+    stray.write_text("print('not committed')\n")
+    try:
+        staged = pas.stage_snapshot(tmp_path / "snap")
+    finally:
+        stray.unlink()
+    assert sorted(f.name for f in staged.iterdir()) == sorted(n.split("/")[1] for n in pas.snapshot_sha256())
+    (staged / "runner.py").write_text("tampered\n")
+    with pytest.raises(RuntimeError, match="snapshot"):
+        pas.verify_snapshot(staged)
