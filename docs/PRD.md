@@ -1,13 +1,11 @@
-# sota-parallelism-nov21: PRD v2
-
-> Spec of record: v2 (C-001 applied). C-002 is proposed, not approved: every "5-minute" below was "2-3 minute" (founder, 2026-11-21 14:42Z), marked "proposed (C-002)".
+# sota-parallelism-nov21: PRD v3
 
 ## Problem
 Before a lab images a spatial-biology cohort it must choose how many patients, how many regions per patient, how large a field of view and how fine a cell typing. Each choice trades cost against the chance of finding a real survival-linked spatial pattern, and today a lab sizes that by guesswork or a textbook formula that ignores the imaging. Simulating it honestly means re-imaging thousands of studies cell by cell from real tissue, which is CPU-days with the per-study cKDTree recount and permutation test a lab runs today.
 
 ## Users
 - Lab scientist: sets patients, regions per patient, field of view and mis-call rate, presses Run the studies, and sees power and identification rate for that design before imaging a slide
-- Judge: hears a live 5-minute pitch with a clean PDF deck; the demo video is the backup; scores correctness and assumptions, fundamental reshaping, meaningful performance improvement and scientific value _(proposed, C-002)_
+- Judge: hears a live 5-minute pitch with a clean PDF deck; the demo video is the backup; scores correctness and assumptions, fundamental reshaping, meaningful performance improvement and scientific value
 - Teammate agent (any laptop): reads this PRD and its GitHub issues to build one requirement without asking
 
 ## Goals
@@ -56,7 +54,7 @@ Atilade (lead), Team Dry Lab
 - Tag: stopping_rule: build in rank order; stop when time runs out
 - Tag: conflict_rule: merged code and real data win over prose
 - Tag: labels: MEASURED, SYNTHETIC, UNMEASURED, ESTIMATE, ANALYTIC
-- Tag: submission: live 5-minute pitch with a PDF deck from the Slides artifact https://claude.ai/artifact/HsYFYZZygbAzNALjz2bm5Q; demo video is the backup _(proposed, C-002)_
+- Tag: submission: live 5-minute pitch with a PDF deck from the Slides artifact https://claude.ai/artifact/HsYFYZZygbAzNALjz2bm5Q; demo video is the backup
 - Tag: deck_design: design/deck/system.md (hub project dir)
 - Tag: plan_of_record: ~/hub/projects/sota-parallelism-nov21/IDEA.md (v6 and v5 overrides beat older text); coverage map prd-coverage.md beside it
 - Tag: freeze: code freeze 2026-11-22T16:00Z, submit 2026-11-22T17:00Z (HACKATHON.md UTC column)
@@ -114,7 +112,7 @@ Why: The judge's button: a lab's own knobs, an answer in seconds, Wi-Fi off
 - A-9.1@1 Scenario: given measured CPU 1 s and GPU 2 s, the race reports "GPU 2.0× slower", never faster (`demo/race.test.mjs`)
 - A-9.2@1 Scenario: the h1 is "Thousands of studies, simulated in seconds, before you image a slide.", the button reads "Run the studies", and grep finds no "Can my study find it?" anywhere in the repo. Not yet built: the page still uses the old phrase (`demo/copy.test.mjs`)
 
-### R-10 [P1 · Deck] Clean PDF deck for a live 5-minute pitch _(proposed, C-002)_
+### R-10 [P1 · Deck] Clean PDF deck for a live 5-minute pitch
 rank 10 · state approved · needs R-5, R-6, R-7 · touches `design/deck/system.md`, `docs/SUBMISSION.md`
 Why: The submission is a live pitch; the deck carries the numbers and the before/after
 - A-10.1@1 Scenario: the deck exports from the Slides artifact as PDF and follows design/deck/system.md; every figure carries MEASURED, SYNTHETIC, UNMEASURED, ESTIMATE or ANALYTIC. Not yet built: check by reading the exported PDF (`docs/SUBMISSION.md`)
@@ -130,7 +128,7 @@ Why: The novelty goal: grammar v1 has only neighbourhood relations; v2 adds prot
 ### R-11 [P2 · Submission] README, backup demo video and the submission form (#9-#12)
 rank 12 · state approved · needs R-9, R-10 · touches `README.md`, `docs/film/`, `docs/SUBMISSION.md`
 Why: The video is the backup if the live demo fails; the form is how the event receives us
-- A-11.1@2 Scenario: README states what it is, how to run it, and a screenshot from the final run; the demo video plays the same 5-minute story; every submission checklist row is done before 2026-11-22T17:00Z. Not yet built (`tests/test_submission.py`) _(proposed, C-002)_
+- A-11.1@2 Scenario: README states what it is, how to run it, and a screenshot from the final run; the demo video plays the same 5-minute story; every submission checklist row is done before 2026-11-22T17:00Z. Not yet built (`tests/test_submission.py`)
 
 ## References
 - design: `design/deck/system.md` sha256 467717e415e3
