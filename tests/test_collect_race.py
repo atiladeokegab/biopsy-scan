@@ -32,14 +32,17 @@ def test_committed_race_matches_bench_results():
     """Atlas #79 (1): every number shown is the one in the file it cites."""
     b = json.loads((ROOT / "demo" / "data" / "baseline.json").read_text())
     race = {r["id"]: r for r in b["rows"]} | {"workflow": b["workflow"], "scope": b.get("scope")}
+    fed = {}  # as main(): a later file's fields for the same id win
     for path in sorted((ROOT / "bench" / "results").glob("*.json")):
         d = json.loads(path.read_text())
         for rid, fields in (cr.rows_from(path, d) if isinstance(d, dict) else []):
-            if rid == "interim":
-                assert b["interim"] == fields, "interim: rerun python3 -I demo/collect_race.py"
-                continue
-            for k, v in fields.items():
-                assert race[rid][k] == v, f"{rid}.{k}: rerun python3 -I demo/collect_race.py"
+            fed[rid] = fields if rid in ("interim", "scope") else fed.get(rid, {}) | fields
+    for rid, fields in fed.items():
+        if rid == "interim":
+            assert b["interim"] == fields, "interim: rerun python3 -I demo/collect_race.py"
+            continue
+        for k, v in fields.items():
+            assert race[rid][k] == v, f"{rid}.{k}: rerun python3 -I demo/collect_race.py"
     for r in [*b["rows"], b["workflow"]]:
         if r and r["seconds"] is not None:
             assert (ROOT / r["source"]).is_file(), f"{r['source']}: a timed row cites a committed file"
@@ -298,3 +301,23 @@ def test_interim_seconds_display_as_the_raw_file_rounds():
            "fleet-1": LADDER["fleet"]["runs"]["1"]["compute_span_s"], "fleet-8": LADDER["fleet"]["runs"]["8"]["compute_span_s"]}
     assert {i: show(rows[i]) for i in raw} == {i: show(v) for i, v in raw.items()}
     assert show(rows["kernel-numpy"]) == "2.24"
+
+
+def test_the_five_arm_file_fills_only_the_fused_lane_and_only_with_full_x_parity():
+    """Lead (21 Nov): a fifth lane, fused-cpu, from the --compare-with file, only with full X parity."""
+    five = _four()
+    for a in ("lab", "numba", "gpu", "hybrid"):
+        five["arms"][a]["source"] = "bench/results/modal-design-four.json (source_commit x)"
+    five["arms"]["fused"] = {**five["arms"]["numba"], "source": "this run"}
+    five["parity"] = {"all": True, "against_prior": {"fused": {a: {"x_bitwise": True, "x_compared": 3000}
+                                                               for a in ("lab", "numba", "gpu", "hybrid")}}}
+    rows = dict(cr.rows_from(Path("modal-design.json"), five))
+    assert sorted(rows) == ["fused-cpu", "scope"]
+    f = rows["fused-cpu"]
+    assert (f["seconds"], f["cores"], f["gpu"]) == (372.0, 8, None)
+    assert f["note"].endswith("of summed worker wall time; same features, same top score")
+    assert "fused lane: same features, same top score" in rows["scope"]["comparison"]
+    five["parity"]["against_prior"]["fused"]["gpu"]["x_bitwise"] = False
+    assert list(cr.rows_from(Path("modal-design.json"), five)) == []
+    five["parity"]["against_prior"]["fused"]["gpu"] = {"x_bitwise": True, "x_compared": 0}
+    assert list(cr.rows_from(Path("modal-design.json"), five)) == []
