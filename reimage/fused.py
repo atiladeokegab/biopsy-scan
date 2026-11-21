@@ -1,4 +1,4 @@
-"""Fused CPU re-imaging: mis-call, crop and counting in one Numba pass over visible focal cells only.
+"""Fused CPU re-imaging: mis-call and counting in one Numba pass (crop_mask's own mask) over visible focal cells only.
 
 Bit-identical to cpu.reimage_region (counts every visible cell, then core.truth.region_sums): the same
 IEEE operations, and each S entry receives its terms in increasing cell index, as np.add.at applies them.
@@ -7,20 +7,21 @@ IEEE operations, and each S entry receives its terms in increasing cell index, a
 import numpy as np
 from numba import njit
 
+from core.reimage_ref import crop_mask
 from core.truth import R
 from . import cpu
 from ._common import checked
 
 
 @njit(cache=True)
-def _region(ptr, idx, ends, types, u, Mcum, xy, has_crop, x0, y0, s, t_of, T, K):
+def _region(ptr, idx, ends, types, u, Mcum, visible, t_of, T, K):
     n = len(types)
     obs = np.zeros(n, np.int64)
     vis = np.zeros(n, np.bool_)
     seen = np.zeros(K, np.int64)
     nvis = 0
     for i in range(n):
-        if has_crop and not (xy[i, 0] >= x0 and xy[i, 0] < x0 + s and xy[i, 1] >= y0 and xy[i, 1] < y0 + s):
+        if not visible[i]:
             continue
         c = 0
         for k in range(K):  # core.reimage_ref.miscall: first k with cumsum(M[type])[k] > u
@@ -72,12 +73,13 @@ def reimage_region(nbr, xy, types, focal, K, crop=None, eps=0.0, M=None, u=None,
     if prepared is None:
         prepared = cpu.prepare(nbr, K)
     elif (not isinstance(prepared, cpu._PreparedCounts) or prepared.backend != "cpu" or prepared.K != K
-          or prepared.n != len(types) or prepared.source is not nbr):
+          or prepared.source is not nbr):
         raise ValueError("prepared adjacency belongs to a different region, K, or backend")
+    if prepared.n != len(types):  # either path: the kernel indexes adjacency by cell without bounds checks
+        raise ValueError("adjacency and labels describe regions of different sizes")
     xy, types, M, u = checked(xy, types, focal, K, crop, eps, M, u, rng)
     t_of = np.full(K, -1, np.int64)
     t_of[list(focal)] = np.arange(len(focal))
-    x0, y0, s = crop if crop is not None else (0.0, 0.0, 0.0)
+    visible = crop_mask(xy, crop)  # the reference's own dtype and scalar rules (a float32 xy stays float32)
     return _region(prepared.ptr, prepared.idx, prepared.ends, np.ascontiguousarray(types, np.int64), u,
-                   np.cumsum(M, axis=1), np.ascontiguousarray(xy, np.float64), crop is not None,
-                   float(x0), float(y0), float(s), t_of, len(focal), K)
+                   np.cumsum(M, axis=1), visible, t_of, len(focal), K)
