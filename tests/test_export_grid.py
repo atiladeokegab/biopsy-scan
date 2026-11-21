@@ -85,7 +85,9 @@ def test_all_regions_rows_route_to_meta_without_casting(store, tmp_path):
 
 def test_source_facts_and_method_in_meta_even_when_measured():
     grid = build(summaries(), measured=True)
-    assert grid["source"] == "MEASURED" and "SYNTHETIC" not in grid["note"]
+    # not marked a SYNTHETIC grid, but it still discloses its SYNTHETIC outcomes (check_data requires it, #110)
+    assert grid["source"] == "MEASURED" and "Marked SYNTHETIC" not in grid["note"]
+    assert "SYNTHETIC Weibull outcomes" in grid["note"]
     assert grid["meta"]["cohorts"] == {"charville": FACTS}
     assert grid["meta"]["cohort_split"] == "all"  # only the marker counts read both sides of the UPMC lock
     assert grid["meta"]["input_split"] == "unknown"  # these results carry no split column
@@ -168,6 +170,79 @@ def test_cli_writes_strict_json_or_nothing(tmp_path, monkeypatch):
     assert e.value.code and not out.exists()
     eg.main([str(good), "--out", str(out)])
     json.loads(out.read_text(), parse_constant=lambda c: pytest.fail(f"non-strict JSON constant {c}"))
+
+
+# The measured path (#110): Atlas's committed summaries must publish and pass check_data
+COUNTED = ("power", "fwer", "identification_rate", "wrong_identification_rate")
+
+
+def measured_rows():
+    """summaries() with the binomial counts run_point stores: every rate is its count over its studies."""
+    rows = summaries()
+    for r in rows:
+        for rate in COUNTED:
+            r[f"{rate}_n"] = 1000
+            r[f"{rate}_count"] = round(r[rate] * 1000)
+            r[rate] = r[f"{rate}_count"] / 1000
+        r["power_lo"], r["power_hi"] = max(0.0, r["power"] - 0.03), min(1.0, r["power"] + 0.03)
+    return rows
+
+
+def test_measured_rows_keep_their_counts_and_pass_check_data(tmp_path):
+    grid = build(measured_rows(), measured=True)
+    assert grid["source"] == "MEASURED" and check(grid, tmp_path).returncode == 0
+    for p in grid["points"]:
+        for rate in COUNTED:
+            assert type(p[f"{rate}_count"]) is int and p[f"{rate}_count"] / 1000 == p[rate]
+    for text in ("SYNTHETIC", "legacy R4", "not an R15", "ESTIMATE", "not observed clinical rates"):
+        assert text in grid["note"]
+
+
+@pytest.mark.parametrize("change, message", [
+    ({"power_count": np.nan}, "power_count"), ({"power_count": 2.5}, "power_count"), ({"power_count": -1}, "power_count"),
+    ({"power_count": 1001}, "power_count"), ({"power_count": 7}, "power_count"),
+    ({"fwer_count": 7}, "fwer_count"), ({"fwer_n": 0}, "fwer_n"),
+])
+def test_measured_counts_must_be_whole_and_match_their_rates(change, message):
+    rows = measured_rows()
+    rows[0].update(change)
+    with pytest.raises(ValueError, match=message):
+        build(rows, measured=True)
+
+
+def test_measured_export_needs_power_count_and_never_derives_it():
+    with pytest.raises(ValueError, match="power_count"):
+        build(pd.DataFrame(measured_rows()).drop(columns="power_count"), measured=True)
+    with pytest.raises(ValueError, match="fwer_n"):
+        build(pd.DataFrame(measured_rows()).drop(columns="fwer_n"), measured=True)
+
+
+def test_default_synthetic_points_keep_their_fields():
+    p = build(measured_rows())["points"][0]
+    assert set(p) == {"patients", "regions", "fov_um", "miscall", "power", "identification_rate", "power_lo",
+                      "power_hi", "fwer", "wrong_identification_rate"}
+
+
+@pytest.mark.parametrize("cohort, n_points", [("charville", 48), ("upmc", 96)])
+def test_real_atlas_summary_exports_measured_and_passes_check_data(cohort, n_points, tmp_path):
+    base = ROOT / "atlas" / "results" / "production" / cohort
+    if not (base / "summary.parquet").exists():
+        pytest.skip(f"Atlas's {cohort} production export not in this checkout")
+    committed = json.loads((base / "grid.json").read_text())
+    df = eg.read_results(base / "summary.parquet")
+    grid = eg.build_grid(df, committed["cohort"], committed["meta"]["max_regions_per_patient"], cohort_key=cohort,
+                         measured=True)
+    result = check(grid, tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert len(grid["points"]) == n_points and "legacy R4" in grid["note"] and "not an R15" in grid["note"]
+    for p in grid["points"] + grid["meta"]["all_regions_points"]:
+        row = df[(df.patients == p["patients"]) & (df.eps == p["miscall"])
+                 & (df.regions_per_patient.isna() if p["regions"] == "all" else df.regions_per_patient == p["regions"])
+                 & (df.fov_um.isna() if p["fov_um"] == "full" else df.fov_um == p["fov_um"])]
+        assert len(row) == 1
+        for rate in COUNTED:
+            assert (p[rate], p[f"{rate}_count"], p[f"{rate}_n"]) == (
+                row[rate].iloc[0], row[f"{rate}_count"].iloc[0], row[f"{rate}_n"].iloc[0])
 
 
 # Finite-bank provenance (#40, after Atlas's #45)

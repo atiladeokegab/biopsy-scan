@@ -114,10 +114,10 @@ def interim(name, d):
          "scope_line": f"{lab}, {k['speedup_median']:.2f}× faster: feature step only, NumPy vs GPU, same container, "
                   f"median of {len(rows['gpu']['samples_s'])}, exact parity", "rows": [
             {"id": "kernel-numpy", "method": "NumPy reference, same container", "role": "baseline", "label": lab,
-             "seconds": round(rows["numpy_reference"]["median_s"], 3), "hardware": "Modal GPU container, on its CPU",
+             "seconds": round(rows["numpy_reference"]["median_s"], 4), "hardware": "Modal GPU container, on its CPU",
              "cores": None, "gpu": None, "note": f"median of {len(rows['numpy_reference']['samples_s'])}", "source": name},
             {"id": "kernel-gpu", "method": "The same step on 1 GPU", "role": "screen", "label": lab,
-             "seconds": round(rows["gpu"]["median_s"], 3), "hardware": "Modal", "cores": None, "gpu": k["gpu"]["model"],
+             "seconds": round(rows["gpu"]["median_s"], 4), "hardware": "Modal", "cores": None, "gpu": k["gpu"]["model"],
              "note": f"median of {len(rows['gpu']['samples_s'])}, exact parity", "source": name}]},
         {"title": "1,000 studies: 1 A100 against 8", "unit": f["note"], "same_scope": True,
          "scope_line": f"{lab}, observed {one['compute_span_s'] / eight['compute_span_s']:.1f}× compute-span reduction "
