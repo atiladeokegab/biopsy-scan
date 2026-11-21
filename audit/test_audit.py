@@ -321,3 +321,14 @@ def test_run_cohort_audit_handles_missing_endpoints_nan_features_and_writes_json
     assert saved["already_seen"] is True
     assert saved["clinical_claims"] is False
     assert all("grammar_index" in h for h in saved["maxT"]["top_hits"])
+
+
+def test_committed_audit_results_pass_schema_validation() -> None:
+    results_dir = Path(__file__).resolve().parent / "results"
+    for coh in ("upmc", "charville"):
+        doc = json.loads((results_dir / f"{coh}.json").read_text())
+        validate_audit_result(doc)
+        assert doc["cohort"] == coh
+        assert doc["already_seen"] is True
+        assert doc["exploratory"] is True
+        assert doc["clinical_claims"] is False
