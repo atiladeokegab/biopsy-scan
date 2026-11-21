@@ -19,4 +19,8 @@ assert.equal(fleetPair(swap("fleet-8", { gpu: "8x NVIDIA A100-SXM4-80GB" })), nu
 assert.equal(fleetPair(swap("fleet-8", { label: "ESTIMATE" })), null, "both MEASURED");
 assert.equal(fleetPair({ ...fleet, title: "1000 studies on a fleet" }), null, "bit-identical outputs stated by the data");
 assert.equal(fleetPair(undefined), null);
+// The bar prints the same seconds as the line beside it: 843.7 s, never "14 min".
+const { secs } = await import("./race.js");
+assert.equal(secs(p.rows[0].seconds), "843.7 s");
+assert.equal(secs(p.rows[1].seconds), "128.2 s");
 console.log("fleet.test.mjs: ok");
