@@ -19,13 +19,13 @@ About half of patients with locally advanced head and neck cancer relapse ([PMC7
 Finding a pattern like that takes enough patients. Real cohorts are small:
 
 - **Charville** (colorectal, 159 patients, 38 events): the best of 630 spatial features has p = 0.13 after maxT correction. MEASURED, exploratory: the outcomes had already been seen. Nothing survives correction.
-- **The textbook formula** says 200 patients give 80% power (ANALYTIC, Schoenfeld). Simulating those studies on real tissue, with sampling and mis-calls, gives about 27–32% (ESTIMATE: 32% from 60 studies per point, merged in #44; 27% [22%, 32%] from 300, in review in #53).
+- **The textbook formula** says 200 patients give 80% power (ANALYTIC, Schoenfeld). Simulating those studies on real tissue, with sampling and mis-calls, gives about 27–32% (ESTIMATE: 32% from 60 studies per point, merged in #44; 27% [22%, 32%] from 300, merged in #53).
 
 A lab that trusts the formula images 200 patients and most likely finds nothing. Preflight shows that before the first slide.
 
 ## The plan
 
-The plan has two halves. **Decode** finds the biomarker in multiplex fluorescence (22 markers on UPMC). **Translate** turns it into one or two stains a hospital lab can run. The full plan is the founder's "Rebuilding the MultivisionDx Pipeline on GPUs". The parts buildable by code freeze are spec change C-003, approved and applied (spec v4): R-13 to R-18 are in build.
+The plan has two halves. **Decode** finds the biomarker in multiplex fluorescence (22 markers on UPMC). **Translate** turns it into one or two stains a hospital lab can run. The full plan is the founder's "Rebuilding the MultivisionDx Pipeline on GPUs". The parts buildable by code freeze are spec change C-003, approved and applied: the PRD is now v4, and R-13 to R-18 are in build (issues #66 to #71).
 
 The Helsinki team examined 18 compound signatures. Preflight searches 3,780 patterns: 630 neighbourhood patterns in grammar v1, plus protein, size and stroma channels in v2.
 
@@ -56,11 +56,11 @@ Speed-ups count only at equal output. Re-imaging ratios are against rung 0. A GP
 1. **Distil the panel.** Find the fewest markers that keep the biomarker's predictive power, scored as held-out C-index retained.
 2. **Simulate each stain format.** Recompute the biomarker as single-slide IHC, as two serial sections misaligned by 0–100 µm, and on 100–200 µm tiles. This tells a lab whether two routine slides are enough.
 
-**Validation.** Every real-data result here is exploratory: the outcomes had already been seen. UPMC cannot carry a survival claim. Strict case identity gives 50 patients and 10 events (16 and 4 locked); grouping by clinical record gives 80 patients and 27 events (23 and 8 locked). UPMC still hosts the Helsinki test, because pEMT is a head and neck signature and Charville is colorectal. Its patients are split before any search. The locked patients are opened once, after the search is frozen, to score the Helsinki pattern (pEMT tumour bordered by fibroblasts), and that result first reports Preflight's own power for so few patients. HANCOCK, a cohort with real brightfield IHC, is the next validation step; it is not claimed by freeze.
+**Validation.** Every real-data result here is exploratory: the outcomes had already been seen. UPMC cannot carry a survival claim. Strict case identity gives 50 patients and 10 events (16 and 4 locked); grouping by clinical record gives 80 patients and 27 deaths (23 and 8 locked). These counts are MEASURED. UPMC still hosts the Helsinki test, because pEMT is a head and neck signature and Charville is colorectal. Its patients are split before any search. The locked patients are opened once, after the search is frozen, to score the Helsinki pattern (pEMT tumour bordered by fibroblasts), and that result first reports Preflight's own power for so few patients. HANCOCK, a cohort with real brightfield IHC, is the next validation step; it is not claimed by freeze.
 
 ## Status
 
-Each row has one status. **BUILT**: merged on `integration`. **IN REVIEW**: open PR. **IN PROGRESS**: being built on a branch, no PR yet. **PLANNED**: in C-003, not built. **NOT CLAIMED**: not in this build.
+Each row has one status. **BUILT**: merged on `integration`. **IN REVIEW**: open PR. **IN PROGRESS**: being built on a branch, no PR yet. **PLANNED**: in the v4 PRD (C-003), not built yet. **NOT CLAIMED**: not in this build.
 
 | Item | Status | Where |
 |---|---|---|
@@ -74,19 +74,19 @@ Each row has one status. **BUILT**: merged on `integration`. **IN REVIEW**: open
 | Charville v2 result: strongest feature is PD1 on macrophages within 100 µm of "Tumor 5" cells (one tumour cell type), z = 3.96, maxT-adjusted p = 0.098 (MEASURED). Not significant after correction: exploratory | BUILT | #47 |
 | Rung 0: what a lab runs today, timed on real Charville | BUILT | #43 |
 | Textbook formula versus simulated power, 60 studies per point | BUILT | #44 |
-| The same comparison at 300 studies per point | IN REVIEW | #53 |
+| The same comparison at 300 studies per point (ESTIMATE) | BUILT | #53 |
 | Design atlas: calibrated study simulations and streamed runner (draft) | IN REVIEW | #45 |
 | Demo race plays only on "Run the studies" | BUILT | #48 |
 | Pitch scenes: two real UPMC patients and the wall of 3,780 features | BUILT | #55 |
 | Submission check: 5-minute pitch, live demo, video as backup | BUILT | #54 |
-| PRD render of C-003 (spec v4; the change itself is approved and applied, R-13 to R-18 in build) | IN REVIEW | #60 |
-| UPMC patient-level loader and locked held-out split (R-13) | IN REVIEW | #62 |
+| C-003 applied: PRD v4 with R-13 to R-18 | BUILT | #60 |
+| UPMC patient-level loader and locked held-out split (R-13, issue #66) | IN REVIEW | #62 |
 | Helsinki candidate defined before the search (R-16 pre-registration) | BUILT | #61 |
-| Implementation A analysis baseline: per-candidate PHReg on all cores (R-14) | IN PROGRESS | branch `r14-cpu-baseline` |
-| R2–R4 on GPU as the per-study kernel: clinical-adjusted score screen, 10,000-shuffle maxT as one product, a valid adjusted null (R-15) | PLANNED | C-003 |
-| Rediscovery of the Helsinki pattern on the locked UPMC patients, with Preflight's power for that set first; exploratory, no survival claim (R-16) | PLANNED | C-003 |
-| R5 and Translate 1–2: minimal panels and IHC format simulation on UPMC (R-17) | PLANNED | C-003 |
-| The same screen rerun on Charville (R-18) | PLANNED | C-003 |
+| Implementation A analysis baseline: per-candidate PHReg on all cores (R-14, issue #67). All 3,780 Charville v2 patterns: 63.84 s on 8 workers, 298.30 s on 1 worker (MEASURED, on a loaded shared VM; `bench/results/impl-a-charville-amd-epyc-7b13.json`) | BUILT | #64 |
+| R2–R4 on GPU as the per-study kernel: clinical-adjusted score screen, 10,000-shuffle maxT as one product, a valid adjusted null (R-15) | PLANNED | #68 |
+| Rediscovery of the Helsinki pattern on the locked UPMC patients, with Preflight's power for that set first; exploratory, no survival claim (R-16) | PLANNED | #69 |
+| R5 and Translate 1–2: minimal panels and IHC format simulation on UPMC (R-17) | PLANNED | #70 |
+| The same screen rerun on Charville (R-18, issue #71) | IN PROGRESS | branch `r18-charville-screen` |
 | R6: learned features and knockoffs | NOT CLAIMED | |
 | Translate 3 (brightfield scoring engine) and 4 (markers from H&E) | NOT CLAIMED | |
 | HANCOCK validation on real brightfield IHC | NOT CLAIMED | |
@@ -97,6 +97,7 @@ Each row has one status. **BUILT**: merged on `integration`. **IN REVIEW**: open
 | What | Time | Label |
 |---|---|---|
 | Implementation A, rung 0: one study of 159 Charville patients, cKDTree recount plus 1,000 permutations, one core of an AMD EPYC 7B13 | 7.52 s per study (mean of 3 studies) | MEASURED |
+| Implementation A, analysis half: one full PHReg Cox fit for each of the 3,780 Charville v2 patterns (#64; `bench/results/impl-a-charville-amd-epyc-7b13.json`; a workflow comparison, not an equal-work baseline) | 63.84 s on 8 workers; 298.30 s on 1 worker (loaded shared VM, load average 49–60) | MEASURED |
 | Implementation B, re-imaging on a GPU | [__] | UNMEASURED |
 | Implementation B, fleet at 1, 2, 4 and 8 GPUs | [__] | UNMEASURED |
 | Implementation B, GPU screen versus the same work on all CPU cores | [__] | UNMEASURED |
