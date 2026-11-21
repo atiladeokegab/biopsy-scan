@@ -82,7 +82,7 @@ Each row has one status. **BUILT**: merged on `integration`. **IN REVIEW**: open
 | C-003 applied: PRD v4 with R-13 to R-18 | BUILT | #60 |
 | UPMC patient-level loader and locked held-out split (R-13, issue #66) | IN REVIEW | #62 |
 | Helsinki candidate defined before the search (R-16 pre-registration) | BUILT | #61 |
-| Implementation A analysis baseline: per-candidate PHReg on all cores (R-14, issue #67). All 3,780 Charville v2 patterns: 67.1 s on 8 cores, 222.8 s on 1 core (MEASURED, on a loaded shared VM; `bench/results/impl-a-*.json`) | IN REVIEW | #64 |
+| Implementation A analysis baseline: per-candidate PHReg on all cores (R-14, issue #67). All 3,780 Charville v2 patterns: 63.84 s on 8 workers, 298.30 s on 1 worker (MEASURED, on a loaded shared VM; `bench/results/impl-a-charville-amd-epyc-7b13.json`) | IN REVIEW | #64 |
 | R2–R4 on GPU as the per-study kernel: clinical-adjusted score screen, 10,000-shuffle maxT as one product, a valid adjusted null (R-15) | PLANNED | #68 |
 | Rediscovery of the Helsinki pattern on the locked UPMC patients, with Preflight's power for that set first; exploratory, no survival claim (R-16) | PLANNED | #69 |
 | R5 and Translate 1–2: minimal panels and IHC format simulation on UPMC (R-17) | PLANNED | #70 |
@@ -97,7 +97,7 @@ Each row has one status. **BUILT**: merged on `integration`. **IN REVIEW**: open
 | What | Time | Label |
 |---|---|---|
 | Implementation A, rung 0: one study of 159 Charville patients, cKDTree recount plus 1,000 permutations, one core of an AMD EPYC 7B13 | 7.52 s per study (mean of 3 studies) | MEASURED |
-| Implementation A, analysis half: one full PHReg Cox fit for each of the 3,780 Charville v2 patterns (in review, #64; `bench/results/impl-a-*.json`; a workflow comparison, not an equal-work baseline) | 67.1 s on 8 cores; 222.8 s on 1 core (loaded shared VM) | MEASURED |
+| Implementation A, analysis half: one full PHReg Cox fit for each of the 3,780 Charville v2 patterns (in review, #64; `bench/results/impl-a-charville-amd-epyc-7b13.json`; a workflow comparison, not an equal-work baseline) | 63.84 s on 8 workers; 298.30 s on 1 worker (loaded shared VM, load average 49–60) | MEASURED |
 | Implementation B, re-imaging on a GPU | [__] | UNMEASURED |
 | Implementation B, fleet at 1, 2, 4 and 8 GPUs | [__] | UNMEASURED |
 | Implementation B, GPU screen versus the same work on all CPU cores | [__] | UNMEASURED |
