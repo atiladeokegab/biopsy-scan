@@ -1,5 +1,11 @@
 {
   "status": "MEASURED",
+  "labels": {
+    "compute": "MEASURED",
+    "outcomes": "SYNTHETIC (atlas/simulation.py at 79a7792)",
+    "rates": "ESTIMATE (FWER, power and calls: binomial rates with Wilson 95% intervals)"
+  },
+  "relabelled": "after review (Atlas, CHANGES at cf00795): labels, headline wording and stage key names only; no number changed, no rerun",
   "source_commit": "b4dad4380e6ca10a8d219d9b3724b84af3627a24",
   "harness": {
     "branch": "modal-design-b9",
@@ -11,7 +17,7 @@
   "scope": {
     "lab": "cKDTree re-imaging + stats.permutation_test (1,000 within-strata shuffles), call p <= 0.05; one study at a time, one pool worker pinned to one core; fixed sample of the first 50 null and 50 alternative studies",
     "preflight": "Numba CSR re-imaging + Cox score screen, call maxT > design threshold from the 1000 calibration nulls; 8 single-thread workers; calibration counted",
-    "both": "same container, design bench.real_cpu.DESIGN, same seeds (SeedSequence([20261121, stream, i])), outcomes atlas.simulation; walls exclude outcome simulation, adjacency and JIT warm-up (wall.with_setup includes them); the lab ran a sample, so compare per-study wall only"
+    "both": "same container, design bench.real_cpu.DESIGN, same seeds (SeedSequence([20261121, stream, i])), outcomes atlas.simulation (SYNTHETIC). Walls are compute through scoring: re-imaging and the per-study test or screen. The timer stops before the threshold, the calls and data load, and excludes outcome simulation, adjacency and JIT warm-up; wall.with_setup adds the setup back (not data load, threshold or calls). The lab ran a sample, so compare per-study wall only"
   },
   "plan": {
     "lab": {
@@ -24,7 +30,7 @@
       "alternative": 1000
     }
   },
-  "headline": "Per study, end to end: lab 8.818 s on 1 core (100 studies) vs Preflight 0.2096 s on 8 cores (2000 decided studies, 1000 calibration nulls paid for): 42.1x. Features bitwise on 100 shared studies: True; decisions agree 89/100.",
+  "headline": "Per study, compute through scoring: lab 8.818 s on 1 core (100 studies) vs Preflight 0.2096 s on 8 cores (2000 decided studies, 1000 calibration nulls paid for): 42.1x compute through scoring; 26.7x including outcome simulation, adjacency and warm-up. Features bitwise on 100 shared studies: True; decisions agree 89/100.",
   "threshold": 4.280528180733615,
   "parity": {
     "x_bitwise": true,
@@ -1184,9 +1190,9 @@
       "stages": {
         "prep_s": 13.860171442000023,
         "adjacency_s": 1.945799999703013e-05,
-        "reimage_cpu_s": 446.533403913999,
+        "reimage_worker_wall_s": 446.533403913999,
         "studies_wall_s": 881.789836096,
-        "scoring_and_calibration_cpu_s": 433.74756516799926,
+        "scoring_and_calibration_worker_wall_s": 433.74756516799926,
         "evaluated_studies": 100,
         "wall_per_study_s": 8.817898360960001
       },
@@ -1233,9 +1239,9 @@
       "stages": {
         "prep_s": 181.737385534,
         "adjacency_s": 67.674056855,
-        "reimage_cpu_s": 3265.8267192759986,
+        "reimage_worker_wall_s": 3265.8267192759986,
         "studies_wall_s": 419.247251024,
-        "scoring_cpu_s": 79.33749964999936,
+        "scoring_worker_wall_s": 79.33749964999936,
         "calibration_s": "the calibration stream's studies, inside reimage and scoring",
         "evaluated_studies": 3000,
         "wall_per_study_s": 0.13974908367466665
