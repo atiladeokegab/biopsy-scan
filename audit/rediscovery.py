@@ -223,6 +223,14 @@ def _hpv(cells: dict, data_dir) -> np.ndarray:
     return C
 
 
+def _code_state() -> tuple[str, bool]:
+    """(HEAD sha, whether tracked files differ from it): the locked set opens only from a committed, reviewed head."""
+    import subprocess
+
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, check=True).stdout  # noqa: E731
+    return git("rev-parse", "HEAD").strip(), bool(git("status", "--porcelain", "--untracked-files=no").strip())
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=SCORER_DOC.splitlines()[0])
     ap.add_argument("--open-locked", action="store_true", help="open the locked outcomes (once, on the lead's word)")
@@ -238,13 +246,17 @@ def main(argv=None) -> int:
     if a.out.exists():
         print(f"refusing: {a.out} exists; the locked set has already been opened", file=sys.stderr)
         return 2
+    sha, dirty = _code_state()
+    if dirty:
+        print(f"refusing: tracked files differ from {sha[:7]}; run only from the reviewed head", file=sys.stderr)
+        return 2
     from core.cohorts import DATA_DIR, load
 
     if RULE_SHA256 != PREREG_SHA256:
         print("refusing: audit/rediscovery.py RULE differs from the pre-registration", file=sys.stderr)
         return 1
     disc = load("upmc")  # the discovery side (the loader's default); the search is frozen before the locked set opens
-    result = {"cohort": "upmc", "rule_sha256": RULE_SHA256, "label": LABEL,
+    result = {"cohort": "upmc", "code_sha": sha, "rule_sha256": RULE_SHA256, "label": LABEL,
               "discovery": rank_on_discovery(disc, RULE, _hpv(disc, DATA_DIR)),
               "locked": score_locked(load("upmc", split="locked"), RULE, RULE_SHA256, a.events)}
     a.out.parent.mkdir(parents=True, exist_ok=True)

@@ -116,6 +116,9 @@ def test_the_cli_never_opens_the_locked_set_without_the_flag(tmp_path, monkeypat
     assert rs.main(["--open-locked", "--out", str(tmp_path / "r.json")]) == 2  # no --events: power not fixed
     (tmp_path / "r.json").write_text(json.dumps({"already": "opened"}))
     assert rs.main(["--open-locked", "--events", "8", "--out", str(tmp_path / "r.json")]) == 2
+    monkeypatch.setattr(rs, "_code_state", lambda: ("abc1234", True))
+    assert rs.main(["--open-locked", "--events", "4", "--out", str(tmp_path / "new.json")]) == 2  # dirty tree
+    assert not (tmp_path / "new.json").exists()
 
 
 def test_power_uses_no_outcomes_and_grows_with_events():
