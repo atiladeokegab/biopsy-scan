@@ -1,4 +1,4 @@
-"""The matched lab vs Preflight comparison (bench/matched_e2e.py) in one 8-core, 64 GiB Modal CPU container.
+"""The matched lab vs Preflight comparison (compute through scoring; bench/matched_e2e.py) in one 8-core, 64 GiB Modal CPU container.
 
     DATA_DIR=<dir> MODAL_PROFILE=<profile> uv run --with modal modal run bench/modal_matched.py
 
@@ -75,12 +75,17 @@ def matched(plan: dict) -> dict:
             "modal_task_id": os.environ.get("MODAL_TASK_ID"), "thread_environment": {k: os.environ.get(k) for k in SINGLE}}
     out = m.run(lambda: load("charville"), plan, workers=int(CORES))
     host["load_average_end"] = list(os.getloadavg())
-    res = m.compare(out["lab"], out["preflight"])
+    res = m.compare(out["lab"], out["preflight"], plan)
     plant = out["preflight"]["setup"]["plant_feature"]
     res["arms"] = {a: {"workers": o["workers"], "affinity": o.get("affinity"), "setup": o["setup"], "warm_s": o["warm_s"],
-                       "stages": db.stage_times(o), "summary": db.summarize(o, plant)} for a, o in out.items()}
+                       "stages": worker_wall(db.stage_times(o)), "summary": db.summarize(o, plant)} for a, o in out.items()}
     res["host"] = host
     return json.loads(json.dumps(res, default=lambda v: v.item() if hasattr(v, "item") else str(v)))
+
+
+def worker_wall(stages: dict) -> dict:
+    """build-9's *_cpu_s are perf_counter seconds summed over pool workers: worker wall, not CPU time."""
+    return {k.replace("_cpu_s", "_worker_wall_s"): v for k, v in stages.items()}
 
 
 def _git(*a):
@@ -106,11 +111,13 @@ def main(lab_per_stream: int = 50, calibration: int = 1000, per_stream: int = 10
     plan = m.plans(lab_per_stream, calibration, per_stream)
     spent = json.loads(SPEND.read_text())["running_total_usd"] if SPEND.exists() else 0.0
     ceiling = round(TIMEOUT_S / 3600 * USD_PER_HOUR, 3)
-    if spent + ceiling > cap_usd:
-        raise SystemExit(f"refused: spent {spent} + ceiling {ceiling} > cap {cap_usd} USD")
+    try:
+        m.check_cap(spent, ceiling, cap_usd)
+    except ValueError as e:
+        raise SystemExit(str(e))
     commit, start = _git("rev-parse", "HEAD"), datetime.now(timezone.utc)
     utc = f"{start:%Y-%m-%dT%H:%MZ}"
-    entry = {"utc": utc, "run": "matched lab vs Preflight end to end, 8 cores, 64 GiB, no GPU", "plan": plan,
+    entry = {"utc": utc, "run": "matched lab vs Preflight, compute through scoring, 8 cores, 64 GiB, no GPU", "plan": plan,
              "containers": 1, "cap_usd": cap_usd, "est_hours": TIMEOUT_S / 3600, "est_usd": ceiling,
              "basis": f"8 cores + 64 GiB at the {TIMEOUT_S} s function-timeout ceiling", "source_commit": commit}
     _log_spend(entry)
@@ -126,7 +133,7 @@ def main(lab_per_stream: int = 50, calibration: int = 1000, per_stream: int = 10
     total = _log_spend(entry)
     w = res["wall"]
     doc = {
-        "status": res.pop("status"), "source_commit": commit, "harness": m.B9,
+        "status": res.pop("status"), "labels": m.LABELS, "source_commit": commit, "harness": m.B9,
         "why": "bench/results/cpu-ladder.json: lab_today (7.52 s/study) is features + 1,000-permutation inference, "
                "its ladder rows are feature-only, so it marks matched_full_pipeline_speedup UNMEASURED. "
                "Here both arms do features and the per-study decision on the same studies.",
@@ -136,13 +143,16 @@ def main(lab_per_stream: int = 50, calibration: int = 1000, per_stream: int = 10
                   "preflight": "Numba CSR re-imaging + Cox score screen, call maxT > design threshold from the "
                                f"{calibration} calibration nulls; 8 single-thread workers; calibration counted",
                   "both": "same container, design bench.real_cpu.DESIGN, same seeds (SeedSequence([20261121, stream, i])), "
-                          "outcomes atlas.simulation; walls exclude outcome simulation, adjacency and JIT warm-up "
-                          "(wall.with_setup includes them); the lab ran a sample, so compare per-study wall only"},
+                          "outcomes atlas.simulation (SYNTHETIC). Walls are compute through scoring: re-imaging and the "
+                          "per-study test or screen. The timer stops before the threshold, the calls and data load, "
+                          "and excludes outcome simulation, adjacency and JIT warm-up; wall.with_setup adds the setup "
+                          "back (not data load, threshold or calls). The lab ran a sample, so compare per-study wall only"},
         "plan": plan,
-        "headline": (f"Per study, end to end: lab {w['lab_s_per_study']:.3f} s on 1 core "
+        "headline": (f"Per study, compute through scoring: lab {w['lab_s_per_study']:.3f} s on 1 core "
                      f"({w['studies']['lab']} studies) vs Preflight {w['preflight_s_per_decided_study']:.4f} s on 8 cores "
                      f"({w['studies']['preflight_decided']} decided studies, {w['studies']['preflight_calibration']} "
-                     f"calibration nulls paid for): {w['ratio']:.1f}x. Features bitwise on "
+                     f"calibration nulls paid for): {w['ratio']:.1f}x compute through scoring; "
+                     f"{w['with_setup']['ratio']:.1f}x including outcome simulation, adjacency and warm-up. Features bitwise on "
                      f"{res['parity']['x_compared']} shared studies: {res['parity']['x_bitwise']}; decisions agree "
                      f"{res['decisions']['agree']}/{res['decisions']['compared']}."),
         **res, "projection": m.project(w),
