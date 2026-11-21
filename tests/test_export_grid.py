@@ -85,7 +85,9 @@ def test_all_regions_rows_route_to_meta_without_casting(store, tmp_path):
 
 def test_source_facts_and_method_in_meta_even_when_measured():
     grid = build(summaries(), measured=True)
-    assert grid["source"] == "MEASURED" and "SYNTHETIC" not in grid["note"]
+    # not marked a SYNTHETIC grid, but it still discloses its SYNTHETIC outcomes (check_data requires it, #110)
+    assert grid["source"] == "MEASURED" and "Marked SYNTHETIC" not in grid["note"]
+    assert "SYNTHETIC Weibull outcomes" in grid["note"]
     assert grid["meta"]["cohorts"] == {"charville": FACTS}
     assert grid["meta"]["cohort_split"] == "all"  # only the marker counts read both sides of the UPMC lock
     assert grid["meta"]["input_split"] == "unknown"  # these results carry no split column
