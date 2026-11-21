@@ -15,10 +15,20 @@ def run(design, seeds):
     backend = design.get("backend", "cpu")
     if backend == "numpy":
         kernel = reimage_ref.reimage_region
-    elif backend == "cpu":
-        from .cpu import reimage_region as kernel
-    elif backend == "gpu":
-        from .gpu import reimage_region as kernel
+    elif backend in ("cpu", "gpu"):
+        if backend == "cpu":
+            from . import cpu as module
+        else:
+            from . import gpu as module
+        prepared = {}
+
+        def kernel(nbr, xy, types, focal, K, **kwargs):
+            key = (id(nbr), K)
+            if key not in prepared:
+                prepared[key] = module.prepare(nbr, K)
+            return module.reimage_region(nbr, xy, types, focal, K,
+                                         prepared=prepared[key], **kwargs)
+
     else:
         raise ValueError("backend must be numpy, cpu or gpu")
     return np.stack([

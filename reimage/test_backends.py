@@ -6,6 +6,7 @@ from numba import cuda
 
 from core import reimage_ref
 from core.truth import neighbours
+from reimage import run
 from reimage import cpu, gpu
 
 
@@ -83,3 +84,34 @@ def test_gpu_selection_never_reports_cpu_fallback(region_case):
     nbr, _, types = region_case
     with pytest.raises(RuntimeError, match="CUDA is unavailable"):
         gpu.reimage_counts(nbr, types, np.ones(len(types), dtype=bool), 3)
+
+
+@pytest.mark.parametrize("backend", ["numpy", "cpu", "gpu"])
+@pytest.mark.parametrize("patients,k,fov,eps", [(None, None, None, 0), ([1, 0, 1], 1, 40, 0.25)])
+def test_study_batch_matches_shared_draws(region_case, backend, patients, k, fov, eps):
+    """Patient order, region cap, crop and mis-call draws are identical across backends."""
+    if backend == "gpu" and not cuda.is_available():
+        pytest.skip("no CUDA device; CUDA simulator is checked in a separate process")
+    _, xy, types = region_case
+    cells = dict(
+        x=np.tile(xy[:, 0], 4).astype(np.float32),
+        y=np.tile(xy[:, 1], 4).astype(np.float32),
+        cell_type=np.tile(types, 4).astype(np.int8),
+        region_id=np.repeat(np.arange(4), len(types)).astype(np.int32),
+        patient_of_region=np.array([0, 0, 1, 1], dtype=np.int32),
+        type_names=["Tumor A", "Other B", "Other C"],
+    )
+    design = dict(cells=cells, backend=backend, patients=patients, regions_per_patient=k,
+                  fov_um=fov, eps=eps, seed=37)
+    seeds = [37, 61]
+    expected = np.stack([reimage_ref.reimage(cells, design, seed) for seed in seeds])
+    actual = run(design, seeds)
+    assert actual.dtype == np.float64
+    np.testing.assert_array_equal(actual, expected)
+
+
+@pytest.mark.parametrize("seeds", [[], [1.5], [-1], [[1]], [True]])
+def test_invalid_study_seeds_fail_before_sampling(seeds):
+    """Invalid seed batches cannot consume the shared study random stream."""
+    with pytest.raises(ValueError, match="seeds"):
+        run({}, seeds)
