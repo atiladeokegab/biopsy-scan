@@ -1,6 +1,4 @@
-# sota-parallelism-nov21: PRD v3
-
-> Spec of record: v3 (C-001 and C-002 applied). C-003 (the GPU discovery pipeline, founder plan 2026-11-21) is proposed, not approved: R-13 to R-18 and every line marked "proposed (C-003)" are not in the spec yet. If C-003 is applied, R-13 maps to the existing #56.
+# sota-parallelism-nov21: PRD v4
 
 ## Problem
 Before a lab images a spatial-biology cohort it must choose how many patients, how many regions per patient, how large a field of view and how fine a cell typing. Each choice trades cost against the chance of finding a real survival-linked spatial pattern, and today a lab sizes that by guesswork or a textbook formula that ignores the imaging. Simulating it honestly means re-imaging thousands of studies cell by cell from real tissue, which is CPU-days with the per-study cKDTree recount and permutation test a lab runs today.
@@ -20,20 +18,20 @@ Before a lab images a spatial-biology cohort it must choose how many patients, h
 - Build in rank order; stop when time runs out: main is always demoable
 - Conflict rule: when this PRD and the merged code or real data disagree, the code and data win; say so in the PR
 - No invented numbers. Every figure carries one label: MEASURED, SYNTHETIC, UNMEASURED, ESTIMATE or ANALYTIC; an empty slot is [__], never a guess
-- Charville is patient-level (P=159, 38 events, strata are coverslips). UPMC is patient-level only through the R-13 patient loader and its locked held-out split; everything else on UPMC stays descriptive · proposed (C-003)
+- Charville is patient-level (P=159, 38 events, strata are coverslips). UPMC is patient-level only through the R-13 patient loader and its locked held-out split; everything else on UPMC stays descriptive
 - Real-data results are exploratory: their outcomes have already been seen
-- Every re-imaging speed-up is quoted against rung 0, what a lab runs today. A GPU analysis-half speed-up is quoted only against the same statistic and resampling workload on the CPU (R-15); the full-fit comparison against Implementation A (R-14) is a workflow comparison, labelled as one · proposed (C-003)
+- Every re-imaging speed-up is quoted against rung 0, what a lab runs today. A GPU analysis-half speed-up is quoted only against the same statistic and resampling workload on the CPU (R-15); the full-fit comparison against Implementation A (R-14) is a workflow comparison, labelled as one
 - The tagline is the h1: "Thousands of studies, simulated in seconds, before you image a slide." The button reads "Run the studies". The phrase "Can my study find it?" appears nowhere in the project
 - Tests come from the goal: unseen geometries and tied studies, a planted signal and a hard negative; a check is believed only after it has been seen red
 - Novelty goal (not yet measured): Preflight aims to produce new biology by combining protein expression, cell morphology, neighbourhood relations and stromal architecture at single-cell resolution, with an algorithm parallelised on GPU clusters, much faster than on a CPU
-- No discovery code reads the locked UPMC patients; they are opened once, for the R-16 score, after the search is frozen · proposed (C-003)
+- No discovery code reads the locked UPMC patients; they are opened once, for the R-16 score, after the search is frozen
 
 ## Non-goals
 - Segmentation, a backend service, or any clinical claim
-- Pooled-cohort atlases, or UPMC patient-level inference outside the R-13 loader and locked split · proposed (C-003)
-- A custom GEMM, a fused max, TF32/FP16, GPU neighbour search, LOCO, the Helsinki cohort, or any 300k pattern figure · proposed (C-003)
+- Pooled-cohort atlases, or UPMC patient-level inference outside the R-13 loader and locked split
+- A custom GEMM, a fused max, TF32/FP16, GPU neighbour search, LOCO, the Helsinki cohort, or any 300k pattern figure
 - Step-down maxT, stress-test slices and source bootstrap before P1 is green (waiting room)
-- By freeze (2026-11-22 16:00Z): the image half (registration to quantification), HANCOCK validation, the brightfield scoring engine (Translate step 3), Translate step 4, Tinker, and ligand-receptor analysis · proposed (C-003)
+- By freeze (2026-11-22 16:00Z): the image half (registration to quantification), HANCOCK validation, the brightfield scoring engine (Translate step 3), Translate step 4, Tinker, and ligand-receptor analysis
 
 ## Owner
 Atilade (lead), Team Dry Lab
@@ -134,20 +132,20 @@ rank 12 · state approved · needs R-9, R-10 · touches `README.md`, `docs/film/
 Why: The video is the backup if the live demo fails; the form is how the event receives us
 - A-11.1@2 Scenario: README states what it is, how to run it, and a screenshot from the final run; the demo video plays the same 5-minute story; every submission checklist row is done before 2026-11-22T17:00Z. Not yet built (`tests/test_submission.py`)
 
-### R-13 [P1 · UPMC patients] UPMC patient-level loader and a locked held-out split (#56) · proposed (C-003)
+### R-13 [P1 · UPMC patients] UPMC patient-level loader and a locked held-out split (#56)
 rank 13 · state proposed · needs R-1 · touches `core/cohorts.py`, `core/holdout.py`, `data/holdout-manifest.json`
 Why: UPMC labels have no patient ID column; grouping regions by patient and locking validation patients before any search is what makes a UPMC discovery claim honest
 - A-13.1@1 Scenario: UPMC regions are grouped by patient using the documented rule (the sample_label_visualizer case number where present); the loader reports the number of patients, events and unmapped regions from the data, and no two patients share a region. Not yet built (`core/test_upmc_patients.py`)
 - A-13.2@1 Scenario: a held-out set of patients is drawn stratified by event with a frozen seed and written to a committed manifest whose sha256 is recorded; re-running the split reproduces the same manifest byte for byte. Not yet built (`core/test_holdout.py`)
 - A-13.3@1 Scenario: discovery-only patient IDs govern every discovery step, including fitted preprocessing, transforms and caches as well as the named entry points (candidate build, screen, maxT, panel search); a discovery entry point handed a locked patient raises an error, and changing any locked patient's values leaves every scientific discovery output (candidates, statistics, ranks, fitted parameters) byte for byte unchanged; wall-clock and run metadata are excluded. Not yet built (`tests/test_no_leak.py`)
 
-### R-14 [P1 · Implementation A] CPU baseline for the analysis half: per-candidate statsmodels PHReg Cox fits in a ProcessPoolExecutor on all cores · proposed (C-003)
+### R-14 [P1 · Implementation A] CPU baseline for the analysis half: per-candidate statsmodels PHReg Cox fits in a ProcessPoolExecutor on all cores
 rank 14 · state proposed · needs R-13 · touches `bench/impl_a.py`, `bench/results/`
 Why: A full-fit CPU workflow comparator for the analysis half: one Cox fit per candidate gives coefficients and Wald p-values, a different output from the R-15 score screen, so it is reported as a workflow comparison, not an equal-work speed-up. The plan named lifelines; statsmodels PHReg (already locked) is substituted because lifelines 0.30.3 needs pandas<3 and the lead ruled out a pandas downgrade (#59)
 - A-14.1@1 Scenario: on a small fixture, each candidate's statsmodels PHReg fit (clinical covariates plus the candidate) run through concurrent.futures.ProcessPoolExecutor with workers=all cores gives the same coefficients and p-values as workers=1, and as a direct serial PHReg call. Not yet built (`bench/test_impl_a.py`)
 - A-14.2@1 Scenario: the baseline writes a results JSON naming the CPU model, cores used, library versions, the sha256 fingerprints of the patient rows, the candidate matrix X and the clinical matrix C, the outputs timed (coefficients and Wald p-values per candidate), and wall time labelled MEASURED; it is compared only with a run whose three fingerprints match, and the comparison is labelled a workflow comparison. Not yet built (`bench/test_impl_a_result.py`)
 
-### R-15 [P1 · GPU screen] Every candidate as a column: a clinical-null Cox score screen on GPU with a valid adjusted null (R2-R4) · proposed (C-003)
+### R-15 [P1 · GPU screen] Every candidate as a column: a clinical-null Cox score screen on GPU with a valid adjusted null (R2-R4)
 rank 15 · state proposed · needs R-2, R-6, R-13, R-14 · touches `stats/`, `bench/screen.py`
 Why: The reshaping the judges score: discovery becomes dense matrix products on the GPU. Exists today: stats/reference.py computes the stratified score U = X'r with its permutation variance, maxT and omnibus in float64 on the CPU, with no clinical covariates; reimage/ plus the fleet compute features on GPU. Inputs per cohort: X is patients by candidates (one column per candidate feature from the R-2 feature build, NaN where a feature is undefined); C is the clinical matrix: UPMC C = [HPV status from the hpvstatus label, binary], Charville C = none (zero-covariate mode, as the loaders supply no stage, margins or age); strata are coverslip groups in both. Any other clinical covariate needs a C-NNN. Reference statistic: for candidate j, the analysis set is the patients with a finite X_j, complete C, an endpoint and a stratum; a stratified Cox null model on C alone (Breslow ties) is fitted on that set, refitted once per distinct complete-case mask; U_j is the Cox score for beta_j at (beta_C-hat, 0) and V_j = I_jj - I_jC I_CC^-1 I_Cj, the nuisance-adjusted Cox information; Z_j = U_j / sqrt(V_j). The legacy permutation-variance statistic is a different statistic and stays only as a regression for the zero-covariate exchangeable case. The plan named lifelines; statsmodels PHReg (already locked) is substituted because lifelines 0.30.3 needs pandas<3 and the lead ruled out a pandas downgrade (#59)
 - A-15.1@1 Scenario: on random candidates and on fixtures with tied times and missing X, Z_j from the reference statistic equals the oracle within a stated tolerance: statsmodels PHReg on [C, X_j] with the same strata and ties='breslow' over the same analysis set, its score and hessian evaluated at (beta_C-hat, 0) and V formed as the adjusted Schur complement; on the 3-patient fixture X=[0,NaN,2] from the review on #60 the screen returns the complete-case U, not the full-residual U. Not yet built (`stats/test_vs_statsmodels.py`)
@@ -157,19 +155,19 @@ Why: The reshaping the judges score: discovery becomes dense matrix products on 
 - A-15.5@1 Scenario: the adjusted null is a clinical-null parametric bootstrap: per resample, event times are drawn from the fitted stratified clinical-null model, censoring from a censoring model on C within strata, the null model is refitted and U, V and Z recomputed for every candidate, and maxT is taken; the method and its assumptions (proportional hazards in C, censoring independent of X given C) are written into the result JSON with B; per-resample U for all candidates is one dense product on GPU and equals a per-candidate CPU loop on sampled candidates. Not yet built (`stats/test_null_bootstrap.py`)
 - A-15.6@1 Scenario: a hard-negative synthetic fixture (SYNTHETIC) has candidates correlated with C, hazard depending on C, censoring depending on C, and no candidate effect given C; over a stated number of null datasets the screen's family-wise rejection rate at alpha = 0.05 has a Clopper-Pearson 95% interval that contains 0.05, and on the same fixture the raw-residual shuffle and the unadjusted screen are each run and their rejection rates reported, so the check is seen red on a method that ignores C. Not yet built (`stats/test_hard_negative.py`)
 
-### R-16 [P1 · Rediscovery] pEMT tumour bordered by fibroblasts, rediscovered on UPMC and scored on the locked patients · proposed (C-003)
+### R-16 [P1 · Rediscovery] pEMT tumour bordered by fibroblasts, rediscovered on UPMC and scored on the locked patients
 rank 16 · state proposed · needs R-13, R-15 · touches `audit/rediscovery.py`, `results/upmc-rediscovery.json`
 Why: Discovery credibility: does the blind search rank a known biology among its strongest signals in an independent cohort
 - A-16.1@1 Scenario: the pEMT-tumour-with-fibroblasts candidate, its transforms and its score direction are defined from UPMC cell types or markers by a rule committed before the search (hash recorded) and frozen before the locked set is opened; if UPMC cannot express it, the result says so and stops. Not yet built (`audit/test_rediscovery_definition.py`)
 - A-16.2@1 Scenario: results/upmc-rediscovery.json gives the candidate's rank among all candidates on discovery patients, then, with the frozen candidate and direction, its Harrell C-index and Cox hazard ratio on the locked patients, opened once, each labelled MEASURED and exploratory (outcomes already seen, internal split), or UNMEASURED with a reason when not estimable. Not yet built (`audit/test_rediscovery_result.py`)
 
-### R-17 [P1 · Translate 1-2] Minimal panels and IHC format simulation on UPMC · proposed (C-003)
+### R-17 [P1 · Translate 1-2] Minimal panels and IHC format simulation on UPMC
 rank 17 · state proposed · needs R-13, R-15, R-16 · touches `translate/`, `results/upmc-translate.json`
 Why: A discovery helps patients only as a test a pathology lab can run; this shows in software how much prognostic power survives one or two stains and each IHC format
 - A-17.1@1 Scenario: step 1 enumerates every one- and two-marker panel from UPMC's M markers (M + M(M-1)/2 panels, 820 when M = 40); every transform, gate and panel selection is fitted inside the training folds of nested cross-validation on discovery patients only, the panel model hash is recorded, and R-17 never reads or uses locked patients; each panel is scored on the same outer test patients as the full model by retained C-index (C_panel - 0.5)/(C_full - 0.5), with C the Harrell C-index of the fitted Cox risk score, paired bootstrap intervals over outer test patients, and UNMEASURED with a reason when C_full <= 0.5.; if R-16 reports the candidate unsupported (UPMC cannot express it), every R-17 result is UNMEASURED with that reason. Not yet built (`translate/test_panels.py`)
 - A-17.2@1 Scenario: step 2 recomputes the biomarker as single-slide IHC (two-component Gaussian mixture positivity on arcsinh intensities, the mixture and arcsinh cofactor fitted on training folds only), as serial sections with misregistration swept 0-100 um, and on 100, 150 and 200 um tiles, reporting retained C-index per format, defined and paired as in A-17.1, with intervals; at zero misregistration the serial-section result equals the single-slide result. Not yet built (`translate/test_formats.py`)
 
-### R-18 [P1 · Colorectal] The discovery stage rerun unchanged on Charville · proposed (C-003)
+### R-18 [P1 · Colorectal] The discovery stage rerun unchanged on Charville
 rank 18 · state proposed · needs R-15 · touches `audit/`, `results/charville-screen.json`
 Why: Shows the discovery stage generalises beyond one cancer
 - A-18.1@1 Scenario: the same screen code path as UPMC runs on Charville (159 patients, coverslip strata) in declared zero-covariate mode (C = none) with no cohort-specific branch, and results/charville-screen.json gives maxT, the adjusted-null p and the top candidates, records C and the null method, and is labelled exploratory (outcomes already seen) and MEASURED. Not yet built (`audit/test_charville_screen.py`)
