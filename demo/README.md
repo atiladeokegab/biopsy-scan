@@ -116,13 +116,17 @@ The checker enforces these rules:
 ## `data/baseline.json` (`preflight-baseline/1`): the speed race, filled by `collect_race.py`
 
 Four rows, the four declared arms, all timing the same `task`: one design point on real Charville, FWER and power
-from 1,000 simulated studies each, end to end. There is no 16-GPU lane. Never edit a time by hand:
+from 1,000 simulated studies each, as in-container study and scoring wall time: load, outcome prep, adjacency,
+warm-up and the cutoff and rate summary are outside the bars. There is no 16-GPU lane. Never edit a time by hand:
 `python3 -I demo/collect_race.py` (run by `make demo` and by Pages before every deploy) fills rows from
 `bench/results/*.json`. `bench/modal_design.py`'s four-arm file (arms `lab`, `numba`, `gpu`, `hybrid` on one container
 class) fills `lab-cpu`, `preflight-cpu`, `gpu-1` and `hybrid` only when it is MEASURED at 1,000 studies per stream
 with its parity gate passed (X sha256 on every shared study; z in full for gpu, via per-study maxT for hybrid);
 `seconds` is the arm's `compute_wall_s` (re-imaging and scoring) and `startup_s` its load, outcome prep, adjacency
-and warm-up; the local threshold summary is not counted.
+and warm-up; the local cutoff and rate summary is not counted. Calibration-study evaluation is inside each batched
+lane's seconds. Each row's note gives its re-imaging share and that share's basis: summed worker wall time for
+`lab-cpu` and `preflight-cpu` (perf_counter in single-thread workers, not CPU time), elapsed stage wall time for `gpu-1`
+and `hybrid`.
 build-modal's `"kind": "design_point"` file (#75's `gpu/modal_app.py`; slots `a_lab_all_cores`,
 `b_ours_cpu_all_cores`, `c_ours_1_gpu`) can fill the first three rows, only when it
 says `"status": "MEASURED"`, `"studies": 1000` and carries its `scope`; a FAILED run, a 32-study trial or a generic
@@ -135,7 +139,7 @@ A row no file feeds keeps its committed value.
 ```jsonc
 {
   "schema": "preflight-baseline/1",
-  "task": "One design point: 1,000 simulated studies on real Charville tissue, end to end",
+  "task": "One design point: 1,000 simulated studies on real Charville tissue; study and scoring wall time only",
   "rows": [{
     "id": "lab-cpu",             // unique; bench files address rows by id
     "method": "The lab way: a shuffle test in every study, all CPU cores",
