@@ -111,8 +111,9 @@ RADII = [25, 50, 100]
 FAMILIES = [("fraction", "Neighbour share"), ("enrichment", "Neighbour enrichment"), ("PD1", "PD-1"), ("PDL1", "PD-L1"),
             ("Ki67", "Ki-67"), ("GranzymeB", "Granzyme B"), ("HLA-DR", "HLA-DR"), ("aSMA", "αSMA"),
             ("CollagenIV", "Collagen IV"), ("Vimentin", "Vimentin"), ("Podoplanin", "Podoplanin"), ("SIZE", "Cell size")]
-# shortcut: an illustrative hand-picked study (tumour neighbourhood shares at 50 um), not taken from a paper.
-EXPERT = {f"Tumor 1|{j}|50um|fraction" for j in ["CD8 T cell", "CD4 T cell", "Macrophage", "B cell", "Granulocyte", "Stroma"]}
+# The Helsinki study (Punovuori et al., Cell 2024, p.7271-7272) crossed 6 epithelial with 3 stromal signatures: 18 tests.
+# Its signatures are not our features; the 18 tiles (6 tumour types x stroma x 3 radii) stand in for the count only.
+EXPERT = {f"{t}|Stroma|{r}um|fraction" for t in FOCAL[:6] for r in RADII}
 
 
 def wall(expert: bool) -> str:
@@ -123,9 +124,10 @@ def wall(expert: bool) -> str:
     n2 = sum(len(b["on"]) for b in blocks if b["v"] == 2)
     assert (n1, n2) == (630, 3150)
     n_on = sum(map(sum, (b["on"] for b in blocks)))
-    title = (f"What one expert study tests: {n_on} of {n1 + n2:,}" if expert
+    assert not expert or n_on == 18
+    title = (f"What one expert study tested: {n_on} of {n1 + n2:,}" if expert
              else f"{n1 + n2:,} patterns in every study")
-    sub = ("A hand-picked handful: tumour cells' neighbours within 50 µm" if expert
+    sub = ("Helsinki study: 6 tumour × 3 stroma signatures (Punovuori et al., Cell 2024)" if expert
            else "Every tumour type × every neighbour type × three distances, by neighbour mix, protein and size")
     return f"""<!doctype html><meta charset="utf-8"><style>{CSS}
 .wall {{ display: grid; grid-template-columns: repeat(6, auto); gap: 24px 0; justify-content: space-between; }}
@@ -135,7 +137,7 @@ def wall(expert: bool) -> str:
 .g i {{ width: 13px; height: 13px; border-radius: 2px; background: #263546; }}
 .v1 .g i {{ background: #3A4B5E; }}
 .dim .g i {{ opacity: .35; }}
-.g i.on {{ background: var(--accent); opacity: 1; box-shadow: 0 0 0 2px var(--accent); }}
+.g i.on {{ background: var(--accent); opacity: 1; }}
 </style>
 <h1>{title}</h1><p class="sub">{sub}</p>
 <div class="wall {'dim' if expert else ''}" id="w"></div>
