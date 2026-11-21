@@ -175,7 +175,10 @@ def main(studies: int = 20, cap_usd: float = 20.0, cpu_arms_on_cpu: bool = False
             if "z" in r:
                 r["z"] = np.asarray(r["z"])
     plant = next(iter(arms.values()))["setup"]["plant_feature"] if arms else None
-    par = db.parity(arms) if len(arms) == len(chosen) else {"all": False, "reason": "an arm failed"}
+    if len(arms) != len(chosen):
+        par = {"all": False, "reason": "an arm failed"}
+    else:  # one new arm has nothing to match in this run: its parity is against the prior run's arms
+        par = db.parity(arms) if len(arms) > 1 else {"all": bool(prior), "this_run": "one arm"}
     if prior and arms:
         par["against_prior"] = {a: db.prior_parity(o["records"], prior["arms"]) for a, o in arms.items()}
         par["all"] = bool(par["all"] and all(v["all"] for v in par["against_prior"].values()))
