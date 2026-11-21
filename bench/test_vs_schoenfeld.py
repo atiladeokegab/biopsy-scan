@@ -31,7 +31,7 @@ def test_verdict_follows_the_data_either_way():
     mixed = compare([row(80, 0.0, 0.0, 0.01), row(300, 0.97, 0.9, 1.0)], META, 630, cohort="charville")
     assert mixed["verdict"].endswith("at 1 of 2 patient counts (outside the simulation's 95% interval); inside it at the other 1.")
     s = svg(hi)
-    assert "MEASURED (sim)" in s and "ANALYTIC (formula)" in s and s.count("<polyline") == 2
+    assert "ESTIMATE (sim)" in s and "ANALYTIC (formula)" in s and s.count("<polyline") == 2
 
 
 def test_one_curve_per_design():
@@ -67,7 +67,7 @@ def test_committed_result_gives_both_powers_per_design_point(path):
     # PRD A-7.1: per design point, Schoenfeld power (ANALYTIC) and simulated power with its interval
     res = json.loads(path.read_text())
     assert res["schema"] == "preflight-vs-schoenfeld/1" and res["cohort"] == "charville"
-    assert res["analytic"]["label"] == "ANALYTIC (formula)" and res["simulated"]["label"] == "MEASURED (sim)"
+    assert res["analytic"]["label"] == "ANALYTIC (formula)" and res["simulated"]["label"] == "ESTIMATE (sim)"
     assert res["simulated"]["method"].startswith("model-based Monte Carlo")
     assert len(res["points"]) >= 2
     for p in res["points"]:
@@ -75,7 +75,7 @@ def test_committed_result_gives_both_powers_per_design_point(path):
         assert p["analytic_power"] == pytest.approx(schoenfeld_power(p["patients"], res["event_fraction"], res["hr_per_sd"],
                                                                      res["alpha"], res["features_m"]))
     svg_text = path.with_suffix(".svg").read_text()
-    assert "MEASURED (sim)" in svg_text and "ANALYTIC (formula)" in svg_text
+    assert "ESTIMATE (sim)" in svg_text and "ANALYTIC (formula)" in svg_text
     if path.name == "vs-schoenfeld-300.json":
         assert res["status"] == "ESTIMATE"
         assert ">ESTIMATE · Textbook" in svg_text

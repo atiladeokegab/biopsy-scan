@@ -21,7 +21,7 @@
   "method": "Schoenfeld (1983) events formula, continuous covariate (Hsieh and Lavori 2000), D = patients x event fraction, two-sided, Bonferroni over m features; assumes the feature is measured exactly on the whole tissue"
  },
  "simulated": {
-  "label": "MEASURED (sim)",
+  "label": "ESTIMATE (sim)",
   "method": "model-based Monte Carlo (model-based Monte Carlo under the empirical verified source; no clinical claim)",
   "budget": {
    "calibration": 200,
@@ -157,7 +157,7 @@
   }
  ],
  "control": {
-  "label": "MEASURED (sim), control design",
+  "label": "ESTIMATE (sim), control design",
   "design": {
    "regions_per_patient": 2,
    "fov_um": "full core",

@@ -12,7 +12,7 @@ and a log hazard ratio b per SD, a two-sided test at level a' has power
 Here D = patients x the cohort's event fraction, and a' = alpha / m (Bonferroni over the m tested features).
 It assumes the planted feature is measured exactly, on the whole tissue, with no imaging error.
 
-MEASURED (sim): the atlas's model-based Monte Carlo power: studies re-imaged cell by cell from the real
+ESTIMATE (sim): the atlas's model-based Monte Carlo power: studies re-imaged cell by cell from the real
 cohort at each design, planted Weibull outcomes, and the maxT test at one calibrated threshold per design.
 """
 from __future__ import annotations
@@ -81,7 +81,7 @@ def compare(summary: list[dict], meta: dict, m: int, *, cohort: str, control: li
         # a run stopped early may leave the control with fewer points; it may not add new ones
         if not {p["patients"] for p in c["points"]} <= {p["patients"] for p in points} or c["hr_per_sd"] != float(hr):
             raise ValueError("the control must use the main design's patient counts and planted effect")
-        extra["control"] = {"label": "MEASURED (sim), control design", "design": c["design"],
+        extra["control"] = {"label": "ESTIMATE (sim), control design", "design": c["design"],
                             "points": [{k: p[k] for k in ("patients", "sim_power", "sim_lo", "sim_hi", "sim_n",
                                                           "sim_identification", "sim_fwer")} for p in c["points"]]}
     return {
@@ -93,7 +93,7 @@ def compare(summary: list[dict], meta: dict, m: int, *, cohort: str, control: li
                      "method": "Schoenfeld (1983) events formula, continuous covariate (Hsieh and Lavori 2000), "
                                "D = patients x event fraction, two-sided, Bonferroni over m features; "
                                "assumes the feature is measured exactly on the whole tissue"},
-        "simulated": {"label": "MEASURED (sim)",
+        "simulated": {"label": "ESTIMATE (sim)",
                       "method": "model-based Monte Carlo (" + meta.get("inference", "atlas") + ")",
                       "budget": meta.get("budget"), "seed": meta.get("seed"), "source_hash": meta.get("source_hash"),
                       "grammar_hash": meta.get("grammar_hash"), "atlas_code": meta.get("atlas_code")},
@@ -140,14 +140,14 @@ def svg(res: dict) -> str:
         out.append(f'<polyline points="{line}" fill="none" stroke="{colour}" stroke-width="2.5"{dash}/>')
         out += [f'<circle cx="{X(p["patients"]):.1f}" cy="{Y(p[key]):.1f}" r="3.5" fill="{colour}"/>' for p in pts]
     labels = [(Y(pts[-1]["analytic_power"]) + 4, "#b5462f", ["ANALYTIC (formula)"]),
-              (Y(pts[-1]["sim_power"]) + 4, "#2f7d4f", ["MEASURED (sim)", "band: 95% interval"])]
+              (Y(pts[-1]["sim_power"]) + 4, "#2f7d4f", ["ESTIMATE (sim)", "band: 95% interval"])]
     if "control" in res:
         c = res["control"]
         line = " ".join(f"{X(p['patients']):.1f},{Y(p['sim_power']):.1f}" for p in c["points"])
         out.append(f'<polyline points="{line}" fill="none" stroke="#777" stroke-width="1.5" stroke-dasharray="2 4"/>')
         cd = c["design"]
         labels.append((Y(c["points"][-1]["sim_power"]) + 4, "#666",
-                       ["MEASURED (sim), control", f"{_fov(cd)}, {float(cd['eps']):.0%} mis-called"
+                       ["ESTIMATE (sim), control", f"{_fov(cd)}, {float(cd['eps']):.0%} mis-called"
                         + (f", {len(c['points'])} of {len(pts)} points" if len(c["points"]) < len(pts) else "")]))
     floor = T - 40
     for y, colour, lines in sorted(labels):  # stack end labels so none overlap
@@ -160,7 +160,7 @@ def svg(res: dict) -> str:
     n = pts[0]["sim_n"]
     code = res["simulated"].get("atlas_code")
     snap = f' (frozen snapshot of the atlas code, {code["base_commit"]} + working tree)' if isinstance(code, dict) else ""
-    foot = [f"MEASURED (sim) = model-based Monte Carlo{snap}: {n:,} planted-effect studies per point, re-imaged cell",
+    foot = [f"ESTIMATE (sim) = model-based Monte Carlo{snap}: {n:,} planted-effect studies per point, re-imaged cell",
             f"by cell from real tissue, maxT at one calibrated threshold per design; null-study FWER {min(fw):.3f} to {max(fw):.3f}.",
             "ANALYTIC = Schoenfeld (1983) events formula for a per-SD covariate (Hsieh and Lavori 2000),",
             "D = patients x event fraction, Bonferroni; it assumes exact, whole-tissue measurement."]

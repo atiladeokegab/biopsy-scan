@@ -40,12 +40,12 @@
 <circle cx="680.0" cy="288.3" r="3.5" fill="#2f7d4f"/>
 <polyline points="80.0,411.6 172.3,363.5 264.6,319.1 356.9,325.3 449.2,218.0 541.5,174.8 680.0,121.8" fill="none" stroke="#777" stroke-width="1.5" stroke-dasharray="2 4"/>
 <text x="690" y="84.1" fill="#b5462f" font-weight="bold">ANALYTIC (formula)</text>
-<text x="690" y="125.8" fill="#666" font-weight="bold">MEASURED (sim), control</text>
+<text x="690" y="125.8" fill="#666" font-weight="bold">ESTIMATE (sim), control</text>
 <text x="690" y="141.8" fill="#666" font-size="11">full core, 0% mis-called</text>
-<text x="690" y="292.3" fill="#2f7d4f" font-weight="bold">MEASURED (sim)</text>
+<text x="690" y="292.3" fill="#2f7d4f" font-weight="bold">ESTIMATE (sim)</text>
 <text x="690" y="308.3" fill="#2f7d4f" font-size="11">band: 95% interval</text>
 <text x="12" y="506" font-weight="bold">Mixed: the formula overstates at 6 and understates at 1 of 7 patient counts.</text>
-<text x="12" y="530" fill="#555" font-size="12">MEASURED (sim) = model-based Monte Carlo (frozen snapshot of the atlas code, ab0ae72 + working tree): 300 planted-effect studies per point, re-imaged cell</text>
+<text x="12" y="530" fill="#555" font-size="12">ESTIMATE (sim) = model-based Monte Carlo (frozen snapshot of the atlas code, ab0ae72 + working tree): 300 planted-effect studies per point, re-imaged cell</text>
 <text x="12" y="547" fill="#555" font-size="12">by cell from real tissue, maxT at one calibrated threshold per design; null-study FWER 0.020 to 0.070.</text>
 <text x="12" y="564" fill="#555" font-size="12">ANALYTIC = Schoenfeld (1983) events formula for a per-SD covariate (Hsieh and Lavori 2000),</text>
 <text x="12" y="581" fill="#555" font-size="12">D = patients x event fraction, Bonferroni; it assumes exact, whole-tissue measurement.</text>
