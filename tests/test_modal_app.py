@@ -29,17 +29,18 @@ def modal_app(monkeypatch, tmp_path):
 
 
 def test_functions_and_gpu_parameters_exist(modal_app):
-    assert modal_app.GPUS == ("A100", "H100", "L4") and modal_app.DEFAULT_GPU == "A100"
+    assert modal_app.GPUS == ("A100-40GB", "A100-80GB", "H100", "L4") and modal_app.DEFAULT_GPU == "A100-40GB"
     for name in ("gpu_tests", "time_kernel", "fleet_shard", "screen_hook", "ab_screen"):
-        assert getattr(modal_app, name)._spec_.gpus == "A100", name
+        assert getattr(modal_app, name)._spec_.gpus == "A100-40GB", name  # exact type: no 40/80 GB mix
     assert modal_app.fetch_data._spec_.gpus is None  # the data download is CPU only
     assert "/data" in modal_app.time_kernel._spec_.volumes
     assert modal_app.ab_screen._spec_.cpu >= 16  # the quiet A/B box
     assert callable(modal_app.run_tests) and callable(modal_app.run_ladder) and callable(modal_app.run_ab)
-    assert callable(modal_app.run_gpu_vs) and callable(modal_app.run_design)
+    assert callable(modal_app.run_gpu_vs)
     assert modal_app._check_gpu("H100") == "H100"
-    with pytest.raises(SystemExit):
-        modal_app._check_gpu("T4")
+    for bad in ("T4", "A100"):  # plain A100 may be either memory size
+        with pytest.raises(SystemExit):
+            modal_app._check_gpu(bad)
 
 
 @pytest.mark.parametrize("studies,n", [(16, 4), (7, 3), (5, 1)])
@@ -94,7 +95,7 @@ def test_parity_false_fails_closed_with_no_timing(modal_app, monkeypatch, tmp_pa
                                                                                  "bit_identical_to_N1": False}}}},
                "e_gpu_parity": {"exact_all_containers": True}}
     with pytest.raises(SystemExit):
-        modal_app._save("A100", payload)
+        modal_app._save("A100-40GB", payload)
     (written,) = (tmp_path / "bench" / "results").iterdir()
     report = json.loads(written.read_text())
     assert report["status"] == "FAILED"
@@ -109,7 +110,7 @@ def test_parity_true_is_measured(modal_app, monkeypatch, tmp_path):
     (tmp_path / "bench" / "results").mkdir(parents=True)
     monkeypatch.setattr(modal_app, "REPO", tmp_path)
     monkeypatch.setattr(modal_app, "_LAUNCH", {"commit": "abc", "dirty": False, "launched_utc": "t"})
-    path = modal_app._save("A100", {"kind": "ladder", "kernel": {"parity_exact": True, "speedup_median": 3.3}})
+    path = modal_app._save("A100-40GB", {"kind": "ladder", "kernel": {"parity_exact": True, "speedup_median": 3.3}})
     report = json.loads(path.read_text())
     assert report["status"] == "MEASURED" and report["kernel"]["speedup_median"] == 3.3
 
@@ -150,3 +151,83 @@ def test_screen_comparison_needs_every_output_not_just_z(modal_app):
     c = {**b, "null_maxT": [1.0, 2.5], "p": 0.3}  # same z, different resamples
     out = modal_app.compare_screens(b, c)
     assert out["z"] and not out["null_maxT"] and not out["p"] and not out["all"]
+
+
+def _results(modal_app, monkeypatch, tmp_path):
+    out = tmp_path / "bench" / "results"
+    out.mkdir(parents=True)
+    monkeypatch.setattr(modal_app, "REPO", tmp_path)
+    monkeypatch.setattr(modal_app, "_LAUNCH", {"commit": "abc", "dirty": False, "launched_utc": "t"})
+    return out
+
+
+@pytest.mark.parametrize("failed,unexpected", [(1, []), (0, ["test_gpu_runs_on_device"])])
+def test_failed_or_unexpectedly_skipped_gpu_tests_never_write_measured(modal_app, monkeypatch, tmp_path,
+                                                                       failed, unexpected):
+    import json
+
+    out = _results(modal_app, monkeypatch, tmp_path)
+    result = {"exit_code": 1 if failed else 0, "passed": 38, "failed": failed, "errors": 0, "skipped": 1,
+              "unexpected_skips": unexpected, "in_function_s": 40.0,
+              "gpu": {"model": "NVIDIA A100-SXM4-40GB", "driver": "610"}}
+    monkeypatch.setattr(modal_app, "_tests", lambda gpu: result)
+    with pytest.raises(SystemExit):
+        modal_app.run_tests("A100-40GB")
+    (written,) = out.iterdir()
+    report = json.loads(written.read_text())
+    assert report["status"] == "FAILED" and report["parity_failed"]
+    assert "MEASURED" not in written.read_text()
+
+
+class _FakeClock:
+    def __init__(self):
+        self.now = 1000.0
+
+    def time(self):
+        return self.now
+
+    perf_counter = time
+
+
+def test_gpu_vs_startup_is_per_gpu_and_hardware_is_kept_per_block(modal_app, monkeypatch, tmp_path):
+    """Two GPUs run at once; waiting on the slower one must not count as the faster one's start-up."""
+    import json
+
+    _results(modal_app, monkeypatch, tmp_path)
+    clock = _FakeClock()
+    monkeypatch.setattr(modal_app, "time", clock)
+    monkeypatch.setattr(modal_app, "_spend", lambda *a: None)
+    monkeypatch.setattr(modal_app, "fetch_data", type("F", (), {"remote": staticmethod(lambda: [])}))
+    in_function = {"A100-40GB": 10.0, "H100": 2.0}  # both enter 5 s after launch
+    block = {"n": 0}
+
+    class Call:
+        def __init__(self, gpu, seeds, launched):
+            self.gpu, self.seeds, self.launched = gpu, seeds, launched
+
+        def get(self):
+            done = self.launched + 5 + in_function[self.gpu]
+            clock.now = max(clock.now, done)  # waiting on this call
+            return {"seeds": self.seeds, "features": np.array([[float(s)] for s in self.seeds]),
+                    "compute_s": in_function[self.gpu] - 1, "in_function_s": in_function[self.gpu],
+                    "entered_epoch": self.launched + 5,
+                    "gpu": {"model": f"{self.gpu} card", "modal_task_id": f"t{block['n']}"}}
+
+    class Fn:
+        def __init__(self, gpu):
+            self.gpu = gpu
+
+        def spawn(self, seeds):
+            block["n"] += 1
+            return Call(self.gpu, seeds, clock.now)
+
+    monkeypatch.setattr(modal_app, "fleet_shard", type("S", (), {"with_options": staticmethod(lambda gpu: Fn(gpu))}))
+    modal_app.run_gpu_vs(studies=8, blocks=2, gpus="A100-40GB,H100")
+    (written,) = (tmp_path / "bench" / "results").iterdir()
+    report = json.loads(written.read_text())
+    assert report["status"] == "MEASURED"
+    for g in in_function:
+        row = report["rows"][g]
+        assert row["startup_s"] == [5.0, 5.0], g  # not 13 s for whichever GPU is collected second
+        assert len({b["modal_task_id"] for b in row["gpus_per_block"]}) == 2, g  # one per block, none overwritten
+        assert row["same_gpu_model"] is True, g

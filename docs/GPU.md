@@ -7,13 +7,12 @@ numbers come from [Modal](https://modal.com) through `gpu/modal_app.py`.
 
 | Command | What runs | Output |
 |---|---|---|
-| `make modal-gpu-tests GPU=A100` | `reimage/test_backends.py`, `test_expression.py`, `test_fleet.py` in a container with a real GPU and the CUDA simulator off (it refuses to run otherwise). Three tests start their own `NUMBA_ENABLE_CUDASIM=1` subprocess; they are counted as simulator coverage, not device coverage. Only the skip that needs CUDA to be absent is expected; any other skip exits non-zero | pass/fail/skip counts, simulator vs in-process coverage, nvidia-smi model, memory, driver |
-| `make modal-ab GPU=A100` | R-14 full Cox fits vs R-15 `stats.screen` on CPU and GPU, interleaved, on one 16-core GPU container; input fingerprints, seed and B recorded | B vs C is equal work only if every screen output matches (U, V, z, n, maxT, p, adjusted_p, null_maxT) |
-| `make modal-gpu-vs STUDIES=1000` | the same studies on one A100 and one H100, block by block | seconds and dollars per study, bit-identical across GPUs |
-| `make modal-design GPU=A100 FLEET=1,2,4,8,16` | the design point: the lab's per-study shuffle test vs one paired-shuffle threshold on CPU, 1 GPU and N GPUs | a WORKFLOW comparison with EXPLORATORY calibration, see `gpu/design_point.py` |
-| `make modal-ladder GPU=A100 CONTAINERS=4 STUDIES=16 REPS=5` | `bench/real_cpu.py`'s Charville design point, NumPy reference vs GPU, same seeds, exact parity; the same studies on 1 and N GPU containers, merged bit-identical; R-15's `stats.screen` on the GPU when it is importable | one file |
+| `make modal-gpu-tests GPU=A100-40GB` | `reimage/test_backends.py`, `test_expression.py`, `test_fleet.py` in a container with a real GPU and the CUDA simulator off (it refuses to run otherwise). Three tests start their own `NUMBA_ENABLE_CUDASIM=1` subprocess; they are counted as simulator coverage, not device coverage. Only the skip that needs CUDA to be absent is expected; any other skip exits non-zero | pass/fail/skip counts, simulator vs in-process coverage, nvidia-smi model, memory, driver |
+| `make modal-ab GPU=A100-40GB` | R-14 full Cox fits vs R-15 `stats.screen` on CPU and GPU, interleaved, on one 16-core GPU container; input fingerprints, seed and B recorded | B vs C is equal work only if every screen output matches (U, V, z, n, maxT, p, adjusted_p, null_maxT) |
+| `make modal-gpu-vs STUDIES=1000` | the same studies on one A100-40GB and one H100, block by block | seconds and dollars per study, bit-identical across GPUs |
+| `make modal-ladder GPU=A100-40GB CONTAINERS=4 STUDIES=16 REPS=5` | `bench/real_cpu.py`'s Charville design point, NumPy reference vs GPU, same seeds, exact parity; the same studies on 1 and N GPU containers, merged bit-identical; R-15's `stats.screen` on the GPU when it is importable | one file |
 
-`GPU` is `A100` (default), `H100` or `L4`. The cohort lives in the `preflight-data` Modal volume.
+`GPU` is `A100-40GB` (default), `A100-80GB`, `H100` or `L4`: an exact type, since plain `A100` mixed 40 GB and 80 GB cards in one curve. The cohort lives in the `preflight-data` Modal volume.
 Zenodo answers 403 to Modal's IPs, so upload it once from a machine that has `make data`'s files:
 `uv run modal volume put preflight-data data/charville_raw_data.zip /charville_raw_data.zip` (and
 `charville_labels.csv`). Runs stop with that hint when the files are missing.

@@ -1,4 +1,4 @@
-.PHONY: smoke install test data summary demo tissue deploy modal-gpu-tests modal-ladder modal-ab modal-design modal-gpu-vs
+.PHONY: smoke install test data summary demo tissue deploy modal-gpu-tests modal-ladder modal-ab modal-gpu-vs
 
 install:
 	uv sync --dev
@@ -33,8 +33,8 @@ deploy:
 	python3 -I demo/check_data.py demo/data
 	@echo "Deployed by .github/workflows/pages.yml on push to integration: $(PAGES_URL)"
 
-# Real GPUs on Modal (docs/GPU.md). Needs `uv run modal setup` once; GPU=A100|H100|L4.
-GPU ?= A100
+# Real GPUs on Modal (docs/GPU.md). Needs `uv run modal setup` once; GPU=A100-40GB|A100-80GB|H100|L4.
+GPU ?= A100-40GB
 CONTAINERS ?= 4
 STUDIES ?= 16
 REPS ?= 5
@@ -47,10 +47,6 @@ modal-ladder: install
 modal-ab: install
 	uv run modal run gpu/modal_app.py::run_ab --gpu $(GPU) --reps 3
 
-# One design point (1,000 Charville studies) by the lab's way and ours, on CPU, 1 GPU and N GPUs.
-FLEET ?= 1,2,4,8,16
-modal-design: install
-	uv run modal run gpu/modal_app.py::run_design --gpu $(GPU) --studies 1000 --fleet $(FLEET)
 
 modal-gpu-vs: install
-	uv run modal run gpu/modal_app.py::run_gpu_vs --studies $(STUDIES) --gpus A100,H100
+	uv run modal run gpu/modal_app.py::run_gpu_vs --studies $(STUDIES) --gpus A100-40GB,H100
