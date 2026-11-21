@@ -1,12 +1,11 @@
 // TISSUE: one thin slab of real (or SYNTHETIC) cells per patient, stacked, with field-of-view squares.
 // One Points draw call per slab; colours are rewritten on the CPU when the design changes (~30k cells).
 import * as THREE from "./vendor/three/three.module.min.js";
+import { tok } from "./chart.js";
 
 const UM = 10; // microns per world unit
 const GAP = 40; // world units between slabs
-const COLOURS = { tumour: "#FF7A59", stroma: "#2BD4A4", immune: "#F5C451" };
-const TYPES = Object.keys(COLOURS);
-const BG = new THREE.Color("#0B1018");
+const TYPES = ["tumour", "stroma", "immune"]; // CSS tokens --tumour, --stroma, --immune
 const DIM = 0.14; // how much of a cell's colour survives outside every field of view
 
 // Small deterministic RNG so squares and mis-calls stay put between redraws.
@@ -29,18 +28,19 @@ function dotTexture() {
 export function createTissue(canvas, tissue, { reducedMotion }) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  renderer.setClearColor("#070B11");
+  renderer.setClearColor(tok("--canvas-bg"));
+  const BG = new THREE.Color(tok("--bg"));
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(32, 1, 1, 6000);
   const root = new THREE.Group();
   scene.add(root);
 
   const R = tissue.region_um / UM;
-  const base = Object.fromEntries(TYPES.map((t) => [t, new THREE.Color(COLOURS[t])]));
+  const base = Object.fromEntries(TYPES.map((t) => [t, new THREE.Color(tok(`--${t}`))]));
   const dot = dotTexture();
-  const plateMat = new THREE.MeshBasicMaterial({ color: "#121A25", transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false });
-  const edgeMat = new THREE.LineBasicMaterial({ color: "#2A3A4C" });
-  const fovMat = new THREE.LineDashedMaterial({ color: "#F4F7FA", dashSize: 5, gapSize: 3.5 });
+  const plateMat = new THREE.MeshBasicMaterial({ color: tok("--surface"), transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false });
+  const edgeMat = new THREE.LineBasicMaterial({ color: tok("--plate-edge") });
+  const fovMat = new THREE.LineDashedMaterial({ color: tok("--head"), dashSize: 5, gapSize: 3.5 });
 
   const slabs = tissue.patients.map((p, i) => {
     const n = p.cells.length;

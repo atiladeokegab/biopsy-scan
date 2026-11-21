@@ -53,6 +53,12 @@ function verdict(power) {
   return "Unlikely. Most studies like yours miss the pattern.";
 }
 
+// "≈1.8 regions per patient" when the cohort gives a mean; the chart still marks it on the whole-number line.
+const cohortRegions = (c) =>
+  c.regions_mean != null && c.regions_mean !== c.regions
+    ? `≈${c.regions_mean} regions per patient, marked on the ${c.regions}-region line`
+    : `${c.regions} region${c.regions > 1 ? "s" : ""} per patient`;
+
 const describe = (p) =>
   `${p.patients} patients, ${p.regions} region${p.regions > 1 ? "s" : ""}, ${fovLabel(p.fov_um)}, ${pct(p.miscall)} mis-called`;
 
@@ -123,7 +129,7 @@ async function main() {
   $("race-n").textContent = grid.studies_per_point.toLocaleString("en-GB");
   $("note").textContent =
     `HR ${grid.effect_hr_per_sd} per SD planted · ${grid.studies_per_point.toLocaleString("en-GB")} studies per point. ` +
-    `White ring: your design. Green: our cohort (${grid.cohort.regions} region${grid.cohort.regions > 1 ? "s" : ""} per patient).` +
+    `White ring: your design. Green: our cohort (${cohortRegions(grid.cohort)}).` +
     (grid.note ? ` ${grid.note}` : "");
 
   try {

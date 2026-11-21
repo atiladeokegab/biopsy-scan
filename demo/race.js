@@ -1,10 +1,12 @@
 // THE RACE: the same N studies on the CPU (one at a time) and the GPU (all at once).
 // Each tile is one simulated study: green when it found the pattern, grey when it missed.
-// Timing comes only from bench.json. Without a MEASURED bench, the CPU lane is a placeholder and no ratio is shown.
+// Timing comes only from bench.json. Without a MEASURED bench both lanes still play, but at a fixed
+// on-screen pace that is not to scale: no seconds and no ratio are shown, and both say UNMEASURED.
+import { tok } from "./chart.js";
 
-const HIT = "#2BD4A4", MISS = "#2A3644", EMPTY = "#161F2B";
 const GPU_SHOW_MS = 1400; // on-screen time for the GPU lane; the CPU lane runs on the same scale
 const CPU_SHOW_MS = 7000; // how long we let the CPU lane crawl before stopping the clock
+const UNMEASURED_CPU_MS = 140; // on-screen ms per CPU study when unmeasured: a display pace, not a measurement
 
 const fmt = (n) => n.toLocaleString("en-GB");
 export const duration = (s) =>
@@ -31,6 +33,7 @@ function tile(L, i, colour) {
 }
 
 export function createRace(cpuCanvas, gpuCanvas, out) {
+  const HIT = tok("--hit"), MISS = tok("--miss"), EMPTY = tok("--tile-empty");
   let timer = 0;
 
   function run({ studies: n, power, bench, reducedMotion }) {
@@ -52,11 +55,9 @@ export function createRace(cpuCanvas, gpuCanvas, out) {
     const measured = bench && bench.status === "MEASURED";
     const ratio = measured ? bench.cpu_seconds / bench.gpu_seconds : null;
 
-    out.gpu.innerHTML = measured ? "" : `<span class="unm">UNMEASURED</span> GPU time waits for the benchmark`;
-    out.cpu.innerHTML = measured ? "" : `<span class="unm">UNMEASURED</span> CPU time waits for the benchmark`;
     out.speed.textContent = measured
       ? `Measured on one design point: GPU ${duration(bench.gpu_seconds)}, all CPU cores ${duration(bench.cpu_seconds)}, ${fmt(Math.round(ratio))}× faster`
-      : "";
+      : "Speeds not to scale until the benchmark is measured.";
 
     const t0 = performance.now();
     let gpuDone = 0, cpuDone = 0;
@@ -65,18 +66,20 @@ export function createRace(cpuCanvas, gpuCanvas, out) {
       // GPU: studies land in warp-sized batches in a scattered order, all within GPU_SHOW_MS.
       const g = Math.min(n, Math.ceil((t / GPU_SHOW_MS) * n / 32) * 32);
       for (; gpuDone < g; gpuDone++) { const i = order[(gpuDone * 7919) % n]; tile(gpu, i, found[i] ? HIT : MISS); }
+      // CPU: one study after another; on the GPU's clock slowed by the measured ratio, else a fixed display pace.
+      const tc = Math.min(t, CPU_SHOW_MS);
+      const c = Math.min(n, Math.floor(measured ? (tc / (GPU_SHOW_MS * ratio)) * n : tc / UNMEASURED_CPU_MS));
+      for (; cpuDone < c; cpuDone++) tile(cpu, cpuDone, found[cpuDone] ? HIT : MISS);
       if (measured) {
-        // CPU: the same clock, slowed by the measured ratio, one study after another.
-        const c = Math.min(n, Math.floor((Math.min(t, CPU_SHOW_MS) / (GPU_SHOW_MS * ratio)) * n));
-        for (; cpuDone < c; cpuDone++) tile(cpu, cpuDone, found[cpuDone] ? HIT : MISS);
         const tGpu = Math.min(t, GPU_SHOW_MS) / GPU_SHOW_MS * bench.gpu_seconds;
         out.gpu.innerHTML = `<b>${fmt(gpuDone)}</b> of ${fmt(n)} studies · ${duration(tGpu)}`;
         out.cpu.innerHTML = `<b>${fmt(cpuDone)}</b> of ${fmt(n)} studies` +
           (t >= CPU_SHOW_MS && cpuDone < n ? ` · needs ${duration(bench.cpu_seconds)} in all` : "");
       } else {
-        out.gpu.innerHTML = `<b>${fmt(gpuDone)}</b> of ${fmt(n)} studies · <span class="unm">TIME UNMEASURED</span>`;
+        out.gpu.innerHTML = `<b>${fmt(gpuDone)}</b> of ${fmt(n)} studies <span class="unm">UNMEASURED</span>`;
+        out.cpu.innerHTML = `<b>${fmt(cpuDone)}</b> of ${fmt(n)} studies <span class="unm">UNMEASURED</span>`;
       }
-      const more = gpuDone < n || (measured && cpuDone < n && t < CPU_SHOW_MS);
+      const more = gpuDone < n || (cpuDone < n && t < CPU_SHOW_MS);
       if (more) timer = requestAnimationFrame(step);
     };
     timer = requestAnimationFrame(step);

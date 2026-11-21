@@ -9,6 +9,9 @@ page works with Wi-Fi off.
 python3 -m http.server 8000 -d demo     # then open http://localhost:8000
 ```
 
+There is no Makefile on `integration` yet. When one lands, a `make demo` target should run exactly
+that line (`demo: ; python3 -m http.server 8000 -d demo`).
+
 Browsers block `fetch` and modules from `file://`. If you double-click `index.html`, the page
 shows this command instead.
 
@@ -22,8 +25,9 @@ shows this command instead.
 2. **The race.** The same N studies run on the CPU (one at a time) and on the GPU (all at once).
    Each tile is one study: green if it found the pattern, grey if it missed. The share of green
    tiles is the grid point's power.
-   - Timing comes only from `bench.json`. Without a MEASURED bench, both lanes say UNMEASURED
-     and no speed ratio is shown.
+   - Timing comes only from `bench.json`. Without a MEASURED bench, both lanes still play at a
+     fixed display pace that is not to scale, both say UNMEASURED, and no seconds or ratio are
+     shown.
    - With one, both lanes run on one clock: the GPU lane finishes in 1.4 s on screen, and the CPU
      lane is slowed by the measured ratio.
 3. **The answer.** Power and identification rate for the grid point nearest the sliders, and the
@@ -65,7 +69,9 @@ The page labels both SYNTHETIC until each file says `"source": "MEASURED"`.
   "studies_per_point": 1000,          // simulated studies behind each point; also the race's tile count
   "effect_hr_per_sd": 2.0,            // the planted effect every point uses
   "cohort": {                         // "our cohort", marked on the chart
-    "name": "Charville", "patients": 162, "regions": 2, "fov_um": "full", "miscall": 0.0
+    "name": "Charville", "patients": 159, "regions": 2,   // regions: the whole-number line it is marked on
+    "regions_mean": 1.8,              // optional: shown as "≈1.8 regions per patient"
+    "fov_um": "full", "miscall": 0.0
   },
   "axes": {                           // every value a point may take, ascending
     "patients": [20, 40, 80, 160, 300],

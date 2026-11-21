@@ -45,7 +45,7 @@ grid = {
     "note": "Toy attenuation model from demo/synth_data.py. Not simulated studies; replace with the atlas output.",
     "studies_per_point": 1000,
     "effect_hr_per_sd": HR_PER_SD,
-    "cohort": {"name": "Charville", "patients": 162, "regions": 2, "fov_um": "full", "miscall": 0.0},
+    "cohort": {"name": "Charville", "patients": 159, "regions": 2, "regions_mean": 1.8, "fov_um": "full", "miscall": 0.0},
     "axes": {"patients": PATIENTS, "regions": REGIONS, "fov_um": FOV, "miscall": MISCALL},
     "points": [point(n, k, f, e) for n in PATIENTS for k in REGIONS for f in FOV for e in MISCALL],
 }

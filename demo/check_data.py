@@ -35,6 +35,7 @@ def check_grid(g, w):
     need(isinstance(c.get("patients"), int) and c["patients"] > 0, w, "cohort.patients: positive int")
     need(isinstance(c.get("regions"), int) and c["regions"] > 0, w, "cohort.regions: positive int")
     need(fov_ok(c.get("fov_um")), w, "cohort.fov_um: positive number or 'full'")
+    need("regions_mean" not in c or (num(c["regions_mean"]) and c["regions_mean"] > 0), w, "cohort.regions_mean: positive number if given")
     need(num(c.get("miscall")) and 0 <= c["miscall"] <= 1, w, "cohort.miscall: 0..1")
     a = g.get("axes", {})
     for k in ("patients", "regions", "fov_um", "miscall"):
