@@ -114,7 +114,9 @@ and by Pages before every deploy) fills rows from `bench/results/*.json`. A benc
 top-level `race` list, e.g.
 `"race": [{"id": "gpu-1", "seconds": 4.2, "startup_s": 90.0, "label": "MEASURED", "hardware": "Modal", "gpu": "1x NVIDIA H100"}]`
 (ids: `lab-cpu`, `preflight-cpu`, `gpu-1`, `gpu-16`). `seconds` is compute time; container start-up goes in
-`startup_s`, printed apart and never counted. The GPU model is whatever the file says. A row no file feeds
+`startup_s`, printed apart and never counted. The GPU model is whatever the file says. build-modal's `"kind": "design_point"` file (slots `a_lab_all_cores`, `b_ours_cpu_all_cores`, `c_ours_1_gpu`,
+`d_ours_n_gpu.runs["16"]`) fills the same four rows. Only a file with `"status": "MEASURED"` and `"studies": 1000`
+may fill a race row; anything else (a FAILED run, a 32-study trial) is refused with a message. A row no file feeds
 keeps its committed value.
 
 ```jsonc

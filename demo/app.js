@@ -141,7 +141,7 @@ async function hero() {
         `${c.pd1_pos_near_tumour} PD1+ within 100 µm`;
     }
     tagOf($("bio-tag"), biomarker.source);
-    $("bio-cap").textContent = `Top of 3,780 patterns, z = ${biomarker.feature.z.toFixed(2)}. ${biomarker.note} ` +
+    $("bio-cap").textContent = `The top-ranked pattern, z = ${biomarker.feature.z.toFixed(2)}. ${biomarker.note} ` +
       "Can't be tested in our second cohort: it has no PD1 stain.";
   }
 

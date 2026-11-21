@@ -64,7 +64,7 @@
   },
   "interim": [
     {
-      "title": "One study, re-imaged and scored",
+      "title": "One study, feature generation only (patient and region sampling, crop, mis-call, recount, features)",
       "unit": "one study: patient and region sampling, crop, mis-call, recount, features",
       "same_scope": true,
       "rows": [
@@ -82,7 +82,7 @@
         },
         {
           "id": "kernel-gpu",
-          "method": "Preflight on 1 GPU",
+          "method": "The same step on 1 GPU",
           "role": "screen",
           "label": "MEASURED",
           "seconds": 0.873,
@@ -95,7 +95,7 @@
       ]
     },
     {
-      "title": "16 studies on a fleet, compute only",
+      "title": "16 studies (bench/real_cpu.py DESIGN on Charville) on a fleet, compute only",
       "unit": "compute_s excludes start-up, data load, adjacency and warm-up; those are reported per run",
       "same_scope": true,
       "rows": [

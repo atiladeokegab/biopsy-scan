@@ -2,6 +2,10 @@
 
 Run: python3 -I demo/collect_race.py [extra.json ...]. Pages runs it before every deploy.
 A bench file feeds the race in one of two ways:
+  Only a file with "status": "MEASURED" and "studies": 1000 (the declared design point) may fill a race row;
+  anything else is refused with a message. Either
+  0. build-modal's "kind": "design_point" file (slots a_lab_all_cores, b_ours_cpu_all_cores, c_ours_1_gpu,
+     d_ours_n_gpu.runs["16"]), or
   1. a top-level "race" list, one entry per row of the equal-work unit (one design point, 1,000 studies):
      [{"id": "gpu-1", "seconds": 4.2, "startup_s": 90.0, "label": "MEASURED", "hardware": "Modal", "gpu": "1x NVIDIA H100"}]
      ids: lab-cpu, preflight-cpu, gpu-1, gpu-16. "seconds" is compute time; start-up goes in "startup_s",
@@ -23,13 +27,49 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "demo" / "data" / "baseline.json"
 CLAIMS = ROOT / "demo" / "data" / "claims.json"
 PLANNED_PATIENTS = 200  # the demo's study: "they plan 200 patients"
+DESIGN_STUDIES = 1000  # the race's declared unit: one design point, 1,000 simulated studies (baseline.json task)
+TIMED = ("MEASURED", "ESTIMATE")
+SLOTS = {"lab-cpu": "a_lab_all_cores", "preflight-cpu": "b_ours_cpu_all_cores", "gpu-1": "c_ours_1_gpu"}
 KEEP = ("seconds", "startup_s", "label", "hardware", "cores", "gpu", "note")
+
+
+def refused(d):
+    """Why a file may not fill a race row: only a MEASURED run of exactly the declared design point may."""
+    if d.get("status") != "MEASURED":
+        return f"status {d.get('status')!r}, not MEASURED"
+    if d.get("studies") != DESIGN_STUDIES:
+        return f"{d.get('studies')!r} studies, not the design point's {DESIGN_STUDIES}"
+    return None
+
+
+def design_point(name, d):
+    """build-modal's "kind": "design_point" file: slots a-d become the four race rows."""
+    s = d["slots"]
+    for rid, key in SLOTS.items():
+        r = s.get(key, {})
+        if r.get("label") not in TIMED or not r.get("seconds"):
+            continue
+        gpu = r.get("gpu")
+        yield rid, {"seconds": round(r["seconds"], 2), "label": r["label"], "hardware": "Modal",
+                    "cores": None if gpu else r.get("workers"), "gpu": f"1x {gpu[0]}" if gpu else None, "source": name}
+    run = s.get("d_ours_n_gpu", {}).get("runs", {}).get("16")
+    if s.get("d_ours_n_gpu", {}).get("label") in TIMED and run:
+        yield "gpu-16", {"seconds": round(run["compute_s"], 2), "startup_s": round(run["startup_and_transfer_s"], 1),
+                         "label": s["d_ours_n_gpu"]["label"], "hardware": "Modal", "cores": None,
+                         "gpu": f"{run['containers_seen']}x {' / '.join(sorted(set(run['gpus'])))}", "source": name}
 
 
 def rows_from(path, d):
     name = f"bench/results/{path.name}"
-    for r in d.get("race") or []:
-        yield r["id"], {**{k: r[k] for k in KEEP if k in r}, "source": r.get("source", name)}
+    if d.get("race") or d.get("kind") == "design_point":
+        why = refused(d)
+        if why:
+            print(f"{name}: refused for the race: {why}", file=sys.stderr)
+        elif d.get("kind") == "design_point":
+            yield from design_point(name, d)
+        else:
+            for r in d["race"]:
+                yield r["id"], {**{k: r[k] for k in KEEP if k in r}, "source": r.get("source", name)}
     if d.get("kind") == "ladder" and d.get("status") == "MEASURED":
         yield "interim", interim(name, d)
     if "cpu_model" in d:
@@ -58,14 +98,16 @@ def interim(name, d):
                       "label": lab, "seconds": round(r["compute_s_max"], 2), "startup_s": round(r["startup_and_transfer_s"], 1),
                       "hardware": "Modal", "gpu": f"{r['containers_seen']}x {' / '.join(g)}", "cores": None, "source": name})
     return [
-        {"title": "One study, re-imaged and scored", "unit": k["unit"], "same_scope": True, "rows": [
+        {"title": "One study, feature generation only (" + k["unit"].split(": ", 1)[-1] + ")", "unit": k["unit"],
+         "same_scope": True, "rows": [
             {"id": "kernel-numpy", "method": "NumPy reference, same container", "role": "baseline", "label": lab,
              "seconds": round(rows["numpy_reference"]["median_s"], 3), "hardware": "Modal GPU container, on its CPU",
              "cores": None, "gpu": None, "note": f"median of {len(rows['numpy_reference']['samples_s'])}", "source": name},
-            {"id": "kernel-gpu", "method": "Preflight on 1 GPU", "role": "screen", "label": lab,
+            {"id": "kernel-gpu", "method": "The same step on 1 GPU", "role": "screen", "label": lab,
              "seconds": round(rows["gpu"]["median_s"], 3), "hardware": "Modal", "cores": None, "gpu": k["gpu"]["model"],
              "note": f"median of {len(rows['gpu']['samples_s'])}, exact parity", "source": name}]},
-        {"title": f"{f['studies']} studies on a fleet, compute only", "unit": f["note"], "same_scope": True, "rows": fleet}]
+        {"title": f"{f['studies']} studies ({f['design']}) on a fleet, compute only", "unit": f["note"],
+         "same_scope": True, "rows": fleet}]
 
 
 def main(extra):
@@ -94,7 +136,7 @@ def main(extra):
     OUT.write_text(json.dumps(race, indent=2, ensure_ascii=False) + "\n")
 
 
-def claims():
+def claims(write=True):
     vs_path, mt_path = "bench/results/vs-schoenfeld-300.json", "results/charville-v2.json"
     vs, mt = (json.loads((ROOT / p).read_text()) for p in (vs_path, mt_path))
     p = next(x for x in vs["points"] if x["patients"] == PLANNED_PATIENTS)
@@ -111,6 +153,8 @@ def claims():
         "maxT": {"feature": top["feature"], "z": top["z"], "p": mt["maxT"]["p"], "tests": mt["n_features_tested"],
                  "label": mt["labels"]["maxT"], "verdict": "exploratory, not a discovery", "source": mt_path},
     }
+    if not write:
+        return out
     CLAIMS.write_text(json.dumps(out, indent=2) + "\n")
     print(f"claims: power {p['sim_power']:.2f} vs formula {p['analytic_power']:.2f}; false alarms {hits}/{out['false_alarms']['n']}")
 

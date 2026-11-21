@@ -163,11 +163,24 @@ def check_biomarker(b, w):
     return f"{len(regions)} regions, km {arms}"
 
 
+CLAIM_NUMBERS = {"power": ("patients", "sim", "lo", "hi", "n", "formula"), "false_alarms": ("hits", "n", "target"),
+                 "maxT": ("z", "p", "tests")}
+
+
 def check_claims(c, w):
+    """Every number the page shows from claims.json is finite, labelled, and traced to a committed file."""
     need(c.get("schema") == "preflight-claims/1", w, "schema must be 'preflight-claims/1'")
-    for k in ("power", "false_alarms", "maxT"):  # every number on screen carries a label and a source
-        need(c.get(k, {}).get("label") in LABELS, w, f"{k}.label must be one of {LABELS}")
-        need(isinstance(c[k].get("source"), str) and c[k]["source"].strip(), w, f"{k}.source: string, required")
+    root = Path(__file__).resolve().parents[1]
+    for k, fields in CLAIM_NUMBERS.items():
+        b = c.get(k)
+        need(isinstance(b, dict), w, f"{k}: object")
+        need(b.get("label") in LABELS, w, f"{k}.label must be one of {LABELS}")
+        need(text(b.get("source")) and (root / b["source"]).is_file(), w, f"{k}.source: a committed file, required")
+        for f in fields:
+            need(num(b.get(f)) and math.isfinite(b[f]), w, f"{k}.{f}: finite number")
+    need(c["power"].get("formula_label") == "ANALYTIC", w, "power.formula_label: ANALYTIC")
+    need(0 <= c["power"]["lo"] <= c["power"]["sim"] <= c["power"]["hi"] <= 1, w, "power: lo <= sim <= hi in [0, 1]")
+    need(0 < c["maxT"]["p"] <= 1 and c["false_alarms"]["hits"] <= c["false_alarms"]["n"], w, "maxT.p, false_alarms")
     return "power, false_alarms, maxT"
 
 

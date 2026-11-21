@@ -10,7 +10,8 @@ spec.loader.exec_module(cr)
 
 
 def test_race_list_feeds_rows_by_id():
-    d = {"race": [{"id": "gpu-1", "seconds": 0.8, "startup_s": 90.0, "label": "MEASURED", "hardware": "Modal", "gpu": "1x H100"}]}
+    d = {"status": "MEASURED", "studies": 1000,
+         "race": [{"id": "gpu-1", "seconds": 0.8, "startup_s": 90.0, "label": "MEASURED", "hardware": "Modal", "gpu": "1x H100"}]}
     [(rid, f)] = cr.rows_from(Path("modal-gpu.json"), d)
     assert rid == "gpu-1" and f["seconds"] == 0.8 and f["startup_s"] == 90.0 and f["gpu"] == "1x H100"
     assert f["source"] == "bench/results/modal-gpu.json"
@@ -74,10 +75,10 @@ def test_checker_validates_each_field_on_its_own():
 
 
 LADDER = {"kind": "ladder", "status": "MEASURED",
-          "kernel": {"unit": "one study", "gpu": {"model": "NVIDIA H100"},
+          "kernel": {"unit": "one study: sampling, crop, recount, features", "gpu": {"model": "NVIDIA H100"},
                      "rows": {"numpy_reference": {"median_s": 2.88046, "samples_s": [1] * 5},
                               "gpu": {"median_s": 0.87341, "samples_s": [1] * 5}}},
-          "fleet": {"studies": 16, "note": "compute only", "runs": {
+          "fleet": {"studies": 16, "design": "bench/real_cpu.py DESIGN", "note": "compute only", "runs": {
               "4": {"gpus": ["A100-40", "A100-80"], "containers_seen": 4, "studies_per_container": [4] * 4,
                     "compute_s_max": 3.7977, "startup_and_transfer_s": 5.0945},
               "1": {"gpus": ["A100-40"], "containers_seen": 1, "studies_per_container": [16],
@@ -99,3 +100,47 @@ def test_ladder_feeds_interim_compute_only_with_startup_apart():
     assert _check(b | {"interim": groups}) is None
     assert _check(b | {"interim": [groups[0] | {"rows": [k["kernel-gpu"] | {"label": "PENDING"}]}]}), "PENDING with a number"
     assert list(cr.rows_from(Path("x.json"), LADDER | {"status": "FAILED"})) == []
+
+
+DP = {"kind": "design_point", "status": "MEASURED", "studies": 1000, "slots": {
+    "a_lab_all_cores": {"label": "MEASURED", "seconds": 1043.2, "workers": 48},
+    "b_ours_cpu_all_cores": {"label": "MEASURED", "seconds": 673.1, "workers": 48},
+    "c_ours_1_gpu": {"label": "MEASURED", "seconds": 865.4, "gpu": ["NVIDIA H100"]},
+    "d_ours_n_gpu": {"label": "MEASURED", "runs": {"16": {"compute_s": 54.1, "startup_and_transfer_s": 6.2,
+                                                          "containers_seen": 16, "gpus": ["NVIDIA H100"]}}}}}
+
+
+def test_design_point_fills_the_four_rows_only_when_measured_at_1000_studies():
+    """Atlas #79 re-check (b): a FAILED run, or any workload but the declared design point, fills nothing."""
+    rows = dict(cr.rows_from(Path("dp.json"), DP))
+    assert sorted(rows) == ["gpu-1", "gpu-16", "lab-cpu", "preflight-cpu"]
+    assert rows["gpu-1"]["gpu"] == "1x NVIDIA H100" and rows["lab-cpu"]["cores"] == 48
+    assert (rows["gpu-16"]["seconds"], rows["gpu-16"]["startup_s"], rows["gpu-16"]["gpu"]) == (54.1, 6.2, "16x NVIDIA H100")
+    for bad in ({"status": "FAILED"}, {"status": None}, {"studies": 32}, {"studies": "1000"}, {"studies": None}):
+        assert list(cr.rows_from(Path("dp.json"), DP | bad)) == [], bad
+    race = {"race": [{"id": "gpu-1", "seconds": 1.0, "label": "MEASURED", "hardware": "h", "gpu": "g"}]}
+    assert list(cr.rows_from(Path("r.json"), race)) == [], "a race list must declare MEASURED and 1000 studies"
+    assert list(cr.rows_from(Path("r.json"), race | {"status": "MEASURED", "studies": 32})) == []
+
+
+def test_interim_titles_say_exactly_what_ran():
+    """Atlas #79 re-check (a): the kernel step is feature generation only, never 're-imaged and scored'."""
+    [(_, groups)] = cr.rows_from(Path("m.json"), LADDER)
+    assert groups[0]["title"] == "One study, feature generation only (sampling, crop, recount, features)"
+    b = json.loads((ROOT / "demo" / "data" / "baseline.json").read_text())
+    assert not any("scor" in g["title"] or "re-imag" in g["title"] for g in b.get("interim", []))
+
+
+def test_claims_are_traced_to_their_files():
+    """Atlas #79 re-check (c): every claims number equals what its file gives, and the checker refuses gaps."""
+    committed = json.loads((ROOT / "demo" / "data" / "claims.json").read_text())
+    assert committed == cr.claims(write=False), "rerun python3 -I demo/collect_race.py"
+    def bad(c):
+        try:
+            cd.check_claims(c, "claims.json")
+        except SystemExit as e:
+            return str(e)
+    assert bad(committed) is None
+    for k, f, v in (("power", "source", "bench/results/nope.json"), ("power", "sim", float("nan")), ("maxT", "p", None),
+                    ("false_alarms", "label", None), ("power", "hi", 0.1), ("maxT", "tests", "3780")):
+        assert bad(committed | {k: committed[k] | {f: v}}), (k, f, v)
