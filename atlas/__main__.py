@@ -182,6 +182,7 @@ def main(argv=None):
                 metadata["measurement_model"] = summaries[0]["measurement_model"]
                 metadata["bank_draws"] = args.bank_draws
                 save_tables(summaries, None, metadata, out)
+        _GROUP_INPUTS = None
         summaries = [indexed[i] for i in sorted(indexed)]
         for f in fov:
             for e in args.eps:
