@@ -174,7 +174,7 @@ def run_point(cells, reference, design, *, hr=2.0, budget=None, seed=0, calibrat
             or calibration["source_hash"] != source["source_hash"]):
         raise ValueError("calibration does not match the design/budget")
     alpha = float(design.get("alpha", 0.05))
-    summary = {"design_id": point, **source, **{k: design.get(k) for k in
+    summary = {"design_id": point, "result_label": "SYNTHETIC", **source, **{k: design.get(k) for k in
                ("cohort", "patients", "regions_per_patient", "fov_um", "eps", "backend")},
                "alpha": alpha, "hr_per_source_sd": hr, "shape": model["shape"],
                "plant_feature": model["feature"], "plant_mean": model["source_mean"],

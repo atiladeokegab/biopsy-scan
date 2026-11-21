@@ -63,6 +63,7 @@ def main(argv=None):
         parser.error("workers must be positive; concurrent groups require backend numpy")
     if args.bank_draws != 0 and args.bank_draws < 2:
         parser.error("bank-draws must be 0 (direct) or >= 2")
+    args.eps = list(dict.fromkeys(args.eps))
     budget = {key: getattr(args, key) for key in DEFAULT_BUDGET}
     for cohort in args.cohorts:
         cells = load(cohort)
@@ -81,7 +82,7 @@ def main(argv=None):
                     "eps": e, "backend": args.backend}
                    for p, k, f, e in itertools.product(patients, regions, fov, args.eps)]
         nested_points = {0, len(designs) // 2, len(designs) - 1}
-        metadata = {"cohort": cohort, **meta, "grammar_hash": fingerprint,
+        metadata = {"cohort": cohort, "result_label": "SYNTHETIC", **meta, "grammar_hash": fingerprint,
                     "budget": budget, "hr_per_source_sd": args.hr, "seed": args.seed,
                     "backend": args.backend, "numpy_version": np.__version__,
                     "inference": "model-based Monte Carlo under the empirical verified source; no clinical claim",
@@ -92,10 +93,12 @@ def main(argv=None):
                     "method_check_scope": "paired differences with conservative 95% bounds; interval containing zero does not establish equivalence",
                     "direct_check_scope": "bank and direct imaging use the same bank-derived cutoff"}
         code = hashlib.sha256()
-        for path in sorted(Path(__file__).parent.glob("*.py")):
-            if not path.name.startswith("test_"):
-                code.update(path.name.encode())
-                code.update(path.read_bytes())
+        root = Path(__file__).parent.parent
+        paths = [path for package in ("atlas", "core", "reimage", "stats")
+                 for path in (root / package).rglob("*.py") if not path.name.startswith("test_")]
+        for path in sorted([*paths, root / "uv.lock", root / "pyproject.toml"]):
+            code.update(str(path.relative_to(root)).encode())
+            code.update(path.read_bytes())
         metadata["code_fingerprint"] = code.hexdigest()
         metadata["inference_scope"] = ("descriptive verified-source simulation only" if cohort == "upmc"
                                         else "empirical-source study-design simulation")
@@ -139,10 +142,12 @@ def main(argv=None):
             for i, original in group:
                 design = {**original, "acquisition_bank": bank} if bank is not None else original
                 marker = out / "points" / f"{design_id(design)}.parquet"
-                if marker.exists():
+                evidence = out / "studies" / marker.name
+                if marker.exists() and evidence.exists():
                     summary = pd.read_parquet(marker).iloc[0].to_dict()
-                    completed.append((i, summary))
-                    continue
+                    if bank is None or summary["bank_hash"] == bank["hash"]:
+                        completed.append((i, summary))
+                        continue
                 start = time.perf_counter()
                 point_budget = {**budget, "nested": budget["nested"] if i in nested_points else 0,
                                 "direct": budget["direct"] if i in nested_points else 0}

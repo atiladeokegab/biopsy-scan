@@ -210,6 +210,7 @@ def test_grouped_cli_checkpoints_and_resumes_without_repeating_studies(invented,
     monkeypatch.setattr(cli, "comparison_charts", lambda *args, **kwargs: None)
     args = ["--cohorts", "charville", "--patients", "12", "16", "--regions", "1",
             "--fov-um", "1", "full", "--backend", "numpy", "--workers", "2",
+            "--eps", "0.1", "0.1",
             "--bank-draws", "4", "--calibration", "8", "--null", "4", "--alternative", "4",
             "--nested", "2", "--direct", "2", "--permutations", "9", "--batch", "2",
             "--out", str(tmp_path / "out"), "--cache", str(tmp_path / "cache")]
@@ -218,6 +219,18 @@ def test_grouped_cli_checkpoints_and_resumes_without_repeating_studies(invented,
     before = pd.read_parquet(out / "summary.parquet")
     assert len(before) == 4 and len(list((out / "studies").glob("*.parquet"))) == 4
     assert len(before[before.null_nested_disagreement_n.notna()]) == 3
+    real_runner = cli.run_point
+    calls = []
+
+    def record_run(*args, **kwargs):
+        calls.append(1)
+        return real_runner(*args, **kwargs)
+
+    next((out / "studies").glob("*.parquet")).unlink()
+    monkeypatch.setattr(cli, "run_point", record_run)
+    cli.main(args)
+    assert len(calls) == 1 and len(list((out / "studies").glob("*.parquet"))) == 4
+    before = pd.read_parquet(out / "summary.parquet")
     monkeypatch.setattr(cli, "run_point", lambda *args, **kwargs: pytest.fail("completed point repeated"))
     cli.main(args)
     pd.testing.assert_frame_equal(before, pd.read_parquet(out / "summary.parquet"))

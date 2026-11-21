@@ -106,7 +106,8 @@ def charts(summaries, out_dir, *, cohort, fov_um=None, eps=0.1, hr=2.0):
     axes[0].legend(fontsize=8, frameon=False)
     fig.suptitle(f"{cohort.title()}: HR {hr:g} per source SD; {fov}; mis-call {eps:.0%}")
     method = df.measurement_model.iloc[0] if "measurement_model" in df else "direct"
-    fig.supxlabel(f"{method}. Source: {source_n} verified patients, {source_events} events. 95% binomial intervals. Region caps apply.", fontsize=8)
+    scope = "Descriptive simulation only. " if cohort == "upmc" else ""
+    fig.supxlabel(f"SYNTHETIC; {method}. {scope}Source: {source_n} verified patients, {source_events} events.\n95% binomial intervals conditional on source/bank/calibration. Region caps apply.", fontsize=8)
     for ext in ("png", "svg"):
         fig.savefig(out_dir / f"{cohort}-power.{ext}", dpi=180)
     plt.close(fig)
@@ -120,7 +121,7 @@ def charts(summaries, out_dir, *, cohort, fov_um=None, eps=0.1, hr=2.0):
               for r in df.itertuples()]
     ax.set(xticks=np.arange(len(df)), xticklabels=labels, xlabel="Design: patients / regions per patient",
            ylabel="Held-out global-null rejection rate", ylim=(-0.01, max(0.2, df.omnibus_fwer_hi.max(), df.fwer_hi.max()) + 0.03),
-           title=f"{cohort.title()}: null validation; {fov}; mis-call {eps:.0%} (95% intervals)")
+           title=f"SYNTHETIC — {cohort.title()}: null validation; {fov}; mis-call {eps:.0%} (95% intervals)")
     ax.tick_params(axis="x", rotation=60)
     ax.legend(frameon=False, fontsize=8)
     ax.grid(axis="y", alpha=0.2)
@@ -169,7 +170,7 @@ def comparison_charts(summaries, out_dir, *, cohort):
         ax.grid(axis="y", alpha=0.2)
         ax.legend(fontsize=7, frameon=False)
     if any_data:
-        fig.suptitle(f"{cohort.title()}: paired method checks, conservative 95% Monte Carlo bounds")
+        fig.suptitle(f"SYNTHETIC — {cohort.title()}: paired method checks, conservative 95% Monte Carlo bounds")
         for ext in ("png", "svg"):
             fig.savefig(Path(out_dir) / f"{cohort}-method-checks.{ext}", dpi=180)
     plt.close(fig)
