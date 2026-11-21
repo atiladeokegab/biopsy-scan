@@ -133,11 +133,10 @@ def _gpu_shard_worker(payload: tuple[int, int, list[dict], dict, list[int]]) -> 
     shard_id, device_id, pool, design, seed_list = payload
     from numba import cuda
     from reimage import gpu
+    from reimage.fleet import _selected_device_name
 
     cuda.select_device(device_id)
-    dev = cuda.get_current_device()
-    raw_name = getattr(dev, "name", "")
-    device_name = raw_name.decode() if isinstance(raw_name, bytes) else str(raw_name)
+    device_name = _selected_device_name(device_id)
     prepared = {id(reg["nbr"]): gpu.prepare(reg["nbr"], K) for reg in pool}
     times, reads, outs = [], 0, []
     for seed in seed_list:

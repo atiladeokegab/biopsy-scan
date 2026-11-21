@@ -54,10 +54,12 @@ def _validate_seeds(seeds: Any) -> np.ndarray:
     return arr
 
 
-def _selected_device_name() -> str:
+def _selected_device_name(device_id: int) -> str:
     from numba import cuda
 
-    dev = cuda.get_current_device()
+    if cuda_simulator():
+        return "CUDA Simulator"
+    dev = cuda.get_current_device() if hasattr(cuda, "get_current_device") else cuda.gpus[device_id]
     raw = getattr(dev, "name", "")
     return raw.decode() if isinstance(raw, bytes) else str(raw)
 
@@ -70,7 +72,7 @@ def _shard_worker(payload: tuple[int, int, dict[str, Any], np.ndarray]) -> tuple
         from numba import cuda
 
         cuda.select_device(device_id)
-        dev_name = _selected_device_name()
+        dev_name = _selected_device_name(device_id)
     from reimage import run
 
     out = run(design, shard_seeds, devices=1)
@@ -138,7 +140,7 @@ def run_sharded_with_meta(
     bounds = shard_bounds(len(seed_arr), target)
     if len(bounds) == 1:
         cuda.select_device(0)
-        name = _selected_device_name()
+        name = _selected_device_name(0)
         from reimage import run
 
         return run(dict(design), seed_arr, devices=1), {"devices_executed": 1, "device_names": [name]}
