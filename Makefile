@@ -1,4 +1,4 @@
-.PHONY: smoke install test data summary demo tissue deploy modal-gpu-tests modal-ladder modal-ab modal-gpu-vs
+.PHONY: smoke install test data summary heldout demo tissue deploy modal-gpu-tests modal-ladder modal-ab modal-gpu-vs
 
 install:
 	uv sync --dev
@@ -8,7 +8,9 @@ test:
 
 # The event smoke: offline, tiny invented fixture, no real data. Plus the demo's race regression (Node).
 smoke: install test
+	python3 -I demo/check_data.py demo/data
 	node demo/race.test.mjs
+	node demo/copy.test.mjs
 
 data:
 	./scripts/fetch_data.sh
@@ -16,9 +18,14 @@ data:
 summary:
 	uv run python -I core/summary.py
 
+# Lock the UPMC held-out patients into core/upmc_locked.json, or check a rebuild reproduces it (exit 1 if not).
+heldout: data
+	uv run python -I core/heldout.py
+
 # The demo page: validate its data files, then serve it (static; open http://localhost:8000, or `make demo PORT=8001` if 8000 is taken).
 PORT ?= 8000
 demo:
+	python3 -I demo/collect_race.py
 	python3 -I demo/check_data.py
 	python3 -m http.server $(PORT) -d demo
 

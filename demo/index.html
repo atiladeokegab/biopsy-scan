@@ -18,10 +18,84 @@
 
   <div class="error" id="error" role="alert" hidden></div>
 
-  <main class="app">
-
-    <section class="rail" aria-labelledby="title">
+  <main class="page">
+  <section class="hero" aria-labelledby="title">
+    <div class="promise">
       <h1 id="title">Thousands of studies, simulated in seconds, before you image a slide.</h1>
+      <p class="lede">Preflight tells a lab, before it images a single slide, whether its study can find the pattern that decides a patient's treatment.</p>
+    </div>
+
+    <figure class="card bio" aria-labelledby="bio-title">
+      <figcaption class="card-head">
+        <span id="bio-title"><strong>The pattern</strong> PD1 on macrophages within 100 µm of Tumor 5 cells</span>
+        <span class="tag ok" id="bio-tag">MEASURED</span>
+      </figcaption>
+      <div class="bio-body">
+        <div class="km">
+          <p class="km-title">Survival, split at the cohort median of the pattern</p>
+          <p class="km-note"><span class="tag">exploratory</span> <span id="km-note">cutoff chosen on the same cohort, no p-value</span></p>
+          <svg id="km" viewBox="0 0 220 150" role="img" aria-label="Kaplan-Meier survival, high against low pattern score"></svg>
+          <p class="km-key"><span><i class="hi"></i>high <b id="km-hi"></b></span> <span><i class="lo"></i>low <b id="km-lo"></b></span></p>
+        </div>
+        <div class="regions">
+          <figure><canvas id="reg-high" role="img" aria-label="A real Charville region from the high arm's median patient"></canvas><figcaption id="reg-high-cap"></figcaption></figure>
+          <figure><canvas id="reg-low" role="img" aria-label="A real Charville region from the low arm's median patient"></canvas><figcaption id="reg-low-cap"></figcaption></figure>
+        </div>
+      </div>
+      <p class="legend bio-legend">
+        <span><i class="ring"></i>100 µm of Tumor 5</span> <span><i class="t5"></i>Tumor 5</span>
+        <span><i class="pd1"></i>PD1+ macrophage (display rule below)</span> <span><i class="mac"></i>macrophage</span>
+        <span><i class="o"></i>other cells</span>
+      </p>
+      <p class="bio-cap" id="bio-def"></p>
+      <p class="bio-cap" id="bio-cap"></p>
+    </figure>
+
+    <section class="card speed" aria-labelledby="speed-title">
+      <div class="speed-head">
+        <h2 id="speed-title"><span id="speed-task">One design point: 1,000 simulated studies on real Charville tissue</span>, four ways</h2>
+        <button id="run" type="button" class="go">Run the studies</button>
+      </div>
+      <div id="speed-interim"></div>
+      <p class="sr-head" id="speed-dp" hidden>Not yet timed: one design point, 1,000 studies, four ways</p>
+      <div id="speed-race"></div>
+      <p class="speed-note">Each bar fills at its measured rate, scaled so the race takes about 10 s; real seconds print at the finish, start-up shown apart. A bar with no measured time stays PENDING.</p>
+      <p class="workflow" id="workflow"></p>
+    </section>
+  </section>
+
+  <section class="results" aria-label="What the studies show">
+    <article class="card power-card">
+      <h2>They plan <span id="pw-n">200</span> patients. Would a study like theirs find a real effect?</h2>
+      <div class="vs">
+        <p><span class="big" id="pw-sim">—</span><small>simulated on real tissue <span class="tag" id="pw-sim-tag"></span></small><span class="ci" id="pw-ci"></span></p>
+        <p class="formula"><span class="big" id="pw-formula">—</span><small>the textbook formula <span class="tag">ANALYTIC</span></small><span class="ci">Schoenfeld events formula</span></p>
+      </div>
+      <p class="ci" id="pw-model"></p>
+      <p class="src" id="pw-src"></p>
+    </article>
+    <article class="card honest">
+      <h2>When nothing is there, it says so</h2>
+      <p><span class="big" id="fa-rate">—</span><small>false alarms <span class="tag" id="fa-tag"></span></small><span class="ci" id="fa-detail"></span></p>
+      <p class="mt"><b id="mt-p">—</b> <span id="mt-detail"></span> <span class="tag" id="mt-tag"></span></p>
+      <p class="src" id="fa-src"></p>
+    </article>
+    <article class="card scaling">
+      <h2>Studies per hour against GPUs</h2>
+      <svg viewBox="0 0 260 140" role="img" aria-label="Scaling chart, pending">
+        <line x1="34" y1="112" x2="250" y2="112" class="axis"/><line x1="34" y1="10" x2="34" y2="112" class="axis"/>
+        <line x1="34" y1="112" x2="250" y2="14" class="ideal"/>
+        <text x="142" y="70" class="pending" text-anchor="middle">PENDING</text>
+        <text x="34" y="130" text-anchor="middle">1</text><text x="88" y="130" text-anchor="middle">2</text><text x="142" y="130" text-anchor="middle">4</text><text x="196" y="130" text-anchor="middle">8</text><text x="250" y="130" text-anchor="middle">16</text>
+      </svg>
+      <p class="src">1 to 16 A100s on Modal, with the ideal-scaling line. Not yet measured (build-modal).</p>
+    </article>
+  </section>
+
+  <h2 class="explore-title">Explore a design <span class="tag" id="grid-tag">SYNTHETIC grid</span></h2>
+  <div class="app">
+
+    <section class="rail" aria-label="Your study design">
       <form id="design" aria-label="Your study design">
         <div class="sliders">
           <div class="slider">
@@ -46,10 +120,9 @@
           </div>
         </div>
         <div class="decide">
-          <button id="run" type="submit" class="go">Run the studies</button>
           <div class="answer" id="answer" aria-live="polite">
             <p class="power"><span id="power">—</span><small>power</small></p>
-            <p class="ident"><span id="planted">Planted pattern</span>. <span id="ident">—</span> of all studies also name the right pattern.</p>
+            <p class="ident"><span id="planted">Planted pattern</span>. <span id="ident">—</span> of all studies also name the planted feature.</p>
             <p class="verdict" id="verdict">Evaluating design...</p>
             <p class="snap" id="snap"></p>
           </div>
@@ -69,29 +142,12 @@
       </p>
     </figure>
 
-    <section class="race" aria-labelledby="race-title">
-      <h2 id="race-title">The same <span id="race-n">1,000</span> studies, two ways</h2>
-      <div class="lanes">
-        <figure class="lane">
-          <figcaption><strong>CPU</strong> · all cores (Numba)</figcaption>
-          <canvas id="cpu" aria-hidden="true"></canvas>
-          <p class="count" id="cpu-count"></p>
-        </figure>
-        <figure class="lane">
-          <figcaption><strong>GPU</strong> · batched studies</figcaption>
-          <canvas id="gpu" aria-hidden="true"></canvas>
-          <p class="count" id="gpu-count"></p>
-        </figure>
-      </div>
-      <p class="race-key"><span><i class="hit"></i>found the pattern</span> <span><i class="miss"></i>missed it</span></p>
-      <p class="race-speed" id="race-speed"></p>
-    </section>
-
     <figure class="chart">
       <figcaption id="chart-title">Power against patients, one line per regions-per-patient</figcaption>
       <div id="chart"></div>
       <p class="note" id="note"></p>
     </figure>
+  </div>
   </main>
 
   <footer class="foot">Preflight, by Team Dry Lab.</footer>

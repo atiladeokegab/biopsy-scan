@@ -87,10 +87,20 @@ def test_source_facts_and_method_in_meta_even_when_measured():
     grid = build(summaries(), measured=True)
     assert grid["source"] == "MEASURED" and "SYNTHETIC" not in grid["note"]
     assert grid["meta"]["cohorts"] == {"charville": FACTS}
+    assert grid["meta"]["cohort_split"] == "all"  # only the marker counts read both sides of the UPMC lock
+    assert grid["meta"]["input_split"] == "unknown"  # these results carry no split column
     assert grid["meta"]["method"].startswith("Model-based Monte Carlo") and "Monte Carlo" in grid["note"]
     no_size = build(pd.DataFrame(summaries()).drop(columns="region_um"))
     assert no_size["meta"]["cohorts"]["charville"] == {k: v for k, v in FACTS.items() if k != "region_um"}
     assert build(summaries(), max_regions=8)["axes"]["regions"] == [1, 2, 4]
+
+
+def test_input_split_comes_from_the_results_not_the_cohort_block():
+    df = pd.DataFrame(summaries())
+    assert build(df.assign(split="discovery"))["meta"]["input_split"] == "discovery"
+    for bad in (df.assign(split=["discovery", "all"] * (len(df) // 2)), df.assign(split="held-out")):
+        with pytest.raises(ValueError, match="split"):
+            build(bad)
 
 
 def test_several_effects_need_an_explicit_hr():

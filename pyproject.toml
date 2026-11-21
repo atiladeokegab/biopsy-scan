@@ -23,4 +23,4 @@ dev = [
 package = false
 
 [tool.pytest.ini_options]
-testpaths = ["core", "stats", "reimage", "bench", "audit", "atlas", "tests"]
+testpaths = ["core", "stats", "reimage", "bench", "audit", "atlas", "translate", "tests"]
