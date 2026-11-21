@@ -9,7 +9,7 @@ page works with Wi-Fi off.
 python3 -m http.server 8000 -d demo     # then open http://localhost:8000
 ```
 
-There is no Makefile on `integration` yet. When one lands, a `make demo` target should run exactly
+The root Makefile has no `demo` target yet (it is outside `demo/`, so not added here). One should run exactly
 that line (`demo: ; python3 -m http.server 8000 -d demo`).
 
 Browsers block `fetch` and modules from `file://`. If you double-click `index.html`, the page
