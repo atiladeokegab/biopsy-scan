@@ -120,11 +120,17 @@ def load(cohort: str, data_dir: Path = DATA_DIR, *, include_channels: bool = Fal
            "region_names": region_ids, "patient_names": list(pts.patient_id)}
     if include_channels:
         ch = load_channels(cohort, region_ids, data_dir)
-        raw = ch["channels_raw"].astype(np.float64)
+        if ch["region_ids"] != region_ids or not np.array_equal(ch["region_ptr"], c["region_ptr"]):
+            raise ValueError("cached channels do not match region geometry boundaries")
+        raw = np.asarray(ch["channels_raw"], dtype=np.float64)
+        if raw.ndim != 2 or raw.shape != (len(rid), len(EXPRESSION_CHANNELS)):
+            raise ValueError("cached channels shape does not match cohort cell count")
+        if not np.isfinite(raw).all():
+            raise ValueError("non-finite values in expression/feature channels")
         mean = raw.mean(axis=0)
         std = raw.std(axis=0)
-        z = np.divide(raw - mean, std, out=np.zeros_like(raw), where=std > 0).astype(np.float32)
-        out["channels"] = z
+        z64 = np.divide(raw - mean, std, out=np.zeros_like(raw), where=std > 0)
+        out["channels"] = z64.astype(np.float32)
         out["channel_names"] = ch["channel_names"]
         out["channel_stats"] = {
             "mean": mean.tolist(),
@@ -135,7 +141,7 @@ def load(cohort: str, data_dir: Path = DATA_DIR, *, include_channels: bool = Fal
 
 
 def load_channels(cohort: str, region_ids: list[str] | None = None, data_dir: Path = DATA_DIR) -> dict:
-    """Load raw aligned expression + morphology channels (N, 10) float32 matching load_cells order."""
+    """Load raw aligned expression + morphology channels (N, 10) float64 matching load_cells order."""
     if cohort not in COHORTS:
         raise ValueError(f"unknown cohort {cohort!r}")
     data_dir = Path(data_dir)
@@ -144,14 +150,27 @@ def load_channels(cohort: str, region_ids: list[str] | None = None, data_dir: Pa
     cache = data_dir / f"{cohort}_channels.npz"
     if cache.exists():
         z = np.load(cache, allow_pickle=False)
-        if list(z["channel_names"]) == list(EXPRESSION_CHANNELS):
-            names, ptr = list(z["region_ids"]), z["region_ptr"]
+        if (
+            "channels_raw" in z
+            and "channel_names" in z
+            and "region_ids" in z
+            and "region_ptr" in z
+            and z["channels_raw"].dtype == np.float64
+            and list(z["channel_names"]) == list(EXPRESSION_CHANNELS)
+            and list(z["region_ids"]) == all_regions
+        ):
+            names, ptr = list(z["region_ids"]), np.asarray(z["region_ptr"], dtype=np.int64)
+            if len(ptr) != len(names) + 1 or ptr[0] != 0 or ptr[-1] != len(z["channels_raw"]) or np.any(ptr[1:] < ptr[:-1]):
+                raise ValueError("corrupted channel cache region pointers")
             pos = {r: i for i, r in enumerate(names)}
             idx = [pos[r] for r in region_ids]
             sl = [np.arange(ptr[i], ptr[i + 1]) for i in idx]
             take = np.concatenate(sl) if sl else np.zeros(0, int)
+            vals = np.asarray(z["channels_raw"][take], dtype=np.float64)
+            if vals.ndim != 2 or vals.shape[1] != len(EXPRESSION_CHANNELS) or not np.isfinite(vals).all():
+                raise ValueError("non-finite or malformed values in cached expression/feature channels")
             return {
-                "channels_raw": z["channels_raw"][take].astype(np.float32),
+                "channels_raw": vals,
                 "region_ptr": np.concatenate([[0], np.cumsum([len(s) for s in sl])]).astype(np.int64),
                 "region_ids": region_ids,
                 "channel_names": list(EXPRESSION_CHANNELS),
@@ -170,11 +189,11 @@ def load_channels(cohort: str, region_ids: list[str] | None = None, data_dir: Pa
             )
             if len(m) != len(d):
                 raise ValueError(f"{r}: {len(d) - len(m)} cells missing type, expression, or feature channels")
-            vals = m[list(EXPRESSION_CHANNELS)].to_numpy(np.float32)
+            vals = m[list(EXPRESSION_CHANNELS)].to_numpy(np.float64)
             if not np.isfinite(vals).all():
                 raise ValueError(f"{r}: non-finite values in expression/feature channels")
             chunks.append(vals)
-    all_ch = np.concatenate(chunks, axis=0) if chunks else np.zeros((0, len(EXPRESSION_CHANNELS)), np.float32)
+    all_ch = np.concatenate(chunks, axis=0) if chunks else np.zeros((0, len(EXPRESSION_CHANNELS)), np.float64)
     ptr = np.concatenate([[0], np.cumsum([len(a) for a in chunks])]).astype(np.int64)
     np.savez(cache, channels_raw=all_ch, region_ptr=ptr, region_ids=np.array(all_regions),
              channel_names=np.array(EXPRESSION_CHANNELS))

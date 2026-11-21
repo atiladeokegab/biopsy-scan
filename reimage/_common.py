@@ -1,5 +1,7 @@
 """Shared input checks and acquisition draws for the native count backends."""
 
+import hashlib
+
 import numpy as np
 
 
@@ -37,11 +39,17 @@ def check_channels(channels, n):
     ch = np.asarray(channels)
     if ch.ndim != 2 or ch.shape[0] != n or ch.shape[1] < 1:
         raise ValueError("channels must be a 2D array with shape [cells, M>=1]")
-    if ch.dtype.kind == "b" or ch.dtype.kind not in "iu f":
+    if ch.dtype.kind == "b" or ch.dtype.kind not in "iuf":
         raise ValueError("channels must have numeric dtype")
-    if not np.isfinite(ch).all():
+    ch64 = np.ascontiguousarray(ch, dtype=np.float64)
+    if not np.isfinite(ch64).all():
         raise ValueError("channels must contain only finite values")
-    return np.ascontiguousarray(ch, dtype=np.float32)
+    return ch64
+
+
+def channels_digest(channels_f64: np.ndarray) -> bytes:
+    """Exact content digest for prepared v2 channel snapshots."""
+    return hashlib.sha256(np.ascontiguousarray(channels_f64, dtype=np.float64).tobytes()).digest()
 
 
 def region(counter, nbr, xy, types, focal, K, crop, eps, M, u, rng):

@@ -175,3 +175,107 @@ print("GPU_V2_PARITY_AND_FLEET_OK")
     proc = subprocess.run([sys.executable, "-c", script], env=env, cwd=root, capture_output=True, text=True, check=False)
     assert proc.returncode == 0, proc.stderr or proc.stdout
     assert "GPU_V2_PARITY_AND_FLEET_OK" in proc.stdout
+
+
+def test_prepared_snapshot_invalidation_backend_binding_and_float64_precision(monkeypatch):
+    from reimage import gpu
+
+    # 3 neighbours at distance 5um around a focal Tumor cell; float64-only channel deltas + non-associative sum.
+    cells = {
+        "cell_type": np.array([2, 1, 1, 1], dtype=np.int8),
+        "x": np.array([0.0, 5.0, 5.0, -5.0], dtype=np.float32),
+        "y": np.array([0.0, 0.0, 1.0, 0.0], dtype=np.float32),
+        "channels": np.full((4, len(EXPRESSION_CHANNELS)), 2.0, dtype=np.float64),
+        "region_id": np.array([0, 0, 0, 0], dtype=np.int32),
+        "patient_of_region": np.array([0], dtype=np.int32),
+        "type_names": TYPES,
+    }
+    cells["channels"][1, 0] = 2.00000001
+    cells["channels"][2, 0] = 2.00000001
+    cells["channels"][3, 0] = 2.00000001
+    cells["channels"][1, 1] = 1.0
+    cells["channels"][2, 1] = -1.0
+    cells["channels"][3, 1] = 2.0 ** -55
+
+    fnames = feature_names(grammar_v2(TYPES))
+    pd1_idx = fnames.index("Tumor|Stroma|25um|PD1")
+    design = {"cells": cells, "patients": None, "regions_per_patient": None, "fov_um": None, "eps": 0.0, "seed": 0}
+    shared: dict = {}
+    ref = run_v2({**design, "backend": "numpy"}, [0])
+    out_cpu = run_v2({**design, "backend": "cpu"}, [0], _prepared=shared)
+    np.testing.assert_array_equal(out_cpu, ref)
+    # Channel 0 difference above 2.0 would collapse in float32; float64 preserves +1e-8.
+    assert out_cpu[0, 0, pd1_idx] > 2.000000005
+
+    # Warm CPU _prepared must NEVER satisfy backend="gpu" when CUDA is unavailable.
+    monkeypatch.setattr(gpu.cuda, "is_available", lambda: False)
+    with pytest.raises(RuntimeError, match="CUDA is unavailable"):
+        run_v2({**design, "backend": "gpu"}, [0], _prepared=shared)
+
+    # Replacing channels or mutating channels in-place must invalidate the cached snapshot.
+    cells["channels"] = np.full((4, len(EXPRESSION_CHANNELS)), 20.0, dtype=np.float64)
+    out_replaced = run_v2({**design, "backend": "cpu"}, [0], _prepared=shared)
+    assert np.isclose(out_replaced[0, 0, pd1_idx], 20.0, atol=1e-12)
+    cells["channels"][:] = 30.0
+    out_mutated = run_v2({**design, "backend": "cpu"}, [0], _prepared=shared)
+    assert np.isclose(out_mutated[0, 0, pd1_idx], 30.0, atol=1e-12)
+
+
+def test_gpu_deterministic_float64_order_and_rejects_cpu_snapshot():
+    script = """
+import numpy as np
+from reimage import cpu, gpu, run_v2
+from core.grammar import feature_names, grammar_v2
+from core.reimage_ref import neighbours
+
+types = ["B cell", "Stroma", "Tumor", "Tumor (Ki67+)"]
+pdl1_idx = feature_names(grammar_v2(types)).index("Tumor|Stroma|25um|PDL1")
+cells = {
+    "cell_type": np.array([2, 1, 1, 1], dtype=np.int8),
+    "x": np.array([0.0, 4.0, 5.0, 6.0], dtype=np.float32),
+    "y": np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float32),
+    "channels": np.full((4, 10), 2.00000001, dtype=np.float64),
+    "region_id": np.array([0, 0, 0, 0], dtype=np.int32),
+    "patient_of_region": np.array([0], dtype=np.int32),
+    "type_names": types,
+}
+# Non-associative values in CSR distance order (4um, 5um, 6um): (1.0 + -1.0) + 2**-55 != (-1.0 + 2**-55) + 1.0.
+cells["channels"][1, 1] = 1.0
+cells["channels"][2, 1] = -1.0
+cells["channels"][3, 1] = 2.0 ** -55
+
+design = {"cells": cells, "patients": None, "regions_per_patient": None, "fov_um": None, "eps": 0.0, "seed": 0}
+ref = run_v2({**design, "backend": "numpy"}, [0, 1])
+shared = {}
+cpu_out = run_v2({**design, "backend": "cpu"}, [0, 1], _prepared=shared)
+gpu_out = run_v2({**design, "backend": "gpu"}, [0, 1], _prepared=shared)
+fleet_out = run_v2({**design, "backend": "gpu"}, [0, 1], devices=2, fake_shards=True)
+
+np.testing.assert_array_equal(cpu_out, ref)
+np.testing.assert_array_equal(gpu_out, ref)
+np.testing.assert_array_equal(fleet_out, ref)
+# Stroma 25um bin sums (1.0, -1.0, 2**-55) over 3 neighbours -> (2**-55) / 3.0 cleanly.
+assert gpu_out[0, 0, pdl1_idx] == (2.0 ** -55) / 3.0
+
+# Explicit CPU prepared snapshot passed directly to GPU entrypoints must fail loudly.
+xy = np.column_stack([cells["x"], cells["y"]])
+nbr = neighbours(xy)
+snap_cpu_v1 = cpu.prepare(nbr, 4)
+snap_cpu_v2 = cpu.prepare_v2(nbr, cells["channels"], 4)
+try:
+    gpu.reimage_region(nbr, xy, cells["cell_type"], [2, 3], 4, prepared=snap_cpu_v1)
+    raise AssertionError("expected gpu.reimage_region to reject CPU prepared snapshot")
+except ValueError:
+    pass
+try:
+    gpu.reimage_region_v2(nbr, xy, cells["cell_type"], cells["channels"], [2, 3], 4, prepared=snap_cpu_v2)
+    raise AssertionError("expected gpu.reimage_region_v2 to reject CPU prepared snapshot")
+except ValueError:
+    pass
+print("GPU_DETERMINISM_AND_SNAPSHOT_OK")
+"""
+    root = str(Path(__file__).resolve().parents[1])
+    env = {**os.environ, "NUMBA_ENABLE_CUDASIM": "1", "PYTHONPATH": root}
+    proc = subprocess.run([sys.executable, "-c", script], env=env, cwd=root, capture_output=True, text=True, check=False)
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+    assert "GPU_DETERMINISM_AND_SNAPSHOT_OK" in proc.stdout

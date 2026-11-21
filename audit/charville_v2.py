@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import platform
@@ -49,6 +50,54 @@ def _hardware_note() -> dict[str, Any]:
         ).stdout.strip()
         gpu = q.splitlines()[0] if q else None
     return {"cpu": platform.processor() or platform.machine(), "gpu": gpu}
+
+
+def _code_revision() -> str:
+    root = Path(__file__).resolve().parents[1]
+    res = subprocess.run(
+        ["git", "-C", str(root), "rev-parse", "HEAD"],
+        capture_output=True, text=True, timeout=10, check=False,
+    )
+    sha = res.stdout.strip()
+    return sha if res.returncode == 0 and sha else "unknown"
+
+
+def _source_fingerprint(cells: dict[str, Any], norm_stats: dict[str, Any] | None) -> str:
+    h = hashlib.sha256()
+    for name in (
+        "patient_names", "region_names", "time", "event", "strata",
+        "cell_type", "x", "y", "region_ptr", "region_id",
+    ):
+        if name in cells:
+            arr = np.ascontiguousarray(np.asarray(cells[name]))
+            h.update(f"{name}:{arr.dtype}:{arr.shape}:".encode())
+            h.update(arr.tobytes())
+    ch_key = "channels_raw" if "channels_raw" in cells else "channels"
+    ch = np.ascontiguousarray(np.asarray(cells[ch_key], dtype=np.float64))
+    h.update(f"{ch_key}:{ch.dtype}:{ch.shape}:".encode())
+    h.update(ch.tobytes())
+    h.update(b"normalization_stats:")
+    h.update(json.dumps(norm_stats, sort_keys=True, separators=(",", ":")).encode())
+    return h.hexdigest()
+
+
+def _v2_outcome(*, maxt_p: float, omnibus_p: float, top_hit_stable: bool) -> dict[str, str]:
+    if maxt_p <= 0.05 or omnibus_p <= 0.05:
+        return choose_prepared_outcome(
+            cohort="charville",
+            maxt_p=maxt_p,
+            omnibus_p=omnibus_p,
+            top_hit_stable=top_hit_stable,
+        )
+    return {
+        "key": "exploratory_joint_search_nonsignificant",
+        "label": "No single pattern or joint omnibus signal passes alpha = 0.05",
+        "statement": (
+            "Exploratory already-seen joint search across v1 and v2 features returned both "
+            "single-step maxT p > 0.05 and joint omnibus p > 0.05 (with complete-case NaNs preserved "
+            "and zero patient clinical claims); no v2 design atlas was run."
+        ),
+    }
 
 
 def run_charville_v2(
@@ -123,6 +172,9 @@ def run_charville_v2(
     omnibus_p = float(perm["omnibus"]["p"])
     wall_s = time.perf_counter() - t0
     hw = _hardware_note()
+    norm_stats = cells.get("channel_stats")
+    fingerprint = _source_fingerprint(cells, norm_stats)
+    revision = _code_revision()
 
     record: dict[str, Any] = {
         "schema_version": AUDIT_SCHEMA_VERSION,
@@ -132,11 +184,15 @@ def run_charville_v2(
         "already_seen_disclosure": ALREADY_SEEN_DISCLOSURE,
         "clinical_claims": False,
         "inference_scope": "patient_level_exploratory",
+        "seed": int(seed),
+        "code_revision": revision,
+        "source_fingerprint": fingerprint,
         "grammar_v1_hash": grammar_hash(g1),
         "grammar_v2_hash": grammar_hash(g2),
         "channels": list(EXPRESSION_CHANNELS),
         "m": len(EXPRESSION_CHANNELS),
         "transform": EXPRESSION_TRANSFORM,
+        "normalization_stats": norm_stats,
         "n_patients": int(len(patient_names)),
         "n_events": int(np.sum(event)),
         "n_regions": int(len(cells["region_names"])),
@@ -160,8 +216,7 @@ def run_charville_v2(
             "component_p": {k: float(v) for k, v in perm["omnibus"]["component_p"].items()},
             "p": omnibus_p,
         },
-        "prepared_outcome": choose_prepared_outcome(
-            cohort="charville",
+        "prepared_outcome": _v2_outcome(
             maxt_p=maxt_p,
             omnibus_p=omnibus_p,
             top_hit_stable=top_hit_stable,

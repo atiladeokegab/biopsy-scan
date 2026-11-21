@@ -3,7 +3,7 @@
 import numpy as np
 from numba import njit, prange
 
-from ._common import check_channels, check_types, count_inputs, region, region_v2
+from ._common import channels_digest, check_channels, check_types, count_inputs, region, region_v2
 
 
 @njit(parallel=True, cache=True)
@@ -31,7 +31,7 @@ class _PreparedCounts:
         self.ptr, self.idx, self.ends, _, _ = count_inputs(
             nbr, np.zeros(n, dtype=np.int8), np.ones(n, dtype=bool), K,
         )
-        self.n, self.K, self.source = n, int(K), nbr
+        self.n, self.K, self.source, self.backend = n, int(K), nbr, "cpu"
 
     def reimage_counts(self, observed, visible):
         observed, visible = check_types(observed, self.K), np.asarray(visible)
@@ -49,8 +49,11 @@ def prepare(nbr, K):
 def reimage_region(nbr, xy, types, focal, K, crop=None, eps=0.0, M=None, u=None, rng=None,
                    prepared=None):
     """Reference-compatible acquisition; JIT cost occurs on the first call."""
-    if prepared is not None and (prepared.K != K or prepared.n != len(types) or prepared.source is not nbr):
-        raise ValueError("prepared adjacency belongs to a different region or K")
+    if prepared is not None and (
+        not isinstance(prepared, _PreparedCounts) or prepared.backend != "cpu"
+        or prepared.K != K or prepared.n != len(types) or prepared.source is not nbr
+    ):
+        raise ValueError("prepared adjacency belongs to a different backend, region or K")
     counter = reimage_counts if prepared is None else (
         lambda _nbr, observed, visible, _K: prepared.reimage_counts(observed, visible)
     )
@@ -89,6 +92,17 @@ class _PreparedCountsAndChannels:
         )
         self.channels = check_channels(channels, n)
         self.n, self.K, self.M, self.source = n, int(K), int(self.channels.shape[1]), nbr
+        self.backend = "cpu"
+        self.channel_digest = channels_digest(self.channels)
+
+    def matches(self, nbr, channels, K) -> bool:
+        ch = check_channels(channels, self.n)
+        return (
+            self.source is nbr
+            and self.K == K
+            and self.M == ch.shape[1]
+            and channels_digest(ch) == self.channel_digest
+        )
 
     def reimage_counts_and_channels(self, observed, visible):
         observed, visible = check_types(observed, self.K), np.asarray(visible)
@@ -109,10 +123,10 @@ def prepare_v2(nbr, channels, K):
 def reimage_region_v2(nbr, xy, types, channels, focal, K, crop=None, eps=0.0, M=None, u=None,
                       rng=None, prepared=None):
     if prepared is not None and (
-        prepared.K != K or prepared.n != len(types) or prepared.M != np.asarray(channels).shape[1]
-        or prepared.source is not nbr
+        not isinstance(prepared, _PreparedCountsAndChannels) or prepared.backend != "cpu"
+        or prepared.n != len(types) or not prepared.matches(nbr, channels, K)
     ):
-        raise ValueError("prepared v2 snapshot belongs to a different region, K, or channel count")
+        raise ValueError("prepared v2 snapshot belongs to a different backend, region, K, or channels")
     counter = reimage_counts_and_channels if prepared is None else (
         lambda _nbr, observed, visible, _channels, _K: prepared.reimage_counts_and_channels(observed, visible)
     )

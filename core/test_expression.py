@@ -109,3 +109,48 @@ def test_zero_variance_channel_becomes_zero_and_missing_value_fails_loudly(tmp_p
     )
     with pytest.raises(ValueError, match="non-finite"):
         cohorts.load("charville", data_dir=bad_dir, include_channels=True)
+
+
+def test_channel_cache_validates_corrupted_npz_and_preserves_float64_precision(tmp_path):
+    # Tiny differences separated only at float64 precision (collapse in float32) must normalize cleanly.
+    _write_charville_fixture(
+        tmp_path,
+        expr_rows_fn=lambda idx, cols: [
+            "20," + ",".join(["1.00000001"] + [str(0.5 + idx + j) for j in range(1, len(cols))]),
+            "10," + ",".join(["1.00000002"] + [str(-0.5 + idx + j) for j in range(1, len(cols))]),
+        ],
+        feat_rows_fn=lambda idx: [f"20,{0.2 + 0.1 * idx}", f"10,{0.8 + 0.1 * idx}"],
+    )
+    cells = cohorts.load("charville", data_dir=tmp_path, include_channels=True)
+    cache_path = tmp_path / "charville_channels.npz"
+    cached = np.load(cache_path)
+    assert cached["channels_raw"].dtype == np.float64
+    assert np.allclose(cells["channels"][:, 0], [1.0, -1.0, 1.0, -1.0], atol=1e-5)
+
+    # Misaligned cached region_ptr must fail loudly on subsequent load.
+    bad_ptr_npz = dict(cached)
+    cached.close()
+    bad_ptr_npz["region_ptr"] = bad_ptr_npz["region_ptr"] + 1
+    np.savez(cache_path, **bad_ptr_npz)
+    with pytest.raises(ValueError, match="region pointers|align"):
+        cohorts.load("charville", data_dir=tmp_path, include_channels=True)
+
+    # Corrupted NaN inside an otherwise structurally aligned cache must fail loudly on cache hit.
+    nan_npz = dict(bad_ptr_npz)
+    nan_npz["region_ptr"] = nan_npz["region_ptr"] - 1
+    bad_raw = nan_npz["channels_raw"].copy()
+    bad_raw[0, 0] = np.nan
+    nan_npz["channels_raw"] = bad_raw
+    np.savez(cache_path, **nan_npz)
+    with pytest.raises(ValueError, match="non-finite"):
+        cohorts.load("charville", data_dir=tmp_path, include_channels=True)
+
+    # Legacy float32 cache is rebuilt cleanly to float64 without failing.
+    legacy = dict(bad_ptr_npz)
+    legacy["region_ptr"] = legacy["region_ptr"] - 1
+    legacy["channels_raw"] = legacy["channels_raw"].astype(np.float32)
+    np.savez(cache_path, **legacy)
+    rebuilt = cohorts.load("charville", data_dir=tmp_path, include_channels=True)
+    with np.load(cache_path) as reloaded:
+        assert reloaded["channels_raw"].dtype == np.float64
+    assert np.allclose(rebuilt["channels"][:, 0], [1.0, -1.0, 1.0, -1.0], atol=1e-5)

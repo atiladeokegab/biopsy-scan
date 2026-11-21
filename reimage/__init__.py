@@ -34,11 +34,13 @@ def run(design, seeds, *, devices=None, _prepared=None):
             module = __import__(f"reimage.{backend}", fromlist=[backend])
 
             def kernel(nbr, xy, types, channels, focal, K, **kwargs):
-                key = ("v2", id(nbr), K, channels.shape[1])
-                if key not in prepared:
-                    prepared[key] = module.prepare_v2(nbr, channels, K)
+                key = (backend, "v2", id(nbr), K, channels.shape[1])
+                snap = prepared.get(key)
+                if snap is None or not snap.matches(nbr, channels, K):
+                    snap = module.prepare_v2(nbr, channels, K)
+                    prepared[key] = snap
                 return module.reimage_region_v2(
-                    nbr, xy, types, channels, focal, K, prepared=prepared[key], **kwargs
+                    nbr, xy, types, channels, focal, K, prepared=snap, **kwargs
                 )
         else:
             raise ValueError("backend must be numpy, cpu or gpu")
@@ -56,7 +58,7 @@ def run(design, seeds, *, devices=None, _prepared=None):
             from . import gpu as module
 
         def kernel(nbr, xy, types, focal, K, **kwargs):
-            key = (id(nbr), K)
+            key = (backend, "v1", id(nbr), K)
             if key not in prepared:
                 prepared[key] = module.prepare(nbr, K)
             return module.reimage_region(nbr, xy, types, focal, K,
