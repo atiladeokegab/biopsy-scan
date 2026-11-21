@@ -35,7 +35,7 @@ def test_draws_follow_the_fitted_null_and_record_the_method():
     _, _, _, Cd, codes, base = _inputs(X, time, event, C, strata)
     tb, eb = next(_null_draws(time, event, Cd, codes, base, 400, 0, 400))
     assert abs(eb.mean() - event.mean()) < 0.06  # event yield reproduced
-    assert set(np.unique(tb)) <= set(time)  # Breslow steps sit on observed times
+    assert tb.max() <= time.max() and len(np.unique(tb)) > 0.99 * tb.size  # continuous, no artificial ties
     meta = screen(X, time, event, C, strata, n_perm=9, backend="numpy")["metadata"]
     assert meta["null"]["B"] == 9 and meta["null"]["name"] == "clinical-null parametric bootstrap"
     assert any("proportional hazards" in a for a in meta["null"]["assumptions"])

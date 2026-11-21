@@ -73,23 +73,28 @@ def _risk(xp, t, e, w, same):
     return M, e - a, a
 
 
-def _info(xp, A, Bm, M, a):
-    """I_AB[b] = A' diag(a_b) B - (M_b A)'(M_b B) for A[n,p], B[n,q] -> [B,p,q]."""
-    return xp.matmul(A.T[None], a[:, :, None] * Bm[None]) - xp.matmul(
-        xp.matmul(M, A).transpose(0, 2, 1), xp.matmul(M, Bm))
+def _cross(xp, Bm, M, a):
+    """H[b] with I_BA[b] = H[b] @ A = B' diag(a_b) A - (M_b B)'(M_b A), for B[n,q] -> [B,q,n]."""
+    MB = xp.ascontiguousarray(_rmul(M, Bm).transpose(0, 2, 1))
+    return xp.ascontiguousarray((a[:, :, None] * Bm[None]).transpose(0, 2, 1)) - xp.matmul(MB, M)
+
+
+def _rmul(M, A):
+    """M[B,n,n] @ A[n,p] as one 2-D product (numpy's broadcast matmul skips BLAS)."""
+    return (M.reshape(-1, M.shape[-1]) @ A).reshape(M.shape[:-1] + (A.shape[-1],))
 
 
 def _stats(xp, X, C, M, m, a):
     """U, V, z [B,p] for centred X[n,p] given clinical C[n,q] at the null fit."""
     U = m @ X  # one dense product X'[m_1 .. m_B]
-    MX = xp.matmul(M, X)
-    V = a @ (X * X) - (MX * MX).sum(1)
+    MX = _rmul(M, X)
+    raw = a @ (X * X)
+    V = raw - (MX * MX).sum(1)
     if C.shape[1]:
-        Ixc = _info(xp, X, C, M, a)
-        Icc = _info(xp, C, C, M, a)
-        V = V - (Ixc * xp.linalg.solve(Icc, Ixc.transpose(0, 2, 1)).transpose(0, 2, 1)).sum(-1)
-    scale = 1e-12 * xp.maximum(1.0, a @ (X * X))  # roundoff floor for constant columns
-    good = V > scale
+        H = _cross(xp, C, M, a)
+        Icx = _rmul(H, X)  # [B,q,p]
+        V = V - (Icx * xp.linalg.solve(_rmul(H, C), Icx)).sum(1)
+    good = V > 1e-12 * xp.maximum(1.0, raw)  # roundoff floor: constant columns give 0
     z = xp.where(good, U / xp.sqrt(xp.where(good, V, 1.0)), 0.0)
     return U, xp.where(good, V, 0.0), z
 
@@ -99,7 +104,7 @@ def _newton(xp, C, t, e, same, iters=50, tol=1e-9):
     beta = xp.zeros((t.shape[0], C.shape[1]))
     for _ in range(iters):
         M, m, a = _risk(xp, t, e, xp.exp(beta @ C.T), same)
-        step = xp.linalg.solve(_info(xp, C, C, M, a), (m @ C)[:, :, None])[:, :, 0]
+        step = xp.linalg.solve(_rmul(_cross(xp, C, M, a), C), (m @ C)[:, :, None])[:, :, 0]
         step = xp.clip(step, -5.0, 5.0)  # monotone-likelihood resamples drift instead of overflowing
         beta = beta + step
         if float(xp.abs(step).max()) < tol:
@@ -129,13 +134,17 @@ def _breslow_steps(t, e, w, codes):
 
 
 def _draw(steps, w, codes, exp_draws):
-    """First step time with w * H(t) >= E for each patient; inf when never reached."""
+    """Time where w * H(t) reaches E, H linear between steps (no artificial ties); inf past the last."""
     out = np.full(exp_draws.shape, np.inf)
     for s, (times, H) in enumerate(steps):
         ix = codes == s
         if len(times):
-            k = np.searchsorted(H, exp_draws[:, ix] / w[ix], side="left")
-            out[:, ix] = np.where(k < len(times), times[np.minimum(k, len(times) - 1)], np.inf)
+            target = exp_draws[:, ix] / w[ix]
+            k = np.searchsorted(H, target, side="left")
+            j = np.minimum(k, len(times) - 1)
+            t0, H0 = np.append(0.0, times)[j], np.append(0.0, H)[j]
+            T = t0 + (target - H0) / (H[j] - H0) * (times[j] - t0)
+            out[:, ix] = np.where(k < len(times), T, np.inf)
     return out
 
 
