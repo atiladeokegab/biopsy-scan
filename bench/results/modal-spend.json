@@ -32,7 +32,13 @@
       "est_hours": 1.2,
       "est_usd": 3.76,
       "basis": "7 container runs x ~10 min x $3.13/h, rounded up",
-      "running_total_usd": 5.33
+      "running_total_usd": 5.33,
+      "actual": {
+        "result": "bench/results/modal-a100-20261121T171213Z.json",
+        "note": "first attempt at 17:01Z failed at fetch (Zenodo 403) after ~3 min CPU only; rerun completed",
+        "gpu_container_s": 630.0,
+        "est_usd": 0.55
+      }
     }
   ]
 }
