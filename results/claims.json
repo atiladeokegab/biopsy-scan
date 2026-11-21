@@ -1201,7 +1201,7 @@
   },
   {
    "id": "cpu-scaling-38.2x",
-   "claim": "Numba arm strong scaling on Modal CPU, same 1,000 null studies: 1.151 s/study on 1 core vs 0.0301 s on 64, 38.2x; one concurrent sweep",
+   "claim": "Numba arm strong scaling on Modal CPU, same 1,000 null studies: 1.151 s/study on 1 core vs 0.0301 s on 64, 38.2x; one sweep, the 4- and 8-core points beat linear, not separated from host variance",
    "source": "bench/results/modal-scaling-20261121T201008Z.json",
    "pr": 115,
    "label": "MEASURED",
@@ -1214,32 +1214,65 @@
      "expect": "1,000"
     },
     {
+     "name": "stream",
+     "path": "workload.stream",
+     "rule": "eq",
+     "expect": "null"
+    },
+    {
+     "name": "cores_lo",
+     "path": "curve[0].cores",
+     "rule": "eq",
+     "expect": "1"
+    },
+    {
+     "name": "cores_hi",
+     "path": "curve[-1].cores",
+     "rule": "eq",
+     "expect": "64"
+    },
+    {
      "name": "wall_1",
-     "path": "curve[cores=1].wall_per_study_s",
+     "ratio": [
+      "points.1.studies_wall_s",
+      "workload.studies"
+     ],
      "rule": "fixed:3",
      "expect": "1.151"
     },
     {
      "name": "wall_64",
-     "path": "curve[cores=64].wall_per_study_s",
+     "ratio": [
+      "points.64.studies_wall_s",
+      "workload.studies"
+     ],
      "rule": "fixed:4",
      "expect": "0.0301"
     },
     {
      "name": "speedup_64",
-     "path": "curve[cores=64].speedup_vs_1_core",
+     "ratio": [
+      "points.1.studies_wall_s",
+      "points.64.studies_wall_s"
+     ],
      "rule": "fixed:1",
      "expect": "38.2"
     },
     {
      "name": "speedup_4",
-     "path": "curve[cores=4].speedup_vs_1_core",
+     "ratio": [
+      "points.1.studies_wall_s",
+      "points.4.studies_wall_s"
+     ],
      "rule": "fixed:2",
      "expect": "5.07"
     },
     {
      "name": "speedup_8",
-     "path": "curve[cores=8].speedup_vs_1_core",
+     "ratio": [
+      "points.1.studies_wall_s",
+      "points.8.studies_wall_s"
+     ],
      "rule": "fixed:2",
      "expect": "12.71"
     },
@@ -1253,7 +1286,7 @@
    "quotes": [
     {
      "file": "README.md",
-     "text": "One sweep. Studies wall per study `{wall_1} s` on 1 core vs `{wall_64} s` on 64 cores: `{speedup_64}×`. The 4- and 8-core points beat linear (`{speedup_4}×`, `{speedup_8}×`): host variance, an observation of this sweep, not a guaranteed speed-up. X sha256 bit-equal at every core count; z within `1e-9` relative of the 8-core z (**{label}**)"
+     "text": "| **CPU strong scaling** (Numba arm, Charville, the same `{studies}` {stream} studies at `{cores_lo}–{cores_hi}` Modal cores, one concurrent sweep, #115) | One sweep. Studies wall per study `{wall_1} s` on 1 core vs `{wall_64} s` on 64 cores: `{speedup_64}×`. The 4- and 8-core points beat linear (`{speedup_4}×`, `{speedup_8}×`); one sweep, not separated from host variance (each core count on its own host, CPU models unknown, RAM grows with cores; host, cache and scheduling effects not isolated): observed ratios, not a guaranteed speed-up. X sha256 bit-equal at every core count; z within `1e-9` relative of the 8-core z (**{label}**) | [`bench/results/modal-scaling-20261121T201008Z.json`](bench/results/modal-scaling-20261121T201008Z.json) ([caveats](bench/results/modal-scaling-20261121T201008Z.caveats.json)) |"
     }
    ]
   },
@@ -1267,7 +1300,10 @@
    "values": [
     {
      "name": "lab",
-     "path": "wall.lab_s_per_study",
+     "ratio": [
+      "arms.lab.stages.studies_wall_s",
+      "wall.studies.lab"
+     ],
      "rule": "fixed:3",
      "expect": "8.818"
     },
@@ -1291,7 +1327,10 @@
     },
     {
      "name": "pf",
-     "path": "wall.preflight_s_per_decided_study",
+     "ratio": [
+      "arms.preflight.stages.studies_wall_s",
+      "wall.studies.preflight_decided"
+     ],
      "rule": "fixed:4",
      "expect": "0.2096"
     },
@@ -1309,13 +1348,19 @@
     },
     {
      "name": "ratio",
-     "path": "wall.ratio",
+     "ratio": [
+      "wall.lab_s_per_study",
+      "wall.preflight_s_per_decided_study"
+     ],
      "rule": "fixed:1",
      "expect": "42.1"
     },
     {
      "name": "ratio_setup",
-     "path": "wall.with_setup.ratio",
+     "ratio": [
+      "wall.with_setup.lab_s_per_study",
+      "wall.with_setup.preflight_s_per_decided_study"
+     ],
      "rule": "fixed:1",
      "expect": "26.7"
     },
@@ -1347,7 +1392,7 @@
    "quotes": [
     {
      "file": "README.md",
-     "text": "Matched workflow comparison through scoring (re-imaging plus each study's test or screen; excludes data load, threshold and calls): lab `{lab} s` per study (`{lab_n}` studies) vs Preflight `{pf} s` per decided study (`{pf_n}` decided, its `{calib}` calibration nulls paid for): `{ratio}×`; `{ratio_setup}×` including setup (outcome simulation, adjacency, warm-up). `{lab_w}` lab core vs `{pf_w}` Preflight workers; different procedures (per-study permutation vs one calibrated threshold). Features bitwise on `{x_n}` shared studies; decisions agree `{agree}/{compared}` (**{label}**, outcomes SYNTHETIC)"
+     "text": "| **Matched end to end** (lab vs Preflight, same container, design and seeds, #123) | Matched workflow comparison through scoring (re-imaging plus each study's test or screen; excludes data load, threshold and calls): lab `{lab} s` per study (`{lab_n}` studies) vs Preflight `{pf} s` per decided study (`{pf_n}` decided, its `{calib}` calibration nulls paid for): `{ratio}×`; `{ratio_setup}×` including setup (outcome simulation, adjacency, warm-up). `{lab_w}` lab core vs `{pf_w}` Preflight workers; different procedures (per-study permutation vs one calibrated threshold). Features bitwise on `{x_n}` shared studies; decisions agree `{agree}/{compared}` (**{label}**, outcomes SYNTHETIC) | [`bench/results/matched-e2e-20261121T201925Z.json`](bench/results/matched-e2e-20261121T201925Z.json) |"
     }
    ]
   }
