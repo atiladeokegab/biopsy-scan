@@ -49,3 +49,19 @@ def test_run_charville_v2_offline_contract(tmp_path):
     assert saved["labels"]["gpu_timing"] == "UNMEASURED"
     assert saved["maxT"]["top_hits"][0]["family"] in {"v1", "v2"}
     assert set(saved["labels"].values()) <= {"MEASURED", "UNMEASURED"}
+
+
+def test_committed_charville_v2_results_artifact_valid():
+    artifact = Path(__file__).resolve().parents[1] / "results" / "charville-v2.json"
+    saved = json.loads(artifact.read_text())
+    assert saved["cohort"] == "charville"
+    assert saved["n_patients"] == 159 and saved["n_events"] == 38 and saved["n_regions"] == 286
+    assert saved["exploratory"] is True and saved["already_seen"] is True and saved["clinical_claims"] is False
+    assert saved["grammar_v1_hash"] == "772f6a845266470456af96f92d0573cc1bec72432ad74d789439baff066c2156"
+    assert saved["grammar_v2_hash"] != saved["grammar_v1_hash"]
+    assert saved["m"] == 10 and saved["n_features_total"] == 3780
+    assert saved["transform"] == EXPRESSION_TRANSFORM
+    assert saved["maxT"]["n_resamples"] == 9999
+    assert set(saved["labels"].values()) <= {"MEASURED", "UNMEASURED"}
+    assert saved["runtime"]["status"] == "MEASURED"
+    assert saved["gpu_timing"]["status"] == "UNMEASURED"

@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 from pathlib import Path
 import platform
 import shutil
@@ -18,23 +17,13 @@ if __name__ == "__main__" and str(Path(__file__).resolve().parents[1]) not in sy
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from audit.leakage import leakage_from_cells
-from audit.runner import leave_one_patient_out
+from audit.runner import conditional_permutation_cutoff, leave_one_patient_out
 from audit.schema import (
     ALREADY_SEEN_DISCLOSURE,
     AUDIT_SCHEMA_VERSION,
+    CONDITIONAL_CUTOFF_SCOPE,
     choose_prepared_outcome,
 )
-
-CONDITIONAL_CUTOFF_SCOPE = "conditional_within_stratum_permutation_not_reusable_design_calibration"
-
-
-def _conditional_cutoff(null_z: np.ndarray, alpha: float = 0.05) -> float | None:
-    arr = np.asarray(null_z, dtype=np.float64)
-    if arr.ndim != 2 or len(arr) < 1 or not np.isfinite(arr).all():
-        raise ValueError("null_z must be a finite non-empty 2D array")
-    maxima = np.max(np.abs(arr), axis=1)
-    k = math.ceil((len(maxima) + 1) * (1.0 - alpha))
-    return float(np.partition(maxima, k - 1)[k - 1]) if k <= len(maxima) else None
 from core import cohorts
 from core.grammar import (
     EXPRESSION_CHANNELS,
@@ -161,7 +150,7 @@ def run_charville_v2(
         "maxT": {
             "statistic": float(perm["maxT"]),
             "p": maxt_p,
-            "conditional_cutoff_alpha_05": _conditional_cutoff(perm["null_z"], alpha=0.05),
+            "conditional_cutoff_alpha_05": conditional_permutation_cutoff(perm["null_z"], alpha=0.05),
             "cutoff_scope": CONDITIONAL_CUTOFF_SCOPE,
             "n_resamples": int(n_resamples),
             "top_hits": top_hits,

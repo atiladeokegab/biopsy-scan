@@ -137,7 +137,7 @@ def test_load_channels_aligns_cell_ids_and_zscores_cohort_before_reimaging(tmp_p
     assert np.allclose(cells["channels"].std(axis=0), 1.0, atol=1e-5)
 
 
-def test_gpu_v2_matches_reference_under_cuda_simulator():
+def test_gpu_v2_matches_reference_and_fleet_is_bit_identical_under_cuda_simulator():
     script = """
 import numpy as np
 from core.grammar import EXPRESSION_CHANNELS
@@ -162,13 +162,16 @@ cells = {
     "type_names": ["B cell", "Stroma", "Tumor", "Tumor (Ki67+)"],
 }
 design = {"cells": cells, "patients": None, "regions_per_patient": 1, "fov_um": 90.0, "eps": 0.2, "seed": 5}
-ref = run_v2({**design, "backend": "numpy"}, [3, 9])
-gpu_out = run_v2({**design, "backend": "gpu"}, [3, 9])
+seeds = [3, 9, 12, 18]
+ref = run_v2({**design, "backend": "numpy"}, seeds)
+gpu_out = run_v2({**design, "backend": "gpu"}, seeds)
 np.testing.assert_allclose(gpu_out, ref, rtol=0, atol=1e-11, equal_nan=True)
-print("GPU_V2_PARITY_OK")
+sharded = run_v2({**design, "backend": "gpu"}, seeds, devices=2, fake_shards=True)
+np.testing.assert_array_equal(sharded, gpu_out)
+print("GPU_V2_PARITY_AND_FLEET_OK")
 """
     root = str(Path(__file__).resolve().parents[1])
     env = {**os.environ, "NUMBA_ENABLE_CUDASIM": "1", "PYTHONPATH": root}
     proc = subprocess.run([sys.executable, "-c", script], env=env, cwd=root, capture_output=True, text=True, check=False)
     assert proc.returncode == 0, proc.stderr or proc.stdout
-    assert "GPU_V2_PARITY_OK" in proc.stdout
+    assert "GPU_V2_PARITY_AND_FLEET_OK" in proc.stdout
