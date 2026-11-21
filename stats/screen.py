@@ -35,12 +35,22 @@ NULL_METHOD = {
     "events": "Breslow stratified Cox model on C, fitted on patients with an endpoint, stratum and complete C",
     "censoring": "Breslow stratified Cox model on C for the censoring times, truncated at each stratum's last follow-up",
     "refit": "null model refitted per resample and per complete-case mask; U, V, z recomputed for every candidate",
+    "baseline": "cumulative baseline hazard interpolated linearly between the Breslow jumps (a continuous "
+                "baseline, not the literal Breslow step distribution)",
+    "streams": "resample b draws from SeedSequence(seed).spawn(B)[b]: the same resamples for any block or backend",
+    "failed_fits": "a resample whose null refit does not converge has null maxT NaN (counted in 'nonconverged') "
+                   "and counts as exceeding in p and adjusted_p (conservative); zero-event resamples are kept "
+                   "with U = V = z = 0",
     "assumptions": [
         "proportional hazards in C within strata",
         "censoring independent of X given C and stratum",
+        "event and censoring times conditionally independent given C and stratum",
         "no candidate effect given C (the null being tested)",
     ],
 }
+
+
+CHUNK_ELEMS = 1 << 24  # elements per [resamples, patients, candidates] moment array: 128 MB float64
 
 
 def get_backend(name="auto"):
@@ -119,9 +129,8 @@ def _finish(xp, U, Ixx, Icx, M, a, C):
     return U, xp.where(good, V, 0.0), z
 
 
-def _scores(xp, gpu, X, C, same, t, e, w):
-    """U, V, z [B,p] for one mask group's outcomes t, e [B,n] at null weights w [B,n]."""
-    M, m, a = _risk(xp, t, e, w, same)
+def _scores(xp, gpu, X, C, same, t, e, w, M, m, a):
+    """U, V, z [B,p] for one mask group's outcomes t, e [B,n] at null weights w [B,n], risk operator M, m, a."""
     if not gpu:
         return _stats(xp, X, C, M, m, a)
     from .gpu_score import moments  # X-dependent B x J x n^2 work on the device
@@ -271,17 +280,14 @@ def screen(X, time, event, clinical=None, strata=None, n_perm=999, backend="auto
     groups = [(*g, _phreg(_host(g[3]), time[g[1]], event[g[1]], codes[g[1]])) for g in groups]
     U, V, z = np.zeros(J), np.zeros(J), np.zeros(J)
     n = keep_all.sum(0)
-    for cols, rows, Xg, Cg, same, beta in groups:
-        w = xp.exp(Cg @ xp.asarray(beta))[None]
-        tg, eg = xp.asarray(time[rows])[None], xp.asarray(event[rows])[None]
-        for out, value in zip((U, V, z), _scores(xp, gpu, Xg, Cg, same, tg, eg, w)):
-            out[cols] = _host(value)[0]
+    for cols, u, v, zz in _group_scores(xp, gpu, groups, time[None], event[None], np.arange(P), refit=False):
+        U[cols], V[cols], z[cols] = u[0], v[0], zz[0]
     observed = float(np.abs(z).max())
-    null_maxT, nonconverged = _bootstrap(xp, gpu, groups, time, event, C, codes, base, n_perm, seed, block)
+    null_maxT = _bootstrap(xp, gpu, groups, time, event, C, codes, base, n_perm, seed, block)
+    nonconverged = int(np.isnan(null_maxT).sum())
     tol = 16 * np.finfo(np.float64).eps * max(1.0, observed)
-    p = float((1 + np.sum(null_maxT >= observed - tol)) / (n_perm + 1)) if n_perm else float("nan")
-    adjusted = ((1 + np.sum(null_maxT[:, None] >= np.abs(z)[None] - tol, axis=0)) / (n_perm + 1)
-                if n_perm else np.full(J, np.nan))
+    p = float((1 + _exceed(null_maxT, observed - tol)) / (n_perm + 1)) if n_perm else float("nan")
+    adjusted = (1 + _exceed(null_maxT, np.abs(z) - tol)) / (n_perm + 1) if n_perm else np.full(J, np.nan)
     q = C.shape[1]
     return {
         "U": U, "V": V, "z": z, "n": n, "maxT": observed, "p": p,
@@ -324,16 +330,15 @@ def screen_batch(X, time, event, clinical=None, strata=None, backend="auto", *, 
     masks, groups = _groups(xp, X, C, codes, keep_all, event)
     J = X.shape[1]
     U, V, z = (np.zeros((len(time), J)) for _ in range(3))
-    failed = 0
     for start in range(0, len(time), block):
         part = slice(start, start + block)
-        if groups:
-            *values, bad = _refit_scores(xp, gpu, groups, time[part], event[part], np.arange(len(base)), J)
+        for cols, *values in _group_scores(xp, gpu, groups, time[part], event[part], np.arange(len(base))):
             for out, value in zip((U, V, z), values):
-                out[part] = value
-            failed += bad
-    return {"U": U, "V": V, "z": z, "maxT": np.abs(z).max(1) if J else np.zeros(len(time)), "n": keep_all.sum(0),
-            "metadata": {"studies": len(time), "masks": len(masks), "nonconverged": failed, "clinical": {"shape": list(C.shape)},
+                out[part, cols] = value
+    maxT = np.abs(z).max(1) if J else np.zeros(len(time))  # NaN for a study whose null fit failed
+    return {"U": U, "V": V, "z": z, "maxT": maxT, "n": keep_all.sum(0),
+            "metadata": {"studies": len(time), "masks": len(masks), "nonconverged": int(np.isnan(maxT).sum()),
+                         "clinical": {"shape": list(C.shape)},
                          "backend": "gpu (numba.cuda)" if gpu else xp.__name__}}
 
 
@@ -349,11 +354,12 @@ def _null_draws(time, event, C, codes, base, B, seed, block):
              else np.ones(len(t)) for d in (e, 1 - e))
     death, censor = _breslow_steps(t, e, w, cb), _breslow_steps(t, 1 - e, wc, cb)
     end = np.array([t[cb == s].max() for s in range(cb.max() + 1)])[cb]
-    rng = np.random.default_rng(seed)
+    streams = np.random.SeedSequence(seed).spawn(B)  # resample b has its own stream: same draws for any block
+    n = len(ix)
     for start in range(0, B, block):
-        size = min(block, B - start)
-        T = _draw(death, w, cb, rng.standard_exponential((size, len(ix))))
-        Cens = np.minimum(_draw(censor, wc, cb, rng.standard_exponential((size, len(ix)))), end)
+        E = np.stack([np.random.default_rng(s).standard_exponential(2 * n) for s in streams[start:start + block]])
+        T = _draw(death, w, cb, E[:, :n])
+        Cens = np.minimum(_draw(censor, wc, cb, E[:, n:]), end)
         yield np.minimum(T, Cens), (T <= Cens).astype(np.float64)
 
 
@@ -365,31 +371,45 @@ def _fit_or_raise(C, t, e, same):
 
 
 def _bootstrap(xp, gpu, groups, time, event, C, codes, base, B, seed, block):
-    """maxT of z over all candidates for B clinical-null resamples."""
+    """maxT of z over all candidates for B clinical-null resamples; NaN where a null refit failed."""
     if not B or not groups:
-        return np.zeros(B), 0
+        return np.zeros(B)
     position = np.full(len(time), -1)
     position[base] = np.arange(base.sum())
-    maxima, failed = [], 0
+    maxima = []
     for tb, eb in _null_draws(time, event, C, codes, base, B, seed, block):
-        U, V, z, bad = _refit_scores(xp, gpu, groups, tb, eb, position)
-        maxima.append(np.abs(z).max(1))
-        failed += bad
-    return np.concatenate(maxima), failed
+        top = np.zeros(len(tb))
+        for _, _, _, z in _group_scores(xp, gpu, groups, tb, eb, position):
+            top = np.maximum(top, np.abs(z).max(1))  # online maxT; NaN propagates
+        maxima.append(top)
+    return np.concatenate(maxima)
 
 
-def _refit_scores(xp, gpu, groups, tb, eb, position, J=None):
-    """U, V, z [S,J] for S outcome sets [S, *], refitting the null per set and per mask group."""
-    J = max(int(g[0].max()) + 1 for g in groups) if J is None else J
-    U, V, z = (np.zeros((len(tb), J)) for _ in range(3))
-    failed = 0  # resample x mask fits without a finite maximum; their z stays as computed at the last step
-    for cols, rows, Xg, Cg, same, *_ in groups:
+def _exceed(null, stat):
+    """#{null_b >= stat} from the sorted null (no B x J comparison); a failed (NaN) resample counts as exceeding."""
+    done = np.sort(null[~np.isnan(null)])
+    return len(null) - np.searchsorted(done, stat, side="left")
+
+
+def _group_scores(xp, gpu, groups, tb, eb, position, refit=True):
+    """Yield (cols, U, V, z) host [S, chunk] per mask group and candidate chunk for S outcome sets [S, *].
+
+    refit=True refits the null per set (batched Newton); refit=False uses the group's observed beta.
+    A set whose null fit does not converge gets NaN: represented, never dropped or redrawn. Chunks keep
+    each [S, n, chunk] moment array within CHUNK_ELEMS elements."""
+    for cols, rows, Xg, Cg, same, *beta in groups:
         tg, eg = xp.asarray(tb[:, position[rows]]), xp.asarray(eb[:, position[rows]])
-        fitted, ok = _newton(xp, Cg, tg, eg, same)
-        failed += int((~ok).sum())
-        for out, value in zip((U, V, z), _scores(xp, gpu, Xg, Cg, same, tg, eg, xp.exp(fitted @ Cg.T))):
-            out[:, cols] = _host(value)
-    return U, V, z, failed
+        if refit:
+            fitted, ok = _newton(xp, Cg, tg, eg, same)
+        else:
+            fitted, ok = xp.asarray(beta[0])[None], np.ones(1, dtype=bool)
+        w = xp.exp(fitted @ Cg.T)
+        M, m, a = _risk(xp, tg, eg, w, same)
+        width = max(1, CHUNK_ELEMS // (len(tb) * len(rows)))
+        for start in range(0, len(cols), width):
+            part = slice(start, start + width)
+            values = _scores(xp, gpu, Xg[:, part], Cg, same, tg, eg, w, M, m, a)
+            yield (cols[part], *(np.where(ok[:, None], _host(v), np.nan) for v in values))
 
 
 def permutation_maxT(X, time, event, strata, n_perm=9999, *, seed=0, backend="auto", block=1024):
@@ -400,6 +420,8 @@ def permutation_maxT(X, time, event, strata, n_perm=9999, *, seed=0, backend="au
     permutation draws as ``stats.reference.permutation_test``; only the maxima
     are kept. Requires fully observed X.
     """
+    if backend == "gpu":
+        raise ValueError("permutation_maxT has no numba.cuda (backend='gpu') path; use 'cupy' or 'numpy'")
     xp = get_backend(backend)
     X, time, event, groups = reference._inputs(X, time, event, strata)
     if X.ndim != 2 or np.isnan(X).any():
