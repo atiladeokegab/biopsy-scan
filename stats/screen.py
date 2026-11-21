@@ -27,6 +27,7 @@ import warnings
 
 import numpy as np
 from statsmodels.duration.hazard_regression import PHReg
+from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
 from . import reference
 
@@ -144,27 +145,34 @@ def _newton(xp, C, t, e, same, iters=50, tol=1e-9):
 
     A row with no events has zero score and information, so it stays at beta = 0 and
     contributes zero. Rows whose likelihood is monotone (no finite maximum) do not
-    converge; callers count them and disclose the count."""
+    converge; callers count them and disclose the count. A vanishing step is not success
+    when the information has collapsed (beta running off to infinity), except with no events."""
     beta = xp.zeros((t.shape[0], C.shape[1]))
     if not C.shape[1]:
         return beta, np.ones(t.shape[0], dtype=bool)
-    for _ in range(iters):
+    start = None
+    for _ in range(iters + 1):
         M, m, a = _risk(xp, t, e, xp.exp(beta @ C.T), same)
-        step = _solve(xp, _rmul(_cross(xp, C, M, a), C), (m @ C)[:, :, None])[:, :, 0]
-        step = xp.clip(step, -5.0, 5.0)  # monotone-likelihood resamples drift instead of overflowing
-        beta = beta + step
+        info = _rmul(_cross(xp, C, M, a), C)
+        start = info if start is None else start
+        step = xp.clip(_solve(xp, info, (m @ C)[:, :, None])[:, :, 0], -5.0, 5.0)  # monotone rows drift, not overflow
         if float(xp.abs(step).max()) < tol:
             break
-    return beta, _host(xp.abs(step).max(1) < tol)
+        beta = beta + step
+    small = _host(xp.abs(step).max(1) < tol)
+    kept = np.linalg.eigvalsh(_host(info))[:, 0] > 1e-8 * np.maximum(np.linalg.eigvalsh(_host(start))[:, -1], 1e-300)
+    return beta, small & (kept | (_host(e.sum(1)) == 0))
 
 
 def _phreg(C, t, e, codes):
     """Observed null fit with statsmodels PHReg (Breslow ties); empty C gives []."""
     if not C.shape[1] or not e.any():
         return np.zeros(C.shape[1])
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
         fit = PHReg(t, C, status=e, strata=codes, ties="breslow").fit(disp=False)
+    if any(issubclass(w.category, ConvergenceWarning) for w in caught) or not np.isfinite(fit.params).all():
+        raise ValueError("the observed Cox model on C has no finite maximum (PHReg did not converge)")
     return np.asarray(fit.params, dtype=np.float64)
 
 

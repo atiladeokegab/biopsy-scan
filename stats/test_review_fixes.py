@@ -77,7 +77,7 @@ def test_stratum_offsets_do_not_change_z():
 
 def test_resample_identity_does_not_depend_on_block_size():
     X, t, e, C = sparse_cohort()
-    rng = np.random.default_rng(1)
+    rng = np.random.default_rng(3)  # seed 1's censoring model is monotone, which the generating fit now rejects
     t = rng.exponential(size=10)
     e = (rng.random(10) < 0.7).astype(float)
     _, _, _, Cd, codes, base = S._inputs(X, t, e, C, None)
@@ -134,3 +134,17 @@ def test_column_constant_within_strata_scores_exactly_zero():
     t, e = rng.exponential(size=30), (rng.random(30) < 0.7).astype(float)
     out = screen(X, t, e, None, s, n_perm=0, backend="numpy")
     assert out["z"][0] == 0.0 and out["V"][0] == 0.0 and out["z"][1] != 0.0
+
+
+def test_observed_fit_with_collapsed_information_is_rejected():
+    """Monotone clinical likelihood with every patient an event: Newton's step dies with the information."""
+    C = np.array([1, 1, 1, 0, 0, 0], dtype=float)[:, None]
+    t, e = np.arange(1.0, 7.0), np.ones(6)
+    X = np.random.default_rng(1).normal(size=(6, 2))
+    beta, ok = S._newton(np, C - C.mean(0), t[None], e[None], np.ones((6, 6), dtype=bool))
+    assert not ok[0]
+    with pytest.raises(ValueError, match="no finite maximum"):
+        screen(X, t, e, C, n_perm=0, backend="numpy")
+    with pytest.raises(ValueError, match="no finite maximum"):
+        S._phreg(C - C.mean(0), t, e, np.zeros(6, dtype=np.int64))
+
