@@ -120,6 +120,16 @@ MUTANTS = [  # (kind, file, published text, mutant): each must make the check fa
     ("prose", "README.md", "exact parity", "close parity"),
     ("prose", "README.md", "inference outside timing", "inference inside timing"),
     ("prose", "docs/JUDGING.md", "consistent with chance", "a real effect"),
+    ("value", "README.md", "`0.0301 s` on 64 cores", "`0.0401 s` on 64 cores"),
+    ("value", "README.md", "64 cores: `38.2×`", "64 cores: `48.2×`"),
+    ("label", "README.md", "of the 8-core z (**MEASURED**)", "of the 8-core z (**ESTIMATE**)"),
+    ("value", "README.md", "per decided study (`2,000` decided", "per decided study (`3,000` decided"),
+    ("value", "README.md", "`1` lab core vs `8` Preflight workers", "`1` lab core vs `4` Preflight workers"),
+    ("prose", "README.md", "different procedures (per-study permutation", "the same procedure (per-study permutation"),
+    ("prose", "README.md", "not a guaranteed speed-up", "a guaranteed speed-up"),
+    ("value", "README.md", "paid for): `42.1×`", "paid for): `24.1×`"),
+    ("value", "README.md", "decisions agree `89/100`", "decisions agree `98/100`"),
+    ("label", "README.md", "(**MEASURED**, outcomes SYNTHETIC)", "(**ESTIMATE**, outcomes SYNTHETIC)"),
 ]
 
 
