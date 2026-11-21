@@ -108,36 +108,47 @@ The checker enforces these rules:
 
 ## `data/baseline.json` (`preflight-baseline/1`): the speed race, filled by `collect_race.py`
 
-One row per method, all timing the same `task` (the 3,780 Charville v2 candidates). Never edit a time by
-hand: `python3 -I demo/collect_race.py` (run by `make demo` and by Pages before every deploy) fills rows
-from `bench/results/*.json`. A bench file feeds a row either with a top-level `race` list, e.g.
-`"race": [{"id": "preflight-a100", "seconds": 0.8, "label": "MEASURED", "hardware": "Modal", "gpu": "1x NVIDIA A100"}]`
-(ids: `preflight-cpu`, `preflight-a100`, `preflight-fleet`), or, for `standard`, R-14's impl-a shape
-(`cpu_model`, `cohorts[].timings[]`). A row no file feeds keeps its committed value.
+Four rows, all timing the same `task`: one design point, 1,000 simulated studies on real Charville, end to end
+(demo-plan-v3, revision 16:58Z). Never edit a time by hand: `python3 -I demo/collect_race.py` (run by `make demo`
+and by Pages before every deploy) fills rows from `bench/results/*.json`. A bench file feeds a row with a
+top-level `race` list, e.g.
+`"race": [{"id": "gpu-1", "seconds": 4.2, "startup_s": 90.0, "label": "MEASURED", "hardware": "Modal", "gpu": "1x NVIDIA H100"}]`
+(ids: `lab-cpu`, `preflight-cpu`, `gpu-1`, `gpu-16`). `seconds` is compute time; container start-up goes in
+`startup_s`, printed apart and never counted. The GPU model is whatever the file says. A row no file feeds
+keeps its committed value.
 
 ```jsonc
 {
   "schema": "preflight-baseline/1",
-  "task": "Screen all 3,780 Charville v2 candidate patterns for a survival link",
+  "task": "One design point: 1,000 simulated studies on real Charville tissue, end to end",
   "rows": [{
-    "id": "standard",            // unique; bench files address rows by id
-    "method": "Standard: one Cox fit per candidate (statsmodels PHReg)",
+    "id": "lab-cpu",             // unique; bench files address rows by id
+    "method": "The lab way: a shuffle test in every study, all CPU cores",
     "role": "baseline",          // "baseline" (grey bar) or "screen" (Preflight, accent bar)
-    "label": "MEASURED",         // MEASURED, ESTIMATE, SYNTHETIC, UNMEASURED or PENDING
-    "seconds": 63.84,            // null when PENDING or UNMEASURED; required otherwise
-    "hardware": "AMD EPYC 7B13", // required when timed
-    "cores": 8,                  // cores, or "gpu": "1x NVIDIA A100"; one is required when timed
+    "label": "PENDING",          // MEASURED, ESTIMATE, SYNTHETIC, UNMEASURED or PENDING
+    "seconds": null,             // compute seconds; null when PENDING or UNMEASURED, a positive number otherwise
+    "startup_s": null,           // optional, shown apart
+    "hardware": null,            // required when timed
+    "cores": null,               // a positive integer, or "gpu": "1x NVIDIA H100"; one is required when timed
     "gpu": null,
-    "source": "bench/results/impl-a-charville-amd-epyc-7b13.json", // always required
-    "note": "298.3 s on 1 core"  // optional
-  }]
+    "source": "build-modal",     // always required
+    "note": null                 // optional
+  }],
+  "workflow": {                  // optional footnote: different work, seconds only, never a bar or a ratio
+    "method": "Standard Cox screen of all 3,780 candidates (statsmodels PHReg)",
+    "seconds": 63.84, "label": "MEASURED", "hardware": "AMD EPYC 7B13", "cores": 8, "gpu": null,
+    "source": "bench/results/impl-a-charville-amd-epyc-7b13.json", "note": "298.3 s on 1 core",
+    "fingerprints": {"patient_rows": "...", "X": "...", "C": "..."}  // copied from the file, to match later screens
+  }
 }
 ```
 
-The checker rejects a number without a label or source, and a PENDING or UNMEASURED row with a number.
-On screen each timed bar fills at its rate (the slowest timed row takes 10 s) and prints its real seconds
-at the finish; a PENDING row has no bar and never moves. No ratio is printed: #64's file forbids quoting
-R-14 against R-15 as an equal-work speed-up.
+The checker rejects a number without a label or source, a PENDING or UNMEASURED row with a number, and checks
+every field on its own (`seconds` and `startup_s` positive finite numbers, `cores` a positive integer, text
+fields non-empty strings). The page escapes every string it inserts. On screen each timed bar fills at its
+rate (the slowest timed row takes 10 s) and prints its real seconds at the finish; a PENDING row has no bar and
+never moves. No ratio is printed anywhere: the R-14 Cox screen produces different output from the race's
+unit, so it is only the workflow footnote, in seconds.
 
 ## `data/claims.json` (`preflight-claims/1`): written by `collect_race.py`
 
@@ -145,12 +156,15 @@ The power result at the demo's 200 patients (simulated, its 95% interval, and th
 false-alarm rate pooled over every null study, and the maxT result, each with its `label` and `source`
 (`bench/results/vs-schoenfeld-300.json`, `results/charville-v2.json`).
 
-## `data/biomarker.json` (`preflight-biomarker/1`): written by `scripts/export_biomarker.py`
+## `data/patch.json` (`preflight-patch/1`): written by `scripts/export_patch.py`
 
 One real Charville 500 µm patch (`cells`: `x`, `y` in µm, `k` one of `t5`, `tumour`, `mac`, `mac_pd1`,
-`immune`, `other`), the 100 µm `radius_um`, how a macrophage is drawn PD1+ (`pd1_rule`), and `km`: the
-cohort's Kaplan-Meier steps split at the median of the per-patient feature value (or null). Needs the raw
-data: `DATA_DIR=... uv run python -I scripts/export_biomarker.py`.
+`immune`, `other`), chosen by `window_rule` for the most PD1+ macrophages near Tumor 5, the 100 µm
+`radius_um`, how a macrophage is drawn PD1+ (`pd1_rule`), and `km`: the cohort's Kaplan-Meier steps split at
+the median of the per-patient feature value (or null), with `note`, shown beside the curves: "exploratory,
+cutoff chosen on the same cohort, no p-value". Needs the raw data:
+`DATA_DIR=... uv run python -I scripts/export_patch.py`. `data/biomarker.json` (build-8, #82) is a separate
+file with two whole regions, one per arm; this page does not read it.
 
 ## How the page picks a grid point
 

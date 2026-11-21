@@ -34,6 +34,7 @@
         <canvas id="bio" role="img" aria-label="A real Charville tissue patch: PD1-positive macrophages near Tumor 5 cells"></canvas>
         <div class="km">
           <p class="km-title">Survival, split at the median <span class="tag">exploratory</span></p>
+          <p class="km-note" id="km-note">exploratory, cutoff chosen on the same cohort, no p-value</p>
           <svg id="km" viewBox="0 0 220 150" role="img" aria-label="Kaplan-Meier survival, high against low pattern score"></svg>
           <p class="km-key"><span><i class="hi"></i>high <b id="km-hi"></b></span> <span><i class="lo"></i>low <b id="km-lo"></b></span></p>
         </div>
@@ -48,11 +49,12 @@
 
     <section class="card speed" aria-labelledby="speed-title">
       <div class="speed-head">
-        <h2 id="speed-title">The same <span id="speed-n">3,780</span> candidate patterns, four ways</h2>
+        <h2 id="speed-title"><span id="speed-task">One design point: 1,000 simulated studies on real Charville tissue</span>, four ways</h2>
         <button id="run" type="button" class="go">Run the studies</button>
       </div>
       <div id="speed-race"></div>
-      <p class="speed-note">Each bar fills at its measured rate, scaled so the race takes about 10 s; real seconds print at the finish. A bar with no measured time stays PENDING.</p>
+      <p class="speed-note">Each bar fills at its measured rate, scaled so the race takes about 10 s; real seconds print at the finish, start-up shown apart. A bar with no measured time stays PENDING.</p>
+      <p class="workflow" id="workflow"></p>
     </section>
   </section>
 

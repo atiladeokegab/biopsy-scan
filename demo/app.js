@@ -1,8 +1,8 @@
-// The Preflight demo. Hero: the pattern (biomarker.json), "Run the studies" and the speed race (baseline.json),
+// The Preflight demo. Hero: the pattern (patch.json), "Run the studies" and the speed race (baseline.json),
 // then the power and honesty results (claims.json). Below: explore a design (grid.json, tissue.json, four sliders).
 // Every file is local, so a served checkout replays the committed results with no network (schemas in README.md).
 import { createTissue } from "./tissue.js";
-import { createSpeedRace } from "./race.js";
+import { createSpeedRace, workflowHTML } from "./race.js";
 import { drawPatch, drawKM } from "./bio.js";
 import { drawChart, pct, fovLabel } from "./chart.js";
 
@@ -104,9 +104,11 @@ const tagOf = (el, label) => { el.textContent = label; el.classList.toggle("ok",
 // The hero and the results: each file on its own, so one missing file never blanks the others.
 async function hero() {
   const [bl, cl, bm] = await Promise.allSettled(
-    ["data/baseline.json", "data/claims.json", "data/biomarker.json"].map(getJSON));
+    ["data/baseline.json", "data/claims.json", "data/patch.json"].map(getJSON));
   if (bl.status === "fulfilled") {
     const race = createSpeedRace($("speed-race"), bl.value, { reducedMotion });
+    $("speed-task").textContent = bl.value.task;
+    $("workflow").innerHTML = workflowHTML(bl.value.workflow);
     $("run").addEventListener("click", () => race.run());
   } else $("run").disabled = true;
 
@@ -116,6 +118,7 @@ async function hero() {
     tagOf($("bio-tag"), biomarker.source);
     if (biomarker.km) {
       drawKM($("km"), biomarker.km);
+      $("km-note").textContent = biomarker.km.note;
       $("km-hi").textContent = `${biomarker.km.high.events}/${biomarker.km.high.n} died`;
       $("km-lo").textContent = `${biomarker.km.low.events}/${biomarker.km.low.n} died`;
     } else $("km").closest(".km").hidden = true;
@@ -137,7 +140,7 @@ async function hero() {
     tagOf($("mt-tag"), mt.label);
     $("fa-src").textContent = `${fa.source} · ${mt.source}`;
     $("bio-cap").textContent =
-      `Real Charville tissue (patient ${biomarker ? biomarker.patient : "—"}, ${biomarker ? biomarker.window_um : 500} µm square). ` +
+      `Real Charville tissue (patient ${biomarker ? biomarker.patient : "—"}, ${biomarker ? biomarker.window_um : 500} µm square, the patch with the most PD1+ macrophages near Tumor 5). ` +
       `The top of ${mt.tests.toLocaleString("en-GB")} patterns: z = ${mt.z.toFixed(2)}, maxT p = ${mt.p.toFixed(3)} after ${mt.tests.toLocaleString("en-GB")} tests. Exploratory, not a discovery.`;
   }
 }

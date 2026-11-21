@@ -1,6 +1,6 @@
-"""Export one real Charville patch and a KM split for the top exploratory hit: demo/data/biomarker.json.
+"""Export one real Charville patch, chosen to show the pattern, and a KM split for the top exploratory hit: demo/data/patch.json.
 
-Run from the repo root (needs core/ and DATA_DIR): uv run python -I scripts/export_biomarker.py [out]
+Run from the repo root (needs core/ and DATA_DIR): uv run python -I scripts/export_patch.py [out]
 
 Feature "Tumor 5|Macrophage|100um|PD1" (results/charville-v2.json, maxT rank 1, grammar index 2600).
 Definition, from the code: core/truth.py::truth_expression_sums + region_sums_v2, divided by the
@@ -120,7 +120,7 @@ def main(out: Path):
     for name, sel in (("high", xx > med), ("low", xx <= med)):
         arms[name] = {"n": int(sel.sum()), "events": int(ee[sel].sum()), "steps": km(tt[sel], ee[sel])}
     doc = {
-        "schema": "preflight-biomarker/1", "source": "MEASURED", "feature": FEATURE,
+        "schema": "preflight-patch/1", "source": "MEASURED", "feature": FEATURE,
         "patient": f"CHV-{c['patient_names'][c['patient_of_region'][r]]}", "region": c["region_names"][r],
         "window_um": WINDOW, "radius_um": RADIUS, "cells": cells,
         "pd1_rule": "A macrophage is drawn PD1+ when its PD1 is above the cohort mean (cohort z-score > 0, the same z the "
@@ -132,10 +132,10 @@ def main(out: Path):
         "km": {"split": "median of the per-patient feature value", "median": round(med, 4),
                "split_rule": "high = value > median, low = value <= median",
                "time_unit": "days (surgery to last contact)", "n_dropped_no_tumor5": int((~ok).sum()),
-               **arms, "label": "MEASURED", "note": "exploratory; already-seen cohort; not a discovery"},
+               **arms, "label": "MEASURED", "note": "exploratory, cutoff chosen on the same cohort, no p-value"},
         "meta": {"source": "Charville CODEX (Zenodo 13179600, CC-BY-4.0; Wu et al. 2022), real cells",
                  "hit": "results/charville-v2.json maxT rank 1: z 3.957, adjusted p 0.098, exploratory",
-                 "script": "scripts/export_biomarker.py"}}
+                 "script": "scripts/export_patch.py"}}
     text = json.dumps(doc, separators=(",", ":"))
     if len(text) > MAX_BYTES:  # shortcut: never hit at 500 um; subsample "other" if a denser window ever needs it
         raise SystemExit(f"{len(text)} bytes > {MAX_BYTES}; subsample 'other'")
@@ -156,4 +156,4 @@ def main(out: Path):
 
 
 if __name__ == "__main__":
-    main(Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "demo" / "data" / "biomarker.json")
+    main(Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "demo" / "data" / "patch.json")

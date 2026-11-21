@@ -89,6 +89,9 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
 .sr-track i { display: block; height: 100%; width: 0; background: var(--text-muted); }
 .sr .screen .sr-track i { background: var(--accent); }
 .sr .pending .sr-track { background: none; border: 1px dashed var(--border); color: var(--text-muted); font-size: var(--text-xs); line-height: 16px; padding: 0 var(--space-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.km-note { font-size: var(--text-xs); color: var(--text); line-height: var(--leading-caption); }
+.workflow { font-size: var(--text-xs); line-height: var(--leading-caption); color: var(--text-muted); }
+.workflow:empty { display: none; }
 .sr-src { grid-column: 1 / -1; font-size: var(--text-xs); color: var(--text-muted); }
 .speed-note { margin-top: auto; padding-top: var(--space-3); font-size: var(--text-xs); line-height: var(--leading-caption); color: var(--text-muted); }
 

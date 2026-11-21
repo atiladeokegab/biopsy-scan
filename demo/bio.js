@@ -1,4 +1,4 @@
-// THE PATTERN (data/biomarker.json, from scripts/export_biomarker.py): one real Charville patch, PD1+ macrophages
+// THE PATTERN (data/patch.json, from scripts/export_patch.py): one real Charville patch, PD1+ macrophages
 // lit up inside the 100 µm reach of Tumor 5 cells, and the cohort's Kaplan-Meier split on the pattern score.
 import { tok } from "./chart.js";
 
