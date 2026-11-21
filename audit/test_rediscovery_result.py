@@ -92,19 +92,19 @@ def test_score_locked_computes_the_pre_registered_column(monkeypatch):
     n_fib = [0, 1, 2, 3, 4, 5, 6, 7]
     seen = {}
     monkeypatch.setattr(rs, "score_feature", lambda x, *a: seen.setdefault("x", x) is None or {"status": "X"})
-    out = rs.score_locked(fixture_cells(n_fib), RULE, SHA)
+    out = rs.score_locked(fixture_cells(n_fib), RULE, SHA, 4)
     np.testing.assert_allclose(seen["x"], [k / (k + 1) for k in n_fib])
     assert out["rule_sha256"] == SHA and out["feature"] == RULE["feature"] and "one-sided" in out["test"]
 
 
 def test_an_edited_rule_is_refused():
     with pytest.raises(ValueError, match="sha256"):
-        rs.score_locked(fixture_cells([1, 2]), {**RULE, "feature": RULE["feature"].replace("25um", "50um")}, SHA)
+        rs.score_locked(fixture_cells([1, 2]), {**RULE, "feature": RULE["feature"].replace("25um", "50um")}, SHA, 1)
 
 
 def test_a_feature_the_cohort_cannot_express_is_unmeasured():
     rule = {**RULE, "feature": "Tumor (Podo+)|Vessel|25um|fraction"}
-    out = rs.score_locked(fixture_cells([1, 2]), rule, rs.rule_sha256(rule))
+    out = rs.score_locked(fixture_cells([1, 2]), rule, rs.rule_sha256(rule), 1)
     assert out["status"] == "UNMEASURED"
 
 
@@ -113,5 +113,23 @@ def test_the_cli_never_opens_the_locked_set_without_the_flag(tmp_path, monkeypat
 
     monkeypatch.setattr(core.cohorts, "load", lambda *a, **k: pytest.fail("the locked set was opened"))
     assert rs.main(["--out", str(tmp_path / "r.json")]) == 2
+    assert rs.main(["--open-locked", "--out", str(tmp_path / "r.json")]) == 2  # no --events: power not fixed
     (tmp_path / "r.json").write_text(json.dumps({"already": "opened"}))
-    assert rs.main(["--open-locked", "--out", str(tmp_path / "r.json")]) == 2
+    assert rs.main(["--open-locked", "--events", "8", "--out", str(tmp_path / "r.json")]) == 2
+
+
+def test_power_uses_no_outcomes_and_grows_with_events():
+    x, _, _, s = cox_cohort(0.0, n=60)
+    low, high = rs.power(x[:16], s[:16], 4, sims=200), rs.power(x, s, 40, sims=200)
+    assert low < rs.MIN_POWER < high
+    assert rs.power(x, s, 1) == 0.0 and rs.power(np.ones(60), s, 30) == 0.0
+
+
+def test_an_underpowered_locked_set_is_unmeasured_whatever_the_p(monkeypatch):
+    monkeypatch.setattr(rs, "power", lambda *a, **k: 0.3)
+    monkeypatch.setattr(rs, "score_feature", lambda *a: {"status": "MEASURED", "p_one_sided": 1e-9})
+    out = rs.score_locked(fixture_cells([0, 1, 2, 3]), RULE, SHA, 2)
+    assert out["status"] == "UNMEASURED" and out["reason"].startswith("underpowered")
+    assert out["power"]["value"] == 0.3 and out["p_one_sided"] == 1e-9
+    monkeypatch.setattr(rs, "power", lambda *a, **k: 0.8)
+    assert rs.score_locked(fixture_cells([0, 1, 2, 3]), RULE, SHA, 2)["status"] == "MEASURED"
