@@ -6,11 +6,10 @@ no network calls. three.js r170 is vendored in `vendor/three/` (MIT, licence alo
 page works with Wi-Fi off.
 
 ```bash
-python3 -m http.server 8000 -d demo     # then open http://localhost:8000
+make demo                               # checks demo/data, then serves; open http://localhost:8000
+python3 -m http.server 8000 -d demo     # the same, without the data check
+make tissue                             # regenerates demo/data/tissue.json (needs `make data`)
 ```
-
-There is no Makefile on `integration` yet. When one lands, a `make demo` target should run exactly
-that line (`demo: ; python3 -m http.server 8000 -d demo`).
 
 Browsers block `fetch` and modules from `file://`. If you double-click `index.html`, the page
 shows this command instead.
