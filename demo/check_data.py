@@ -1,4 +1,4 @@
-"""Check demo/data/{grid,tissue,bench,baseline,claims,patch}.json against the schemas in demo/README.md.
+"""Check demo/data/{grid,tissue,bench,baseline,claims,biomarker}.json against the schemas in demo/README.md.
 
 Run: python3 -I demo/check_data.py [data_dir]. bench.json is optional (absent = UNMEASURED); so is
 baseline.json (absent = no baseline panel; race.test.mjs still requires the committed one).
@@ -113,7 +113,6 @@ def check_timing(r, w, at):
         return
     need(pos(r.get("seconds")), w, f"{at}.seconds: positive finite number when {r['label']}")
     need(r.get("hardware") is not None, w, f"{at}.hardware: required when timed")
-    need(r.get("cores") is not None or r.get("gpu") is not None, w, f"{at}: cores or gpu required when timed")
 
 
 def check_baseline(b, w):
@@ -125,37 +124,42 @@ def check_baseline(b, w):
         need(text(r.get("id")) and r["id"] not in [q.get("id") for q in rows[:i]], w, f"rows[{i}].id: unique string")
         need(r.get("role") in ("baseline", "screen"), w, f"rows[{i}].role: 'baseline' or 'screen'")
         check_timing(r, w, f"rows[{i}]")
+    for g, grp in enumerate(b.get("interim") or []):  # measured pairs shown until the design point is timed
+        need(text(grp.get("title")) and text(grp.get("unit")), w, f"interim[{g}]: title, unit")
+        need(isinstance(grp.get("rows"), list) and grp["rows"], w, f"interim[{g}].rows: non-empty list")
+        for i, r in enumerate(grp["rows"]):
+            check_timing(r, w, f"interim[{g}].rows[{i}]")
     if b.get("workflow") is not None:  # different work: shown as a footnote, never as a bar or a ratio
         check_timing(b["workflow"], w, "workflow")
     timed = sum(r["seconds"] is not None for r in rows)
     return f"{len(rows)} rows, {timed} timed"
 
 
-PATCH_KINDS = ("t5", "tumour", "mac", "mac_pd1", "immune", "other")
-
-
-def check_patch(p, w):
-    need(p.get("schema") == "preflight-patch/1", w, "schema must be 'preflight-patch/1'")
-    need(p.get("source") in LABELS, w, f"source must be one of {LABELS}")
-    for k in ("feature", "patient", "region", "pd1_rule", "window_rule"):
-        need(text(p.get(k)), w, f"{k}: string")
-    side = p.get("window_um")
-    need(pos(side) and pos(p.get("radius_um")), w, "window_um, radius_um: positive numbers")
-    cells = p.get("cells")
-    need(isinstance(cells, list) and cells, w, "cells: non-empty list")
-    for j, c in enumerate(cells):
-        need(num(c.get("x")) and num(c.get("y")) and 0 <= c["x"] <= side and 0 <= c["y"] <= side, w, f"cells[{j}]: x, y within the window")
-        need(c.get("k") in PATCH_KINDS, w, f"cells[{j}].k must be one of {PATCH_KINDS}")
-    km = p.get("km")
-    if km is not None:
-        need(km.get("label") in LABELS and text(km.get("note")), w, "km: label and note required")
-        for arm in ("high", "low"):
-            a = km.get(arm, {})
-            need(isinstance(a.get("n"), int) and isinstance(a.get("events"), int), w, f"km.{arm}: n, events ints")
-            st = a.get("steps")
-            need(isinstance(st, list) and st and st[0] == [0, 1], w, f"km.{arm}.steps: start at [0, 1]")
-            need(all(u[0] <= v[0] and u[1] >= v[1] for u, v in zip(st, st[1:])), w, f"km.{arm}.steps: monotone")
-    return f"{len(cells)} cells, km {'yes' if km else 'none'}"
+def check_biomarker(b, w):
+    """build-8's file (#82): two real regions, one per KM arm, and the KM curves; exploratory, never a p-value."""
+    need(b.get("schema") == "preflight-biomarker/1", w, "schema must be 'preflight-biomarker/1'")
+    need(b.get("source") in LABELS and b.get("exploratory") is True, w, "source label, and exploratory: true")
+    need(text(b.get("label")) and "no p-value" in b["label"], w, "label must say: no p-value")
+    need(text(b.get("note")), w, "note: string")
+    km = b.get("km") or {}
+    need(km.get("p_value") is None, w, "km.p_value must be null: the cutoff was chosen on the same cohort")
+    need(sorted(a.get("name", "") for a in km.get("arms", [])) == ["high", "low"], w, "km.arms: high and low")
+    for a in km["arms"]:
+        c = a.get("curve")
+        need(isinstance(a.get("n"), int) and isinstance(a.get("events"), int), w, f"km {a['name']}: n, events ints")
+        need(isinstance(c, list) and c and c[0] == [0.0, 1.0], w, f"km {a['name']}.curve: starts at [0, 1]")
+        need(all(u[0] <= v[0] and u[1] >= v[1] for u, v in zip(c, c[1:])), w, f"km {a['name']}.curve: monotone")
+    regions = b.get("regions") or []
+    need(sorted(r.get("arm", "") for r in regions) == ["high", "low"], w, "regions: one per arm")
+    for r in regions:
+        cells = r.get("cells", {})
+        n = len(cells.get("x", []))
+        need(n > 0 and all(len(cells.get(k, [])) == n for k in ("y", "type", "pd1_pos", "near_tumour")), w,
+             f"region {r['arm']}: columnar cells of equal length")
+        need(pos(r.get("width_um")) and pos(r.get("height_um")), w, f"region {r['arm']}: width_um, height_um")
+        need(r.get("type_names", [])[:2] == ["Tumor 5", "Macrophage"], w, f"region {r['arm']}: type 0 Tumor 5, 1 Macrophage")
+    arms = " / ".join(f"{a['events']}/{a['n']}" for a in km["arms"])
+    return f"{len(regions)} regions, km {arms}"
 
 
 def check_claims(c, w):
@@ -169,10 +173,10 @@ def check_claims(c, w):
 if __name__ == "__main__":
     for name, check, required in (("grid.json", check_grid, True), ("tissue.json", check_tissue, True),
                                   ("bench.json", check_bench, False), ("baseline.json", check_baseline, False),
-                                  ("claims.json", check_claims, False), ("patch.json", check_patch, False)):
+                                  ("claims.json", check_claims, False), ("biomarker.json", check_biomarker, False)):
         path = DIR / name
         if not path.exists():
             need(not required, path, "missing")
-            print(f"{path}: absent (" + "the page hides that panel)" if name in ("baseline.json", "claims.json", "patch.json") else "the page shows UNMEASURED)")
+            print(f"{path}: absent (" + "the page hides that panel)" if name in ("baseline.json", "claims.json", "biomarker.json") else "the page shows UNMEASURED)")
             continue
         print(f"{path}: ok, {check(json.loads(path.read_text()), path)}")

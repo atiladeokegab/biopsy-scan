@@ -35,6 +35,9 @@ def test_committed_race_matches_bench_results():
     for path in sorted((ROOT / "bench" / "results").glob("*.json")):
         d = json.loads(path.read_text())
         for rid, fields in (cr.rows_from(path, d) if isinstance(d, dict) else []):
+            if rid == "interim":
+                assert b["interim"] == fields, "interim: rerun python3 -I demo/collect_race.py"
+                continue
             for k, v in fields.items():
                 assert race[rid][k] == v, f"{rid}.{k}: rerun python3 -I demo/collect_race.py"
     for r in [*b["rows"], b["workflow"]]:
@@ -68,3 +71,31 @@ def test_checker_validates_each_field_on_its_own():
                 {"seconds": -1}, {"startup_s": 0}, {"label": "PENDING"}, {"source": ""}, {"label": "GUESS"}):
         assert _check(base | {"rows": [_row(**bad)]}), bad
     assert _check(base | {"rows": [_row()], "workflow": _row(seconds=None)}), "a timed footnote needs seconds"
+
+
+LADDER = {"kind": "ladder", "status": "MEASURED",
+          "kernel": {"unit": "one study", "gpu": {"model": "NVIDIA H100"},
+                     "rows": {"numpy_reference": {"median_s": 2.88046, "samples_s": [1] * 5},
+                              "gpu": {"median_s": 0.87341, "samples_s": [1] * 5}}},
+          "fleet": {"studies": 16, "note": "compute only", "runs": {
+              "4": {"gpus": ["A100-40", "A100-80"], "containers_seen": 4, "studies_per_container": [4] * 4,
+                    "compute_s_max": 3.7977, "startup_and_transfer_s": 5.0945},
+              "1": {"gpus": ["A100-40"], "containers_seen": 1, "studies_per_container": [16],
+                    "compute_s_max": 11.4448, "startup_and_transfer_s": 90.293}}}}
+
+
+def test_ladder_feeds_interim_compute_only_with_startup_apart():
+    """The lead's interim race: kernel 0.873 vs 2.880 s/study, fleet 3.80 vs 11.44 s compute, from the file."""
+    [(rid, groups)] = cr.rows_from(Path("modal-a100-x.json"), LADDER)
+    assert rid == "interim"
+    k, f = ({r["id"]: r for r in g["rows"]} for g in groups)
+    assert (k["kernel-numpy"]["seconds"], k["kernel-gpu"]["seconds"], k["kernel-gpu"]["gpu"]) == (2.88, 0.873, "NVIDIA H100")
+    assert [r["id"] for r in groups[1]["rows"]] == ["fleet-1", "fleet-4"]
+    assert (f["fleet-1"]["seconds"], f["fleet-1"]["startup_s"]) == (11.44, 90.3), "start-up is apart, never in seconds"
+    assert (f["fleet-4"]["seconds"], f["fleet-4"]["gpu"]) == (3.8, "4x A100-40 / A100-80")
+    assert all(r["source"] == "bench/results/modal-a100-x.json" for g in groups for r in g["rows"])
+    assert not any("speedup" in key or "ratio" in key for g in groups for r in g["rows"] for key in r)
+    b = json.loads((ROOT / "demo" / "data" / "baseline.json").read_text())
+    assert _check(b | {"interim": groups}) is None
+    assert _check(b | {"interim": [groups[0] | {"rows": [k["kernel-gpu"] | {"label": "PENDING"}]}]}), "PENDING with a number"
+    assert list(cr.rows_from(Path("x.json"), LADDER | {"status": "FAILED"})) == []

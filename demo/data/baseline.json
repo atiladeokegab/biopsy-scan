@@ -61,5 +61,67 @@
       "C": "49a9e619c3b1590fe236cfe933b24a129ce730d805e78a8fb844ff75bfb99d93"
     },
     "note": "298.3 s on 1 core"
-  }
+  },
+  "interim": [
+    {
+      "title": "One study, re-imaged and scored",
+      "unit": "one study: patient and region sampling, crop, mis-call, recount, features",
+      "rows": [
+        {
+          "id": "kernel-numpy",
+          "method": "NumPy reference, same container",
+          "role": "baseline",
+          "label": "MEASURED",
+          "seconds": 2.88,
+          "hardware": "Modal GPU container, on its CPU",
+          "cores": null,
+          "gpu": null,
+          "note": "median of 5",
+          "source": "bench/results/modal-a100-20261121T171213Z.json"
+        },
+        {
+          "id": "kernel-gpu",
+          "method": "Preflight on 1 GPU",
+          "role": "screen",
+          "label": "MEASURED",
+          "seconds": 0.873,
+          "hardware": "Modal",
+          "cores": null,
+          "gpu": "NVIDIA A100-SXM4-40GB",
+          "note": "median of 5, exact parity",
+          "source": "bench/results/modal-a100-20261121T171213Z.json"
+        }
+      ]
+    },
+    {
+      "title": "16 studies on a fleet, compute only",
+      "unit": "compute_s excludes start-up, data load, adjacency and warm-up; those are reported per run",
+      "rows": [
+        {
+          "id": "fleet-1",
+          "method": "1 GPU container, all 16 studies",
+          "role": "baseline",
+          "label": "MEASURED",
+          "seconds": 11.44,
+          "startup_s": 90.3,
+          "hardware": "Modal",
+          "gpu": "1x NVIDIA A100-SXM4-40GB",
+          "cores": null,
+          "source": "bench/results/modal-a100-20261121T171213Z.json"
+        },
+        {
+          "id": "fleet-4",
+          "method": "4 GPU containers, 4 studies each",
+          "role": "screen",
+          "label": "MEASURED",
+          "seconds": 3.8,
+          "startup_s": 5.1,
+          "hardware": "Modal",
+          "gpu": "4x NVIDIA A100-SXM4-40GB / NVIDIA A100-SXM4-80GB",
+          "cores": null,
+          "source": "bench/results/modal-a100-20261121T171213Z.json"
+        }
+      ]
+    }
+  ]
 }

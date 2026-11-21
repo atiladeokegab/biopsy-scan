@@ -8,6 +8,9 @@ A bench file feeds the race in one of two ways:
      shown apart and never counted. Or
   2. R-14's impl-a shape (cpu_model, cohorts[].timings[]): the Charville 3,780-candidate Cox screen fills the
      "workflow" footnote only. It is different work, so it is never a race bar and never part of a ratio.
+  3. the Modal runner's "kind": "ladder" file (#75): fills "interim", two measured pairs shown until the
+     design point is timed: one study on 1 GPU against NumPy in the same container, and 16 studies on 1 against
+     4 containers (compute only; start-up in startup_s). Each group races on its own scale.
 A row no file feeds keeps its committed value (PENDING until measured). check_data.py then validates the result.
 It also writes demo/data/claims.json, the power and honesty numbers the page shows, from
 bench/results/vs-schoenfeld-300.json and results/charville-v2.json, so the page replays committed results offline.
@@ -27,6 +30,8 @@ def rows_from(path, d):
     name = f"bench/results/{path.name}"
     for r in d.get("race") or []:
         yield r["id"], {**{k: r[k] for k in KEEP if k in r}, "source": r.get("source", name)}
+    if d.get("kind") == "ladder" and d.get("status") == "MEASURED":
+        yield "interim", interim(name, d)
     if "cpu_model" in d:
         for c in d.get("cohorts", []):
             if c.get("cohort") == "charville" and c.get("candidates") == 3780 and c.get("timings"):
@@ -37,6 +42,30 @@ def rows_from(path, d):
                                    "cores": t["workers"], "gpu": None, "source": name,
                                    "fingerprints": c.get("fingerprints"),
                                    **({"note": f"{one[0]['wall_s']:.1f} s on 1 core"} if one else {})}
+
+
+def interim(name, d):
+    """The ladder file's kernel pair and fleet pair, copied as measured; no ratio is kept."""
+    k, f, lab = d["kernel"], d["fleet"], d["status"]
+    rows = k["rows"]
+    fleet = []
+    for n, r in sorted(f["runs"].items(), key=lambda kv: int(kv[0])):
+        g = sorted(set(r["gpus"]))
+        each = r["studies_per_container"][0]
+        fleet.append({"id": f"fleet-{n}", "method": f"{n} GPU container{'s' if int(n) > 1 else ''}, "
+                      + (f"{each} studies each" if int(n) > 1 else f"all {each} studies"),
+                      "role": "baseline" if n == "1" else "screen",
+                      "label": lab, "seconds": round(r["compute_s_max"], 2), "startup_s": round(r["startup_and_transfer_s"], 1),
+                      "hardware": "Modal", "gpu": f"{r['containers_seen']}x {' / '.join(g)}", "cores": None, "source": name})
+    return [
+        {"title": "One study, re-imaged and scored", "unit": k["unit"], "rows": [
+            {"id": "kernel-numpy", "method": "NumPy reference, same container", "role": "baseline", "label": lab,
+             "seconds": round(rows["numpy_reference"]["median_s"], 3), "hardware": "Modal GPU container, on its CPU",
+             "cores": None, "gpu": None, "note": f"median of {len(rows['numpy_reference']['samples_s'])}", "source": name},
+            {"id": "kernel-gpu", "method": "Preflight on 1 GPU", "role": "screen", "label": lab,
+             "seconds": round(rows["gpu"]["median_s"], 3), "hardware": "Modal", "cores": None, "gpu": k["gpu"]["model"],
+             "note": f"median of {len(rows['gpu']['samples_s'])}, exact parity", "source": name}]},
+        {"title": f"{f['studies']} studies on a fleet, compute only", "unit": f["note"], "rows": fleet}]
 
 
 def main(extra):
@@ -50,6 +79,10 @@ def main(extra):
         if not isinstance(d, dict):
             continue
         for rid, fields in rows_from(path, d):
+            if rid == "interim":
+                race["interim"] = fields
+                print(f"interim: {len(fields)} groups from {fields[0]['rows'][0]['source']}")
+                continue
             if rid == "workflow":
                 race["workflow"] = fields
                 print(f"workflow footnote: {fields['seconds']} s {fields['label']} from {fields['source']}")
