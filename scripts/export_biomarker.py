@@ -25,8 +25,9 @@ sys.path.insert(0, str(ROOT))  # python -I drops the cwd
 import numpy as np  # noqa: E402
 from scipy.spatial import cKDTree  # noqa: E402
 
+from audit.charville_v2 import _source_fingerprint  # noqa: E402
 from core import cohorts  # noqa: E402
-from core.grammar import RADII_UM, feature_names, grammar_v2  # noqa: E402
+from core.grammar import RADII_UM, feature_names, grammar_hash, grammar_v2  # noqa: E402
 from core.truth import truth_region_v2, truth_v2  # noqa: E402
 
 RESULT = ROOT / "results" / "charville-v2.json"
@@ -88,10 +89,15 @@ def _region(cells, p, xp, patient, t, j, r, ch, ptr, K, focal, names) -> dict:
 
 
 def build(data_dir: Path = cohorts.DATA_DIR) -> dict:
-    hit = json.loads(RESULT.read_text())["maxT"]["top_hits"][0]
+    saved = json.loads(RESULT.read_text())
+    hit = saved["maxT"]["top_hits"][0]
     cells = cohorts.load("charville", data_dir, include_channels=True)
     names = list(cells["type_names"])
     g = grammar_v2(names)
+    if _source_fingerprint(cells, cells.get("channel_stats")) != saved["source_fingerprint"]:
+        raise ValueError(f"source fingerprint of {data_dir} does not match {RESULT.name}; rerun audit.charville_v2 first")
+    if grammar_hash(g) != saved["grammar_v2_hash"]:
+        raise ValueError(f"grammar v2 hash does not match {RESULT.name}; rerun audit.charville_v2 first")
     name = f"{FOCAL}|{NEIGHBOUR}|{RADIUS}um|{CHANNEL}"
     col = feature_names(g).index(name)
     if hit["feature"] != name or hit["grammar_index"] != col:
@@ -117,7 +123,7 @@ def build(data_dir: Path = cohorts.DATA_DIR) -> dict:
     return {
         "schema": "preflight-biomarker/1", "source": "MEASURED", "exploratory": True, "already_seen": True,
         "label": LABEL,
-        "note": (f"Exploratory: outcomes already seen, KM cutoff chosen on the same cohort, no p-value. Corrected for all {json.loads(RESULT.read_text())['n_features_tested']:,} "
+        "note": (f"Exploratory: outcomes already seen, KM cutoff chosen on the same cohort, no p-value. Corrected for all {saved['n_features_tested']:,} "
                  f"tests, adjusted p = {hit['adjusted_p']:.3f}: not significant."),
         "feature": {"name": name, "z": round(hit["z"], 3), "adjusted_p": hit["adjusted_p"], "source": "results/charville-v2.json",
                     "definition": "per Tumor 5 cell, the mean cohort z-scored PD1 of macrophages within 100 µm; "

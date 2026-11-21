@@ -38,3 +38,34 @@ def test_near_tumour_uses_the_features_inclusive_100um_rule():
     assert eb.near_tumour(xy, tum, mac).tolist() == [False, True, True, False, False]
     assert not eb.near_tumour(xy, np.zeros(5, bool), mac).any()
 
+
+def _tiny_cells():
+    rng = np.random.default_rng(0)
+    n = 6
+    return {"patient_names": np.array(["a", "b"]), "region_names": np.array(["r0", "r1"]),
+            "time": np.array([1.0, 2.0]), "event": np.array([1, 0]), "strata": np.array([0, 0], np.int32),
+            "cell_type": np.array([0, 1, 2, 0, 1, 2], np.int32), "x": rng.random(n), "y": rng.random(n),
+            "region_id": np.array([0, 0, 0, 1, 1, 1]), "channels": rng.random((n, 3)).astype(np.float32),
+            "channel_stats": {"mean": [0.0], "std": [1.0]},
+            "type_names": np.array(["Tumor 5", "Macrophage", "Other"]), "channel_names": np.array(["PD1", "A", "B"])}
+
+
+def _saved(cells, **override):
+    from audit.charville_v2 import _source_fingerprint
+    from core.grammar import grammar_hash, grammar_v2
+    saved = {"source_fingerprint": _source_fingerprint(cells, cells["channel_stats"]),
+             "grammar_v2_hash": grammar_hash(grammar_v2(list(cells["type_names"]))),
+             "n_features_tested": 1, "maxT": {"top_hits": [{"feature": "nope", "grammar_index": -1}]}}
+    return {**saved, **override}
+
+
+def test_build_refuses_a_source_unlike_the_one_the_statistic_saw(tmp_path, monkeypatch):
+    import pytest
+    cells = _tiny_cells()
+    monkeypatch.setattr(eb.cohorts, "load", lambda *a, **k: cells)
+    for override, match in (({"source_fingerprint": "0" * 64}, "source fingerprint"),
+                            ({"grammar_v2_hash": "0" * 64}, "grammar")):
+        monkeypatch.setattr(eb, "RESULT", tmp_path / "v2.json")
+        eb.RESULT.write_text(json.dumps(_saved(cells, **override)))
+        with pytest.raises(ValueError, match=match):
+            eb.build(tmp_path)
