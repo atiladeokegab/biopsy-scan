@@ -64,7 +64,26 @@
         "basis": "each container x local wall (an upper bound: includes queueing)",
         "result": "bench/results/modal-design-20261121T185537Z.json"
       }
+    },
+    {
+      "utc": "2026-11-21T19:44Z",
+      "run": "modal-design 1000/stream, arms ['hybrid']",
+      "containers": 1,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 6.0,
+      "est_usd": 1.49,
+      "basis": "1800 s ceiling x per-arm $/h {'hybrid': 2.987568}",
+      "source_commit": "093c1eea6eda7e0433c0f506a95e54d8401ed79d",
+      "container_class": "all arms identical",
+      "actual": {
+        "modal_wall_s": 616.9,
+        "est_usd": 0.512,
+        "basis": "each container x local wall (an upper bound: includes queueing)",
+        "result": "bench/results/modal-design-20261121T194458Z.json"
+      }
     }
   ],
-  "running_total_usd": 7.474
+  "running_total_usd": 7.986
 }
