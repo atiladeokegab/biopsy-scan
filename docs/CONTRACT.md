@@ -104,7 +104,10 @@ One study with seed `seed` uses `rng = np.random.default_rng(seed)` in exactly t
 
 ## Reference re-imager (`core.reimage_ref`), the oracle
 
-`reimage(cells, design, seed) -> X float64 [P, C]`: one study. Rows follow the drawn patients
+`reimage(cells, design, seed, region_kernel=reimage_region) -> X float64 [P, C]`: one study. The
+wrapper owns patient and region sampling and the RNG order (above), and calls
+`region_kernel(nbr, xy, types, focal, K, crop=crop, M=M, u=u) -> (S, m)` once per sampled region in
+draw order, so numba and GPU kernels drop in with identical sampling. Rows follow the drawn patients
 (`patients=None`: patient index order). With `patients=None, regions_per_patient=None, fov_um=None,
 eps=0` it equals the truth layer `core.truth.truth(cells)` exactly (`np.array_equal`, NaN in the same places).
 
@@ -121,8 +124,11 @@ Neighbour lists (`core.truth.neighbours(xy)`, per region, local indices): `idx i
 
 ## Kernels (`reimage/`)
 
-`reimage.run(design, seeds) -> X float64 [S, P, C]`: study s is `core.reimage_ref.reimage(cells,
-design, seeds[s])`, same dtype, same NaN policy, matched cell for cell (same draws).
+`reimage.run(design, seeds) -> X float64 [S, P, C]`: the cohort comes in `design["cells"]` (the
+cells dict above) and the backend in optional `design["backend"]` in `{"numpy", "cpu", "gpu"}`
+(default `"numpy"`). Study s equals `core.reimage_ref.reimage(design["cells"], design, seeds[s],
+region_kernel=<backend's region kernel>)`: same dtype, same NaN policy, same draws, matched cell for
+cell. A batched backend may run many studies per launch, but it must reproduce these draws.
 
 ## Statistics (`stats/`)
 
@@ -133,5 +139,5 @@ design, seeds[s])`, same dtype, same NaN policy, matched cell for cell (same dra
 
 ## Check
 
-`make smoke` = `uv sync --dev` + `uv run pytest -q` over `core/ stats/ tests/ bench/`, tiny invented
+`make smoke` = `uv sync --dev` + `uv run pytest -q` over `core/ stats/ reimage/ bench/ tests/`, tiny invented
 fixtures, offline, no real data.
