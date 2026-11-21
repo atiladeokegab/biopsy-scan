@@ -7,7 +7,9 @@ Serves demo/ on 127.0.0.1, blocks every off-box request, waits for the page to f
 and writes demo/shots/first-screen-<w>x<h>.png. Exits 1 if the page shows an error or anything goes off-box.
 
 --video records 1280x720 from the moment the page is ready: the first screen for --hold seconds, then "Run the studies", until every timed race
-lane is done, plus --tail seconds (default 5). It writes demo.mp4, stills at 0, 10, 20 and 30 s cut from that file, and timeline.json
+lane is done, plus --tail seconds (default 10, so the 30 s still exists); then each --scroll target, smoothly
+scrolled into view and held 5 s. --cursor draws a pointer that glides to each click target first, so viewers
+see what is clicked. It writes demo.mp4, stills at 0, 10, 20 and 30 s cut from that file, and timeline.json
 to --out (keep video out of git). Needs ffmpeg and ffprobe on PATH.
 """
 import argparse
@@ -23,7 +25,6 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from playwright.sync_api import sync_playwright
 
 DEMO = Path(__file__).resolve().parents[1] / "demo"
 SIZES = [(1280, 720), (390, 844)]
@@ -36,6 +37,32 @@ RACE_DONE = """() => {
   return lanes.length > 0 && lanes.every((li) => li.classList.contains('done'));
 }"""
 STILLS_S = (0, 10, 20, 30)
+GLIDE_MS = 900
+# A drawn pointer (headless Chromium shows none), eased on requestAnimationFrame so it moves smoothly however
+# slow the round trips are. Arg: [x, y, ms]; the first call draws it at (x, y) when ms is 0.
+CURSOR_JS = """([x, y, ms]) => new Promise((done) => {
+  let c = document.getElementById('shots-cursor');
+  if (!c) {
+    c = document.createElement('div');
+    c.id = 'shots-cursor';
+    c.dataset.x = x; c.dataset.y = y;
+    c.style.cssText = 'position:fixed;left:0;top:0;z-index:2147483647;pointer-events:none';
+    c.innerHTML = '<svg width="22" height="30" viewBox="0 0 22 30"><path d="M2 2 L2 24 L8 18 L12 28 L16 26 L12 16 L20 16 Z" '
+      + 'fill="#fff" stroke="#000" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+    document.body.appendChild(c);
+  }
+  const x0 = +c.dataset.x, y0 = +c.dataset.y, t0 = performance.now();
+  const ease = (u) => (u < 0.5 ? 2 * u * u : 1 - (-2 * u + 2) ** 2 / 2);
+  const f = (now) => {
+    const u = ms > 0 ? Math.min(1, (now - t0) / ms) : 1, e = ease(u);
+    const cx = x0 + (x - x0) * e, cy = y0 + (y - y0) * e;
+    c.style.transform = `translate(${cx - 2}px, ${cy - 2}px)`;
+    c.dataset.x = cx; c.dataset.y = cy;
+    if (u < 1) requestAnimationFrame(f); else done();
+  };
+  requestAnimationFrame(f);
+})"""
+SCROLL_DWELL_S = 5.0
 
 
 class _Quiet(SimpleHTTPRequestHandler):
@@ -68,7 +95,37 @@ def _shots(browser, url: str, out: Path, route) -> list[str]:
     return problems
 
 
-def _video(browser, url: str, out: Path, route, hold_s: float, tail_s: float) -> list[str]:
+def _hold(page, seconds: float) -> None:
+    # The recording only gets a frame when the page paints, and it dropped the race's final repaint (MEASURED:
+    # 2.87 s on video, 2.88 s in the DOM); a screenshot forces a fresh frame, so take one each half second.
+    end = time.monotonic() + seconds
+    while time.monotonic() < end:
+        page.screenshot()
+        page.wait_for_timeout(500)
+
+
+def _scroll(page, selectors: list[str], dwell_s: float) -> list[str]:
+    problems = []
+    for sel in selectors:
+        found = page.evaluate("(s) => { const e = document.querySelector(s); "
+                              "if (e) e.scrollIntoView({behavior: 'smooth', block: 'start'}); return !!e; }", sel)
+        if not found:
+            problems.append(f"scroll target not found: {sel}")
+            continue
+        _hold(page, dwell_s)
+    return problems
+
+
+def _click(page, selector: str, cursor: bool) -> None:
+    target = page.locator(selector)
+    if cursor:
+        b = target.bounding_box()
+        page.evaluate(CURSOR_JS, [round(b["x"] + b["width"] / 2), round(b["y"] + b["height"] / 2), GLIDE_MS])
+        page.wait_for_timeout(300)  # let the eye land before the click
+    target.click()
+
+
+def _video(browser, url: str, out: Path, route, hold_s: float, tail_s: float, scroll: list[str], cursor: bool) -> list[str]:
     w, h = SIZES[0]
     with tempfile.TemporaryDirectory() as tmp:
         ctx = browser.new_context(viewport={"width": w, "height": h}, record_video_dir=tmp,
@@ -80,17 +137,15 @@ def _video(browser, url: str, out: Path, route, hold_s: float, tail_s: float) ->
         page.wait_for_function(READY, timeout=30_000)
         ready_s = time.monotonic() - t0  # the video is cut to start here, so it never opens on a blank page
         problems = _page_problems(page, "video")
+        if cursor:
+            page.evaluate(CURSOR_JS, [w // 2, round(h * 0.6), 0])
         page.wait_for_timeout(hold_s * 1000)
+        _click(page, "#run", cursor)
         click_s = time.monotonic() - t0 - ready_s
-        page.locator("#run").click()
         page.wait_for_function(RACE_DONE, timeout=60_000)
         done_s = time.monotonic() - t0 - ready_s
-        # The recording only gets a frame when the page paints, and it dropped the race's final repaint (MEASURED:
-        # 2.87 s on video, 2.88 s in the DOM); a screenshot forces a fresh frame, so take one each half second.
-        end = time.monotonic() + tail_s
-        while time.monotonic() < end:
-            page.screenshot()
-            page.wait_for_timeout(500)
+        _hold(page, tail_s)
+        problems += _scroll(page, scroll, SCROLL_DWELL_S)
         problems += _page_problems(page, "video, after the race")
         webm = Path(page.video.path())
         ctx.close()  # finalises the recording
@@ -116,14 +171,24 @@ def _video(browser, url: str, out: Path, route, hold_s: float, tail_s: float) ->
     return problems
 
 
-def main(argv=None) -> int:
+def parse_args(argv=None) -> argparse.Namespace:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--demo", type=Path, default=DEMO, help="the demo folder to serve (default: this repo's demo/)")
     ap.add_argument("--out", type=Path, default=None, help="output folder (default: <demo>/shots)")
     ap.add_argument("--video", action="store_true", help="record the backup video instead of the first-screen shots")
     ap.add_argument("--hold", type=float, default=10.0, help="seconds on the first screen before Run (video only)")
-    ap.add_argument("--tail", type=float, default=5.0, help="seconds after the race finishes (video only)")
-    a = ap.parse_args(argv)
+    ap.add_argument("--tail", type=float, default=10.0, help="seconds after the race finishes (video only)")
+    ap.add_argument("--scroll", action="append", default=[], metavar="SELECTOR",
+                    help="after the tail, scroll this element into view and hold it (video only; repeatable, in order)")
+    ap.add_argument("--cursor", action="store_true",
+                    help="draw a pointer that glides to each click target before clicking (video only)")
+    return ap.parse_args(argv)
+
+
+def main(argv=None) -> int:
+    from playwright.sync_api import sync_playwright  # here, so tests import this module without playwright
+
+    a = parse_args(argv)
     out = a.out or a.demo / "shots"
     out.mkdir(parents=True, exist_ok=True)
     server = ThreadingHTTPServer(("127.0.0.1", 0), partial(_Quiet, directory=str(a.demo)))
@@ -144,7 +209,7 @@ def main(argv=None) -> int:
             # froze the race panel (MEASURED: the bars never filled in the recording), so video mode goes without.
             args = [] if a.video else ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"]
             browser = pw.chromium.launch(args=args)
-            problems += _video(browser, url, out, route, a.hold, a.tail) if a.video else _shots(browser, url, out, route)
+            problems += _video(browser, url, out, route, a.hold, a.tail, a.scroll, a.cursor) if a.video else _shots(browser, url, out, route)
             browser.close()
     finally:
         server.shutdown()

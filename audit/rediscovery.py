@@ -83,6 +83,9 @@ POWER_SIMS, POWER_SEED = 400, 20261121
 LABEL = "exploratory: outcomes already seen (Punovuori et al., Cell 2024); internal held-out split"
 # Charville's strongest v2 feature (#47: z 3.96, maxT-adjusted p 0.098, MEASURED, exploratory). Its last field is a marker.
 CHARVILLE_TOP_HIT = "Tumor 5|Macrophage|100um|PD1"
+CHARVILLE_TOP_HIT_SOURCE = {"source_pr": 47, "source_result": "results/charville-v2.json",
+                            "statistic": "maxT over per-feature Cox score z (stats.reference.score), within-stratum "
+                                         "permutation, 9999 resamples: z 3.957, maxT-adjusted p 0.0981"}
 GRAMMAR_STATS = ("fraction", "enrichment")  # core.grammar.STATS: v1 columns end in a statistic, v2 columns in a marker
 
 
@@ -388,7 +391,7 @@ def main(argv=None) -> int:
     locked = score_locked(load("upmc", split="locked"), RULE, RULE_SHA256, a.events)
     result = {"cohort": "upmc", "code_sha": sha, "rule_sha256": RULE_SHA256, "manifest_sha256": manifest_sha,
               "opening_record": marker.name, "label": LABEL, "discovery": discovery, "locked": locked,
-              "charville_top_hit": upmc_marker_check(CHARVILLE_TOP_HIT)}
+              "charville_top_hit": {**upmc_marker_check(CHARVILLE_TOP_HIT), **CHARVILLE_TOP_HIT_SOURCE}}
     text = json.dumps(result, indent=1, allow_nan=False) + "\n"
     with out:
         out.write(text)
