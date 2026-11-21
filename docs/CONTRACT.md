@@ -40,7 +40,7 @@ Patient index p in `0..P-1`, region index r in `0..R-1`, cell index in `0..n-1`.
 | `patient_names` | list[str] [P] | case numbers |
 
 `cells` (the reimage input) is this dict; only `cell_type, x, y, region_id, patient_of_region` are
-required. Only patients with a verified identity, an endpoint and an unambiguous stratum are in it
+required (without `type_names`, K = max type + 1 and every type is focal). Only patients with a verified identity, an endpoint and an unambiguous stratum are in it
 (one aligned patient mask; their regions and cells go with them).
 
 | | UPMC | Charville |
