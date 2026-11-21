@@ -1,4 +1,4 @@
-"""The batched design point on Modal: four arms, same container class, same studies (bench/design_batch.py).
+"""The batched design point on Modal: each arm in its own container of one class, same studies (bench/design_batch.py).
 
     DATA_DIR=<dir> MODAL_PROFILE=fhl-08 uv run --with modal modal run bench/modal_design.py --studies 20
     ... --arms hybrid --timeout-s 1800 --compare-with bench/results/modal-design-<utc>.json
@@ -29,7 +29,7 @@ REPO = Path(__file__).resolve().parents[1]
 APP_DIR, DATA_DIR, PIN = "/root/preflight", "/data", "/root/pins/atlas_simulation.py"
 LOCAL_DATA = Path(os.environ.get("DATA_DIR", REPO / "data"))
 GPU, CORES, MEMORY_MIB = "A100", 8.0, 65536
-ARMS = ("lab", "numba", "gpu", "hybrid")
+ARMS = ("lab", "numba", "gpu", "hybrid", "fused")
 CLASS = f"Modal {GPU} + {CORES:g} cores + {MEMORY_MIB // 1024} GiB"
 RATES = {"A100": 2.0988, "cpu_core": 0.04716, "memory_gib": 0.007992,
          "source": "bench/results/modal-spend.json on modal-gpu (modal.com/pricing read 2026-11-21T17:36Z)"}
