@@ -279,7 +279,7 @@ Expected 50–200× over 8 cores and 10–30× over a 64-core node. These are es
 | Reference statistics | `stats/` | @atiladeokegab [Atlas] | #4 |
 | Re-imaging kernel | `reimage/` | @atiladeokegab [Prometheus] | #2 |
 | Atlas | `atlas/` | @atiladeokegab [Atlas] | #5 |
-| Benchmarks | `bench/` | @atiladeokegab [Hermes] | #3 |
+| Benchmarks | `bench/` | @atiladeokegab [Hermes], pool | #3, #67 |
 | Real-data audit | `audit/` | @atiladeokegab [Hephaestus] | #6 |
 | Demo and deck | `demo/` | @atiladeokegab [Zeus] | #7 |
 | Tests | `tests/` | @atiladeokegab [Prometheus] | #8 |
