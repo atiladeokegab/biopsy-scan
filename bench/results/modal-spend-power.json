@@ -1,0 +1,39 @@
+{
+  "workspace_profile": "fhl-08",
+  "cap_usd": 40,
+  "note": "build-11's power-at-scale runs, in build-modal's bench/results/modal-spend.json format; kept apart until #75 lands so the two branches do not collide",
+  "rates_usd_per_hour": {
+    "A100": 2.5,
+    "cpu_core": 0.047,
+    "memory_gib": 0.008,
+    "source": "build-modal's rates in modal-spend.json (modal.com/pricing as known to that builder; conservative A100 80GB rate)"
+  },
+  "container_usd_per_hour_A100": 3.13,
+  "entries": [
+    {
+      "utc": "2026-11-21T17:21Z",
+      "run": "gpu/power_at_scale.py --patients 40 --gpu A100 (reproduction of vs-schoenfeld-300 P=40)",
+      "containers": 1,
+      "est_hours": 0.5,
+      "est_usd": 1.57,
+      "basis": "1 x A100 + 8 cores + 32 GiB, half an hour ceiling",
+      "running_total_usd": 1.57,
+      "actual": {
+        "modal_wall_s": 226.1,
+        "in_function_s": 221.3,
+        "est_usd": 0.2,
+        "basis": "226.1 s x $3.13/h; image build time not included",
+        "result": "bench/results/modal-power-a100-20261121T172533Z.json"
+      }
+    },
+    {
+      "utc": "2026-11-21T17:36Z",
+      "run": "gpu/power_at_scale.py --patients 400,500,600,700,800,1000 --gpu A100-40GB",
+      "containers": 6,
+      "est_hours": 4.3,
+      "est_usd": 13.46,
+      "basis": "6 containers; per point ~209 s at P=40 scaled with the local P=40..300 runtimes (about 0.75 x linear in patients), summed: ~4.3 container-hours x $3.13/h",
+      "running_total_usd": 15.03
+    }
+  ]
+}
