@@ -1,0 +1,27 @@
+{
+  "workspace_profile": "fhl-08",
+  "rates_usd_per_hour": {
+    "cpu_core": 0.04716,
+    "memory_gib": 0.007992,
+    "source": "copied from origin/modal-gpu bench/results/modal-spend.json (modal.com/pricing read 2026-11-21T17:36Z); preemptible default"
+  },
+  "entries": [
+    {
+      "utc": "2026-11-21T18:03Z",
+      "run": "modal-quiet-cpu numba vs numpy, 8 cores, 16 GiB, no GPU",
+      "app": "ap-XEwtGfiGVY39U04T7w2CPi",
+      "containers": 1,
+      "cap_usd": 3.0,
+      "est_hours": 0.75,
+      "est_usd": 0.38,
+      "basis": "8 cores + 16 GiB at the 2700 s function-timeout ceiling",
+      "running_total_usd": 0.047,
+      "note": "running total covers this branch only; merge with modal-gpu's file by uniting the entries arrays",
+      "actual": {
+        "modal_wall_s": 332,
+        "est_usd": 0.047,
+        "result": "bench/results/modal-quiet-cpu-20261121T180327Z.json"
+      }
+    }
+  ]
+}
