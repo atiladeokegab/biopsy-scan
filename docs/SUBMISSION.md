@@ -13,7 +13,7 @@ SoTA Scientific Parallelism Hackathon, King's Cross, 21-22 Nov 2026. Requirement
 
 ## Format
 
-A live 2-3 minute pitch to the judges, with the demo video as backup if the live demo fails.
+A live 5-minute pitch to the judges, including a live demo of about 60 s, with the demo video as backup.
 
 ## Checklist
 
@@ -29,7 +29,7 @@ A live 2-3 minute pitch to the judges, with the demo video as backup if the live
 
 1. Open the page.
 2. Set patients and regions per patient.
-3. Press "Run the studies".
+3. Press "Run the studies". The race plays only on this press; changing the design clears the lanes (#48).
 4. Let the CPU-vs-GPU race finish.
 5. Point at the "our cohort" marker on the chart.
 
