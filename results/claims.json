@@ -1,6 +1,6 @@
 {
  "schema": "preflight-claim-ledger/1",
- "about": "One entry per headline claim. tests/test_claims.py recomputes each named value from its committed source file and fails on any drift. Each `quotes` entry binds the claim to its published text: `text` is filled with the rendered values ({name}, {label}) and must appear verbatim in `file`; a demo data quote (`path` + `value`) must equal the source value exactly. scripts/check_claims.py also scans README.md, docs/JUDGING.md, docs/SUBMISSION.md and the demo page for stale wording. Only claims whose source is on integration are listed; add new results as new entries when they merge.",
+ "about": "One entry per headline claim. tests/test_claims.py recomputes each named value from its committed source file and fails on any drift. Each `quotes` entry binds the claim to its published text: `text` is filled with the rendered values ({name}, {label}) and must appear verbatim in `file`; a demo data quote (`path` + `value`) must equal the source value exactly, numbers in type and value. scripts/check_claims.py also scans README.md, docs/JUDGING.md, docs/SUBMISSION.md and the demo page for stale wording. Only claims whose source is on integration are listed; add new results as new entries when they merge.",
  "rules": {
   "fixed:N": "format the number with N decimals",
   "pct:N": "multiply by 100 and format with N decimals",
@@ -14,7 +14,9 @@
   "distinct": "[list path, key]: the number of distinct values of key across the list",
   "len": "the length of the list at the path",
   "sci:N": "scientific notation with N decimals (2.3e-15)",
-  "spct:N": "like pct:N with an explicit sign (+0.2, -0.7)"
+  "spct:N": "like pct:N with an explicit sign (+0.2, -0.7)",
+  "lower": "the string in lower case",
+  "re:PATTERN": "the first group of PATTERN found in the string"
  },
  "claims": [
   {
@@ -389,16 +391,40 @@
      "path": "points[patients=200].sim_n",
      "rule": "eq",
      "expect": "300"
+    },
+    {
+     "name": "patients",
+     "path": "points[patients=200].patients",
+     "rule": "eq",
+     "expect": "200"
+    },
+    {
+     "name": "hr",
+     "path": "hr_per_sd",
+     "rule": "fixed:1",
+     "expect": "2.0"
+    },
+    {
+     "name": "m",
+     "path": "features_m",
+     "rule": "eq",
+     "expect": "630"
+    },
+    {
+     "name": "alpha",
+     "path": "alpha",
+     "rule": "fixed:2",
+     "expect": "0.05"
     }
    ],
    "quotes": [
     {
      "file": "README.md",
-     "text": "Schoenfeld formula predicts `{analytic}%` (**{analytic_label}**); cell-by-cell real-tissue simulation gives `{sim}%`, 95% CI `[{lo}%, {hi}%]` over `{n}` studies (**{label}**)"
+     "text": "(`n = {patients}`, `HR = {hr}/SD`, `M = {m}`, `alpha = {alpha}`) | Schoenfeld formula predicts `{analytic}%` (**{analytic_label}**); cell-by-cell real-tissue simulation gives `{sim}%`, 95% CI `[{lo}%, {hi}%]` over `{n}` studies (**{label}**)"
     },
     {
      "file": "docs/JUDGING.md",
-     "text": "At 200 patients it says {analytic0}%; simulation on real tissue gives {sim0}% (95% CI {lo0} to {hi0}%)[^60] | `bench/results/vs-schoenfeld-300.json` (#53) | {label} ({n} studies per point) |"
+     "text": "At {patients} patients it says {analytic0}%; simulation on real tissue gives {sim0}% (95% CI {lo0} to {hi0}%)[^60] | `bench/results/vs-schoenfeld-300.json` (#53) | {label} ({n} studies per point) |"
     },
     {
      "file": "demo/data/claims.json",
@@ -434,6 +460,11 @@
      "file": "demo/data/claims.json",
      "path": "power.formula_label",
      "value": "analytic_label"
+    },
+    {
+     "file": "demo/data/claims.json",
+     "path": "power.patients",
+     "value": "patients"
     }
    ]
   },
@@ -666,6 +697,24 @@
      "path": "charville_top_hit.status",
      "rule": "eq",
      "expect": "NOT TESTABLE"
+    },
+    {
+     "name": "charville_testable",
+     "path": "charville_top_hit.status",
+     "rule": "lower",
+     "expect": "not testable"
+    },
+    {
+     "name": "charville_marker",
+     "path": "charville_top_hit.reason",
+     "rule": "re:absent \\((\\w+)\\)",
+     "expect": "PD1"
+    },
+    {
+     "name": "charville_feature",
+     "path": "charville_top_hit.feature",
+     "rule": "eq",
+     "expect": "Tumor 5|Macrophage|100um|PD1"
     }
    ],
    "quotes": [
@@ -684,6 +733,14 @@
     {
      "file": "docs/SUBMISSION.md",
      "text": "one pre-registered locked test (R-16), which is {label} (underpowered) and inconclusive: `results/upmc-rediscovery.json`."
+    },
+    {
+     "file": "README.md",
+     "text": "The Charville top hit is {charville_testable} on UPMC ({charville_marker} absent)."
+    },
+    {
+     "file": "docs/JUDGING.md",
+     "text": "The Charville top hit is {charville_testable} on UPMC ({charville_marker} absent)."
     }
    ]
   },

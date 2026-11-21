@@ -43,6 +43,10 @@ def render(value, rule):
         return f"{value:,.{int(n)}f}" if n else f"{value:,}"
     if kind == "spct":
         return f"{100 * value:+.{int(n)}f}"
+    if kind == "lower":
+        return value.lower()
+    if kind == "re":  # the first group of the pattern after "re:"
+        return re.search(n, value).group(1)
     if kind == "sci":
         return f"{value:.{int(n)}e}"
     if kind == "word":
@@ -100,7 +104,13 @@ def drift(root=ROOT):
             else:
                 raw, shown = vals[q["value"]]
                 got = lookup(json.loads(doc), q["path"])
-                if got != raw and str(got) != shown:
+                if isinstance(raw, (int, float)):  # numbers (and booleans) must match in type, and equal the source
+                    rule = next((v["rule"] for v in c["values"] if v["name"] == q["value"]), "eq")
+                    rounded = rule.startswith("fixed:") and got == round(raw, int(rule[6:]))  # the published rounding
+                    ok = type(got) is type(raw) and (got == raw or rounded)
+                else:  # a string may be shown as stored or as rendered (a label's first word)
+                    ok = isinstance(got, str) and got in (raw, shown)
+                if not ok:
                     out.append((c["id"], f"{q['file']}:{q['path']}", shown, str(got)))
     return out
 
