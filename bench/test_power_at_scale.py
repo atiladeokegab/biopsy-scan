@@ -48,6 +48,21 @@ def test_committed_result_is_a_labelled_estimate_with_its_own_answer():
     assert res["answer"] == answer(res["points"], res["answer"]["missing_patients"])  # recomputed, never typed in
 
 
+@pytest.mark.skipif(not RESULT.exists(), reason="power-at-scale.json not built yet")
+def test_committed_result_is_exactly_what_its_raw_modal_runs_rebuild():
+    from bench.power_at_scale import build
+
+    res = json.loads(RESULT.read_text())
+    names = {p["source"] for p in res["points"]} | {r for p in res["points"] for r in p.get("replicated_by", [])}
+    names |= {f["source"] for f in res["failed_points"] if "source" in f}
+    runs = []
+    for name in sorted(names - {"bench/results/vs-schoenfeld-300.json"}):
+        run = json.loads((RESULT.parents[2] / name).read_text())
+        run["_file"] = Path(name).name
+        runs.append(run)
+    assert runs and build(runs, res["planned_patients"]) == res
+
+
 REAL = RESULT.parent / "modal-power-a100-40gb-20261121T175238Z.json"  # a real producer run: P=40 on the A100
 
 
