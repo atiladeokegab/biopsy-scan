@@ -1,0 +1,19 @@
+[project]
+name = "can-your-study-find-it"
+version = "0.1.0"
+description = "Re-image simulated spatial-biomarker studies from real CODEX tissue to see which designs can find a survival-linked pattern."
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "pandas>=2.1",
+]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["core", "tests"]
