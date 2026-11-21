@@ -61,6 +61,13 @@
       "est_usd": 0.35,
       "basis": "0.11 GPU-h x $3.13/h",
       "running_total_usd": 7.9
+    },
+    {
+      "utc": "2026-11-21T17:36Z",
+      "run": "GPU comparison A100/H100, 1000 studies",
+      "est_usd": 4.28,
+      "basis": "0.93 GPU-h x $4.58/h",
+      "running_total_usd": 12.18
     }
   ],
   "container_usd_per_hour_H100": 4.58

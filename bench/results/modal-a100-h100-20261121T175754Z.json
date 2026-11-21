@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "runner": "modal",
+  "gpu_requested": "A100-H100",
+  "commit": "e80902b787ee71e0118100e79f9aab37ede62019",
+  "dirty": false,
+  "launched_utc": "2026-11-21T17:36:52Z",
+  "utc": "20261121T175754Z",
+  "status": "MEASURED",
+  "kind": "gpu_vs",
+  "studies": 1000,
+  "blocks": 4,
+  "seeds": [
+    0,
+    999
+  ],
+  "design": "bench/real_cpu.py DESIGN on Charville, per-study GPU kernel (reimage.run)",
+  "rows": {
+    "A100": {
+      "compute_s": [
+        172.008969074,
+        185.57462718699998,
+        192.462187704,
+        192.650904172
+      ],
+      "startup_and_transfer_s": [
+        16.172469542878957,
+        12.067012489887333,
+        11.705997006881574,
+        142.9979823842047
+      ],
+      "gpu": {
+        "model": "NVIDIA A100-SXM4-40GB",
+        "memory": "40960 MiB",
+        "driver": "610.57.04",
+        "count": 1,
+        "cuda_driver_api": null,
+        "cuda_runtime": "12.4",
+        "all": [
+          "NVIDIA A100-SXM4-40GB, 40960 MiB, 610.57.04"
+        ],
+        "modal_task_id": "ta-01M7ZKPXKZQ89F5VZ5BTQREA8R"
+      },
+      "total_compute_s": 742.6966881369999,
+      "s_per_study": 0.742696688137,
+      "container_usd_per_hour": 2.731824,
+      "usd_per_1000_studies": 0.563587954825881
+    },
+    "H100": {
+      "compute_s": [
+        207.125670272,
+        162.821415897,
+        196.146787097,
+        180.525914194
+      ],
+      "startup_and_transfer_s": [
+        13.371315285910555,
+        12.836409394236284,
+        15.3315184017751,
+        154.72943313221086
+      ],
+      "gpu": {
+        "model": "NVIDIA H100 80GB HBM3",
+        "memory": "81559 MiB",
+        "driver": "620.70.06",
+        "count": 1,
+        "cuda_driver_api": null,
+        "cuda_runtime": "12.4",
+        "all": [
+          "NVIDIA H100 80GB HBM3, 81559 MiB, 620.70.06"
+        ],
+        "modal_task_id": "ta-01M7ZKTQAYRJWG1JS7MCVB4BNR"
+      },
+      "total_compute_s": 746.61978746,
+      "s_per_study": 0.74661978746,
+      "container_usd_per_hour": 4.582224,
+      "usd_per_1000_studies": 0.9503275302705864
+    }
+  },
+  "bit_identical_across_gpus": true,
+  "fastest": "A100",
+  "cheapest_per_study": "A100",
+  "speed_ratio": 1.0052822361882896,
+  "rates_source": "bench/results/modal-spend.json rates_usd_per_hour",
+  "timing": "compute_s is in-container, after load, adjacency and JIT warm-up; start-up reported apart"
+}
