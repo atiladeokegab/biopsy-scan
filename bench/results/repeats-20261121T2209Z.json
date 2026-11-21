@@ -1,0 +1,603 @@
+{
+  "status": "MEASURED timing; parity checked against #113's four-arm run, not within the run",
+  "labels": {
+    "compute": "MEASURED",
+    "outcomes": "SYNTHETIC (atlas/simulation.py at 79a7792)"
+  },
+  "harness": {
+    "pr": 120,
+    "branch": "reimage-fast-b9",
+    "commit": "0b27ea1f79db7d45a7be0c35b2866f0dce338d3d",
+    "previous_commit": "a29f1b7bb3c1f0d747121b52c04b285aa1bd6d93",
+    "runner": "bench/modal_design.py (unchanged, run from a detached checkout)"
+  },
+  "parity": {
+    "prior": {
+      "file": "modal-design-20261121T194458Z.json",
+      "sha256": "2edfce37ab1c6a04550ab393f210a7504ca455b27b98503cbe098e07ff500326",
+      "source_commit": "093c1eea6eda7e0433c0f506a95e54d8401ed79d",
+      "where": "reimage-fast-b9 (#120), from #113"
+    },
+    "rule": "each repeat: X sha256 equal to every prior arm on every shared study (same seeds); lab p exactly equal to the prior lab arm's; fused maxT within 1e-9 of the prior numba arm's. Single-arm runs have no in-run partner, so the runner marks them FAILED with parity 'one arm'; this check replaces that."
+  },
+  "scope": "wall per evaluated study = studies_wall_s / evaluated_studies inside the container (re-imaging and scoring; excludes data load, outcome prep, adjacency and warm-up), as the race reports it. lab: 8 single-thread workers, cKDTree + 1,000-shuffle permutation test, null + alternative studies. fused: 8 workers, fused Numba re-imaging + Cox screen, calibration + null + alternative studies.",
+  "container_class": "Modal A100 + 8 cores + 64 GiB, one fresh container per repeat",
+  "headline": "Over 3 independent repeats each: lab 1.071 s/study (range 1.063-1.261), fused 0.0424 s/study (range 0.0422-0.0425); ratio 25.2x (range 25.0-29.9x), all at #120 0b27ea1. Fused at a29f1b7 (before the crop fix): 0.0417 s/study (range 0.0399-0.0422, 3 repeats).",
+  "summary": {
+    "lab": {
+      "n": 3,
+      "median": 1.0706973339399999,
+      "min": 1.063014507845,
+      "max": 1.261317426475
+    },
+    "fused": {
+      "n": 3,
+      "median": 0.042439341063,
+      "min": 0.042226394703666674,
+      "max": 0.04252321751299999
+    },
+    "fused_a29f1b7": {
+      "n": 3,
+      "median": 0.041718803611666674,
+      "min": 0.03989763075066668,
+      "max": 0.04223248546366666
+    },
+    "ratio": {
+      "median": 25.228886856433043,
+      "min": 24.998449553353304,
+      "max": 29.870355622983723
+    }
+  },
+  "repeats": {
+    "lab": [
+      {
+        "file": "lab-0b27ea1-1-modal-design-20261121T220939Z.json",
+        "file_sha256": "12b7563f2c1ab52db501a648cd5c47532c504a45468268bb94171f06807d670c",
+        "source_commit": "0b27ea1f79db7d45a7be0c35b2866f0dce338d3d",
+        "runner_status": "FAILED",
+        "runner_parity": {
+          "all": false,
+          "this_run": "one arm"
+        },
+        "runner_status_note": "FAILED: single-arm, no in-run parity",
+        "workers": 8,
+        "evaluated_studies": 200,
+        "studies_wall_s": 212.602901569,
+        "compute_wall_s": 212.602901569,
+        "wall_per_study_s": 1.063014507845,
+        "end_to_end_in_container_s": 239.210132024,
+        "warm_s": null,
+        "host": {
+          "cpu_count": 24,
+          "affinity_size": 24,
+          "load_average_start": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "modal_task_id": "ta-01M802HA9ATBNTGH0RYSMEK9BR",
+          "gpu": "NVIDIA A100-SXM4-40GB, 40960 MiB, 610.57.04",
+          "thread_environment": {
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1",
+            "MKL_NUM_THREADS": "1",
+            "NUMBA_NUM_THREADS": "1",
+            "NUMBA_THREADING_LAYER": "workqueue"
+          },
+          "load_average_end": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "modal": {
+          "app": "preflight-design-batch",
+          "gpu": "A100",
+          "cpu": 8.0,
+          "memory_mib": 65536,
+          "started_utc": "2026-11-21T22:09:39.856603+00:00",
+          "finished_utc": "2026-11-21T22:13:58.750805+00:00",
+          "wall_s": 258.894202,
+          "note": "wall_s includes container start and image pull; stage times are inside the container"
+        },
+        "parity_vs_prior": {
+          "against": "modal-design-20261121T194458Z.json",
+          "x_compared": 800,
+          "x_mismatched": 0,
+          "statistic": "p, exact",
+          "statistic_compared": 200,
+          "statistic_max_rel_diff": 0.0,
+          "all": true
+        }
+      },
+      {
+        "file": "lab-0b27ea1-2-modal-design-20261121T221407Z.json",
+        "file_sha256": "f00b903683c469af9bca5549b8d64ebf37fb4a79b2748939c4e6f793c700b13a",
+        "source_commit": "0b27ea1f79db7d45a7be0c35b2866f0dce338d3d",
+        "runner_status": "FAILED",
+        "runner_parity": {
+          "all": false,
+          "this_run": "one arm"
+        },
+        "runner_status_note": "FAILED: single-arm, no in-run parity",
+        "workers": 8,
+        "evaluated_studies": 200,
+        "studies_wall_s": 214.139466788,
+        "compute_wall_s": 214.139466788,
+        "wall_per_study_s": 1.0706973339399999,
+        "end_to_end_in_container_s": 240.412140229,
+        "warm_s": null,
+        "host": {
+          "cpu_count": 24,
+          "affinity_size": 24,
+          "load_average_start": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "modal_task_id": "ta-01M802S1GQRBQZ70F2K5MTDDSR",
+          "gpu": "NVIDIA A100-SXM4-40GB, 40960 MiB, 610.57.04",
+          "thread_environment": {
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1",
+            "MKL_NUM_THREADS": "1",
+            "NUMBA_NUM_THREADS": "1",
+            "NUMBA_THREADING_LAYER": "workqueue"
+          },
+          "load_average_end": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "modal": {
+          "app": "preflight-design-batch",
+          "gpu": "A100",
+          "cpu": 8.0,
+          "memory_mib": 65536,
+          "started_utc": "2026-11-21T22:14:07.096061+00:00",
+          "finished_utc": "2026-11-21T22:18:12.301453+00:00",
+          "wall_s": 245.205392,
+          "note": "wall_s includes container start and image pull; stage times are inside the container"
+        },
+        "parity_vs_prior": {
+          "against": "modal-design-20261121T194458Z.json",
+          "x_compared": 800,
+          "x_mismatched": 0,
+          "statistic": "p, exact",
+          "statistic_compared": 200,
+          "statistic_max_rel_diff": 0.0,
+          "all": true
+        }
+      },
+      {
+        "file": "lab-0b27ea1-3-modal-design-20261121T221820Z.json",
+        "file_sha256": "ba94e6c57e2f39d963d8f4b0a19e44394509ec4d7b54e4c9dc9823d58188fec8",
+        "source_commit": "0b27ea1f79db7d45a7be0c35b2866f0dce338d3d",
+        "runner_status": "FAILED",
+        "runner_parity": {
+          "all": false,
+          "this_run": "one arm"
+        },
+        "runner_status_note": "FAILED: single-arm, no in-run parity",
+        "workers": 8,
+        "evaluated_studies": 200,
+        "studies_wall_s": 252.263485295,
+        "compute_wall_s": 252.263485295,
+        "wall_per_study_s": 1.261317426475,
+        "end_to_end_in_container_s": 278.836983615,
+        "warm_s": null,
+        "host": {
+          "cpu_count": 24,
+          "affinity_size": 24,
+          "load_average_start": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "modal_task_id": "ta-01M8030RJ6QWVHJ641R4KHYCCR",
+          "gpu": "NVIDIA A100-SXM4-40GB, 40960 MiB, 620.70.06",
+          "thread_environment": {
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1",
+            "MKL_NUM_THREADS": "1",
+            "NUMBA_NUM_THREADS": "1",
+            "NUMBA_THREADING_LAYER": "workqueue"
+          },
+          "load_average_end": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "modal": {
+          "app": "preflight-design-batch",
+          "gpu": "A100",
+          "cpu": 8.0,
+          "memory_mib": 65536,
+          "started_utc": "2026-11-21T22:18:20.076392+00:00",
+          "finished_utc": "2026-11-21T22:23:03.889300+00:00",
+          "wall_s": 283.812908,
+          "note": "wall_s includes container start and image pull; stage times are inside the container"
+        },
+        "parity_vs_prior": {
+          "against": "modal-design-20261121T194458Z.json",
+          "x_compared": 800,
+          "x_mismatched": 0,
+          "statistic": "p, exact",
+          "statistic_compared": 200,
+          "statistic_max_rel_diff": 0.0,
+          "all": true
+        }
+      }
+    ],
+    "fused": [
+      {
+        "file": "fused-0b27ea1-1-modal-design-20261121T220939Z.json",
+        "file_sha256": "a3f1b7ced8249438f53316af302776740cb9bd0986369279dfe1e710c93f51cf",
+        "source_commit": "0b27ea1f79db7d45a7be0c35b2866f0dce338d3d",
+        "runner_status": "FAILED",
+        "runner_parity": {
+          "all": false,
+          "this_run": "one arm"
+        },
+        "runner_status_note": "FAILED: single-arm, no in-run parity",
+        "workers": 8,
+        "evaluated_studies": 3000,
+        "studies_wall_s": 127.56965253899997,
+        "compute_wall_s": 127.56965253899997,
+        "wall_per_study_s": 0.04252321751299999,
+        "end_to_end_in_container_s": 356.658855401,
+        "warm_s": 4.468552579000004,
+        "host": {
+          "cpu_count": 24,
+          "affinity_size": 24,
+          "load_average_start": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "modal_task_id": "ta-01M802GXX6FXYA14Z68TJEBSYR",
+          "gpu": "NVIDIA A100-SXM4-40GB, 40960 MiB, 610.57.04",
+          "thread_environment": {
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1",
+            "MKL_NUM_THREADS": "1",
+            "NUMBA_NUM_THREADS": "1",
+            "NUMBA_THREADING_LAYER": "workqueue"
+          },
+          "load_average_end": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "modal": {
+          "app": "preflight-design-batch",
+          "gpu": "A100",
+          "cpu": 8.0,
+          "memory_mib": 65536,
+          "started_utc": "2026-11-21T22:09:39.808029+00:00",
+          "finished_utc": "2026-11-21T22:15:46.858773+00:00",
+          "wall_s": 367.050744,
+          "note": "wall_s includes container start and image pull; stage times are inside the container"
+        },
+        "parity_vs_prior": {
+          "against": "modal-design-20261121T194458Z.json",
+          "x_compared": 11000,
+          "x_mismatched": 0,
+          "statistic": "maxT vs numba, rel <= 1e-09",
+          "statistic_compared": 3000,
+          "statistic_max_rel_diff": 0.0,
+          "all": true
+        }
+      },
+      {
+        "file": "fused-0b27ea1-2-modal-design-20261121T221554Z.json",
+        "file_sha256": "81bc61babe675e0f02ee6eef314b7f0e5347b52ca834ce27074e16cfd0ae492a",
+        "source_commit": "0b27ea1f79db7d45a7be0c35b2866f0dce338d3d",
+        "runner_status": "FAILED",
+        "runner_parity": {
+          "all": false,
+          "this_run": "one arm"
+        },
+        "runner_status_note": "FAILED: single-arm, no in-run parity",
+        "workers": 8,
+        "evaluated_studies": 3000,
+        "studies_wall_s": 127.318023189,
+        "compute_wall_s": 127.318023189,
+        "wall_per_study_s": 0.042439341063,
+        "end_to_end_in_container_s": 356.189133406,
+        "warm_s": 4.452216175000018,
+        "host": {
+          "cpu_count": 24,
+          "affinity_size": 24,
+          "load_average_start": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "modal_task_id": "ta-01M802WA72BB44GY8CTJQE7H0R",
+          "gpu": "NVIDIA A100-SXM4-40GB, 40960 MiB, 610.57.04",
+          "thread_environment": {
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1",
+            "MKL_NUM_THREADS": "1",
+            "NUMBA_NUM_THREADS": "1",
+            "NUMBA_THREADING_LAYER": "workqueue"
+          },
+          "load_average_end": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "modal": {
+          "app": "preflight-design-batch",
+          "gpu": "A100",
+          "cpu": 8.0,
+          "memory_mib": 65536,
+          "started_utc": "2026-11-21T22:15:54.174728+00:00",
+          "finished_utc": "2026-11-21T22:22:01.201243+00:00",
+          "wall_s": 367.026515,
+          "note": "wall_s includes container start and image pull; stage times are inside the container"
+        },
+        "parity_vs_prior": {
+          "against": "modal-design-20261121T194458Z.json",
+          "x_compared": 11000,
+          "x_mismatched": 0,
+          "statistic": "maxT vs numba, rel <= 1e-09",
+          "statistic_compared": 3000,
+          "statistic_max_rel_diff": 0.0,
+          "all": true
+        }
+      },
+      {
+        "file": "fused-0b27ea1-3-modal-design-20261121T222213Z.json",
+        "file_sha256": "af7b560b2d3d7ad9918cef12d39bc2881587065c53ae28692f26c4e8f22f2832",
+        "source_commit": "0b27ea1f79db7d45a7be0c35b2866f0dce338d3d",
+        "runner_status": "FAILED",
+        "runner_parity": {
+          "all": false,
+          "this_run": "one arm"
+        },
+        "runner_status_note": "FAILED: single-arm, no in-run parity",
+        "workers": 8,
+        "evaluated_studies": 3000,
+        "studies_wall_s": 126.67918411100001,
+        "compute_wall_s": 126.67918411100001,
+        "wall_per_study_s": 0.042226394703666674,
+        "end_to_end_in_container_s": 353.82429564999995,
+        "warm_s": 4.437445748999977,
+        "host": {
+          "cpu_count": 24,
+          "affinity_size": 24,
+          "load_average_start": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "modal_task_id": "ta-01M8037X1M9AG5029XD6T41CXR",
+          "gpu": "NVIDIA A100-SXM4-40GB, 40960 MiB, 610.57.04",
+          "thread_environment": {
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1",
+            "MKL_NUM_THREADS": "1",
+            "NUMBA_NUM_THREADS": "1",
+            "NUMBA_THREADING_LAYER": "workqueue"
+          },
+          "load_average_end": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "modal": {
+          "app": "preflight-design-batch",
+          "gpu": "A100",
+          "cpu": 8.0,
+          "memory_mib": 65536,
+          "started_utc": "2026-11-21T22:22:13.990177+00:00",
+          "finished_utc": "2026-11-21T22:28:16.702399+00:00",
+          "wall_s": 362.712222,
+          "note": "wall_s includes container start and image pull; stage times are inside the container"
+        },
+        "parity_vs_prior": {
+          "against": "modal-design-20261121T194458Z.json",
+          "x_compared": 11000,
+          "x_mismatched": 0,
+          "statistic": "maxT vs numba, rel <= 1e-09",
+          "statistic_compared": 3000,
+          "statistic_max_rel_diff": 0.0,
+          "all": true
+        }
+      }
+    ],
+    "fused_a29f1b7": [
+      {
+        "file": "fused-a29f1b7-1-modal-design-20261121T220121Z.json",
+        "file_sha256": "341c0f6e91209ca96dbe7f46e48adbd0c3b470c5996b4501397f5cd71958c694",
+        "source_commit": "a29f1b7bb3c1f0d747121b52c04b285aa1bd6d93",
+        "runner_status": "FAILED",
+        "runner_parity": {
+          "all": false,
+          "this_run": "one arm"
+        },
+        "runner_status_note": "FAILED: single-arm, no in-run parity",
+        "workers": 8,
+        "evaluated_studies": 3000,
+        "studies_wall_s": 125.15641083500003,
+        "compute_wall_s": 125.15641083500003,
+        "wall_per_study_s": 0.041718803611666674,
+        "end_to_end_in_container_s": 353.77549702500005,
+        "warm_s": 4.448766731000006,
+        "host": {
+          "cpu_count": 24,
+          "affinity_size": 24,
+          "load_average_start": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "modal_task_id": "ta-01M8021NFMNEWQRHFWTR40K1XR",
+          "gpu": "NVIDIA A100-SXM4-40GB, 40960 MiB, 610.57.04",
+          "thread_environment": {
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1",
+            "MKL_NUM_THREADS": "1",
+            "NUMBA_NUM_THREADS": "1",
+            "NUMBA_THREADING_LAYER": "workqueue"
+          },
+          "load_average_end": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "modal": {
+          "app": "preflight-design-batch",
+          "gpu": "A100",
+          "cpu": 8.0,
+          "memory_mib": 65536,
+          "started_utc": "2026-11-21T22:01:21.092123+00:00",
+          "finished_utc": "2026-11-21T22:07:23.975935+00:00",
+          "wall_s": 362.883812,
+          "note": "wall_s includes container start and image pull; stage times are inside the container"
+        },
+        "parity_vs_prior": {
+          "against": "modal-design-20261121T194458Z.json",
+          "x_compared": 11000,
+          "x_mismatched": 0,
+          "statistic": "maxT vs numba, rel <= 1e-09",
+          "statistic_compared": 3000,
+          "statistic_max_rel_diff": 0.0,
+          "all": true
+        }
+      },
+      {
+        "file": "fused-a29f1b7-2-modal-design-20261121T221020Z.json",
+        "file_sha256": "c73c21e58161ba8456f9d8d6ca8400bfd7f50541df7037b209b6338abea9c8a8",
+        "source_commit": "a29f1b7bb3c1f0d747121b52c04b285aa1bd6d93",
+        "runner_status": "FAILED",
+        "runner_parity": {
+          "all": false,
+          "this_run": "one arm"
+        },
+        "runner_status_note": "FAILED: single-arm, no in-run parity",
+        "workers": 8,
+        "evaluated_studies": 3000,
+        "studies_wall_s": 119.69289225200004,
+        "compute_wall_s": 119.69289225200004,
+        "wall_per_study_s": 0.03989763075066668,
+        "end_to_end_in_container_s": 313.922171522,
+        "warm_s": 3.529593822999999,
+        "host": {
+          "cpu_count": 24,
+          "affinity_size": 24,
+          "load_average_start": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "modal_task_id": "ta-01M802J4BK88XZTRGRENB0E89R",
+          "gpu": "NVIDIA A100-SXM4-80GB, 81920 MiB, 620.70.06",
+          "thread_environment": {
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1",
+            "MKL_NUM_THREADS": "1",
+            "NUMBA_NUM_THREADS": "1",
+            "NUMBA_THREADING_LAYER": "workqueue"
+          },
+          "load_average_end": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "modal": {
+          "app": "preflight-design-batch",
+          "gpu": "A100",
+          "cpu": 8.0,
+          "memory_mib": 65536,
+          "started_utc": "2026-11-21T22:10:20.411420+00:00",
+          "finished_utc": "2026-11-21T22:15:45.198795+00:00",
+          "wall_s": 324.787375,
+          "note": "wall_s includes container start and image pull; stage times are inside the container"
+        },
+        "parity_vs_prior": {
+          "against": "modal-design-20261121T194458Z.json",
+          "x_compared": 11000,
+          "x_mismatched": 0,
+          "statistic": "maxT vs numba, rel <= 1e-09",
+          "statistic_compared": 3000,
+          "statistic_max_rel_diff": 6.461585295085557e-16,
+          "all": true
+        }
+      },
+      {
+        "file": "fused-a29f1b7-3-modal-design-20261121T221555Z.json",
+        "file_sha256": "e05efa46dc8d9903169e8439e996be5bc3c8bc7eee97aed1e68b30c269cb7016",
+        "source_commit": "a29f1b7bb3c1f0d747121b52c04b285aa1bd6d93",
+        "runner_status": "FAILED",
+        "runner_parity": {
+          "all": false,
+          "this_run": "one arm"
+        },
+        "runner_status_note": "FAILED: single-arm, no in-run parity",
+        "workers": 8,
+        "evaluated_studies": 3000,
+        "studies_wall_s": 126.69745639099997,
+        "compute_wall_s": 126.69745639099997,
+        "wall_per_study_s": 0.04223248546366666,
+        "end_to_end_in_container_s": 355.48237574200004,
+        "warm_s": 4.319922678000012,
+        "host": {
+          "cpu_count": 24,
+          "affinity_size": 24,
+          "load_average_start": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "modal_task_id": "ta-01M802WAXERVHR9TRKX6R2EWYR",
+          "gpu": "NVIDIA A100-SXM4-40GB, 40960 MiB, 610.57.04",
+          "thread_environment": {
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1",
+            "MKL_NUM_THREADS": "1",
+            "NUMBA_NUM_THREADS": "1",
+            "NUMBA_THREADING_LAYER": "workqueue"
+          },
+          "load_average_end": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "modal": {
+          "app": "preflight-design-batch",
+          "gpu": "A100",
+          "cpu": 8.0,
+          "memory_mib": 65536,
+          "started_utc": "2026-11-21T22:15:55.120716+00:00",
+          "finished_utc": "2026-11-21T22:22:01.283137+00:00",
+          "wall_s": 366.162421,
+          "note": "wall_s includes container start and image pull; stage times are inside the container"
+        },
+        "parity_vs_prior": {
+          "against": "modal-design-20261121T194458Z.json",
+          "x_compared": 11000,
+          "x_mismatched": 0,
+          "statistic": "maxT vs numba, rel <= 1e-09",
+          "statistic_compared": 3000,
+          "statistic_max_rel_diff": 0.0,
+          "all": true
+        }
+      }
+    ]
+  },
+  "spend": {
+    "log": "bench/results/modal-spend-repeats.json",
+    "running_total_usd": 2.592
+  }
+}
