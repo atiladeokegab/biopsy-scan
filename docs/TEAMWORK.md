@@ -7,7 +7,7 @@ the team: [HACKATHON.md](../HACKATHON.md). Who is doing what, live: the board li
 
 ## Quick start
 
-1. `gh repo clone <this repo>`
+1. `gh repo clone atiladeokegab/sota-parallelism-nov21`
 2. Open your AI tool (Claude Code, Codex, Cursor, Copilot…) in the folder.
 3. Tell it: *"Read AGENTS.md, then pick up my issue."*
 
