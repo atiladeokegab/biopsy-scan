@@ -1,6 +1,6 @@
 """The speedup ladder harness: the same re-imaging work on each rung, timed end to end on named hardware.
 
-    uv run python -I bench/ladder.py [--studies 20] [--cells 6000] [--out bench/results]
+    uv run python -I bench/ladder.py [--trials 20] [--cells 6000] [--out bench/results]
 
 Every number in the JSON is measured on the machine named in its "hardware" block. A rung whose
 code has not landed yet is recorded as "pending" with no number: never quote an unmeasured multiplier.
@@ -60,8 +60,8 @@ def synthetic_pool(n_regions: int, cells: int, side: float, seed: int) -> list[d
     return pool
 
 
-def numpy_ref_study(pool: list[dict], design: dict, seed: int):
-    """One simulated study with the float64 NumPy oracle: k looks, each a random crop and mis-call."""
+def numpy_ref_trial(pool: list[dict], design: dict, seed: int):
+    """One trial with the float64 NumPy oracle: k region looks, each a random crop and mis-call."""
     rng = np.random.default_rng(seed)
     out, reads = [], 0
     for r in rng.integers(0, len(pool), design["k"]):
@@ -75,7 +75,7 @@ def numpy_ref_study(pool: list[dict], design: dict, seed: int):
 
 def rungs() -> dict:
     """name -> study function, or a string saying why the rung is pending."""
-    found = {"numpy_reference": numpy_ref_study}
+    found = {"numpy_reference": numpy_ref_trial}
     try:
         import reimage  # noqa: F401  # #2 provides reimage.run(design, seeds)
         found["numba_all_core"] = found["gpu"] = "pending: wire reimage.run into bench/ladder.py"
@@ -85,7 +85,7 @@ def rungs() -> dict:
 
 
 def time_rung(fn, pool, design, studies: int) -> dict:
-    """Cold = the first study (JIT, upload); amortised = the median of the rest. Seeds are fixed per study."""
+    """Cold = the first trial (JIT, upload); amortised = the median of the rest. Seeds are fixed per trial."""
     times, reads = [], 0
     for s in range(studies):
         t0 = time.perf_counter()
@@ -94,9 +94,9 @@ def time_rung(fn, pool, design, studies: int) -> dict:
         reads += n
     warm = times[1:] or times
     amort = statistics.median(warm)
-    return {"studies": studies, "cold_s": times[0], "amortised_s_per_study": amort,
+    return {"trials": studies, "cold_s": times[0], "amortised_s_per_trial": amort,
             "total_s": sum(times), "neighbour_reads": reads,
-            "reads_per_s": reads / sum(times), "studies_per_s": 1.0 / amort}
+            "reads_per_s": reads / sum(times), "trials_per_s": 1.0 / amort}
 
 
 def run(studies=20, cells=6000, side=750.0, n_regions=8, design=None, seed=0) -> dict:
@@ -109,7 +109,11 @@ def run(studies=20, cells=6000, side=750.0, n_regions=8, design=None, seed=0) ->
     result = {"hardware": hardware(), "data": "synthetic", "design": design,
               "pool": {"regions": n_regions, "cells_per_region": cells, "side_um": side,
                        "mean_neighbours_100um": float(np.mean([len(r["nbr"]["idx"]) / cells for r in pool]))},
-              "prep_s": prep, "rungs": {}}
+              "prep_s": prep, "seed": seed, "rungs": {},
+              # one trial is k region looks (crop, mis-call, recount, region sums), not a whole study
+              "unit": {"trial": f"{design['k']} region looks: crop + mis-call + neighbour recount + region sums",
+                       "excludes": "patient sampling and aggregation, features, outcomes, statistics; prep_s (neighbour lists) is reported separately"},
+              "baseline": "numpy_reference"}
     for name, fn in rungs().items():
         result["rungs"][name] = fn if isinstance(fn, str) else time_rung(fn, pool, design, studies)
     return result
@@ -117,18 +121,18 @@ def run(studies=20, cells=6000, side=750.0, n_regions=8, design=None, seed=0) ->
 
 def main(argv=None) -> Path:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--studies", type=int, default=20)
+    ap.add_argument("--trials", type=int, default=20)
     ap.add_argument("--cells", type=int, default=6000)
     ap.add_argument("--out", type=Path, default=Path(__file__).parent / "results")
     a = ap.parse_args(argv)
-    res = run(studies=a.studies, cells=a.cells)
+    res = run(studies=a.trials, cells=a.cells)
     a.out.mkdir(parents=True, exist_ok=True)
     slug = "".join(c if c.isalnum() else "-" for c in res["hardware"]["cpu"].lower()).strip("-")
     path = a.out / f"ladder-{slug}.json"  # named by hardware, not hostname: the repo is public
     path.write_text(json.dumps(res, indent=2) + "\n")
     print(path)
     for name, r in res["rungs"].items():
-        print(f"  {name}: " + (r if isinstance(r, str) else f"{r['amortised_s_per_study']:.3f} s/study, "
+        print(f"  {name}: " + (r if isinstance(r, str) else f"{r['amortised_s_per_trial']:.3f} s/trial, "
                                 f"cold {r['cold_s']:.3f} s, {r['reads_per_s']:.3g} reads/s"))
     print(f"  on {res['hardware']['cpu']} ({res['hardware']['logical_cpus']} logical CPUs)")
     return path

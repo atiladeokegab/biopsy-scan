@@ -20,18 +20,24 @@
     "side_um": 750.0,
     "mean_neighbours_100um": 298.36008333333336
   },
-  "prep_s": 10.8172018667683,
+  "prep_s": 10.396214976906776,
+  "seed": 0,
   "rungs": {
     "numpy_reference": {
-      "studies": 20,
-      "cold_s": 0.10001455806195736,
-      "amortised_s_per_study": 0.11369592696428299,
-      "total_s": 2.357279176823795,
+      "trials": 20,
+      "cold_s": 0.10504344711080194,
+      "amortised_s_per_trial": 0.10592942731454968,
+      "total_s": 2.1439445866271853,
       "neighbour_reads": 143093970,
-      "reads_per_s": 60703022.114166915,
-      "studies_per_s": 8.795389832338893
+      "reads_per_s": 66743315.518762,
+      "trials_per_s": 9.440247392545352
     },
     "numba_all_core": "pending: reimage/ (#2) not merged",
     "gpu": "pending: reimage/ (#2) not merged"
-  }
+  },
+  "unit": {
+    "trial": "4 region looks: crop + mis-call + neighbour recount + region sums",
+    "excludes": "patient sampling and aggregation, features, outcomes, statistics; prep_s (neighbour lists) is reported separately"
+  },
+  "baseline": "numpy_reference"
 }
