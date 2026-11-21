@@ -4,6 +4,7 @@ from __future__ import annotations
 import multiprocessing as mp
 import os
 import sys
+import time
 from typing import Any
 
 import numpy as np
@@ -165,3 +166,119 @@ def run_sharded(
     """Run seeded re-imaging across contiguous device shards and merge deterministically."""
     out, _ = run_sharded_with_meta(design, seeds, devices=devices, fake_shards=fake_shards)
     return out
+
+
+def _warm_timed_worker(
+    shard_id: int,
+    device_id: int,
+    design: dict[str, Any],
+    warmup_seeds: np.ndarray,
+    warm_seeds: np.ndarray,
+    barrier: Any,
+    queue: Any,
+) -> None:
+    """Warm up CUDA/JIT + prepared snapshots, synchronize on barrier, then time warm shard."""
+    try:
+        dev_name = ""
+        if design.get("backend") == "gpu":
+            from numba import cuda
+
+            cuda.select_device(device_id)
+            dev_name = _selected_device_name(device_id)
+        from reimage import run
+
+        prepared: dict = {}
+        run(design, warmup_seeds, devices=1, _prepared=prepared)
+        barrier.wait(timeout=120)
+        out = run(design, warm_seeds, devices=1, _prepared=prepared)
+        queue.put((shard_id, out, dev_name, None))
+    except Exception as exc:  # noqa: BLE001
+        try:
+            barrier.abort()
+        except Exception:  # noqa: BLE001
+            pass
+        queue.put((shard_id, None, "", f"{type(exc).__name__}: {exc}"))
+
+
+def measure_warm_sharded(
+    design: dict[str, Any],
+    warmup_seeds: Any,
+    warm_seeds: Any,
+    *,
+    devices: int | None = None,
+    fake_shards: bool = False,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    """Spawn N persistent workers (including N=1), warm each in-worker, barrier-sync, and time."""
+    warm_arr = _validate_seeds(warm_seeds)
+    warmup_arr = _validate_seeds(warmup_seeds)
+    if "cells" not in design:
+        raise ValueError("design must provide cells")
+    backend = design.get("backend", "numpy")
+    if backend != "gpu":
+        raise ValueError("measure_warm_sharded requires backend='gpu'")
+
+    if devices is not None:
+        if isinstance(devices, (bool, np.bool_)) or not isinstance(devices, (int, np.integer)) or devices < 1:
+            raise ValueError("devices must be a positive integer")
+        devices = int(devices)
+
+    from numba import cuda
+
+    if fake_shards:
+        if not cuda_simulator():
+            raise RuntimeError("fake_shards requires NUMBA_ENABLE_CUDASIM=1")
+        n_sim_gpus = len(cuda.gpus)
+        if n_sim_gpus < 1:
+            raise RuntimeError("CUDA simulator exposed zero devices")
+        target = 2 if devices is None else devices
+        dev_for = lambda sid: sid % n_sim_gpus  # noqa: E731
+    else:
+        n_avail = visible_gpus()
+        if n_avail < 1:
+            raise RuntimeError("CUDA is unavailable; select the CPU backend explicitly")
+        target = n_avail if devices is None else devices
+        if target > n_avail:
+            raise RuntimeError(f"requested {target} GPU(s) but only {n_avail} visible")
+        dev_for = lambda sid: sid  # noqa: E731
+
+    bounds = shard_bounds(len(warm_arr), target)
+    n_workers = len(bounds)
+    ctx = mp.get_context("spawn")
+    barrier = ctx.Barrier(n_workers + 1)
+    queue = ctx.Queue()
+    procs = []
+    for sid, s, e in bounds:
+        w_seed = warmup_arr[sid % len(warmup_arr): sid % len(warmup_arr) + 1]
+        p = ctx.Process(
+            target=_warm_timed_worker,
+            args=(sid, dev_for(sid), dict(design), w_seed, warm_arr[s:e], barrier, queue),
+        )
+        p.start()
+        procs.append(p)
+
+    cold_t0 = time.perf_counter()
+    try:
+        barrier.wait(timeout=120)
+        cold_warmup_s = time.perf_counter() - cold_t0
+        t0 = time.perf_counter()
+        results = [queue.get(timeout=300) for _ in range(n_workers)]
+        wall_s = time.perf_counter() - t0
+    finally:
+        for p in procs:
+            p.join(timeout=30)
+            if p.is_alive():
+                p.terminate()
+                p.join(timeout=5)
+
+    for sid, _out, _name, err in results:
+        if err is not None:
+            raise RuntimeError(f"shard {sid} failed: {err}")
+    results.sort(key=lambda item: item[0])
+    merged = np.concatenate([part for _, part, _, _ in results], axis=0)
+    names = [name for _, _, name, _ in results]
+    return merged, {
+        "devices_executed": len(results),
+        "device_names": names,
+        "wall_s": wall_s,
+        "cold_warmup_s": cold_warmup_s,
+    }

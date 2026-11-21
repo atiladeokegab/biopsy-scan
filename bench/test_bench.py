@@ -75,14 +75,19 @@ def test_fleet_requires_actual_executed_shard_count_and_device_names(monkeypatch
     monkeypatch.setattr(fleet, "visible_gpus", lambda: 8)
     calls = []
 
-    def fake_sharded(design, seeds, *, devices=None, fake_shards=False):
-        del fake_shards
-        calls.append((len(seeds), devices))
-        ref = fleet.reimage_run({**design, "backend": "numpy"}, seeds)
-        executed = min(len(seeds), devices)
-        return ref, {"devices_executed": executed, "device_names": [f"MockGPU-{i}" for i in range(executed)]}
+    def fake_warm_sharded(design, warmup_seeds, warm_seeds, *, devices=None, fake_shards=False):
+        del warmup_seeds, fake_shards
+        calls.append((len(warm_seeds), devices))
+        ref = fleet.reimage_run({**design, "backend": "numpy"}, warm_seeds)
+        executed = min(len(warm_seeds), devices)
+        return ref, {
+            "devices_executed": executed,
+            "device_names": [f"MockGPU-{i}" for i in range(executed)],
+            "wall_s": 0.25,
+            "cold_warmup_s": 0.5,
+        }
 
-    monkeypatch.setattr(fleet, "run_sharded_with_meta", fake_sharded)
+    monkeypatch.setattr(fleet, "measure_warm_sharded", fake_warm_sharded)
     res = fleet.run_fleet(studies=2, cells=60, patients=4, regions_per_patient=1, k=1)
     by_dev = {r["devices"]: r for r in res["fleet"]}
     assert by_dev[1]["status"] == "MEASURED" and by_dev[1]["gpus"] == ["MockGPU-0"]
@@ -91,11 +96,16 @@ def test_fleet_requires_actual_executed_shard_count_and_device_names(monkeypatch
     assert by_dev[8]["status"] == "UNMEASURED" and by_dev[8]["studies_per_s"] is None
 
     # Empty device name must never yield MEASURED.
-    def fake_unnamed(design, seeds, *, devices=None, fake_shards=False):
-        del fake_shards
-        ref = fleet.reimage_run({**design, "backend": "numpy"}, seeds)
-        return ref, {"devices_executed": devices, "device_names": ["" for _ in range(devices)]}
+    def fake_unnamed(design, warmup_seeds, warm_seeds, *, devices=None, fake_shards=False):
+        del warmup_seeds, fake_shards
+        ref = fleet.reimage_run({**design, "backend": "numpy"}, warm_seeds)
+        return ref, {
+            "devices_executed": devices,
+            "device_names": ["" for _ in range(devices)],
+            "wall_s": 0.25,
+            "cold_warmup_s": 0.5,
+        }
 
-    monkeypatch.setattr(fleet, "run_sharded_with_meta", fake_unnamed)
+    monkeypatch.setattr(fleet, "measure_warm_sharded", fake_unnamed)
     res2 = fleet.run_fleet(studies=2, cells=60, patients=4, regions_per_patient=1, k=1, device_counts=[1])
     assert res2["fleet"][0]["status"] == "UNMEASURED" and "name" in res2["fleet"][0]["reason"].lower()

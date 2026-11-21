@@ -29,7 +29,7 @@ import numpy as np
 from core.truth import neighbours
 from bench.ladder import synthetic_pool, time_gpu_sharded
 from reimage import run
-from reimage.fleet import run_sharded
+from reimage.fleet import measure_warm_sharded, run_sharded
 
 xy = np.array([[0, 0], [0, 0], [25, 0], [50, 0], [100, 0], [110, 0]], dtype=np.float64)
 types = np.array([0, 1, 2, 1, 0, 2], dtype=np.int16)
@@ -48,6 +48,12 @@ single = run(design, seeds)
 sharded = run_sharded(design, seeds, devices=2, fake_shards=True)
 assert single.shape == (5, 2, 18)
 np.testing.assert_array_equal(sharded, single)
+
+warm_single, m1 = measure_warm_sharded(design, [0], seeds, devices=1, fake_shards=True)
+warm_two, m2 = measure_warm_sharded(design, [0, 1], seeds, devices=2, fake_shards=True)
+assert m1["devices_executed"] == 1 and m2["devices_executed"] == 2
+np.testing.assert_array_equal(warm_single, single)
+np.testing.assert_array_equal(warm_two, single)
 
 # Also verify bench.ladder.time_gpu_sharded with 2 fake shards matches single-shard outputs bit for bit.
 pool = synthetic_pool(4, 40, 120.0, seed=3)

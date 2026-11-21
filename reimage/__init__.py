@@ -3,7 +3,7 @@
 import numpy as np
 
 
-def run(design, seeds, *, devices=None):
+def run(design, seeds, *, devices=None, _prepared=None):
     """Stack seeded patient-feature matrices using the core's exact sampling order."""
     from core import reimage_ref
 
@@ -27,7 +27,7 @@ def run(design, seeds, *, devices=None):
             from . import cpu as module
         else:
             from . import gpu as module
-        prepared = {}
+        prepared = {} if _prepared is None else _prepared
 
         def kernel(nbr, xy, types, focal, K, **kwargs):
             key = (id(nbr), K)

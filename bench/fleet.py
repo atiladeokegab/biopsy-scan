@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from bench.ladder import K, cuda_simulator, hardware, synthetic_pool
 from core.truth import neighbours
 from reimage import run as reimage_run
-from reimage.fleet import run_sharded_with_meta, visible_gpus
+from reimage.fleet import measure_warm_sharded, visible_gpus
 
 DEFAULT_DEVICE_COUNTS = (1, 2, 4, 8)
 
@@ -97,22 +97,19 @@ def run_fleet(
             fleet_rows.append(_unmeasured(n_dev, f"only {studies} study seed(s) supplied for {n_dev} requested GPU(s)"))
             continue
         try:
-            # One warmup study per shard excludes per-device JIT and upload cold times before wall timing.
+            # All device counts (including 1) spawn persistent workers that warm up + barrier-sync
+            # before timing the warm batch in the same workers/CUDA contexts/prepared caches.
             warmup_seeds = np.arange(seed, seed + n_dev, dtype=np.int64)
-            t_cold0 = time.perf_counter()
-            _, warm_meta = run_sharded_with_meta(study_design, warmup_seeds, devices=n_dev)
-            cold_wall_s = time.perf_counter() - t_cold0
-
-            t0 = time.perf_counter()
-            out, meta = run_sharded_with_meta(study_design, warm_seeds, devices=n_dev)
-            wall_s = time.perf_counter() - t0
+            out, meta = measure_warm_sharded(study_design, warmup_seeds, warm_seeds, devices=n_dev)
+            wall_s = float(meta["wall_s"])
+            cold_wall_s = float(meta["cold_warmup_s"])
         except Exception as e:  # noqa: BLE001
             fleet_rows.append(_unmeasured(n_dev, f"{type(e).__name__}: {e}"[:200]))
             continue
 
         executed = int(meta.get("devices_executed", 0))
         device_names = [str(g).strip() for g in meta.get("device_names", []) if str(g).strip()]
-        if executed != n_dev or warm_meta.get("devices_executed") != n_dev:
+        if executed != n_dev:
             fleet_rows.append(_unmeasured(n_dev, f"executed {executed} shard(s), expected {n_dev}"))
             continue
         if len(device_names) != n_dev:
