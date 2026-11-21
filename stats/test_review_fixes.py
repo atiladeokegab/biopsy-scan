@@ -148,3 +148,11 @@ def test_observed_fit_with_collapsed_information_is_rejected():
     with pytest.raises(ValueError, match="no finite maximum"):
         S._phreg(C - C.mean(0), t, e, np.zeros(6, dtype=np.int64))
 
+
+@pytest.mark.parametrize("block", [0, -1, 2.5])
+def test_screen_batch_rejects_nonpositive_or_fractional_block(block):
+    from stats import screen_batch
+
+    rng = np.random.default_rng(0)
+    with pytest.raises(ValueError, match="block"):
+        screen_batch(rng.normal(size=(6, 2)), rng.exponential(size=(3, 6)), np.ones((3, 6)), block=block)

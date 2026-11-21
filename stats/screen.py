@@ -327,6 +327,8 @@ def screen_batch(X, time, event, clinical=None, strata=None, backend="auto", *, 
     null fit (batched Newton, equal to PHReg) per mask group. Returns float64
     U, V, z [S, J], maxT [S], n [J] and metadata; no resampling (n_perm = 0).
     """
+    if not isinstance(block, (int, np.integer)) or block < 1:
+        raise ValueError("block must be a positive integer")
     xp, gpu = get_backend(backend), backend == "gpu"
     time, event = np.atleast_2d(np.asarray(time, dtype=np.float64)), np.atleast_2d(np.asarray(event, dtype=np.float64))
     if time.shape != event.shape or not np.isfinite(time).all() or not np.isin(event, [0, 1]).all():
