@@ -147,7 +147,11 @@ const { gridTexts } = await import("./claims.js");
 const grid = JSON.parse(readFileSync(new URL("./data/grid.json", import.meta.url), "utf8"));
 const gt = gridTexts(grid);
 assert.equal(gt.provenance, "MEASURED tissue · SYNTHETIC outcomes");
-assert.equal(gt["grid-tag"], "MEASURED simulation · SYNTHETIC outcomes");
+assert.equal(gt["grid-tag"], "ESTIMATE simulation · SYNTHETIC outcomes");
+// The tag's metric label is the file's status / labels.power, never "source" (kept MEASURED for compatibility).
+assert.equal(gridTexts({ ...grid, source: "SYNTHETIC" })["grid-tag"], "ESTIMATE simulation · SYNTHETIC outcomes");
+assert.equal(gridTexts({ ...grid, status: "MEASURED", labels: { ...grid.labels, power: "MEASURED" } })["grid-tag"],
+  "MEASURED simulation · SYNTHETIC outcomes");
 assert.match(gt.planted, /^Planted synthetic effect: HR 2 per SD, legacy Cox score test \(R4\); not the PD1 pattern, not the R15 screen$/);
 // The lead: the dials span the grid's own axes (Atlas's grid: 80-477 patients, 1-2 regions, mis-call 10% only).
 const { dialRanges } = await import("./claims.js");

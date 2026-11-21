@@ -1,4 +1,4 @@
-"""The demo's dials read Atlas's committed Charville grid (atlas 3faac76), labelled for what it is."""
+"""The demo's dials read Atlas's committed Charville grid (atlas 79a7792, public on PR #45), labelled for what it is."""
 
 import copy
 import hashlib
@@ -15,10 +15,11 @@ spec.loader.exec_module(cd)
 GRID = ROOT / "demo" / "data" / "grid.json"
 
 
-def test_grid_is_atlas_3faac76_verbatim():
-    assert hashlib.sha256(GRID.read_bytes()).hexdigest() == "638534d2cef80b06cc1d1883959fb8c840a5f2fb7340fa1e7f80c916ce66c654"
+def test_grid_is_atlas_79a7792_verbatim():
+    assert hashlib.sha256(GRID.read_bytes()).hexdigest() == "e0581681c111d7c365ab968881e592a2a764f97d4222faac147c2edeed453d0b"
     g = json.loads(GRID.read_text())
     assert g["source"] == "MEASURED" and g["meta"]["simulation_label"] == "SYNTHETIC"
+    assert g["status"] == g["labels"]["power"] == "ESTIMATE" and g["labels"]["outcomes"] == "SYNTHETIC"
     assert len(g["points"]) == 48 and "legacy R4" in g["note"] and "not an R15" in g["note"]
     cd.check_grid(g, "grid.json")
 
@@ -43,3 +44,10 @@ def test_measured_grid_must_say_which_model_it_is():
         h["note"] = note
         with pytest.raises(SystemExit):
             cd.check_grid(h, "grid.json")
+
+
+def test_grid_status_must_match_its_power_label():
+    g = json.loads(GRID.read_text())
+    for bad in ({"status": "GUESS"}, {"labels": {**g["labels"], "power": "MEASURED"}}):
+        with pytest.raises(SystemExit):
+            cd.check_grid(g | bad, "grid.json")

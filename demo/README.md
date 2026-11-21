@@ -43,9 +43,10 @@ Regenerate the placeholders: `python3 -I demo/synth_data.py`. It writes the **SY
 The page labels both SYNTHETIC until each file says `"source": "MEASURED"`.
 
 The committed `grid.json` is Atlas's Charville grid, copied verbatim from `atlas/results/production/charville/grid.json`
-at atlas commit 3faac76 (sha256 638534d2…): 48 designs, 1,000 planted-effect studies each, simulated on real tissue
+at commit 79a7792 (public on PR #45; sha256 e0581681…): 48 designs, 1,000 planted-effect studies each, simulated on real tissue
 with SYNTHETIC Weibull outcomes (HR 2 per SD). It is the legacy R4 Cox score power, not the PD1 pattern and not the
-R15 screen, and the page says so. For a MEASURED grid, `check_data` also requires each power to equal its count over
+R15 screen, and the page says so. Its metric label is `status` / `labels.power` (ESTIMATE; outcomes SYNTHETIC), shown as "ESTIMATE simulation ·
+SYNTHETIC outcomes"; its `source: MEASURED` is kept only for compatibility and never shown as the label. For a MEASURED grid, `check_data` also requires each power to equal its count over
 the studies and sit inside its interval, and the note to name the synthetic outcomes, legacy R4 and not R15.
 
 ## `data/tissue.json` (`preflight-tissue/1`): written from the core loaders

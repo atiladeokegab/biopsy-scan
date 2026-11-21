@@ -62,6 +62,9 @@ def check_grid(g, w):
             need(num(p.get("power_lo")) and num(p.get("power_hi")) and p["power_lo"] <= p["power"] <= p["power_hi"], w,
                  f"points[{i}]: power_lo <= power <= power_hi")
             need(num(p.get("fwer")) and 0 <= p["fwer"] <= 1, w, f"points[{i}].fwer: 0..1")
+    if "status" in g:  # Atlas's grid: status is the metric's label and must match labels.power
+        need(g["status"] in LABELS and (g.get("labels") or {}).get("power") == g["status"], w,
+             "status: a label, equal to labels.power")
     if g["source"] == "MEASURED":
         note = g.get("note", "")
         need("SYNTHETIC" in note and "legacy R4" in note and "not an R15" in note, w,
