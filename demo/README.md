@@ -29,7 +29,8 @@ shows this command instead.
      fixed display pace that is not to scale, both say UNMEASURED, and no seconds or ratio are
      shown.
    - With one, both lanes run on one clock: the GPU lane finishes in 1.4 s on screen, and the CPU
-     lane is slowed by the measured ratio.
+     lane is slowed by the measured ratio. The line under the lanes names the hardware from
+     `bench.json` ("GPU: <gpu>, 4.2 s · CPU: all cores of <cpu>, 1 h · 857× faster").
 3. **The answer.** Power and identification rate for the grid point nearest the sliders, and the
    one chart: power against patients, one line per regions value. The chart marks the current
    design (white ring) and our cohort (green).
@@ -99,6 +100,8 @@ The checker enforces these rules:
   "schema": "preflight-bench/1",
   "status": "MEASURED",               // or "UNMEASURED"; a missing file also means UNMEASURED
   "studies": 1000,                    // studies in the timed design point
+  "cpu": "AMD EPYC 7B13, 8 vCPU",     // required: the CPU model the CPU time was measured on
+  "gpu": "NVIDIA L4",                 // required: the GPU model the GPU time was measured on
   "cpu_seconds": 3600,                // end to end, same algorithm, all CPU cores
   "gpu_seconds": 4.2                  // end to end on the GPU
 }
@@ -107,9 +110,9 @@ The checker enforces these rules:
 ## How the page picks a grid point
 
 The slider ranges are:
-- patients 20 to 300;
+- patients 20 to 300 in steps of 1, starting at the cohort (159);
 - regions 1 to 8;
-- field of view 250 to 2000 µm, plus full region;
+- field of view 200 µm up to the core width (`tissue.region_um`) in 100 µm steps, plus full core;
 - mis-call 0 to 30%.
 
 The page picks the grid point nearest the sliders, measuring each axis in steps along its own
@@ -117,5 +120,11 @@ The page picks the grid point nearest the sliders, measuring each axis in steps 
 point it shows differs from what was asked. The chart uses that point's field of view and
 mis-call rate.
 
-The page opens at our cohort's patients and regions, with two 1 mm fields and 10% mis-called, so
+The page opens at our cohort's patients and regions, with two 400 µm fields and 10% mis-called, so
 the fields of view and the noise are visible from the first second.
+
+## Open: 60 fps on the demo laptop (lesson 27)
+
+The 3D view draws about 30,000 points in 12 draw calls. It has only been rendered with software
+WebGL (SwiftShader) on a VM with no GPU, at about 2 fps. Its frame rate on the demo laptop's real
+GPU is not yet measured; check it there before the demo.

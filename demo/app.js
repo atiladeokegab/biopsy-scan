@@ -5,7 +5,8 @@ import { createRace } from "./race.js";
 import { drawChart, pct, fovLabel } from "./chart.js";
 
 const $ = (id) => document.getElementById(id);
-const FULL_SLIDER = 2250; // the fov slider's last stop means "full region"
+const FOV_STEP = 100;
+let FULL_SLIDER; // the fov slider's last stop means "full core"; set from tissue.region_um
 const AXES = ["patients", "regions", "fov_um", "miscall"];
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let grid, tissue, bench = null, view3d = null, race, shown = null, raceTimer = 0;
@@ -74,7 +75,7 @@ function update({ restartRace }) {
     const slabs = view3d.update(want);
     $("tissue-caption").textContent =
       `${slabs} of ${want.patients} patients shown · ` +
-      (want.fov_um === "full" ? "whole region imaged" : `${want.regions} × ${want.fov_um} µm field${want.regions > 1 ? "s" : ""} per patient`) +
+      (want.fov_um === "full" ? "whole core imaged" : `${want.regions} × ${want.fov_um} µm field${want.regions > 1 ? "s" : ""} per patient`) +
       ` · ${pct(want.miscall)} mis-called`;
   }
 
@@ -151,8 +152,11 @@ async function main() {
   let t;
   addEventListener("resize", () => { clearTimeout(t); t = setTimeout(() => update({ restartRace: true }), 200); });
 
-  // Open on a typical imaging design (two 1 mm fields, 10% mis-called) so the fields of view and the noise show at once.
-  setSliders({ ...grid.cohort, fov_um: 1000, miscall: 0.1 });
+  // Open on a typical imaging design (two 400 µm fields, 10% mis-called) so the fields of view and the noise show at once.
+  // Field of view: 200 µm up to the core's width in 100 µm steps, then one more stop for "full core".
+  FULL_SLIDER = Math.floor(tissue.region_um / FOV_STEP) * FOV_STEP + FOV_STEP;
+  Object.assign($("fov"), { min: 200, step: FOV_STEP, max: FULL_SLIDER });
+  setSliders({ ...grid.cohort, fov_um: 400, miscall: 0.1 });
   update({ restartRace: true });
 }
 

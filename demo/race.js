@@ -52,11 +52,13 @@ export function createRace(cpuCanvas, gpuCanvas, out) {
 
     const cpu = layout(cpuCanvas, n), gpu = layout(gpuCanvas, n);
     for (let i = 0; i < n; i++) { tile(cpu, i, EMPTY); tile(gpu, i, EMPTY); }
-    const measured = bench && bench.status === "MEASURED";
+    // No speed-up without the hardware it was measured on (check_data.py enforces the same).
+    const measured = bench && bench.status === "MEASURED" && !!bench.cpu && !!bench.gpu;
     const ratio = measured ? bench.cpu_seconds / bench.gpu_seconds : null;
 
     out.speed.textContent = measured
-      ? `Measured on one design point: GPU ${duration(bench.gpu_seconds)}, all CPU cores ${duration(bench.cpu_seconds)}, ${fmt(Math.round(ratio))}× faster`
+      ? `Measured on one design point · GPU: ${bench.gpu}, ${duration(bench.gpu_seconds)} · ` +
+        `CPU: all cores of ${bench.cpu}, ${duration(bench.cpu_seconds)} · ${fmt(Math.round(ratio))}× faster`
       : "Speeds not to scale until the benchmark is measured.";
 
     const t0 = performance.now();
