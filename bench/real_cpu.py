@@ -1,4 +1,4 @@
-"""Real Charville feature-engine timings: uv run python -m bench.real_cpu.
+"""Real Charville timings: uv run python -m bench.real_cpu --output /tmp/cpu-new.json.
 
 Paired, alternating backend order; shared topology and seeds; cumulative warm prefixes.
 Use --checkpoints 10 100 1000 for the deferred longer run; default stops at 100.
@@ -12,6 +12,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import tempfile
 from time import perf_counter
 
 import numba
@@ -25,16 +26,21 @@ from core.truth import layout, neighbours
 from reimage import cpu
 
 
-OUTPUT = Path(__file__).parent / "results" / "cpu-ladder.json"
 CHECKPOINTS = (10, 100)
 DESIGN = dict(patients=159, regions_per_patient=2, fov_um=400.0, eps=0.1, seed=0)
 
 
-def save(report):
-    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    temp = OUTPUT.with_suffix(".tmp")
-    temp.write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
-    temp.replace(OUTPUT)
+def save(report, output):
+    output = Path(output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(mode="w", dir=output.parent, delete=False) as stream:
+        temp = Path(stream.name)
+        try:
+            stream.write(json.dumps(report, indent=2, allow_nan=False) + "\n")
+        except BaseException:
+            temp.unlink()
+            raise
+    temp.replace(output)
 
 
 def timed(fn, seed):
@@ -43,7 +49,10 @@ def timed(fn, seed):
     return result, perf_counter() - start
 
 
-def main(checkpoints=CHECKPOINTS):
+def main(output, checkpoints=CHECKPOINTS):
+    output = Path(output)
+    if output.exists():
+        raise FileExistsError(f"preserving existing evidence: {output}; choose a new --output")
     if not checkpoints or any(n < 1 for n in checkpoints) or list(checkpoints) != sorted(set(checkpoints)):
         raise ValueError("checkpoints must be increasing positive study counts")
     start = perf_counter()
@@ -93,7 +102,7 @@ def main(checkpoints=CHECKPOINTS):
     }
     assert report["numba_threads"] == 8, "this run requires the assigned eight CPU threads"
     totals = {name: 0.0 for name in functions}
-    save(report)
+    save(report, output)
     print("Studies | NumPy seconds | Numba seconds | parity", flush=True)
     for seed in range(checkpoints[-1]):
         order = list(functions) if seed % 2 == 0 else list(reversed(functions))
@@ -113,12 +122,14 @@ def main(checkpoints=CHECKPOINTS):
             report["completed_studies"] = count
             report["load_average_latest"] = list(os.getloadavg())
             report["complete"] = count == checkpoints[-1]
-            save(report)
+            save(report, output)
             print(f"Completed {count} paired studies", flush=True)
-    print(f"Saved {OUTPUT}", flush=True)
+    print(f"Saved {output}", flush=True)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output", type=Path, required=True, help="New result path; existing files are preserved")
     parser.add_argument("--checkpoints", type=int, nargs="+", default=CHECKPOINTS)
-    main(tuple(parser.parse_args().checkpoints))
+    args = parser.parse_args()
+    main(args.output, tuple(args.checkpoints))

@@ -1,18 +1,31 @@
-"""Single-core lab-style rung: uv run python -m bench.lab_today.
+"""Single-core lab-style rung (set limits before Python imports numerical libraries):
+
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 \\
+uv run python -m bench.lab_today --input /tmp/cpu-new.json --output /tmp/cpu-with-legacy.json
 
 Fresh cKDTree recounts and a 1000-permutation test for three studies. Update only
 the lab_today field of the CPU result, keeping its extrapolation explicitly estimated.
 """
 
+import argparse
+from importlib.metadata import version
 import json
 import os
+from pathlib import Path
 import statistics
 import subprocess
 from time import perf_counter
 
+THREAD_LIMITS = ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS", "NUMBA_NUM_THREADS")
+if __name__ == "__main__":
+    if any(os.environ.get(key) != "1" for key in THREAD_LIMITS):
+        raise SystemExit("Set all four documented thread limits to 1 before starting Python")
+    os.sched_setaffinity(0, {max(os.sched_getaffinity(0))})
+
 import numpy as np
 
-from bench.real_cpu import DESIGN, OUTPUT, save
+from bench.ladder import hardware
+from bench.real_cpu import DESIGN, save
 from core.cohorts import load
 from core.grammar import grammar, grammar_hash
 from core.reimage_ref import crop_mask, draw, miscall, reimage
@@ -26,8 +39,11 @@ def tree_region(_nbr, xy, types, focal, K, crop=None, M=None, u=None):
     return truth_region(xy[visible], observed[visible], focal, K)
 
 
-def main():
-    report = json.loads(OUTPUT.read_text())
+def main(input_path, output):
+    output = Path(output)
+    if output.exists():
+        raise FileExistsError(f"preserving existing evidence: {output}; choose a new --output")
+    report = json.loads(Path(input_path).read_text())
     if report.get("design") != DESIGN or report.get("cohort", {}).get("name") != "charville":
         raise ValueError("CPU result must contain the same Charville design")
     affinity = sorted(os.sched_getaffinity(0))
@@ -61,10 +77,11 @@ def main():
     report["lab_today"] = {
         "rung": 0, "status": "MEASURED-CPU", "source_commit": subprocess.check_output(
             ["git", "rev-parse", "HEAD"], text=True).strip(),
+        "hardware": hardware(),
+        "software": {name: version(name) for name in ("numpy", "numba", "scipy")},
         "scope": "Fresh cKDTree counts per cropped/relabelled region, patient feature aggregation, 1000 conditional permutations per study",
         "single_core_affinity": sorted(os.sched_getaffinity(0)),
-        "thread_environment": {key: os.environ.get(key) for key in (
-            "OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS", "NUMBA_NUM_THREADS")},
+        "thread_environment": {key: os.environ.get(key) for key in THREAD_LIMITS},
         "measured_studies": 3, "permutations_per_study": 1000, "rows": rows,
         "mean_s_per_study": mean_s,
         "extrapolation": {"status": "ESTIMATE", "studies": 1000, "seconds": mean_s * 1000,
@@ -72,9 +89,13 @@ def main():
         "comparison_scope": "Full legacy inference differs from feature-only rows; do not quote their quotient as a matched end-to-end speedup",
         "inference_note": "Inherited resampled outcomes are a timing workload; no scientific p-value inference is claimed",
     }
-    save(report)
+    save(report, output)
     print(f"MEASURED-CPU: {mean_s:.3f} s/study; ESTIMATE: {mean_s * 1000:.3f} s for 1000 studies", flush=True)
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--input", type=Path, required=True, help="CPU report to augment without changing it")
+    parser.add_argument("--output", type=Path, required=True, help="New combined result path")
+    args = parser.parse_args()
+    main(args.input, args.output)
