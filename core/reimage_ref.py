@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from core.grammar import RADII_UM
-from core.truth import R, region_sums
+from core.grammar import RADII_UM, features
+from core.truth import R, layout, neighbours, region_sums
 
 
 def confusion_matrix(K: int, eps: float) -> np.ndarray:
@@ -35,10 +35,11 @@ def crop_mask(xy: np.ndarray, crop: tuple[float, float, float] | None) -> np.nda
 
 def random_crop(xy: np.ndarray, s: float, rng: np.random.Generator) -> tuple[float, float, float] | None:
     """A field of view of side s placed uniformly inside the region's bounding box (None if s covers it)."""
+    a = rng.random(2)  # always drawn, so the random stream does not depend on region size
     lo, hi = xy.min(0), xy.max(0)
     if s >= (hi - lo).max():
         return None
-    x0, y0 = lo + rng.random(2) * np.maximum(hi - lo - s, 0)
+    x0, y0 = lo + a * np.maximum(hi - lo - s, 0)
     return (float(x0), float(y0), float(s))
 
 
@@ -70,3 +71,56 @@ def reimage_region(nbr: dict, xy: np.ndarray, types: np.ndarray, focal: list[int
     obs = miscall(types, M, u)
     visible = crop_mask(xy, crop)
     return region_sums(reimage_counts(nbr, obs, visible, K), obs, visible, focal, K)
+
+
+def draw(cells: dict, design: dict, seed) -> dict:
+    """The study's random draws, in the contract's order: patients, regions, then per look crop and u.
+
+    Returns {"patients": int [P'], "looks": per drawn patient a list of (region, crop, u)}.
+    """
+    L = layout(cells)
+    rng = np.random.default_rng(seed)
+    pats = design.get("patients")
+    if pats is None:
+        idx = np.arange(L["P"])
+    elif np.ndim(pats) == 0:
+        idx = rng.integers(0, L["P"], int(pats))
+    else:
+        idx = np.asarray(pats, np.int64)
+    k, fov = design.get("regions_per_patient"), design.get("fov_um")
+    regs = []
+    for p in idx:
+        rs = L["regions_of"][p]
+        regs.append(rng.choice(rs, k, replace=False) if k is not None and k < len(rs) else rs)
+    looks = []
+    for rs in regs:
+        row = []
+        for r in rs:
+            xy = L["xy"](r)
+            crop = None if fov is None else random_crop(xy, float(fov), rng)
+            row.append((int(r), crop, rng.random(len(xy))))
+        looks.append(row)
+    return {"patients": idx, "looks": looks}
+
+
+def reimage(cells: dict, design: dict, seed) -> np.ndarray:
+    """One simulated study -> X float64 [P', C], rows in drawn-patient order, NaN where no focal cell.
+
+    Neighbour lists are built once per region and cached in cells["_nbr"].
+    """
+    L = layout(cells)
+    d = draw(cells, design, seed)
+    M = confusion_matrix(L["K"], float(design.get("eps") or 0.0))
+    T, K = len(L["focal"]), L["K"]
+    S = np.zeros((len(d["patients"]), T, K, R, 2))
+    m = np.zeros((len(d["patients"]), T), np.int64)
+    cache = cells.setdefault("_nbr", {})
+    for i, row in enumerate(d["looks"]):
+        for r, crop, u in row:
+            xy, ty = L["xy"](r), L["types"](r)
+            if r not in cache:
+                cache[r] = neighbours(xy)
+            s_, m_ = reimage_region(cache[r], xy, ty, L["focal"], K, crop=crop, M=M, u=u)
+            S[i] += s_
+            m[i] += m_
+    return features(S, m)
