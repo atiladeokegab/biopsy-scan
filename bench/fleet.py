@@ -98,6 +98,7 @@ def run_fleet(
         fleet_rows.append({
             "devices": n_dev,
             "status": "MEASURED",
+            "gpu": hw.get("gpu"),
             "studies": studies,
             "studies_per_s": timing["trials_per_s"],
             "total_s": timing["total_s"],

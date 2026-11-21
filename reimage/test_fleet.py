@@ -9,6 +9,7 @@ import sys
 import numpy as np
 import pytest
 
+from bench import fleet
 from core.truth import neighbours
 from reimage import run
 from reimage.fleet import run_sharded, shard_bounds
@@ -85,3 +86,17 @@ def test_invalid_device_requests_fail_honestly():
             run({"cells": cells, "backend": "numpy"}, [0, 1], devices=bad)
     with pytest.raises(RuntimeError, match="NUMBA_ENABLE_CUDASIM"):
         run_sharded({"cells": cells, "backend": "gpu"}, [0, 1], devices=2, fake_shards=True)
+
+
+def test_fleet_script_writes_1_2_4_8_measured_or_unmeasured(tmp_path):
+    """Covers A-6.2 directly under reimage/test_fleet.py."""
+    import json
+
+    out = fleet.main(["--out", str(tmp_path), "--trials", "2", "--cells", "120"])
+    data = json.loads(out.read_text())
+    assert [row["devices"] for row in data["fleet"]] == [1, 2, 4, 8]
+    for row in data["fleet"]:
+        if row["status"] == "MEASURED":
+            assert row["gpu"] and row["studies_per_s"] > 0
+        else:
+            assert row["status"] == "UNMEASURED" and row["studies_per_s"] is None
