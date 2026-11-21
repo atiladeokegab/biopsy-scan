@@ -53,9 +53,11 @@ def _run(outer, inner):
          "power": 0.9, "power_lo": 0.86, "power_hi": 0.93, "power_n": 300, "fwer": 0.05, "fwer_lo": 0.02,
          "fwer_hi": 0.1, "alternative_mean_events": 100.0, "resample_ratio": inner / 159, "backend": "gpu",
          "runtime_s": 1.0}
+    s.update(cohort="charville", alpha=0.05, power_count=round(0.9 * 300), power_n=300, fwer_n=100)
     m = {k: base[k] for k in ("seed", "source_hash", "grammar_hash", "budget")}
-    return {"_file": "modal-power-x.json", "points": [{"patients": outer, "summary": s, "metadata": m,
-                                                       "gpu": {"model": "A100"}, "in_function_s": 1.0}]}
+    return {"_file": "modal-power-x.json", "schema": "preflight-modal-power/1", "status": "MEASURED",
+            "pin": "1f1bc7457eaf98e5cff600c0e17001d7e2fc44bf",
+            "points": [{"patients": outer, "summary": s, "metadata": m, "gpu": {"model": "A100"}, "in_function_s": 1.0}]}
 
 
 def test_merger_refuses_a_summary_for_another_patient_count():
@@ -72,3 +74,38 @@ def test_ci_crossings_are_called_pointwise_never_a_band():
     lo, hi = a["n_80_pointwise_ci_crossings"]
     assert "n_80_lo" not in a and lo <= a["n_80"] <= hi
     assert a["smallest_patients_pointwise_lower_bound_clears_80"] == 800
+
+
+def test_merger_refuses_a_replicate_that_disagrees_and_keeps_one_that_agrees():
+    from bench.power_at_scale import build
+
+    again = _run(400, 400)
+    assert len(build([_run(400, 400), again])["points"]) == 8
+    worse = _run(400, 400)
+    worse["points"][0]["summary"].update(power=0.5, power_count=150)
+    with pytest.raises(ValueError, match="P=400 twice with different results"):
+        build([_run(400, 400), worse])
+    base40 = _run(40, 40)
+    with pytest.raises(ValueError, match="P=40 twice with different results"):
+        build([base40])  # #53 has P=40 at 19/300, not 270/300
+
+
+def test_merger_refuses_failed_points_wrong_pin_and_wrong_counts():
+    from bench.power_at_scale import build
+
+    failed = _run(400, 400)
+    failed["points"] = [{"patients": 400, "error": "boom"}]
+    with pytest.raises(ValueError, match="P=400 failed"):
+        build([failed])
+    pin = _run(400, 400)
+    pin["pin"] = "0" * 40
+    with pytest.raises(ValueError, match="pinned code"):
+        build([pin])
+    short = _run(400, 400)
+    short["points"][0]["summary"]["power_n"] = 299
+    with pytest.raises(ValueError, match="study counts"):
+        build([short])
+    cohort = _run(400, 400)
+    cohort["points"][0]["summary"]["cohort"] = "upmc"
+    with pytest.raises(ValueError, match="different design"):
+        build([cohort])

@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "bench" / "results"
 TARGET = 0.80
 LABEL = "ESTIMATE: simulated"
+PIN = "1f1bc7457eaf98e5cff600c0e17001d7e2fc44bf"  # gpu/power_at_scale.py's PIN: the code the 300 run used
 
 
 def crossing(ns: list[int], ys: list[float], target: float = TARGET) -> float | None:
@@ -61,28 +62,43 @@ def build(runs: list[dict]) -> dict:
                "power_n": p["sim_n"], "fwer": p["sim_fwer"], "fwer_lo": p["sim_fwer_lo"], "fwer_hi": p["sim_fwer_hi"],
                "mean_events": p["sim_mean_events"], "backend": "cpu", "hardware": "team VM CPU (not recorded per point)",
                "wall_s": None, "source": "bench/results/vs-schoenfeld-300.json"} for p in base["points"]]
-    seen = {p["patients"] for p in points}
+    for p in points:
+        p["power_count"] = round(p["power"] * p["power_n"])
+    by_p = {p["patients"]: p for p in points}
+    budget = base["simulated"]["budget"]
     for run in runs:
+        if (run.get("schema"), run.get("status"), run.get("pin")) != ("preflight-modal-power/1", "MEASURED", PIN):
+            raise ValueError(f"{run['_file']} is not a MEASURED preflight-modal-power/1 run of the pinned code {PIN[:12]}")
         for r in run["points"]:
-            if "error" in r or r["patients"] in seen:
-                continue
+            if "error" in r:
+                raise ValueError(f"P={r['patients']} failed in {run['_file']}: {r['error']}; rerun it or leave the file out")
             s, m = r["summary"], r["metadata"]
             if s["patients"] != r["patients"]:
                 raise ValueError(f"point P={r['patients']}: its summary is for P={s['patients']}")
             if (m["seed"] != base["simulated"]["seed"] or m["source_hash"] != base["simulated"]["source_hash"]
                     or m["grammar_hash"] != base["simulated"]["grammar_hash"]
-                    or {k: m["budget"][k] for k in base["simulated"]["budget"]} != base["simulated"]["budget"]):
+                    or {k: m["budget"][k] for k in budget} != budget):
                 raise ValueError(f"P={r['patients']} was not run on the 300 run's seed, source, grammar and budget")
-            if (s["regions_per_patient"], s["fov_um"], s["eps"], s["hr_per_source_sd"]) != (
-                    base["design"]["regions_per_patient"], base["design"]["fov_um"], base["design"]["eps"], base["hr_per_sd"]):
+            if (s["cohort"], s["alpha"], s["regions_per_patient"], s["fov_um"], s["eps"], s["hr_per_source_sd"]) != (
+                    base["cohort"], base["alpha"], base["design"]["regions_per_patient"], base["design"]["fov_um"],
+                    base["design"]["eps"], base["hr_per_sd"]):
                 raise ValueError(f"P={r['patients']} is a different design")
-            points.append({"patients": r["patients"], "power": s["power"], "power_lo": s["power_lo"],
-                           "power_hi": s["power_hi"], "power_n": s["power_n"], "fwer": s["fwer"], "fwer_lo": s["fwer_lo"],
-                           "fwer_hi": s["fwer_hi"], "mean_events": s["alternative_mean_events"],
-                           "resample_ratio": s["resample_ratio"], "backend": s["backend"],
-                           "hardware": r["gpu"]["model"], "wall_s": s["runtime_s"],
-                           "in_container_s": r["in_function_s"], "source": f"bench/results/{run['_file']}"})
-            seen.add(r["patients"])
+            if (s["power_n"], s["fwer_n"]) != (budget["alternative"], budget["null"]):
+                raise ValueError(f"P={r['patients']}: study counts {s['power_n']}/{s['fwer_n']} are not the budget's")
+            point = {"patients": r["patients"], "power": s["power"], "power_count": s["power_count"],
+                     "power_lo": s["power_lo"], "power_hi": s["power_hi"], "power_n": s["power_n"], "fwer": s["fwer"],
+                     "fwer_lo": s["fwer_lo"], "fwer_hi": s["fwer_hi"], "mean_events": s["alternative_mean_events"],
+                     "resample_ratio": s["resample_ratio"], "backend": s["backend"], "hardware": r["gpu"]["model"],
+                     "wall_s": s["runtime_s"], "in_container_s": r["in_function_s"],
+                     "source": f"bench/results/{run['_file']}"}
+            if r["patients"] in by_p:  # a replicate: same seeds, so it must give the same studies' answer
+                kept = by_p[r["patients"]]
+                if (kept["power_count"], kept["power_n"], kept["fwer"]) != (point["power_count"], point["power_n"], point["fwer"]):
+                    raise ValueError(f"P={r['patients']} twice with different results: {kept['source']} and {point['source']}")
+                kept.setdefault("replicated_by", []).append(point["source"])
+                continue
+            by_p[r["patients"]] = point
+    points = list(by_p.values())
     points.sort(key=lambda p: p["patients"])
     if len({p["hardware"] for p in points if p["backend"] == "gpu"}) > 1:
         raise ValueError("the GPU points ran on more than one GPU model; pin one for the whole curve")
