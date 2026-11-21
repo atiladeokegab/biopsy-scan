@@ -194,6 +194,20 @@ def test_a_bad_output_path_never_consumes_the_opening(cli):
     assert cli["reads"] == ["discovery", "discovery", "locked"]
 
 
+def test_a_failed_opening_record_releases_the_reserved_output(cli, monkeypatch):
+    """--out is reserved, then the opening record cannot be written: the output is removed, nothing locked is read,
+    and a retry with the same --out succeeds."""
+    real = rs.opening_record
+    (cli["dir"] / "a_file").write_text("")
+    monkeypatch.setattr(rs, "opening_record", lambda *a: cli["dir"] / "a_file" / "marker.json")  # its parent is a file
+    out = cli["dir"] / "r.json"
+    assert cli["run"]("--events", "4", "--out", str(out)) == 2
+    assert not out.exists() and cli["reads"] == ["discovery"]
+    monkeypatch.setattr(rs, "opening_record", real)
+    assert cli["run"]("--events", "4", "--out", str(out)) == 0
+    assert cli["reads"] == ["discovery", "discovery", "locked"] and json.loads(out.read_text())["opening_record"]
+
+
 def test_the_locked_set_stays_closed_without_a_measured_discovery_rank(cli, monkeypatch):
     monkeypatch.setattr(rs, "rank_on_discovery", lambda *a: {"status": "UNMEASURED", "reason": "no stats.screen"})
     assert cli["run"]("--events", "4", "--out", str(cli["dir"] / "r.json")) == 2
