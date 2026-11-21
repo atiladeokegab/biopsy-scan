@@ -1,6 +1,7 @@
-"""Check results/claims.json: recompute every headline number from its source file, and scan the docs for stale wording.
+"""Check results/claims.json: recompute every headline number from its source file, check each published quote
+still carries those numbers verbatim, and scan the docs for stale wording.
 
-python3 -I scripts/check_claims.py [ROOT]   prints each claim, where the docs quote it, and any drift or stale hit; exit 1 on either.
+python3 -I scripts/check_claims.py [ROOT]   prints each claim, the files it is bound to, and any drift or stale hit; exit 1 on either.
 """
 import json
 import re
@@ -33,29 +34,56 @@ def render(value, rule):
     kind, _, n = rule.partition(":")
     if kind == "eq":
         return str(value)
-    if kind == "fixed" or kind == "ratio":
+    if kind == "fixed":
         return f"{value:.{int(n)}f}"
     if kind == "pct":
         return f"{100 * value:.{int(n)}f}"
+    if kind == "comma":
+        return f"{value:,.{int(n)}f}" if n else f"{value:,}"
+    if kind == "word":
+        return value.split()[0]
     raise ValueError(f"unknown rule {rule}")
 
 
+def compute(claim, src):
+    """name -> (raw value from the source, rendered by its rule); `label` is the source's own label."""
+    out = {"label": (lookup(src, claim["label_path"]),) * 2}
+    for v in claim["values"]:
+        if "ratio" in v:
+            a, b = (lookup(src, p) for p in v["ratio"])
+            raw = a / b
+        elif "product" in v:
+            a, b = (lookup(src, p) for p in v["product"])
+            raw = a * b
+        else:
+            raw = lookup(src, v["path"])
+        out[v["name"]] = (raw, render(raw, v["rule"]))
+    return out
+
+
 def drift(root=ROOT):
-    """Every (claim id, what, expected, got) that no longer matches its source file."""
+    """Every (claim id, what, expected, got): a value that no longer matches its source file,
+    or a published quote that no longer carries the value it is bound to."""
     ledger = json.loads((root / LEDGER).read_text())
     out = []
     for c in ledger["claims"]:
-        src = json.loads((root / c["source"]).read_text())
-        if (got := str(lookup(src, c["label_path"]))) != c["label"]:
+        vals = compute(c, json.loads((root / c["source"]).read_text()))
+        if (got := str(vals["label"][0])) != c["label"]:
             out.append((c["id"], c["label_path"], c["label"], got))
         for v in c["values"]:
-            if "ratio" in v:
-                a, b = (lookup(src, p) for p in v["ratio"])
-                got, what = render(a / b, v["rule"]), "/".join(v["ratio"])
+            if (got := vals[v["name"]][1]) != v["expect"]:
+                out.append((c["id"], v["name"], v["expect"], got))
+        for q in c.get("quotes", []):
+            doc = (root / q["file"]).read_text(encoding="utf-8")
+            if "text" in q:
+                want = q["text"].format_map({k: r for k, (_, r) in vals.items()})
+                if want not in doc:
+                    out.append((c["id"], q["file"], want, "not found verbatim"))
             else:
-                got, what = render(lookup(src, v["path"]), v["rule"]), v["path"]
-            if got != v["expect"]:
-                out.append((c["id"], what, v["expect"], got))
+                raw, shown = vals[q["value"]]
+                got = lookup(json.loads(doc), q["path"])
+                if got != raw and str(got) != shown:
+                    out.append((c["id"], f"{q['file']}:{q['path']}", shown, str(got)))
     return out
 
 
@@ -75,20 +103,13 @@ def stale(root=ROOT):
     return out
 
 
-def quoted(root=ROOT):
-    """claim id -> the doc files that quote its `quoted_as` text (a report, not a check)."""
-    ledger = json.loads((root / LEDGER).read_text())
-    texts = {p.relative_to(root).as_posix(): p.read_text(encoding="utf-8") for p in doc_files(root)}
-    return {c["id"]: [f for f, t in texts.items() if c["quoted_as"] in t] for c in ledger["claims"]}
-
-
 def main(argv):
     root = Path(argv[1]).resolve() if len(argv) > 1 else ROOT
-    for cid, files in quoted(root).items():
-        print(f"{cid}: quoted in {', '.join(files) or 'no doc yet'}")
+    for c in json.loads((root / LEDGER).read_text())["claims"]:
+        print(f"{c['id']}: bound to {', '.join(sorted({q['file'] for q in c['quotes']})) or 'no published text yet'}")
     bad = drift(root)
     for cid, what, want, got in bad:
-        print(f"DRIFT {cid}: {what} is {got} in the source, the ledger says {want}")
+        print(f"DRIFT {cid}: {what}: ledger expects {want!r}, found {got!r}")
     old = stale(root)
     for where, pattern, why in old:
         print(f"STALE {where}: /{pattern}/ ({why})")
