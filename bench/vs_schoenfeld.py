@@ -119,7 +119,7 @@ def _fwer(name: str, points: list[dict]) -> str:
 
 
 def svg(res: dict) -> str:
-    W, H, L, R, T, B = 900, 617, 80, 220, 70, 177
+    W, H, L, R, T, B = 900, 634, 80, 220, 70, 194
     pts = res["points"]
     x0, x1 = min(p["patients"] for p in pts), max(p["patients"] for p in pts)
     X = lambda v: L + (W - L - R) * (v - x0) / max(1, x1 - x0)  # noqa: E731
@@ -169,15 +169,14 @@ def svg(res: dict) -> str:
     n = pts[0]["sim_n"]
     code = res["simulated"].get("atlas_code")
     snap = f' (frozen snapshot of the atlas code, {code["base_commit"]} + working tree)' if isinstance(code, dict) else ""
-    foot = [f"ESTIMATE (sim) = model-based Monte Carlo{snap}: {n:,} planted-effect studies per point, re-imaged cell",
-            "by cell from real tissue, maxT at one calibrated threshold per design.",
-            "Null-study FWER: " + "; ".join(_fwer(name, ps) for name, ps in
-                                             (("main", pts), ("control", res.get("control", {}).get("points")))
-                                             if ps) + ".",
+    foot = [f"ESTIMATE (sim) = model-based Monte Carlo{snap}: {n:,} planted-effect studies per point,",
+            "re-imaged cell by cell from real tissue, maxT at one calibrated threshold per design.",
+            *("Null-study FWER: " * (i == 0) + _fwer(name, ps) + (";" if name == "main" and "control" in res else ".")
+              for i, (name, ps) in enumerate((("main", pts), ("control", res.get("control", {}).get("points")))) if ps),
             "ANALYTIC = Schoenfeld (1983) events formula for a per-SD covariate (Hsieh and Lavori 2000),",
             "D = patients x event fraction, Bonferroni; it assumes exact, whole-tissue measurement."]
-    out += [f'<text x="12" y="{H - 111}" font-weight="bold">{escape(res["verdict"])}</text>']
-    out += [f'<text x="12" y="{H - 87 + 17 * i}" fill="#555" font-size="12">{escape(t)}</text>' for i, t in enumerate(foot)]
+    out += [f'<text x="12" y="{H - 128}" font-weight="bold">{escape(res["verdict"])}</text>']
+    out += [f'<text x="12" y="{H - 104 + 17 * i}" fill="#555" font-size="12">{escape(t)}</text>' for i, t in enumerate(foot)]
     out.append("</svg>")
     return "\n".join(out) + "\n"
 
