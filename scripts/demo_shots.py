@@ -1,12 +1,23 @@
-"""Screenshot the demo's first screen at desktop and phone size, as a pre-recorded fallback.
+"""Screenshot the demo's first screen at desktop and phone size, or record the backup demo video.
 
     uv run --frozen --with playwright==1.64.0 python -I scripts/demo_shots.py
+    uv run --frozen --with playwright==1.64.0 python -I scripts/demo_shots.py --video --out DIR
 
 Serves demo/ on 127.0.0.1, blocks every off-box request, waits for the page to finish its first render,
 and writes demo/shots/first-screen-<w>x<h>.png. Exits 1 if the page shows an error or anything goes off-box.
+
+--video records 1280x720 from the moment the page is ready: the first screen for --hold seconds, then "Run the studies", until every timed race
+lane is done, plus --tail seconds (default 5). It writes demo.mp4, stills at 0, 10, 20 and 30 s cut from that file, and timeline.json
+to --out (keep video out of git). Needs ffmpeg and ffprobe on PATH.
 """
+import argparse
+import hashlib
+import json
+import subprocess
 import sys
+import tempfile
 import threading
+import time
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -20,6 +31,11 @@ READY = """() => {
   const t = document.getElementById('verdict').textContent, c = document.getElementById('tissue-caption').textContent;
   return t && t !== 'Evaluating design...' && c && c !== 'Preparing tissue slabs...';
 }"""
+RACE_DONE = """() => {
+  const lanes = [...document.querySelectorAll('#speed-race li, #speed-interim li')].filter((li) => !li.classList.contains('pending'));
+  return lanes.length > 0 && lanes.every((li) => li.classList.contains('done'));
+}"""
+STILLS_S = (0, 10, 20, 30)
 
 
 class _Quiet(SimpleHTTPRequestHandler):
@@ -27,9 +43,90 @@ class _Quiet(SimpleHTTPRequestHandler):
         pass
 
 
-def main(out: Path = DEMO / "shots") -> int:
-    out.mkdir(exist_ok=True)
-    server = ThreadingHTTPServer(("127.0.0.1", 0), partial(_Quiet, directory=str(DEMO)))
+def _page_problems(page, tag: str) -> list[str]:
+    out = []
+    if page.locator("#error").is_visible():
+        out.append(f"{tag}: error shown: {page.locator('#error').inner_text()}")
+    if "could not start WebGL" in page.locator("#tissue-caption").inner_text():
+        out.append(f"{tag}: WebGL did not start")
+    return out
+
+
+def _shots(browser, url: str, out: Path, route) -> list[str]:
+    problems = []
+    for w, h in SIZES:
+        page = browser.new_page(viewport={"width": w, "height": h}, reduced_motion="reduce")
+        page.route("**/*", route)
+        page.goto(url, wait_until="networkidle")
+        page.wait_for_function(READY, timeout=30_000)
+        page.wait_for_timeout(500)  # one more frame for the WebGL canvas
+        problems += _page_problems(page, f"{w}x{h}")
+        path = out / f"first-screen-{w}x{h}.png"
+        page.screenshot(path=str(path))
+        print(f"{path}: {w}x{h}")
+        page.close()
+    return problems
+
+
+def _video(browser, url: str, out: Path, route, hold_s: float, tail_s: float) -> list[str]:
+    w, h = SIZES[0]
+    with tempfile.TemporaryDirectory() as tmp:
+        ctx = browser.new_context(viewport={"width": w, "height": h}, record_video_dir=tmp,
+                                  record_video_size={"width": w, "height": h})
+        page = ctx.new_page()
+        t0 = time.monotonic()  # the recording starts with the page
+        page.route("**/*", route)
+        page.goto(url, wait_until="networkidle")
+        page.wait_for_function(READY, timeout=30_000)
+        ready_s = time.monotonic() - t0  # the video is cut to start here, so it never opens on a blank page
+        problems = _page_problems(page, "video")
+        page.wait_for_timeout(hold_s * 1000)
+        click_s = time.monotonic() - t0 - ready_s
+        page.locator("#run").click()
+        page.wait_for_function(RACE_DONE, timeout=60_000)
+        done_s = time.monotonic() - t0 - ready_s
+        # The recording only gets a frame when the page paints, and it dropped the race's final repaint (MEASURED:
+        # 2.87 s on video, 2.88 s in the DOM); a screenshot forces a fresh frame, so take one each half second.
+        end = time.monotonic() + tail_s
+        while time.monotonic() < end:
+            page.screenshot()
+            page.wait_for_timeout(500)
+        problems += _page_problems(page, "video, after the race")
+        webm = Path(page.video.path())
+        ctx.close()  # finalises the recording
+        mp4 = out / "demo.mp4"
+        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-ss", f"{ready_s:.2f}", "-i", str(webm), "-c:v", "libx264",
+                        "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(mp4)], check=True)
+    dur = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
+                                str(mp4)], check=True, capture_output=True, text=True).stdout)
+    stills = []
+    for s in STILLS_S:
+        if s >= dur:
+            problems.append(f"no still at {s} s: the video is {dur:.1f} s")
+            continue
+        png = out / f"still-{s:02d}s.png"
+        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-ss", str(s), "-i", str(mp4), "-frames:v", "1",
+                        str(png)], check=True)
+        stills.append(png.name)
+    timeline = {"source": "MEASURED", "video": mp4.name, "width": w, "height": h, "duration_s": round(dur, 2),
+                "load_cut_s": round(ready_s, 2), "run_clicked_s": round(click_s, 2), "race_done_s": round(done_s, 2), "stills": stills,
+                "sha256": hashlib.sha256(mp4.read_bytes()).hexdigest()}
+    (out / "timeline.json").write_text(json.dumps(timeline, indent=1) + "\n")
+    print(json.dumps(timeline))
+    return problems
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--demo", type=Path, default=DEMO, help="the demo folder to serve (default: this repo's demo/)")
+    ap.add_argument("--out", type=Path, default=None, help="output folder (default: <demo>/shots)")
+    ap.add_argument("--video", action="store_true", help="record the backup video instead of the first-screen shots")
+    ap.add_argument("--hold", type=float, default=10.0, help="seconds on the first screen before Run (video only)")
+    ap.add_argument("--tail", type=float, default=5.0, help="seconds after the race finishes (video only)")
+    a = ap.parse_args(argv)
+    out = a.out or a.demo / "shots"
+    out.mkdir(parents=True, exist_ok=True)
+    server = ThreadingHTTPServer(("127.0.0.1", 0), partial(_Quiet, directory=str(a.demo)))
     threading.Thread(target=server.serve_forever, daemon=True).start()
     blocked, problems = [], []
 
@@ -40,24 +137,14 @@ def main(out: Path = DEMO / "shots") -> int:
             blocked.append(r.request.url)
             r.abort()
 
+    url = f"http://127.0.0.1:{server.server_port}/index.html"
     try:
         with sync_playwright() as pw:
-            # software WebGL so the 3D tissue renders on a box with no GPU
-            browser = pw.chromium.launch(args=["--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
-            for w, h in SIZES:
-                page = browser.new_page(viewport={"width": w, "height": h}, reduced_motion="reduce")
-                page.route("**/*", route)
-                page.goto(f"http://127.0.0.1:{server.server_port}/index.html", wait_until="networkidle")
-                page.wait_for_function(READY, timeout=30_000)
-                page.wait_for_timeout(500)  # one more frame for the WebGL canvas
-                if page.locator("#error").is_visible():
-                    problems.append(f"{w}x{h}: error shown: {page.locator('#error').inner_text()}")
-                if "could not start WebGL" in page.locator("#tissue-caption").inner_text():
-                    problems.append(f"{w}x{h}: WebGL did not start")
-                path = out / f"first-screen-{w}x{h}.png"
-                page.screenshot(path=str(path))
-                print(f"{path.relative_to(DEMO.parent)}: {w}x{h}")
-                page.close()
+            # Software WebGL lets the 3D tissue render with no GPU, but with it the screencast that records video
+            # froze the race panel (MEASURED: the bars never filled in the recording), so video mode goes without.
+            args = [] if a.video else ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"]
+            browser = pw.chromium.launch(args=args)
+            problems += _video(browser, url, out, route, a.hold, a.tail) if a.video else _shots(browser, url, out, route)
             browser.close()
     finally:
         server.shutdown()
