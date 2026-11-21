@@ -154,8 +154,93 @@
       "est_usd": 0.9018,
       "basis": "estimated_cpu_memory_usd in atlas/results/production/modal-execution.json at 04ffa170; CPU/RAM only, excludes image builds, storage and network; invoice not verified. Replaces the earlier 'Atlas T-1219 CPU resume' upper bound (same app)",
       "running_total_usd": 33.17
+    },
+    {
+      "utc": "2026-11-21T18:38Z",
+      "run": "build-9 modal-design 20/stream, arms ['lab', 'numba', 'gpu']",
+      "containers": 3,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 20.0,
+      "est_usd": 2.46,
+      "basis": "1860 s ceiling x per-arm $/h {'lab': 0.8887679999999998, 'numba': 0.8887679999999998, 'gpu': 2.987568}",
+      "source_commit": "2882116d205ac2faba3c4a36c3b6d987cbf82c81",
+      "container_class": "lab and numba without a GPU (smoke only)",
+      "actual": {
+        "modal_wall_s": 780,
+        "est_usd": 1.03,
+        "result": null,
+        "basis": "upper bound: 3 containers x 13 min; the gpu arm died at kernel compile in ~2 min",
+        "note": "FAILED smoke: _study_moments used min/max (fixed in the next commit); the numba arm's forked workers aborted (GNU OpenMP after the parent's JIT warm-up) and looped until the app was stopped at 18:51Z"
+      },
+      "running_total_usd": 34.2,
+      "counted": "actual (container x wall)"
+    },
+    {
+      "utc": "2026-11-21T18:52Z",
+      "run": "build-9 modal-design 20/stream, arms ['lab', 'numba', 'gpu']",
+      "containers": 3,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 20.0,
+      "est_usd": 2.46,
+      "basis": "1860 s ceiling x per-arm $/h {'lab': 0.8887679999999998, 'numba': 0.8887679999999998, 'gpu': 2.987568}",
+      "source_commit": "7269abc2de5aeec7cf0e8235955b7ea06c4de287",
+      "container_class": "lab and numba without a GPU (smoke only)",
+      "actual": {
+        "modal_wall_s": 145.6,
+        "est_usd": 0.193,
+        "basis": "each container x local wall (an upper bound: includes queueing)",
+        "result": "bench/results/modal-design-20261121T185222Z.json"
+      },
+      "running_total_usd": 34.393,
+      "counted": "actual (container x wall)"
+    },
+    {
+      "utc": "2026-11-21T18:55Z",
+      "run": "build-9 modal-design 1000/stream, arms ['lab', 'numba', 'gpu']",
+      "containers": 3,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 20.0,
+      "est_usd": 11.95,
+      "basis": "4800 s ceiling x per-arm $/h {'lab': 2.987568, 'numba': 2.987568, 'gpu': 2.987568}",
+      "source_commit": "4170cc63da94013d78cc058b922f4b167a76f891",
+      "container_class": "all arms identical",
+      "actual": {
+        "modal_wall_s": 2510.7,
+        "est_usd": 6.251,
+        "basis": "each container x local wall (an upper bound: includes queueing)",
+        "result": "bench/results/modal-design-20261121T185537Z.json"
+      },
+      "running_total_usd": 40.644,
+      "counted": "actual (container x wall)"
+    },
+    {
+      "utc": "2026-11-21T19:44Z",
+      "run": "build-9 modal-design 1000/stream, arms ['hybrid']",
+      "containers": 1,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 6.0,
+      "est_usd": 1.49,
+      "basis": "1800 s ceiling x per-arm $/h {'hybrid': 2.987568}",
+      "source_commit": "093c1eea6eda7e0433c0f506a95e54d8401ed79d",
+      "container_class": "all arms identical",
+      "actual": {
+        "modal_wall_s": 616.9,
+        "est_usd": 0.512,
+        "basis": "each container x local wall (an upper bound: includes queueing)",
+        "result": "bench/results/modal-design-20261121T194458Z.json"
+      },
+      "running_total_usd": 41.156,
+      "counted": "actual (container x wall)"
     }
   ],
   "container_usd_per_hour_H100": 4.58,
-  "note": "One workspace total across agents. Entries before 2026-11-21T17:36Z used pre-sourced rates; later ones use modal.com/pricing read at 17:36Z. Other agents' entries are their own estimates, logged here by build-modal."
+  "note": "One workspace total across agents. Entries before 2026-11-21T17:36Z used pre-sourced rates; later ones use modal.com/pricing read at 17:36Z. Other agents' entries are their own estimates, logged here by build-modal. build-9's design-point runs (bench/modal_design.py) count their actual (container x local wall, an upper bound), not their ceiling; moved here from modal-spend-design.json at 2026-11-21T19:58Z."
 }
