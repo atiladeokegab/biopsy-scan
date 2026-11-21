@@ -53,8 +53,18 @@ def channels_digest(channels_f64: np.ndarray) -> bytes:
 
 
 def region(counter, nbr, xy, types, focal, K, crop, eps, M, u, rng):
-    from core.reimage_ref import confusion_matrix, crop_mask, miscall
+    from core.reimage_ref import crop_mask, miscall
     from core.truth import region_sums
+
+    xy, types, M, u = checked(xy, types, focal, K, crop, eps, M, u, rng)
+    observed = miscall(types, M, u)
+    visible = crop_mask(xy, crop)
+    return region_sums(counter(nbr, observed, visible, K), observed, visible, focal, K)
+
+
+def checked(xy, types, focal, K, crop, eps, M, u, rng):
+    """One acquisition's inputs, validated before any native indexing: (xy, types, M, u)."""
+    from core.reimage_ref import confusion_matrix
 
     xy, types = np.asarray(xy), check_types(types, K)
     if xy.shape != (len(types), 2) or not np.isfinite(xy).all():
@@ -75,9 +85,7 @@ def region(counter, nbr, xy, types, focal, K, crop, eps, M, u, rng):
         raise ValueError("focal must contain distinct type indices in [0, K)")
     if crop is not None and (len(crop) != 3 or not np.isfinite(crop).all() or crop[2] <= 0):
         raise ValueError("crop must be a finite (x0, y0, positive side) tuple")
-    observed = miscall(types, M, u)
-    visible = crop_mask(xy, crop)
-    return region_sums(counter(nbr, observed, visible, K), observed, visible, focal, K)
+    return xy, types, M, u
 
 
 def region_v2(counter_v2, nbr, xy, types, channels, focal, K, crop, eps, M, u, rng):
