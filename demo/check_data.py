@@ -78,6 +78,8 @@ def check_bench(b, w):
     need(b.get("schema") == "preflight-bench/1", w, "schema must be 'preflight-bench/1'")
     need(b.get("status") in ("UNMEASURED", "MEASURED"), w, "status must be UNMEASURED or MEASURED")
     need(isinstance(b.get("studies"), int) and b["studies"] > 0, w, "studies: positive int")
+    for k in ("cpu", "gpu"):  # a speed-up means nothing without the hardware it was measured on
+        need(isinstance(b.get(k), str) and b[k].strip() != "", w, f"{k}: hardware model string, required")
     if b["status"] == "MEASURED":
         for k in ("cpu_seconds", "gpu_seconds"):
             need(num(b.get(k)) and b[k] > 0, w, f"{k}: positive number when MEASURED")
