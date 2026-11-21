@@ -75,3 +75,6 @@ def test_committed_result_gives_both_powers_per_design_point(path):
                                                                      res["alpha"], res["features_m"]))
     svg_text = path.with_suffix(".svg").read_text()
     assert "MEASURED (sim)" in svg_text and "ANALYTIC (formula)" in svg_text
+    if path.name == "vs-schoenfeld-300.json":
+        assert res["status"] == "ESTIMATE"
+        assert ">ESTIMATE · Textbook" in svg_text
