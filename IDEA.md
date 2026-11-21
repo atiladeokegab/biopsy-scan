@@ -283,7 +283,7 @@ Expected 50–200× over 8 cores and 10–30× over a 64-core node. These are es
 | Real-data audit | `audit/` | @atiladeokegab [Hephaestus] | #6 |
 | Demo and deck | `demo/` | @atiladeokegab [Zeus] | #7 |
 | Tests | `tests/` | @atiladeokegab [Prometheus] | #8 |
-| Submission | `docs/film/`, `docs/SUBMISSION.md`, `README.md` | @atiladeokegab | #9, #10, #11 |
+| Submission | `docs/film/`, `docs/SUBMISSION.md`, `README.md` | @atiladeokegab | #9, #10, #11, #58 |
 
 ## Deadlines (PROVISIONAL, confirm at 11:00)
 
