@@ -11,7 +11,7 @@
       "hardware": "AMD EPYC 7B13",
       "cores": 8,
       "gpu": null,
-      "source": "bench/results/impl-a-charville-amd-epyc-7b13.json (PR #64, 7d3fe1c)",
+      "source": "bench/results/impl-a-charville-amd-epyc-7b13.json",
       "note": "298.3 s on 1 core"
     },
     {
