@@ -84,6 +84,7 @@ function update({ restartRace }) {
   shown = p;
   $("power").textContent = pct(p.power);
   $("ident").textContent = pct(p.identification_rate);
+  $("planted").textContent = `Planted pattern: HR ${grid.effect_hr_per_sd} per SD`;
   $("verdict").textContent = verdict(p.power);
   $("snap").textContent = AXES.every((k) => want[k] === p[k]) ? "" : `Nearest grid point: ${describe(p)}.`;
   $("chart-title").textContent = drawChart($("chart"), grid, p);

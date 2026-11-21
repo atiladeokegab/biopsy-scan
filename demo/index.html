@@ -49,7 +49,7 @@
           <button id="run" type="submit" class="go">Can my study find it?</button>
           <div class="answer" id="answer" aria-live="polite">
             <p class="power"><span id="power">—</span><small>power</small></p>
-            <p class="ident"><span id="ident">—</span> also name the right pattern.</p>
+            <p class="ident"><span id="planted">Planted pattern</span>. <span id="ident">—</span> of all studies also name the right pattern.</p>
             <p class="verdict" id="verdict">Evaluating design...</p>
             <p class="snap" id="snap"></p>
           </div>
@@ -73,12 +73,12 @@
       <h2 id="race-title">The same <span id="race-n">1,000</span> studies, two ways</h2>
       <div class="lanes">
         <figure class="lane">
-          <figcaption><strong>CPU</strong> (one study at a time)</figcaption>
+          <figcaption><strong>CPU</strong> all cores (Numba)</figcaption>
           <canvas id="cpu" aria-hidden="true"></canvas>
           <p class="count" id="cpu-count"></p>
         </figure>
         <figure class="lane">
-          <figcaption><strong>GPU</strong> (thousands at once)</figcaption>
+          <figcaption><strong>GPU</strong> batched studies</figcaption>
           <canvas id="gpu" aria-hidden="true"></canvas>
           <p class="count" id="gpu-count"></p>
         </figure>
