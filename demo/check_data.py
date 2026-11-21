@@ -1,6 +1,7 @@
 """Check demo/data/{grid,tissue,bench,baseline}.json against the schemas in demo/README.md.
 
-Run: python3 -I demo/check_data.py [data_dir]. bench.json is optional (absent = UNMEASURED).
+Run: python3 -I demo/check_data.py [data_dir]. bench.json is optional (absent = UNMEASURED); so is
+baseline.json (absent = no baseline panel; race.test.mjs still requires the committed one).
 Exit 0 when every present file is valid; otherwise it names the first problem.
 """
 
@@ -115,10 +116,10 @@ def check_baseline(b, w):
 
 
 for name, check, required in (("grid.json", check_grid, True), ("tissue.json", check_tissue, True),
-                              ("bench.json", check_bench, False), ("baseline.json", check_baseline, True)):
+                              ("bench.json", check_bench, False), ("baseline.json", check_baseline, False)):
     path = DIR / name
     if not path.exists():
         need(not required, path, "missing")
-        print(f"{path}: absent (the page shows UNMEASURED)")
+        print(f"{path}: absent (" + ("the page hides the baseline panel)" if name == "baseline.json" else "the page shows UNMEASURED)"))
         continue
     print(f"{path}: ok, {check(json.loads(path.read_text()), path)}")
