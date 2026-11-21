@@ -28,7 +28,7 @@ def raw_shuffle_p(X, time, event, C, strata, z, B, rng):
     """The invalid shortcut: shuffle the fitted adjusted residuals within strata, keep V fixed."""
     Cc = C - C.mean(0)
     same = strata[:, None] == strata[None]
-    beta = _newton(np, Cc, time[None], event[None], same)
+    beta, _ = _newton(np, Cc, time[None], event[None], same)
     _, m, _ = _risk(np, time[None], event[None], np.exp(beta @ Cc.T), same)
     m = m[0]
     U_obs = (X - X.mean(0)).T @ m
