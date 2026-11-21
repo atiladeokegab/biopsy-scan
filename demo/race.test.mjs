@@ -68,7 +68,7 @@ assert.ok(raceState(rows, 1e9).every((r, i) => (rows[i].seconds == null ? r.frac
 bl.rows.forEach((r) => assert.ok(r.seconds == null || (r.label && r.source), `${r.id}: a time needs a label and a source`));
 // #79 review (Atlas): no ratio anywhere in the race or its workflow footnote, every string escaped,
 // and a row whose seconds are not a positive finite number is drawn as untimed.
-const { speedRaceHTML, workflowHTML, pairRatio } = await import("./race.js");
+const { speedRaceHTML, workflowHTML, secs } = await import("./race.js");
 const row = (o) => ({ id: "x", method: "m", role: "screen", label: "MEASURED", hardware: "h", cores: 8, gpu: null, source: "s", ...o });
 const both = speedRaceHTML({ rows: [row({ role: "baseline", seconds: 2 }), row({ seconds: 1 }), row({ seconds: 2 })] });
 assert.doesNotMatch(both, /×|faster|slower|speed-?up/i, "two MEASURED rows never print a ratio, slower or equal");
@@ -96,25 +96,15 @@ const early = raceState(pair, RACE_MS * 0.2);
 assert.ok(!early[0].done && !early[1].done && early[0].frac === early[1].frac, "both grow at one pace");
 const half = raceState(pair, RACE_MS / 2);
 assert.ok(half[1].done && !half[0].done && half[1].frac < half[0].frac, "the faster stops first, shorter");
-// A ratio only for a same-scope MEASURED pair, faster row named, direction-aware.
-const g = (rows, same_scope = true) => ({ same_scope, rows });
-assert.equal(pairRatio(g([row({ method: "NumPy", seconds: 2.88 }), row({ method: "GPU", seconds: 0.873 })])), "GPU: ×3.3 faster");
-assert.equal(pairRatio(g([row({ method: "1", seconds: 3.8 }), row({ method: "4", seconds: 11.44 })])), "1: ×3.0 faster");
-assert.equal(pairRatio(g([row({ seconds: 2 }), row({ seconds: 2 })])), null, "equal: no ratio");
-assert.equal(pairRatio(g([row({ seconds: 2 }), row({ seconds: 1 })], false)), null, "not same-scope: no ratio");
-assert.equal(pairRatio(g([row({ seconds: 2 }), row({ seconds: 1, label: "ESTIMATE" })])), null, "both MEASURED or no ratio");
-assert.equal(pairRatio(g([row({ seconds: 2 }), row({ seconds: null, label: "PENDING" })])), null);
-assert.equal(pairRatio(bl), null, "the design-point race never prints a ratio");
-assert.equal(pairRatio(g([row({ seconds: 3 }), row({ seconds: 2 }), row({ seconds: 1 })])), null);
-for (const grp of (bl.interim ?? []).filter((x) => x.same_scope)) assert.match(pairRatio(grp), /×\d\.\d faster$/, grp.title);
-// Atlas #79 re-check at 9355de6, each written red first.
-// (2) the old fleet file times the longest shard, overlap unverified: no ratio for it; the kernel pair says what ran.
-for (const grp of bl.interim ?? []) {
-  if (/fleet/.test(grp.title)) {
-    assert.equal(pairRatio(grp), null, "no fleet ratio from longest-shard compute");
-    assert.match(grp.title, /longest-shard compute/);
-  } else assert.match(grp.title, /re-imaging and feature extraction only \(scoring not timed\)/);
-}
+// The lead (19:00Z): the page prints Atlas's cleared scope line beside each measured pair, never a ratio of its own.
+assert.doesNotMatch(String(Object.keys(await import("./race.js"))), /pairRatio/, "no computed ratio to contradict the cleared one");
+const [kern, fleet] = bl.interim ?? [];
+assert.match(kern.scope, /^MEASURED, 3\.19× faster: feature step only, NumPy vs GPU/);
+assert.deepEqual(fleet.rows.map((r) => r.id), ["fleet-1", "fleet-8"], "1 A100 against 8: no 16-GPU bar");
+assert.match(fleet.scope, /^MEASURED, observed 6\.6× compute-span reduction 843\.7→128\.2 s for 1,000 Charville/);
+assert.doesNotMatch(JSON.stringify(bl.interim), /% of ideal|efficiency|longest-shard|80GB/);
+assert.equal(secs(fleet.rows[0].seconds), "843.7 s", "the bar's seconds match the scope line's");
+assert.equal(secs(fleet.rows[1].seconds), "128.2 s");
 // (5) a PENDING row with a number is still PENDING; a non-numeric startup_s is never formatted.
 assert.match(speedRaceHTML({ rows: [row({ label: "PENDING", seconds: 5 })] }), /class="pending"/);
 assert.equal(raceState([row({ label: "UNMEASURED", seconds: 5 }), row({ seconds: 1 })], 1e9)[0].clock, null);
