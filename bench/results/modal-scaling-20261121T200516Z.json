@@ -1,0 +1,154 @@
+{
+  "status": "FAILED",
+  "failures": [
+    "cores 1: threads {'OMP_NUM_THREADS': '1', 'OPENBLAS_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1', 'NUMBA_NUM_THREADS': '1', 'NUMBA_THREADING_LAYER': 'workqueue'}",
+    "cores 8: threads {'OMP_NUM_THREADS': '1', 'OPENBLAS_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1', 'NUMBA_NUM_THREADS': '1', 'NUMBA_THREADING_LAYER': 'workqueue'}"
+  ],
+  "source_commit": "b1ed7426c20698bab7e31edb1069ec2de880a417",
+  "labels": {
+    "compute": "MEASURED",
+    "sweep": "one sweep, every core count launched at once",
+    "outcomes": "SYNTHETIC (atlas/simulation.py)",
+    "claims": "times and ratios only: speedup_vs_1_core = studies wall at 1 core / at n cores"
+  },
+  "workload": {
+    "arm": "numba (build-9's bench/design_batch.py at 093c1ee, copied unchanged)",
+    "stream": "null",
+    "studies": 8,
+    "root_seed": 20261121,
+    "stream_seed": 202,
+    "design": {
+      "patients": 159,
+      "regions_per_patient": 2,
+      "fov_um": 400.0,
+      "eps": 0.1,
+      "seed": 0
+    },
+    "timed": "studies_wall_s: the pool's re-imaging and Cox scoring of every study; excludes data load, study preparation, adjacency and JIT warm-up (each recorded per point)"
+  },
+  "container_class": {
+    "1": "Modal CPU container, cpu=(1, 1) physical cores as request and hard limit, 16 GiB, no GPU, modal.Image.debian_slim(python_version='3.11') + uv_sync of this repo",
+    "8": "Modal CPU container, cpu=(8, 8) physical cores as request and hard limit, 16 GiB, no GPU, modal.Image.debian_slim(python_version='3.11') + uv_sync of this repo"
+  },
+  "parity": {
+    "all": false,
+    "against_build9_8core": {
+      "x_identical": true,
+      "maxT_identical": false,
+      "compared": 8
+    }
+  },
+  "curve": null,
+  "points": {
+    "1": {
+      "host": {
+        "cpu_model": "unknown",
+        "cpu_count": 2,
+        "affinity_size": 2,
+        "cgroup_cpu_max": null,
+        "load_average_start": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "modal_task_id": "ta-01M7ZVD4EANYPH0K7EYVFBPQTR",
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1",
+          "NUMBA_NUM_THREADS": "1",
+          "NUMBA_THREADING_LAYER": "workqueue"
+        },
+        "load_average_end": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "8": {
+      "host": {
+        "cpu_model": "unknown",
+        "cpu_count": 8,
+        "affinity_size": 8,
+        "cgroup_cpu_max": null,
+        "load_average_start": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "modal_task_id": "ta-01M7ZVD44XMJB8VSSECCC87HKR",
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1",
+          "NUMBA_NUM_THREADS": "1",
+          "NUMBA_THREADING_LAYER": "workqueue"
+        },
+        "load_average_end": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    }
+  },
+  "studies": [
+    {
+      "i": 0,
+      "x_sha": "0bf01f9bd6ffab192883fff2bf29aca5710e4592f5b8754f40527c53030541d0",
+      "z_sha": "d2374c7563689810b135889081808580e992bf53cc7128ff5327288343a6285b",
+      "maxT": 3.198580350436865
+    },
+    {
+      "i": 1,
+      "x_sha": "1ab75b8e7576ba64a6bcda6559a476aafca69af72dd459028e97e9a6c196fbc5",
+      "z_sha": "3375cd9b281e93ca6bb91e519a534d067e00a57984646b616d486bffc1a05a2b",
+      "maxT": 3.342401380346125
+    },
+    {
+      "i": 2,
+      "x_sha": "25813b18b73d5738727f1360c39923a99ad95a6f483491763f4b10263e2dd31a",
+      "z_sha": "9085d6aa99fc3f0f8b74c7721c943e0f2b8f842e877a3edc5ec5f538b41f63aa",
+      "maxT": 3.313067635341934
+    },
+    {
+      "i": 3,
+      "x_sha": "c7b719a40164dcadecc206bf316dbeb47dc192132060325aab3c0ea87258bef8",
+      "z_sha": "463e92a7dd9c102135eb3c50de564f3221041b0777908b59ddbfef5774177ba3",
+      "maxT": 3.33223292033212
+    },
+    {
+      "i": 4,
+      "x_sha": "522f0ec1e54755959a78fefb073832b7979ee9a3babdb3e7cc800fee2b80c206",
+      "z_sha": "440a88f21151a9c7f0473b449cc3078a930cae2d40cc60b7889a4c5415dd5ead",
+      "maxT": 3.1220427024994084
+    },
+    {
+      "i": 5,
+      "x_sha": "6bc7358f3b75f3375b5baeb58d60bc737be57a4b37948eee955f7475db927d7d",
+      "z_sha": "1155dc878becef8a15be1dfafc738e0737a6cb0664fd799940bed5045abead20",
+      "maxT": 4.284556470256986
+    },
+    {
+      "i": 6,
+      "x_sha": "34142f0fcf76086707dc1a82e840d0c6217e1649d480f3b018874573716c29fd",
+      "z_sha": "841aa7d4432e1984e40e4320fbfef3ff805e156c520234554b2ea786d960c290",
+      "maxT": 3.0640206651982527
+    },
+    {
+      "i": 7,
+      "x_sha": "d1d12784531189665cad8c4074b412f24b2a9c4653c6b10092272d040177226c",
+      "z_sha": "500a4637ae49125ebc6b53f9c670db20feda1fc2ad5dbd565c432cf0338c61c5",
+      "maxT": 3.2818259681623565
+    }
+  ],
+  "errors": {},
+  "modal": {
+    "app": "preflight-modal-scaling",
+    "started_utc": "2026-11-21T20:05:16.149649+00:00",
+    "finished_utc": "2026-11-21T20:06:33.379391+00:00",
+    "wall_s": 77.229742,
+    "build9_reference": "origin/modal-design-b9:bench/results/modal-design-20261121T185537Z.json"
+  }
+}
