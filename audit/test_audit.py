@@ -98,10 +98,18 @@ def _sample_record(
 
 def test_prepared_outcome_selection_covers_all_three_outcomes_and_keeps_upmc_descriptive() -> None:
     o1 = choose_prepared_outcome(cohort="charville", maxt_p=0.40, omnibus_p=0.004, top_hit_stable=False, n_events=38)
+    o1_low_events = choose_prepared_outcome(
+        cohort="charville", maxt_p=0.40, omnibus_p=0.004, top_hit_stable=False, n_events=3
+    )
     o2 = choose_prepared_outcome(cohort="charville", maxt_p=0.02, omnibus_p=0.02, top_hit_stable=True, n_events=38)
     o3 = choose_prepared_outcome(cohort="charville", maxt_p=0.50, omnibus_p=0.40, top_hit_stable=False, n_events=38)
     upmc = choose_prepared_outcome(cohort="upmc", maxt_p=0.01, omnibus_p=0.01, top_hit_stable=True, n_events=10)
     assert o1["key"] == "omnibus_only_diffuse"
+    assert o1_low_events["key"] == "omnibus_only_diffuse"
+    stmt = o1["statement"].lower()
+    assert "exploratory conditional association" in stmt
+    assert "diffuse" not in stmt
+    assert "signal is real" not in stmt
     assert o2["key"] == "real_hit_stable"
     assert o3["key"] == "atlas_design_choices"
     assert upmc["key"] == "atlas_design_choices"
