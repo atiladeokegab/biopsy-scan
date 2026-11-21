@@ -34,32 +34,80 @@ ROOT = SUBMISSION.parent.parent
 JUDGING = ROOT / "docs" / "JUDGING.md"
 
 
-def merged_result_quotes():
-    """The figures docs/JUDGING.md must quote, each computed from its committed results file (#113, #117, #123)."""
+def merged_result_rows():
+    """Each JUDGING row (by its opening words) -> its source file and the figures computed from that file."""
     import json
 
     def load(path):
         return json.loads((ROOT / path).read_text(encoding="utf-8"))
 
-    race = load("bench/results/modal-design-20261121T194458Z.json")["arms"]
-    lab, numba = race["lab"]["stages"], race["numba"]["stages"]
-    two_bin = load("bench/results/event-count-calibration.json")["methods"]["two_bins"]["paired_vs_pooled"]["alternative"]
-    lo, hi = two_bin["paired_bootstrap95"]
-    e2e = load("bench/results/matched-e2e-20261121T201925Z.json")
+    pct = lambda v: f"{100 * v:.1f}%"
     pp = lambda v: f"{100 * v:+.1f}".replace("-", "−")  # percentage points, typographic minus
-    return [
-        f"{lab['wall_per_study_s'] / numba['wall_per_study_s']:.1f}×",
-        f"{lab['studies_wall_s'] / numba['studies_wall_s']:.2f}×",
-        f"{pp(two_bin['difference'])} points [{pp(lo)}, {pp(hi)}]",
-        f"{e2e['wall']['ratio']:.1f}×",
-        f"{e2e['wall']['with_setup']['ratio']:.1f}×",
-        f"{e2e['decisions']['agree']} of {e2e['decisions']['compared']}",
-    ]
+    design = "bench/results/modal-design-20261121T194458Z.json"
+    d = load(design)
+    lab, numba = d["arms"]["lab"], d["arms"]["numba"]
+    two = "bench/results/event-count-calibration.json"
+    alt = load(two)["methods"]["two_bins"]["paired_vs_pooled"]["alternative"]
+    lo, hi = alt["paired_bootstrap95"]
+    matched = "bench/results/matched-e2e-20261121T201925Z.json"
+    e = load(matched)
+    n = e["wall"]["studies"]
+    return {
+        "| The race (#113)": (design, [
+            f"{lab['stages']['wall_per_study_s'] / numba['stages']['wall_per_study_s']:.1f}×",
+            f"{lab['stages']['studies_wall_s'] / numba['stages']['studies_wall_s']:.2f}×",
+        ]),
+        "| Matched workflow comparison through scoring (#123)": (matched, [
+            f"{e['wall']['ratio']:.1f}×",
+            f"{e['wall']['with_setup']['ratio']:.1f}×",
+            f"{e['decisions']['agree']} of {e['decisions']['compared']}",
+            f"{n['lab']:,} lab studies",
+            f"{n['preflight_evaluated']:,} evaluated",
+            f"{n['preflight_decided']:,} decided",
+            f"{n['preflight_calibration']:,} calibration",
+            "excludes data load, the threshold calculation and the final calls",
+        ]),
+        "| Testing every candidate becomes one matrix product": (design, [
+            f"{d['arms']['gpu']['stages']['scoring_wall_s']:.2f} s",
+            f"{d['notes']['x_shape']['features']} features",
+        ]),
+        "| The shared-threshold procedure had lower estimated power": (design, [
+            pct(numba["summary"]["power"]["rate"]), pct(lab["summary"]["power"]["rate"]),
+            pct(numba["summary"]["fwer"]["rate"]), pct(lab["summary"]["fwer"]["rate"]),
+        ]),
+        "| Event-count calibration does not close the power gap": (two, [f"{pp(alt['difference'])} points [{pp(lo)}, {pp(hi)}]"]),
+    }
 
 
-def test_judging_quotes_the_merged_race_two_bin_and_matched_results_from_their_files():
+def binding_problems(text):
+    """Figures missing from their own row, or rows without their source; empty when every figure sits in its row."""
+    lines = text.splitlines()
+    problems = []
+    for start, (source, quotes) in merged_result_rows().items():
+        rows = [line for line in lines if line.startswith(start)]
+        if len(rows) != 1:
+            problems.append(f"{start}: {len(rows)} rows")
+            continue
+        problems += [f"{start}: {q}" for q in [source, *quotes] if q not in rows[0]]
+    return problems
+
+
+def test_judging_binds_each_merged_figure_to_its_own_row_and_source():
+    assert binding_problems(JUDGING.read_text(encoding="utf-8")) == []
+
+
+def test_binding_check_catches_swapped_race_and_matched_ratios():
     text = JUDGING.read_text(encoding="utf-8")
-    assert [q for q in merged_result_quotes() if q not in text] == []
+    race = merged_result_rows()["| The race (#113)"][1][0]
+    swapped = text.replace(race, "@").replace("42.1×", race).replace("@", "42.1×")
+    assert any("7.0×" in p for p in binding_problems(swapped)) and any("42.1×" in p for p in binding_problems(swapped))
+
+
+def test_no_rate_equivalence_wording():
+    for doc in (JUDGING, SUBMISSION):
+        text = doc.read_text(encoding="utf-8")
+        for phrase in ("same FWER and power answer", "false alarms match", "speed costs power", "like-for-like"):
+            assert phrase not in text, (doc.name, phrase)
 
 
 def test_submission_does_not_claim_every_speed_up_is_against_rung_0():
