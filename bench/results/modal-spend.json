@@ -154,6 +154,21 @@
       "est_usd": 0.9018,
       "basis": "estimated_cpu_memory_usd in atlas/results/production/modal-execution.json at 04ffa170; CPU/RAM only, excludes image builds, storage and network; invoice not verified. Replaces the earlier 'Atlas T-1219 CPU resume' upper bound (same app)",
       "running_total_usd": 33.17
+    },
+    {
+      "utc": "2026-11-21T20:02Z",
+      "run": "modal-scaling 8 null studies, cores [1, 8]",
+      "containers": 2,
+      "est_usd": 0.17,
+      "source_commit": "4617c32fbc22329f8bf34ed35986998088f29f5f",
+      "basis": "ceiling: each container's timeout x (cores x $0.0000131 + GiB x $0.00000222) per s; task cap $5.0, $0 spent before",
+      "running_total_usd": 33.34,
+      "actual": {
+        "modal_wall_s": 90.1,
+        "result": "bench/results/modal-scaling-20261121T200238Z.json",
+        "est_usd": 0.017,
+        "basis": "each container x local wall (an upper bound: includes image build and queueing)"
+      }
     }
   ],
   "container_usd_per_hour_H100": 4.58,
