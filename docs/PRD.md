@@ -1,15 +1,18 @@
 # sota-parallelism-nov21: PRD v4
 
+> Spec of record: v4 (C-001 to C-003 applied). C-004 (#76, PRD framing: patient and biomarker first, founder-approved request) is proposed and not yet applied: every line marked "proposed (C-004)" is not in the spec yet. Framing only; no requirement, acceptance scenario or measure changes. The demo/ h1 keeps the old tagline until after freeze.
+
 ## Problem
-Before a lab images a spatial-biology cohort it must choose how many patients, how many regions per patient, how large a field of view and how fine a cell typing. Each choice trades cost against the chance of finding a real survival-linked spatial pattern, and today a lab sizes that by guesswork or a textbook formula that ignores the imaging. Simulating it honestly means re-imaging thousands of studies cell by cell from real tissue, which is CPU-days with the per-study cKDTree recount and permutation test a lab runs today.
+After surgery for head and neck cancer, treatment is chosen on stage and margins, which cannot see the tissue patterns that predict relapse. Finding one such pattern took the Helsinki team years and 18 hand-picked tests, and turning it into a hospital test needs proof that it survives fewer stains, imaging error and small cohorts. Testing that honestly means re-imaging thousands of simulated studies cell by cell from real tissue, each running every pattern's survival test with 10,000 shuffles: CPU-days today (rung 0: 7.52 s per study on one core, MEASURED). · proposed (C-004)
 
 ## Users
-- Lab scientist: sets patients, regions per patient, field of view and mis-call rate, presses Run the studies, and sees power and identification rate for that design before imaging a slide
+- Biomarker scientist (Decode): searches every spatial pattern with a family-wise correction and sees which survive · proposed (C-004)
+- Diagnostic developer (Translate): sets patients, regions per patient, field of view and mis-call rate, presses Run the studies, and sees whether a pattern survives one or two routine stains before a slide is imaged · proposed (C-004)
 - Judge: hears a live 5-minute pitch with a clean PDF deck; the demo video is the backup; scores correctness and assumptions, fundamental reshaping, meaningful performance improvement and scientific value
 - Teammate agent (any laptop): reads this PRD and its GitHub issues to build one requirement without asking
 
 ## Goals
-- **Simulate thousands of study designs on real tissue in seconds**: A lab sees what its design can and cannot find before it images a slide. Measure: One design point of 1,000 re-imaged studies, timed end to end on a named GPU and labelled MEASURED; no number before it is measured
+- **Test whether a biomarker survives the real world, thousands of simulated studies in seconds**: A lab sees what its design can and cannot find before it images a slide. Measure: One design point of 1,000 re-imaged studies, timed end to end on a named GPU and labelled MEASURED; no number before it is measured · proposed (C-004)
 - **Quote every speed-up against what a lab runs today**: The performance criterion is scored against a real baseline, not our own slowest bar. Measure: The ladder JSON has rung 0 (per-study cKDTree recount plus a permutation test) and every ratio is computed against it
 - **Show the parallelism on stage**: Studies are independent, so the fleet slide makes the reshaping visible. Measure: bench/fleet.py reports studies/s at 1, 2, 4 and 8 GPUs, each MEASURED or UNMEASURED, with results bit-identical to one device
 - **Show why a textbook formula is not enough**: Scientific value: imaging error and spatial sampling change power. Measure: bench/results/vs-schoenfeld.json compares Schoenfeld power with Preflight simulated power on the same design points
@@ -21,7 +24,7 @@ Before a lab images a spatial-biology cohort it must choose how many patients, h
 - Charville is patient-level (P=159, 38 events, strata are coverslips). UPMC is patient-level only through the R-13 patient loader and its locked held-out split; everything else on UPMC stays descriptive
 - Real-data results are exploratory: their outcomes have already been seen
 - Every re-imaging speed-up is quoted against rung 0, what a lab runs today. A GPU analysis-half speed-up is quoted only against the same statistic and resampling workload on the CPU (R-15); the full-fit comparison against Implementation A (R-14) is a workflow comparison, labelled as one
-- The tagline is the h1: "Thousands of studies, simulated in seconds, before you image a slide." The button reads "Run the studies". The phrase "Can my study find it?" appears nowhere in the project
+- The tagline is the h1: "Find the tissue patterns that decide a cancer patient's treatment, prove they are not luck, and check they still work as a test a hospital can run." The button reads "Run the studies". Until after freeze (2026-11-22 16:00Z) the demo/ h1 keeps the old tagline, "Thousands of studies, simulated in seconds, before you image a slide." The phrase "Can my study find it?" appears nowhere in the project · proposed (C-004)
 - Tests come from the goal: unseen geometries and tied studies, a planted signal and a hard negative; a check is believed only after it has been seen red
 - Novelty goal (not yet measured): Preflight aims to produce new biology by combining protein expression, cell morphology, neighbourhood relations and stromal architecture at single-cell resolution, with an algorithm parallelised on GPU clusters, much faster than on a CPU
 - No discovery code reads the locked UPMC patients; they are opened once, for the R-16 score, after the search is frozen
