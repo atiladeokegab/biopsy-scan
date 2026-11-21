@@ -16,7 +16,7 @@ import json
 import statistics
 from pathlib import Path
 
-HARNESS = {"pr": 120, "branch": "reimage-fast-b9", "commit": "a29f1b7bb3c1f0d747121b52c04b285aa1bd6d93",
+HARNESS = {"pr": 120, "branch": "reimage-fast-b9", "commit": "0b27ea1f79db7d45a7be0c35b2866f0dce338d3d",
            "runner": "bench/modal_design.py (unchanged, run from a detached checkout)"}
 
 
