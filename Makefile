@@ -1,4 +1,4 @@
-.PHONY: smoke install test data summary demo tissue deploy
+.PHONY: smoke install test data summary heldout demo tissue deploy
 
 install:
 	uv sync --dev
@@ -15,6 +15,10 @@ data:
 
 summary:
 	uv run python -I core/summary.py
+
+# Lock the UPMC held-out patients into core/upmc_locked.json, or check a rebuild reproduces it (exit 1 if not).
+heldout: data
+	uv run python -I core/heldout.py
 
 # The demo page: validate its data files, then serve it (static; open http://localhost:8000, or `make demo PORT=8001` if 8000 is taken).
 PORT ?= 8000

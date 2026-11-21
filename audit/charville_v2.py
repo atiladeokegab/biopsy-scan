@@ -66,7 +66,7 @@ def _source_fingerprint(cells: dict[str, Any], norm_stats: dict[str, Any] | None
     h = hashlib.sha256()
     for name in (
         "patient_names", "region_names", "time", "event", "strata",
-        "cell_type", "x", "y", "region_ptr", "region_id",
+        "cell_type", "x", "y", "region_ptr", "region_id", "patient_of_region",
     ):
         if name in cells:
             arr = np.ascontiguousarray(np.asarray(cells[name]))

@@ -46,13 +46,17 @@ required (without `type_names`, K = max type + 1 and every type is focal). Only 
 | | UPMC | Charville |
 |---|---|---|
 | Verified identity | case number from the sample label; regions labelled `NA` are dropped | case number (sample label before `_`) |
-| P / regions / events | **50 / 188 / 10** | **159** / 286 / **38** |
+| P / regions / events | **34 / 125 / 6** (discovery side, the default); full source before the lock: 50 / 188 / 10 | **159** / 286 / **38** |
 | Endpoint | any-cause death, `survival_day` | death, last contact − surgery, in days |
-| `strata` | coverslip group: 0 = c001–c003, 1 = c004–c007 (7 / 43 patients; no case crosses) | coverslip c001–c004 → 0–3 |
-| Excluded | 120 `NA` regions | 24135, 24136 (no dates); 24180 (on c002 and c003) |
+| `strata` | coverslip group: 0 = c001–c003, 1 = c004–c007 (4 / 30 patients on the discovery side, 7 / 43 in the full source; no case crosses) | coverslip c001–c004 → 0–3 |
+| Excluded | 86 discovery-side `NA` regions; the 97 locked held-out regions (`core/upmc_locked.json`) are never loaded | 24135, 24136 (no dates); 24180 (on c002 and c003) |
+
+UPMC is read through the locked held-out split (`core/heldout.py`): every loader defaults to
+`split="discovery"`. `audit/results/upmc.json` and the UPMC entry of `audit/results/summary.json` predate
+the lock: they are historical full-source evidence (50 / 188 / 10), not the discovery default.
 
 **Charville is the patient-level cohort.** UPMC tuple-matched patients (one patient per clinical
-tuple: 79 patients, 27 deaths; 81 when the 2 tuples holding two case numbers are split) are
+tuple: 79 patients, 27 deaths in the full source, `split="all"`; 81 when the 2 tuples holding two case numbers are split) are
 **provisional and descriptive only**: `core.cohorts.load_regions("upmc", identity="tuple")`. They are
 never used for patient-level inference or the regions-per-patient axis (one all-`NA` tuple spans both
 coverslip groups).
