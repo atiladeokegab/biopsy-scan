@@ -167,3 +167,29 @@ def test_step2_physical_panel_column_order_invariance():
         g["focal_marker"] == "Podoplanin" and g["neighbour_marker"] == "aSMA"
         for g in res_swap["fold_gates"]
     )
+
+
+def test_step2_ineligible_step1_selection_returns_unmeasured_without_arbitrary_fallback():
+    from translate._guard import resolve_r16_rule
+    from translate._stats import fold_assignment_vector, stratified_kfolds
+    from translate.panels import fit_full_r16_oof
+
+    data = _make_proximity_cohort(n_patients=24, seed=99)
+    folds = stratified_kfolds(data["event"], data["strata"], n_splits=3, seed=0)
+    rule = resolve_r16_rule(data)
+    risk_full, _, _ = fit_full_r16_oof(data, rule, folds)
+    reason = "no eligible 2-marker panel produced complete usable inner OOF predictions"
+    step1_missing = {
+        "_folds": folds,
+        "_fold_vec": fold_assignment_vector(24, folds),
+        "_risk_full_oof": risk_full,
+        "outer_selections": [{"fold": f, "best_1marker": None, "best_2marker": None} for f in range(len(folds))],
+        "nested_selected_1marker": {"status": "UNMEASURED", "reason": reason},
+        "nested_selected_2marker": {"status": "UNMEASURED", "reason": reason},
+    }
+    out = simulate_formats(data, step1_result=step1_missing, misreg_grid=(0.0,), tile_grid=(), n_boot=10, seed=0)
+    assert out["status"] == "UNMEASURED"
+    assert out["single_slide"]["status"] == "UNMEASURED"
+    assert out["serial_section"]["0"]["status"] == "UNMEASURED"
+    with pytest.raises(ValueError, match="panel"):
+        simulate_formats(data, misreg_grid=(0.0,), tile_grid=(), n_boot=10, seed=0)

@@ -255,6 +255,27 @@ def _r16_tile_feature(
     return out
 
 
+def _unmeasured_formats(
+    rule: dict[str, Any],
+    reason: str,
+    misreg_grid: tuple[float, ...],
+    tile_grid: tuple[float, ...],
+    *,
+    c_full_oof: float | None = None,
+) -> dict[str, Any]:
+    out: dict[str, Any] = {
+        "status": "UNMEASURED",
+        "reason": reason,
+        "r16_rule_sha256": rule["rule_sha256"],
+        "single_slide": {"status": "UNMEASURED", "reason": reason},
+        "serial_section": {str(int(d)): {"misreg_um": float(d), "status": "UNMEASURED", "reason": reason} for d in misreg_grid},
+        "tiles": {str(int(t)): {"tile_um": float(t), "status": "UNMEASURED", "reason": reason} for t in tile_grid},
+    }
+    if c_full_oof is not None:
+        out["c_full_oof"] = float(c_full_oof)
+    return out
+
+
 def simulate_formats(
     cohort_data: dict[str, Any],
     *,
@@ -275,14 +296,7 @@ def simulate_formats(
     rule = resolve_r16_rule(cohort_data, r16_rule)
     if not rule["expressible"]:
         reason = str(rule.get("reason") or "R-16 candidate reported unsupported by cohort")
-        return {
-            "status": "UNMEASURED",
-            "reason": reason,
-            "r16_rule_sha256": rule["rule_sha256"],
-            "single_slide": {"status": "UNMEASURED", "reason": reason},
-            "serial_section": {str(int(d)): {"misreg_um": float(d), "status": "UNMEASURED", "reason": reason} for d in misreg_grid},
-            "tiles": {str(int(t)): {"tile_um": float(t), "status": "UNMEASURED", "reason": reason} for t in tile_grid},
-        }
+        return _unmeasured_formats(rule, reason, misreg_grid, tile_grid)
 
     time = np.asarray(cohort_data["time"], dtype=np.float64)
     event = np.asarray(cohort_data["event"], dtype=bool)
@@ -295,17 +309,28 @@ def simulate_formats(
         outer_folds = step1_result["_folds"]
         outer_fold_vec = step1_result["_fold_vec"]
         risk_full_oof = step1_result["_risk_full_oof"]
-        if panel_by_fold is None and panel is None and "outer_selections" in step1_result:
+        if panel_by_fold is None and panel is None:
+            outer_sels = step1_result.get("outer_selections")
+            if not outer_sels or len(outer_sels) != len(outer_folds):
+                reason = str(
+                    (step1_result.get("nested_selected_2marker") or {}).get("reason")
+                    or "no eligible Step 1 panel selections available for Step 2"
+                )
+                return _unmeasured_formats(rule, reason, misreg_grid, tile_grid)
             name_to_idx = {name: i for i, name in enumerate(marker_names)}
             panel_by_fold = []
-            for sel in step1_result["outer_selections"]:
-                chosen = sel.get("best_2marker") or sel.get("best_1marker")
-                if chosen and len(chosen) == 2:
+            for sel in outer_sels:
+                chosen = sel.get("best_2marker") if markers.shape[1] >= 2 else sel.get("best_1marker")
+                if not chosen:
+                    reason = str(
+                        (step1_result.get("nested_selected_2marker") or {}).get("reason")
+                        or "no eligible Step 1 panel selection available for Step 2"
+                    )
+                    return _unmeasured_formats(rule, reason, misreg_grid, tile_grid)
+                if len(chosen) == 2:
                     panel_by_fold.append((name_to_idx[chosen[0]], name_to_idx[chosen[1]]))
-                elif chosen and len(chosen) == 1:
-                    panel_by_fold.append((name_to_idx[chosen[0]], name_to_idx[chosen[0]]))
                 else:
-                    panel_by_fold.append((0, min(1, markers.shape[1] - 1)))
+                    panel_by_fold.append((name_to_idx[chosen[0]], name_to_idx[chosen[0]]))
     else:
         outer_folds = stratified_kfolds(event, strata, n_splits=n_outer, seed=seed)
         outer_fold_vec = fold_assignment_vector(n_pat, outer_folds)
@@ -313,21 +338,19 @@ def simulate_formats(
 
     if panel_by_fold is None:
         if panel is None:
-            panel = (0, min(1, markers.shape[1] - 1))
+            raise ValueError("must provide explicit panel, panel_by_fold, or eligible step1_result")
         panel_by_fold = [(int(panel[0]), int(panel[1])) for _ in outer_folds]
 
     c_full_oof = harrell_c_index(time, event, risk_full_oof, strata=strata, folds=outer_fold_vec)
     if not np.isfinite(c_full_oof) or c_full_oof <= 0.5:
         reason = "C_full is not estimable" if not np.isfinite(c_full_oof) else f"C_full <= 0.5 ({c_full_oof:.4f})"
-        return {
-            "status": "UNMEASURED",
-            "reason": reason,
-            "r16_rule_sha256": rule["rule_sha256"],
-            "c_full_oof": None if not np.isfinite(c_full_oof) else float(c_full_oof),
-            "single_slide": {"status": "UNMEASURED", "reason": reason},
-            "serial_section": {str(int(d)): {"misreg_um": float(d), "status": "UNMEASURED", "reason": reason} for d in misreg_grid},
-            "tiles": {str(int(t)): {"tile_um": float(t), "status": "UNMEASURED", "reason": reason} for t in tile_grid},
-        }
+        return _unmeasured_formats(
+            rule,
+            reason,
+            misreg_grid,
+            tile_grid,
+            c_full_oof=None if not np.isfinite(c_full_oof) else float(c_full_oof),
+        )
 
     reg_cells = _split_regions(cohort_data)
     xy_all = np.stack([np.asarray(cohort_data["x"], dtype=np.float64), np.asarray(cohort_data["y"], dtype=np.float64)], 1)
