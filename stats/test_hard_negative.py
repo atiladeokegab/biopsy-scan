@@ -1,8 +1,10 @@
 """A-15.6: family-wise false positives at alpha on a clinically confounded null (SYNTHETIC).
 
-200 null datasets, B = 19 resamples each ((B + 1) * alpha = 1, so the Monte Carlo
-rule has exact level 0.05 under the null model). The recorded larger run
-(1,000 datasets, B = 99) is stats/results/hard-negative.json.
+200 null datasets, B = 19 resamples each. The plus-one rule gives p-values on a
+1/20 grid (Monte Carlo resolution); it does not make the fitted parametric
+bootstrap exact, since the observed and fitted-bootstrap statistics are not
+exchangeable. The recorded larger run (1,000 datasets, B = 99) is
+stats/results/hard-negative.json.
 """
 
 from stats.hard_negative import run

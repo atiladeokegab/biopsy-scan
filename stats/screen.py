@@ -27,6 +27,7 @@ import warnings
 
 import numpy as np
 from statsmodels.duration.hazard_regression import PHReg
+from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
 from . import reference
 
@@ -35,12 +36,22 @@ NULL_METHOD = {
     "events": "Breslow stratified Cox model on C, fitted on patients with an endpoint, stratum and complete C",
     "censoring": "Breslow stratified Cox model on C for the censoring times, truncated at each stratum's last follow-up",
     "refit": "null model refitted per resample and per complete-case mask; U, V, z recomputed for every candidate",
+    "baseline": "cumulative baseline hazard interpolated linearly between the Breslow jumps (a continuous "
+                "baseline, not the literal Breslow step distribution)",
+    "streams": "resample b draws from SeedSequence(seed).spawn(B)[b]: the same resamples for any block or backend",
+    "failed_fits": "a resample whose null refit does not converge has null maxT NaN (counted in 'nonconverged') "
+                   "and counts as exceeding in p and adjusted_p (conservative); zero-event resamples are kept "
+                   "with U = V = z = 0",
     "assumptions": [
         "proportional hazards in C within strata",
         "censoring independent of X given C and stratum",
+        "event and censoring times conditionally independent given C and stratum",
         "no candidate effect given C (the null being tested)",
     ],
 }
+
+
+CHUNK_ELEMS = 1 << 24  # elements per [resamples, patients, candidates] moment array: 128 MB float64
 
 
 def get_backend(name="auto"):
@@ -98,18 +109,29 @@ def _stats(xp, X, C, M, m, a):
     return _finish(xp, U, Ixx, Icx, M, a, C)
 
 
+def _solve(xp, A, b):
+    """Batched A x = b. A singular I_CC (a resample with no events has I_CC = 0) takes the
+    pseudo-inverse, which is the Schur complement's generalised inverse and gives 0 when A = 0."""
+    try:
+        x = xp.linalg.solve(A, b)
+        if bool(xp.isfinite(x).all()):
+            return x
+    except np.linalg.LinAlgError:
+        pass
+    return xp.asarray(np.linalg.pinv(_host(A), hermitian=True) @ _host(b))
+
+
 def _finish(xp, U, Ixx, Icx, M, a, C):
     V = Ixx
     if C.shape[1]:
-        V = V - (Icx * xp.linalg.solve(_rmul(_cross(xp, C, M, a), C), Icx)).sum(1)
-    good = V > 1e-12 * xp.maximum(1.0, Ixx)  # roundoff floor: constant columns give 0
+        V = V - (Icx * _solve(xp, _rmul(_cross(xp, C, M, a), C), Icx)).sum(1)
+    good = V > 1e-10 * Ixx  # relative roundoff floor, so z does not depend on X's units
     z = xp.where(good, U / xp.sqrt(xp.where(good, V, 1.0)), 0.0)
     return U, xp.where(good, V, 0.0), z
 
 
-def _scores(xp, gpu, X, C, same, t, e, w):
-    """U, V, z [B,p] for one mask group's outcomes t, e [B,n] at null weights w [B,n]."""
-    M, m, a = _risk(xp, t, e, w, same)
+def _scores(xp, gpu, X, C, same, t, e, w, M, m, a):
+    """U, V, z [B,p] for one mask group's outcomes t, e [B,n] at null weights w [B,n], risk operator M, m, a."""
     if not gpu:
         return _stats(xp, X, C, M, m, a)
     from .gpu_score import moments  # X-dependent B x J x n^2 work on the device
@@ -119,25 +141,38 @@ def _scores(xp, gpu, X, C, same, t, e, w):
 
 
 def _newton(xp, C, t, e, same, iters=50, tol=1e-9):
-    """Batched Breslow Cox fit of the null model on C for outcomes [B,n]."""
+    """Batched Breslow Cox fit of the null model on C for outcomes [B,n]: (beta, converged[B]).
+
+    A row with no events has zero score and information, so it stays at beta = 0 and
+    contributes zero. Rows whose likelihood is monotone (no finite maximum) do not
+    converge; callers count them and disclose the count. A vanishing step is not success
+    when the information has collapsed (beta running off to infinity), except with no events."""
     beta = xp.zeros((t.shape[0], C.shape[1]))
-    for _ in range(iters):
+    if not C.shape[1]:
+        return beta, np.ones(t.shape[0], dtype=bool)
+    start = None
+    for _ in range(iters + 1):
         M, m, a = _risk(xp, t, e, xp.exp(beta @ C.T), same)
-        step = xp.linalg.solve(_rmul(_cross(xp, C, M, a), C), (m @ C)[:, :, None])[:, :, 0]
-        step = xp.clip(step, -5.0, 5.0)  # monotone-likelihood resamples drift instead of overflowing
-        beta = beta + step
+        info = _rmul(_cross(xp, C, M, a), C)
+        start = info if start is None else start
+        step = xp.clip(_solve(xp, info, (m @ C)[:, :, None])[:, :, 0], -5.0, 5.0)  # monotone rows drift, not overflow
         if float(xp.abs(step).max()) < tol:
             break
-    return beta
+        beta = beta + step
+    small = _host(xp.abs(step).max(1) < tol)
+    kept = np.linalg.eigvalsh(_host(info))[:, 0] > 1e-8 * np.maximum(np.linalg.eigvalsh(_host(start))[:, -1], 1e-300)
+    return beta, small & (kept | (_host(e.sum(1)) == 0))
 
 
 def _phreg(C, t, e, codes):
     """Observed null fit with statsmodels PHReg (Breslow ties); empty C gives []."""
     if not C.shape[1] or not e.any():
         return np.zeros(C.shape[1])
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
         fit = PHReg(t, C, status=e, strata=codes, ties="breslow").fit(disp=False)
+    if any(issubclass(w.category, ConvergenceWarning) for w in caught) or not np.isfinite(fit.params).all():
+        raise ValueError("the observed Cox model on C has no finite maximum (PHReg did not converge)")
     return np.asarray(fit.params, dtype=np.float64)
 
 
@@ -198,6 +233,19 @@ def _fingerprint(a):
     return hashlib.sha256(np.ascontiguousarray(a, dtype=np.float64).tobytes()).hexdigest()
 
 
+def _centre_within_strata(Xg, codes):
+    """U and I are invariant to a per-stratum shift of X; centring within strata keeps the moments
+    free of cancellation, and a column constant within a stratum becomes exactly 0 there."""
+    out = np.empty_like(Xg)
+    for code in np.unique(codes):
+        ix = codes == code
+        sub = Xg[ix]
+        centred = sub - sub.mean(0)
+        centred[:, np.ptp(sub, axis=0) == 0] = 0.0
+        out[ix] = centred
+    return out
+
+
 def _groups(xp, X, C, codes, keep_all, events):
     """Candidates grouped by analysis mask: (columns, rows, device X, device C, device same) per mask."""
     masks, inverse = np.unique(keep_all.T, axis=0, return_inverse=True)
@@ -207,8 +255,7 @@ def _groups(xp, X, C, codes, keep_all, events):
         rows = np.flatnonzero(keep)
         if len(rows) < 2 or not events[:, rows].any():
             continue  # no information: U = V = z = 0
-        Xg = X[np.ix_(rows, cols)]
-        Xg = Xg - Xg.mean(0)  # U and I are shift-invariant; centring keeps roundoff small
+        Xg = _centre_within_strata(X[np.ix_(rows, cols)], codes[rows])
         Cg = C[rows]
         Cg = Cg[:, np.ptp(Cg, axis=0) > 0] if len(Cg) else Cg  # a constant covariate has no effect
         Cg = Cg - Cg.mean(0)
@@ -235,20 +282,20 @@ def screen(X, time, event, clinical=None, strata=None, n_perm=999, backend="auto
         raise ValueError("n_perm must be a nonnegative integer")
     keep_all = np.isfinite(X) & base[:, None]
     masks, groups = _groups(xp, X, C, codes, keep_all, event[None])
+    for g in groups:  # observed fit: PHReg, after checking it has a finite maximum
+        if g[3].shape[1] and not _newton(xp, g[3], xp.asarray(time[g[1]])[None], xp.asarray(event[g[1]])[None], g[4])[1][0]:
+            raise ValueError("the observed Cox model on C has no finite maximum (monotone likelihood) in a mask group")
     groups = [(*g, _phreg(_host(g[3]), time[g[1]], event[g[1]], codes[g[1]])) for g in groups]
     U, V, z = np.zeros(J), np.zeros(J), np.zeros(J)
     n = keep_all.sum(0)
-    for cols, rows, Xg, Cg, same, beta in groups:
-        w = xp.exp(Cg @ xp.asarray(beta))[None]
-        tg, eg = xp.asarray(time[rows])[None], xp.asarray(event[rows])[None]
-        for out, value in zip((U, V, z), _scores(xp, gpu, Xg, Cg, same, tg, eg, w)):
-            out[cols] = _host(value)[0]
+    for cols, u, v, zz in _group_scores(xp, gpu, groups, time[None], event[None], np.arange(P), refit=False):
+        U[cols], V[cols], z[cols] = u[0], v[0], zz[0]
     observed = float(np.abs(z).max())
     null_maxT = _bootstrap(xp, gpu, groups, time, event, C, codes, base, n_perm, seed, block)
+    nonconverged = int(np.isnan(null_maxT).sum())
     tol = 16 * np.finfo(np.float64).eps * max(1.0, observed)
-    p = float((1 + np.sum(null_maxT >= observed - tol)) / (n_perm + 1)) if n_perm else float("nan")
-    adjusted = ((1 + np.sum(null_maxT[:, None] >= np.abs(z)[None] - tol, axis=0)) / (n_perm + 1)
-                if n_perm else np.full(J, np.nan))
+    p = float((1 + _exceed(null_maxT, observed - tol)) / (n_perm + 1)) if n_perm else float("nan")
+    adjusted = (1 + _exceed(null_maxT, np.abs(z) - tol)) / (n_perm + 1) if n_perm else np.full(J, np.nan)
     q = C.shape[1]
     return {
         "U": U, "V": V, "z": z, "n": n, "maxT": observed, "p": p,
@@ -266,7 +313,7 @@ def screen(X, time, event, clinical=None, strata=None, n_perm=999, backend="auto
                            "sha256": _fingerprint(np.nan_to_num(X, nan=np.pi))},
             "patients": {"rows": P, "analysis_base": int(base.sum()), "events": int(event[base].sum()),
                          "strata": int(codes[base].max() + 1) if base.any() else 0},
-            "null": {**NULL_METHOD, "B": int(n_perm), "seed": seed} if n_perm else None,
+            "null": {**NULL_METHOD, "B": int(n_perm), "seed": seed, "nonconverged": nonconverged} if n_perm else None,
             "backend": "gpu (numba.cuda)" if gpu else xp.__name__,
         },
     }
@@ -280,6 +327,8 @@ def screen_batch(X, time, event, clinical=None, strata=None, backend="auto", *, 
     null fit (batched Newton, equal to PHReg) per mask group. Returns float64
     U, V, z [S, J], maxT [S], n [J] and metadata; no resampling (n_perm = 0).
     """
+    if not isinstance(block, (int, np.integer)) or block < 1:
+        raise ValueError("block must be a positive integer")
     xp, gpu = get_backend(backend), backend == "gpu"
     time, event = np.atleast_2d(np.asarray(time, dtype=np.float64)), np.atleast_2d(np.asarray(event, dtype=np.float64))
     if time.shape != event.shape or not np.isfinite(time).all() or not np.isin(event, [0, 1]).all():
@@ -293,12 +342,13 @@ def screen_batch(X, time, event, clinical=None, strata=None, backend="auto", *, 
     U, V, z = (np.zeros((len(time), J)) for _ in range(3))
     for start in range(0, len(time), block):
         part = slice(start, start + block)
-        if groups:
-            for out, value in zip((U, V, z), _refit_scores(xp, gpu, groups, time[part], event[part],
-                                                           np.arange(len(base)), J)):
-                out[part] = value
-    return {"U": U, "V": V, "z": z, "maxT": np.abs(z).max(1) if J else np.zeros(len(time)), "n": keep_all.sum(0),
-            "metadata": {"studies": len(time), "masks": len(masks), "clinical": {"shape": list(C.shape)},
+        for cols, *values in _group_scores(xp, gpu, groups, time[part], event[part], np.arange(len(base))):
+            for out, value in zip((U, V, z), values):
+                out[part, cols] = value
+    maxT = np.abs(z).max(1) if J else np.zeros(len(time))  # NaN for a study whose null fit failed
+    return {"U": U, "V": V, "z": z, "maxT": maxT, "n": keep_all.sum(0),
+            "metadata": {"studies": len(time), "masks": len(masks), "nonconverged": int(np.isnan(maxT).sum()),
+                         "clinical": {"shape": list(C.shape)},
                          "backend": "gpu (numba.cuda)" if gpu else xp.__name__}}
 
 
@@ -310,40 +360,66 @@ def _null_draws(time, event, C, codes, base, B, seed, block):
     Cb = Cb - Cb.mean(0)
     same = cb[:, None] == cb[None]
     # Generating fits use the batched Newton, which equals PHReg (test_vs_statsmodels).
-    w, wc = (np.exp(Cb @ _newton(np, Cb, t[None], d[None], same)[0]) if Cb.shape[1] and d.any()
+    w, wc = (np.exp(Cb @ _fit_or_raise(Cb, t, d, same)) if Cb.shape[1] and d.any()
              else np.ones(len(t)) for d in (e, 1 - e))
     death, censor = _breslow_steps(t, e, w, cb), _breslow_steps(t, 1 - e, wc, cb)
     end = np.array([t[cb == s].max() for s in range(cb.max() + 1)])[cb]
-    rng = np.random.default_rng(seed)
+    streams = np.random.SeedSequence(seed).spawn(B)  # resample b has its own stream: same draws for any block
+    n = len(ix)
     for start in range(0, B, block):
-        size = min(block, B - start)
-        T = _draw(death, w, cb, rng.standard_exponential((size, len(ix))))
-        Cens = np.minimum(_draw(censor, wc, cb, rng.standard_exponential((size, len(ix)))), end)
+        E = np.stack([np.random.default_rng(s).standard_exponential(2 * n) for s in streams[start:start + block]])
+        T = _draw(death, w, cb, E[:, :n])
+        Cens = np.minimum(_draw(censor, wc, cb, E[:, n:]), end)
         yield np.minimum(T, Cens), (T <= Cens).astype(np.float64)
 
 
+def _fit_or_raise(C, t, e, same):
+    beta, ok = _newton(np, C, t[None], e[None], same)
+    if not ok[0]:
+        raise ValueError("the generating Cox model on C has no finite maximum (monotone likelihood)")
+    return beta[0]
+
+
 def _bootstrap(xp, gpu, groups, time, event, C, codes, base, B, seed, block):
-    """maxT of z over all candidates for B clinical-null resamples."""
+    """maxT of z over all candidates for B clinical-null resamples; NaN where a null refit failed."""
     if not B or not groups:
         return np.zeros(B)
     position = np.full(len(time), -1)
     position[base] = np.arange(base.sum())
     maxima = []
     for tb, eb in _null_draws(time, event, C, codes, base, B, seed, block):
-        maxima.append(np.abs(_refit_scores(xp, gpu, groups, tb, eb, position)[2]).max(1))
+        top = np.zeros(len(tb))
+        for _, _, _, z in _group_scores(xp, gpu, groups, tb, eb, position):
+            top = np.maximum(top, np.abs(z).max(1))  # online maxT; NaN propagates
+        maxima.append(top)
     return np.concatenate(maxima)
 
 
-def _refit_scores(xp, gpu, groups, tb, eb, position, J=None):
-    """U, V, z [S,J] for S outcome sets [S, *], refitting the null per set and per mask group."""
-    J = max(int(g[0].max()) + 1 for g in groups) if J is None else J
-    U, V, z = (np.zeros((len(tb), J)) for _ in range(3))
-    for cols, rows, Xg, Cg, same, *_ in groups:
+def _exceed(null, stat):
+    """#{null_b >= stat} from the sorted null (no B x J comparison); a failed (NaN) resample counts as exceeding."""
+    done = np.sort(null[~np.isnan(null)])
+    return len(null) - np.searchsorted(done, stat, side="left")
+
+
+def _group_scores(xp, gpu, groups, tb, eb, position, refit=True):
+    """Yield (cols, U, V, z) host [S, chunk] per mask group and candidate chunk for S outcome sets [S, *].
+
+    refit=True refits the null per set (batched Newton); refit=False uses the group's observed beta.
+    A set whose null fit does not converge gets NaN: represented, never dropped or redrawn. Chunks keep
+    each [S, n, chunk] moment array within CHUNK_ELEMS elements."""
+    for cols, rows, Xg, Cg, same, *beta in groups:
         tg, eg = xp.asarray(tb[:, position[rows]]), xp.asarray(eb[:, position[rows]])
-        fitted = _newton(xp, Cg, tg, eg, same) if Cg.shape[1] else xp.zeros((len(tb), 0))
-        for out, value in zip((U, V, z), _scores(xp, gpu, Xg, Cg, same, tg, eg, xp.exp(fitted @ Cg.T))):
-            out[:, cols] = _host(value)
-    return U, V, z
+        if refit:
+            fitted, ok = _newton(xp, Cg, tg, eg, same)
+        else:
+            fitted, ok = xp.asarray(beta[0])[None], np.ones(1, dtype=bool)
+        w = xp.exp(fitted @ Cg.T)
+        M, m, a = _risk(xp, tg, eg, w, same)
+        width = max(1, CHUNK_ELEMS // (len(tb) * len(rows)))
+        for start in range(0, len(cols), width):
+            part = slice(start, start + width)
+            values = _scores(xp, gpu, Xg[:, part], Cg, same, tg, eg, w, M, m, a)
+            yield (cols[part], *(np.where(ok[:, None], _host(v), np.nan) for v in values))
 
 
 def permutation_maxT(X, time, event, strata, n_perm=9999, *, seed=0, backend="auto", block=1024):
@@ -354,6 +430,8 @@ def permutation_maxT(X, time, event, strata, n_perm=9999, *, seed=0, backend="au
     permutation draws as ``stats.reference.permutation_test``; only the maxima
     are kept. Requires fully observed X.
     """
+    if backend == "gpu":
+        raise ValueError("permutation_maxT has no numba.cuda (backend='gpu') path; use 'cupy' or 'numpy'")
     xp = get_backend(backend)
     X, time, event, groups = reference._inputs(X, time, event, strata)
     if X.ndim != 2 or np.isnan(X).any():

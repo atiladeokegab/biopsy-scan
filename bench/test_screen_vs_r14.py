@@ -1,6 +1,7 @@
 """The A/B report keeps its labels, interleaves arms and computes the ratio from medians."""
 
 import numpy as np
+import pytest
 
 from bench.screen_vs_r14 import report, run
 
@@ -20,3 +21,12 @@ def test_interleaved_report_on_a_tiny_cohort(monkeypatch):
     assert out["label"] == "MEASURED" and out["comparison"].startswith("workflow comparison")
     assert out["speedup_median"] == 2.0 / out["arms"]["B"]["median_s"]
     assert all("load_1min_before" in x for x in reps)
+
+
+@pytest.mark.parametrize("flag", ["--cores", "--reps"])
+def test_nonpositive_cores_or_reps_fail_before_loading(monkeypatch, flag):
+    import bench.screen_vs_r14 as ab
+
+    monkeypatch.setattr(ab, "inputs", lambda *_: pytest.fail("loaded data before validating arguments"))
+    with pytest.raises(SystemExit):
+        ab.main([flag, "0"])

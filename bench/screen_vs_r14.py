@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from bench.impl_a import cpu_model, fingerprints, inputs, time_full_run  # noqa: E402
+from bench.screen import blas  # noqa: E402
 from stats import screen  # noqa: E402
 
 
@@ -62,7 +63,8 @@ def report(d, reps_out, b_out, cores):
         "cohort": "charville", "features": d["features"],
         "fingerprints": fingerprints(d["patient_ids"], d["time"], d["event"], d["strata"], d["C"], d["X"]),
         "shape": {"patients": int(d["X"].shape[0]), "candidates": int(d["X"].shape[1]), "clinical": int(d["C"].shape[1])},
-        "machine": {"cpu": cpu_model(), "cores": cores, "python": platform.python_version()},
+        "machine": {"cpu": cpu_model(), "cores": cores, "affinity": len(os.sched_getaffinity(0)), "blas": blas(),
+                    "python": platform.python_version()},
         "order": "interleaved A, B per rep, one process, one window",
         "arms": {
             "A": {"what": "R-14 bench.impl_a.time_full_run: statsmodels PHReg per candidate", "workers": cores, **A},
@@ -82,6 +84,8 @@ def main(argv=None):
     ap.add_argument("--cores", type=int, default=len(os.sched_getaffinity(0)))
     ap.add_argument("--out", type=Path, default=ROOT / "bench/results/screen-vs-r14.json")
     a = ap.parse_args(argv)
+    if a.cores < 1 or a.reps < 1:  # before loading: R-14 would read cores=0 as all cores
+        ap.error("--cores and --reps must be positive")
     d = inputs("charville")
     reps_out, _, b_out = run(d, a.reps, a.cores)
     out = report(d, reps_out, b_out, a.cores)

@@ -84,7 +84,8 @@ def test_batched_newton_matches_phreg_fit(cohort):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         expected = PHReg(t, c, status=e, strata=s, ties="breslow").fit(disp=False).params
-    beta = _newton(np, c, t[None], e[None], s[:, None] == s[None])
+    beta, ok = _newton(np, c, t[None], e[None], s[:, None] == s[None])
+    assert ok.all()
     np.testing.assert_allclose(beta[0], expected, rtol=1e-7, atol=1e-9)
     M, m, _ = _risk(np, t[None], e[None], np.exp(beta @ c.T), s[:, None] == s[None])
     np.testing.assert_allclose(m @ c, 0, atol=1e-8)  # fitted score is zero

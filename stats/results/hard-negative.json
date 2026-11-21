@@ -60,6 +60,12 @@
     ]
    }
   },
-  "reading": "anti-conservative: the CP95 interval excludes 0.05; artificial ties in resampled times shrink the null z"
+  "reading": "observed on this fixture: 74/1000 (CP95 excludes 0.05) against 51/1000 with interpolated draws (CP95 contains 0.05). Mechanism (HYPOTHESIS, not tested): tied resampled times from the step draws shrink the null z."
+ },
+ "provenance": {
+  "command": "uv run python -m stats.hard_negative 1000",
+  "current_run_code": "r15-gpu-score-screen at f4e1a55..d9276a7 (interpolated draws); committed in 974c8e2",
+  "superseded_run_code": "before f4e1a55 (Breslow step draws), same command and outer seed",
+  "rng_stream": "both runs used the old single interleaved bootstrap stream (default_rng(seed) shared across resamples). 7660440 gave each resample its own stream (SeedSequence(seed).spawn(B)), and ff18408 changed the information floor and centring, so this head does not reproduce these counts bit for bit; a rerun at this head is needed for exact reproduction"
  }
 }
