@@ -7,7 +7,10 @@ numbers come from [Modal](https://modal.com) through `gpu/modal_app.py`.
 
 | Command | What runs | Output |
 |---|---|---|
-| `make modal-gpu-tests GPU=A100` | `reimage/test_backends.py`, `test_expression.py`, `test_fleet.py` on a real GPU, so the CUDA-gated tests run instead of skipping | pass/fail/skip counts, nvidia-smi model, memory, driver |
+| `make modal-gpu-tests GPU=A100` | `reimage/test_backends.py`, `test_expression.py`, `test_fleet.py` in a container with a real GPU and the CUDA simulator off (it refuses to run otherwise). Three tests start their own `NUMBA_ENABLE_CUDASIM=1` subprocess; they are counted as simulator coverage, not device coverage. Only the skip that needs CUDA to be absent is expected; any other skip exits non-zero | pass/fail/skip counts, simulator vs in-process coverage, nvidia-smi model, memory, driver |
+| `make modal-ab GPU=A100` | R-14 full Cox fits vs R-15 `stats.screen` on CPU and GPU, interleaved, on one 16-core GPU container; input fingerprints, seed and B recorded | B vs C is equal work only if every screen output matches (U, V, z, n, maxT, p, adjusted_p, null_maxT) |
+| `make modal-gpu-vs STUDIES=1000` | the same studies on one A100 and one H100, block by block | seconds and dollars per study, bit-identical across GPUs |
+| `make modal-design GPU=A100 FLEET=1,2,4,8,16` | the design point: the lab's per-study shuffle test vs one paired-shuffle threshold on CPU, 1 GPU and N GPUs | a WORKFLOW comparison with EXPLORATORY calibration, see `gpu/design_point.py` |
 | `make modal-ladder GPU=A100 CONTAINERS=4 STUDIES=16 REPS=5` | `bench/real_cpu.py`'s Charville design point, NumPy reference vs GPU, same seeds, exact parity; the same studies on 1 and N GPU containers, merged bit-identical; R-15's `stats.screen` on the GPU when it is importable | one file |
 
 `GPU` is `A100` (default), `H100` or `L4`. The cohort lives in the `preflight-data` Modal volume.
@@ -25,3 +28,8 @@ counts. Timing rules:
   never part of a speed-up. Data load and adjacency are under `preparation_s`.
 - The NumPy reference runs in the same container as the GPU row. The EPYC rungs in
   `bench/results/cpu-ladder.json` use the same design on another host.
+- Fail-closed: any parity, bit-identity, seed-coverage or distinct-container check that is false makes the
+  run `FAILED`; its file then holds no timing or ratio, and the command exits non-zero.
+- Fleet scaling uses the measured compute span: first start to last end across containers, from host wall
+  clocks (NTP-synchronised; skew not measured). `studies / max(shard compute)` assumes perfect overlap and is
+  labelled `ESTIMATE`. Only git-tracked files are uploaded to Modal.

@@ -112,3 +112,41 @@ def test_parity_true_is_measured(modal_app, monkeypatch, tmp_path):
     path = modal_app._save("A100", {"kind": "ladder", "kernel": {"parity_exact": True, "speedup_median": 3.3}})
     report = json.loads(path.read_text())
     assert report["status"] == "MEASURED" and report["kernel"]["speedup_median"] == 3.3
+
+
+def test_simulator_subprocess_tests_are_not_counted_as_device_coverage(modal_app):
+    sim = modal_app.simulator_tests(APP.parents[1])
+    assert {"test_gpu_v2_matches_reference_and_fleet_is_bit_identical_under_cuda_simulator",
+            "test_gpu_deterministic_float64_order_and_rejects_cpu_snapshot",
+            "test_two_fake_shards_on_cuda_simulator_are_bit_identical"} <= sim
+    assert "test_invalid_device_requests_fail_honestly" not in sim  # names CUDASIM only in a message
+
+
+def test_gpu_tests_refuses_the_cuda_simulator(modal_app, monkeypatch):
+    pytest.importorskip("numba")
+    monkeypatch.setenv("NUMBA_ENABLE_CUDASIM", "1")
+    with pytest.raises(RuntimeError, match="real CUDA device"):
+        modal_app.gpu_tests.local()
+
+
+def _part(task, seeds, start, end):
+    return {"compute_window": [start, end], "seeds": seeds, "gpu": {"modal_task_id": task}}
+
+
+def test_scaling_uses_measured_overlap_not_max_shard(modal_app):
+    serial = modal_app.overlap([_part("a", [0, 1], 0.0, 10.0), _part("b", [2, 3], 10.5, 20.0)], [0, 1, 2, 3])
+    assert serial["compute_span_s"] == 20.0 and not serial["all_overlapped"]  # max(shard) would claim 10 s
+    together = modal_app.overlap([_part("a", [0, 1], 0.0, 10.0), _part("b", [2, 3], 1.0, 10.0)], [0, 1, 2, 3])
+    assert together["all_overlapped"] and together["seed_coverage_exact"] and together["distinct_task_ids"]
+    gaps = modal_app.overlap([_part("a", [0, 1], 0.0, 1.0), _part("a", [1, 3], 0.0, 1.0)], [0, 1, 2, 3])
+    assert not gaps["seed_coverage_exact"] and not gaps["distinct_task_ids"]
+    assert modal_app.parity_failures({"runs": {"2": gaps}}) == ["runs.2.seed_coverage_exact", "runs.2.distinct_task_ids"]
+
+
+def test_screen_comparison_needs_every_output_not_just_z(modal_app):
+    b = {"U": [1.0], "V": [2.0], "z": [0.5, np.nan], "n": [10], "maxT": 3.0, "p": 0.2, "adjusted_p": [0.4],
+         "null_maxT": [1.0, 2.0]}
+    assert modal_app.compare_screens(b, dict(b))["all"]
+    c = {**b, "null_maxT": [1.0, 2.5], "p": 0.3}  # same z, different resamples
+    out = modal_app.compare_screens(b, c)
+    assert out["z"] and not out["null_maxT"] and not out["p"] and not out["all"]

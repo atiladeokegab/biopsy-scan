@@ -3,11 +3,15 @@
 Lab way, per study: re-image with fresh cKDTree recounts (bench.lab_today.tree_region, the 7.52 s/study path
 in cpu-ladder.json), then a 1,000-shuffle conditional maxT test (stats.permutation_test); call = p <= alpha.
 
-Our way, per design: re-image with the CSR kernel (CPU or GPU), score each study once, score one independent
-null study per study (the same re-imaged X with outcomes shuffled within strata, so X carries no signal), take
-one threshold from the S null maxima (stats.threshold), and call = maxT > threshold.
+Our way, per design: re-image with the CSR kernel (CPU or GPU), score each study once with R-15's Cox score,
+score one paired shuffle per study (the same re-imaged X with outcomes shuffled within strata), take one
+threshold from the S shuffled maxima (stats.threshold), and call = maxT > threshold.
 
-Both use the drawn patients' real Charville outcomes, so their calls can be compared study by study.
+Scope, EXPLORATORY: the paired shuffle reuses each evaluated study's own acquisition, so it is not an independent
+null study and the threshold is not an independent unconditional calibration. The two ways also differ in
+statistic (conditional permutation maxT vs Cox score) as well as in calibration, so this is a workflow
+comparison for timing, not equal work and not a test of shared vs per-study calibration. Agreement between the
+calls does not establish validity: that needs known null and alternative outcome generators.
 """
 from __future__ import annotations
 
@@ -27,7 +31,7 @@ def outcomes(cells: dict, design: dict, seed: int):
 
 
 def null_order(strata, seed: int) -> np.ndarray:
-    """A within-strata shuffle of patient rows, seeded apart from the study's own draws."""
+    """A within-strata shuffle of patient rows (the paired shuffle), seeded apart from the study's own draws."""
     rng = np.random.default_rng([seed, 7])
     order = np.arange(len(strata))
     for g in np.unique(strata):
@@ -45,7 +49,7 @@ def lab_study(cells: dict, design: dict, seed: int, n_resamples: int = LAB_RESAM
 
 
 def our_study(cells: dict, design: dict, seed: int, region_kernel, score) -> tuple[np.ndarray, np.ndarray]:
-    """(z, null z) for one study; score(X, time, event, strata) -> z[C]."""
+    """(z, paired-shuffle z) for one study; score(X, time, event, strata) -> z[C]."""
     X = reimage(cells, design, seed, region_kernel=region_kernel)
     t, e, s = outcomes(cells, design, seed)
     o = null_order(s, seed)
@@ -53,7 +57,7 @@ def our_study(cells: dict, design: dict, seed: int, region_kernel, score) -> tup
 
 
 def our_calls(z, null_z, alpha: float = ALPHA) -> tuple[np.ndarray, float]:
-    """One threshold for the whole design from the null studies; a call per study."""
+    """One threshold for the whole design from the paired-shuffle maxima; a call per study."""
     cut = threshold({"alpha": alpha}, np.asarray(null_z))
     return maxT(np.asarray(z)) > cut, cut
 

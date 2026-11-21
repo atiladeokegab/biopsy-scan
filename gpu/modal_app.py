@@ -117,11 +117,34 @@ def fetch_data() -> list[str]:
     return have()
 
 
+# Skips that are correct on a real GPU; any other skip means validation did not complete.
+EXPECTED_SKIPS = {"test_gpu_selection_never_reports_cpu_fallback"}  # it needs CUDA to be unavailable
+
+
+def simulator_tests(root: Path, files=TEST_FILES) -> set[str]:
+    """Tests that start a NUMBA_ENABLE_CUDASIM=1 subprocess: CUDA simulator coverage, not real-device coverage."""
+    import ast
+
+    names = set()
+    for f in files:
+        src = (Path(root) / f).read_text()
+        for node in ast.walk(ast.parse(src)):
+            if isinstance(node, ast.FunctionDef) and '"NUMBA_ENABLE_CUDASIM": "1"' in ast.get_source_segment(src, node) \
+                    and node.name.startswith("test_"):
+                names.add(node.name)
+    return names
+
+
 @app.function(**gpu_function)
 def gpu_tests() -> dict:
-    """The backend, expression and fleet tests on a real GPU, so the CUDA-gated tests run instead of skipping."""
+    """The backend, expression and fleet tests with a real GPU present. Tests that start a CUDA-simulator
+    subprocess are counted apart: they are simulator coverage, not device coverage."""
     import xml.etree.ElementTree as ET
 
+    from numba import cuda
+
+    if os.environ.get("NUMBA_ENABLE_CUDASIM") or not cuda.is_available():
+        raise RuntimeError("gpu_tests needs a real CUDA device with NUMBA_ENABLE_CUDASIM unset")
     start = time.perf_counter()
     junit = "/tmp/junit.xml"
     proc = subprocess.run(["python", "-m", "pytest", "-q", "-p", "no:cacheprovider", f"--junitxml={junit}",
@@ -131,8 +154,16 @@ def gpu_tests() -> dict:
     total, failed, errors, skipped = (int(suite.get(k, 0)) for k in ("tests", "failures", "errors", "skipped"))
     skips = [f"{c.get('name')}: {c.find('skipped').get('message', '')}" for c in suite.iter("testcase")
              if c.find("skipped") is not None]
+    sim = simulator_tests(APP_DIR)
+    ran = [c.get("name").split("[")[0] for c in suite.iter("testcase") if c.find("skipped") is None]
     return {"exit_code": proc.returncode, "passed": total - failed - errors - skipped, "failed": failed,
             "errors": errors, "skipped": skipped, "skips": skips, "files": list(TEST_FILES),
+            "unexpected_skips": [k for k in skips if k.split("[")[0].split(":")[0] not in EXPECTED_SKIPS],
+            "coverage": {"cuda_simulator_subprocess": sum(n in sim for n in ran),
+                         "in_process_with_real_device": sum(n not in sim for n in ran),
+                         "simulator_tests": sorted(sim),
+                         "note": "in-process tests ran with a real CUDA device and the simulator off; not every one "
+                                 "of them launches a GPU kernel (some are CPU or NumPy checks)"},
             "summary": proc.stdout.strip().splitlines()[-1:], "in_function_s": time.perf_counter() - start,
             "gpu": gpu_info()}
 
@@ -216,14 +247,17 @@ def fleet_shard(seeds: list[int]) -> dict:
     entered = time.perf_counter()
     cells, L, prep = _charville()
     design = {**DESIGN, "cells": cells, "backend": "gpu"}
+    t0 = time.perf_counter()
     prepared = {("gpu", "v1", id(nbr), L["K"]): gpu.prepare(nbr, L["K"]) for nbr in cells["_nbr"].values()}
+    prep["gpu_upload"] = time.perf_counter() - t0
     t0 = time.perf_counter()
     run(design, np.array(seeds[:1]), _prepared=prepared)  # warm-up: JIT; the result is recomputed below
     prep["warm_up"] = time.perf_counter() - t0
-    t0 = time.perf_counter()
+    w0, t0 = time.time(), time.perf_counter()
     features = run(design, np.array(seeds), _prepared=prepared)
-    compute = time.perf_counter() - t0
-    return {"seeds": seeds, "features": features, "compute_s": compute, "preparation_s": prep,
+    compute, w1 = time.perf_counter() - t0, time.time()
+    return {"seeds": seeds, "features": features, "compute_s": compute, "compute_window": [w0, w1],
+            "preparation_s": prep,
             "in_function_s": time.perf_counter() - entered, "gpu": gpu_info()}
 
 
@@ -253,12 +287,28 @@ def screen_hook() -> dict:
             "backends": backends, "gpu": gpu_info()}
 
 
+SCREEN_SEED = 0
+SCREEN_FIELDS = ("U", "V", "z", "n", "maxT", "p", "adjusted_p", "null_maxT")
+
+
+def compare_screens(b: dict, c: dict, rtol: float = 1e-9, atol: float = 1e-9) -> dict:
+    """Every output of two stats.screen runs, field by field (NaN = NaN); `all` is the equal-work gate."""
+    import numpy as np
+
+    out = {f: bool(np.allclose(np.asarray(b[f], float), np.asarray(c[f], float), rtol=rtol, atol=atol, equal_nan=True))
+           if np.shape(b[f]) == np.shape(c[f]) else False for f in SCREEN_FIELDS}
+    out["all"] = all(out.values())
+    out["tolerance"] = {"rtol": rtol, "atol": atol}
+    return out
+
+
 @app.function(image=image, volumes={DATA_DIR: data}, gpu=DEFAULT_GPU, timeout=3600, memory=65536, cpu=16.0)
 def ab_screen(reps: int = 3, n_perm: int = 999) -> dict:
     """One quiet container, Charville v2 (3,780 candidates): R-14 full fits (all cores) vs R-15 screen on CPU and GPU.
 
     Interleaved A, B, C, A, B, C ... so all three share one window; a part that will not import is SKIPPED.
-    A is a workflow comparison (different outputs); B vs C is the equal-work pair.
+    A is a workflow comparison (different outputs). B vs C is equal work only when every screen output matches
+    (compare_screens) on fingerprinted inputs with the same seed and B; otherwise the run is FAILED.
     """
     from functools import partial
 
@@ -282,7 +332,8 @@ def ab_screen(reps: int = 3, n_perm: int = 999) -> dict:
         C = d["C"] if d["C"].shape[1] else None
 
         def run_screen(backend, key=None):
-            out = screen(d["X"], d["time"], d["event"], clinical=C, strata=d["strata"], n_perm=n_perm, backend=backend)
+            out = screen(d["X"], d["time"], d["event"], clinical=C, strata=d["strata"], n_perm=n_perm, backend=backend,
+                         seed=SCREEN_SEED)
             if key:
                 screens[key] = out
 
@@ -304,16 +355,21 @@ def ab_screen(reps: int = 3, n_perm: int = 999) -> dict:
             samples[key].append(time.perf_counter() - t0)
             load.append(os.getloadavg()[0])
     result = {"inputs": {"cohort": "charville", "features": d and d["features"], "patients": d and len(d["time"]),
-                         "candidates": d and int(d["X"].shape[1]), "events": d and int(np.sum(d["event"]))},
+                         "candidates": d and int(d["X"].shape[1]), "events": d and int(np.sum(d["event"])),
+                         "fingerprints": d and impl_a.fingerprints(d["patient_ids"], d["time"], d["event"],
+                                                                   d["strata"], d["C"], d["X"])},
+              "screen_seed": SCREEN_SEED, "screen_metadata": {k: v.get("metadata") for k, v in screens.items()},
               "order": list(parts), "reps": reps, "n_perm": n_perm, "skipped": skipped, "pins": PINS,
               "rows": {k: _spread(v) for k, v in samples.items()}, "preparation_s": prep,
               "cores": len(os.sched_getaffinity(0)), "load_avg_1m": {"min": min(load), "max": max(load)},
               "host": hardware(), "gpu": gpu_info(), "in_function_s": time.perf_counter() - entered,
               "labels": {"A_vs_B": "workflow comparison: full Cox fits vs a score screen, different outputs",
-                         "B_vs_C": "equal work: same statistic and resamples on CPU and GPU"}}
+                         "B_vs_C": "UNVERIFIED: one backend missing, no equal-work claim"}}
     if "B_r15_screen_cpu" in screens and "C_r15_screen_gpu" in screens:
-        b, c = screens["B_r15_screen_cpu"], screens["C_r15_screen_gpu"]
-        result["gpu_matches_cpu_z"] = bool(np.allclose(b["z"], c["z"], rtol=1e-9, atol=1e-9))
+        result["gpu_vs_cpu"] = compare_screens(screens["B_r15_screen_cpu"], screens["C_r15_screen_gpu"])
+        result["gpu_matches_cpu"] = result["gpu_vs_cpu"]["all"]  # gated in _save: false -> FAILED
+        result["labels"]["B_vs_C"] = ("equal work: same fingerprinted inputs, seed and B; U, V, z, n, maxT, p, "
+                                      "adjusted_p and null_maxT all compared")
     return result
 
 
@@ -395,7 +451,9 @@ def gpu_design(seeds: list[int], score_backend: str = "cupy") -> dict:
 
     entered = time.perf_counter()
     cells, L, prep = _charville()
+    t0 = time.perf_counter()
     prepared = {id(nbr): gpu.prepare(nbr, L["K"]) for nbr in cells["_nbr"].values()}
+    prep["gpu_upload"] = time.perf_counter() - t0
     screen = _pinned("stats.screen").screen
 
     def kernel(nbr, xy, types, focal, K, **kw):
@@ -409,11 +467,11 @@ def gpu_design(seeds: list[int], score_backend: str = "cupy") -> dict:
                                  reimage(cells, DESIGN, seeds[0], region_kernel=kernel), equal_nan=True))
     dp.our_study(cells, DESIGN, seeds[0], kernel, score)
     prep["warm_up_and_parity"] = time.perf_counter() - t0
-    t0 = time.perf_counter()
+    w0, t0 = time.time(), time.perf_counter()
     pairs = [dp.our_study(cells, DESIGN, s, kernel, score) for s in seeds]
-    compute = time.perf_counter() - t0
+    compute, w1 = time.perf_counter() - t0, time.time()
     return {"seeds": seeds, "z": np.array([p[0] for p in pairs]), "null_z": np.array([p[1] for p in pairs]),
-            "compute_s": compute, "preparation_s": prep, "parity_seed": seeds[0], "parity_exact": parity,
+            "compute_s": compute, "compute_window": [w0, w1], "preparation_s": prep, "parity_seed": seeds[0], "parity_exact": parity,
             "score_backend": score_backend, "in_function_s": time.perf_counter() - entered, "gpu": gpu_info()}
 
 
@@ -432,6 +490,17 @@ def _timed_call(fn, *args, **kwargs):
     return result, time.perf_counter() - t0
 
 
+def overlap(parts: list[dict], seeds: list[int]) -> dict:
+    """Measured, not assumed: the compute windows of N containers (host wall clocks, NTP-synchronised, skew not
+    measured). span = first start to last end; all_overlapped = every container computing at one common moment."""
+    starts, ends = zip(*(p["compute_window"] for p in parts))
+    covered = sorted(s for p in parts for s in p["seeds"])
+    tasks = [p["gpu"]["modal_task_id"] for p in parts]
+    return {"compute_span_s": max(ends) - min(starts), "common_overlap_s": max(0.0, min(ends) - max(starts)),
+            "all_overlapped": min(ends) > max(starts), "seed_coverage_exact": covered == sorted(seeds),
+            "distinct_task_ids": len(set(tasks)) == len(tasks) and all(tasks)}
+
+
 _LAUNCH: dict = {}
 
 
@@ -445,7 +514,8 @@ def _launch() -> dict:
 
 
 PARITY_KEYS = {"parity_exact", "parity_exact_all", "bit_identical_to_1", "bit_identical_to_N1",
-               "exact_all_containers", "gpu_matches_cpu_z", "bit_identical_across_gpus"}
+               "exact_all_containers", "gpu_matches_cpu", "bit_identical_across_gpus", "seed_coverage_exact",
+               "distinct_task_ids"}
 
 
 def parity_failures(x, path: str = "") -> list[str]:
@@ -509,14 +579,18 @@ def _fleet(gpu: str, containers: int, studies: int) -> dict:
             "in_function_s_max": slowest["in_function_s"],
             "startup_and_transfer_s": wall - slowest["in_function_s"],
             "preparation_s_slowest": slowest["preparation_s"],
-            "studies_per_s_compute": studies / max(p["compute_s"] for p in parts),
+            **(ov := overlap(parts, seeds)),
+            "studies_per_s_compute_span": studies / ov["compute_span_s"],  # MEASURED scaling
+            "studies_per_s_ideal_overlap_ESTIMATE": studies / max(p["compute_s"] for p in parts),
             "studies_per_s_wall": studies / wall,
         }
     ref = merged[1]
     for n, arr in merged.items():
         runs[str(n)]["bit_identical_to_1"] = bool(arr.shape == ref.shape and np.array_equal(arr, ref, equal_nan=True))
     return {"studies": studies, "seeds": [0, studies - 1], "design": "bench/real_cpu.py DESIGN on Charville",
-            "runs": runs, "note": "compute_s excludes start-up, data load, adjacency and warm-up; those are reported per run"}
+            "runs": runs, "note": "compute_s excludes start-up, data load, adjacency and warm-up; those are reported per "
+            "run. Scaling uses the measured compute span (first start to last end across containers); "
+            "studies / max(shard compute) assumes perfect overlap and is labelled ESTIMATE"}
 
 
 @app.local_entrypoint()
@@ -527,8 +601,8 @@ def run_tests(gpu: str = DEFAULT_GPU):
     _save(gpu, {"kind": "gpu_tests", "gpu_tests": result})
     print(f"{result['passed']} passed, {result['failed']} failed, {result['errors']} errors, "
           f"{result['skipped']} skipped on {result['gpu']['model']} (driver {result['gpu']['driver']})")
-    if result["exit_code"]:
-        raise SystemExit(result["exit_code"])
+    if result["exit_code"] or result["unexpected_skips"]:
+        raise SystemExit(f"tests failed or skipped unexpectedly: {result['unexpected_skips']}")
 
 
 @app.local_entrypoint()
@@ -629,23 +703,25 @@ def run_design(gpu: str = DEFAULT_GPU, studies: int = 1000, fleet: str = "1,2,4,
         slowest = max(parts, key=lambda p: p["in_function_s"])
         runs[str(n)] = {"containers_requested": n, "containers_seen": len({p["gpu"]["modal_task_id"] for p in parts}),
                         "gpus": sorted({p["gpu"]["model"] for p in parts}),
-                        "compute_s": max(p["compute_s"] for p in parts), "modal_wall_s": wall,
+                        "compute_s_max_shard": max(p["compute_s"] for p in parts), "modal_wall_s": wall,
+                        **overlap(parts, seeds),
                         "startup_and_transfer_s": wall - slowest["in_function_s"],
                         "preparation_s_slowest": slowest["preparation_s"],
                         "parity_exact_all": all(p["parity_exact"] for p in parts),
                         "bit_identical_to_N1": bool(all(np.array_equal(a, b) for a, b in zip(merged[n], merged[1])))}
-        print(f"  N={n}: compute {runs[str(n)]['compute_s']:.1f} s, wall {wall:.1f} s")
-    t1 = runs["1"]["compute_s"]
-    for n in ns:
+        print(f"  N={n}: compute span {runs[str(n)]['compute_span_s']:.1f} s, wall {wall:.1f} s")
+    t1 = runs["1"]["compute_span_s"]
+    for n in ns:  # measured: from the compute span across containers, not from max(shard) (which assumes overlap)
         r = runs[str(n)]
-        r["speedup_vs_N1"] = t1 / r["compute_s"]
-        r["efficiency"] = t1 / (n * r["compute_s"])
+        r["speedup_vs_N1"] = t1 / r["compute_span_s"]
+        r["efficiency"] = t1 / (n * r["compute_span_s"])
     lab, ours_cpu = lab_call.get(), ours_call.get()
     calls = {}
     for name, (z, z0) in (("b_ours_cpu", (ours_cpu["z"], ours_cpu["null_z"])), ("c_ours_1_gpu", merged[1])):
+        t0 = time.perf_counter()
         c, cut = dp.our_calls(z, z0)
-        calls[name] = {"threshold": cut, "positives": int(c.sum()), "agreement_with_lab": dp.agreement(
-            lab["p"], c[:lab_studies])}
+        calls[name] = {"threshold": cut, "positives": int(c.sum()), "calls_s": time.perf_counter() - t0,
+                       "agreement_with_lab": dp.agreement(lab["p"], c[:lab_studies])}
     lab_scale = studies / lab_studies
     unit = {
         "a_lab_all_cores": {"label": "MEASURED" if lab_scale == 1 else "ESTIMATE", "seconds": lab["compute_s"] * lab_scale,
@@ -653,18 +729,28 @@ def run_design(gpu: str = DEFAULT_GPU, studies: int = 1000, fleet: str = "1,2,4,
                             "basis": "measured" if lab_scale == 1 else f"linear: {lab_studies} measured studies x {lab_scale:g}",
                             "workers": lab["workers"], "host": lab["host"], "positives": int((lab["p"] <= dp.ALPHA).sum())},
         "b_ours_cpu_all_cores": {"label": "MEASURED", "seconds": ours_cpu["compute_s"], "workers": ours_cpu["workers"],
-                                 "host": ours_cpu["host"]},
-        "c_ours_1_gpu": {"label": "MEASURED", "seconds": t1, "gpu": runs["1"]["gpus"]},
+                                 "host": ours_cpu["host"], "plus_threshold_and_calls_s": calls["b_ours_cpu"]["calls_s"]},
+        "c_ours_1_gpu": {"label": "MEASURED", "seconds": t1, "gpu": runs["1"]["gpus"],
+                         "plus_threshold_and_calls_s": calls["c_ours_1_gpu"]["calls_s"]},
         "d_ours_n_gpu": {"label": "MEASURED", "runs": runs},
     }
-    payload = {"kind": "design_point", "studies": studies, "unit": f"one design point: {studies} Charville studies end "
-               "to end (re-image, score, call), bench/real_cpu.py DESIGN", "methods": dp.__doc__, "slots": unit,
+    payload = {"kind": "design_point", "studies": studies, "unit": f"one design point: {studies} Charville studies, "
+               "bench/real_cpu.py DESIGN. Lab slot: re-image and the 1,000-shuffle test inside the timed workers. Our slots: "
+               "re-image and score inside the timed workers; the one threshold and the calls run after, timed apart "
+               "(plus_threshold_and_calls_s)", "methods": dp.__doc__, "slots": unit,
+               "scope": {"comparison": "WORKFLOW comparison: different statistic (conditional permutation maxT vs "
+                                       "R-15 Cox score) and different calibration; not equal work",
+                         "calibration": "EXPLORATORY: one paired shuffle per study (same X, outcomes shuffled within "
+                                        "strata), not an independent null study or unconditional calibration",
+                         "agreement": "same-call counts compare two methods; they do not establish validity"},
                "e_gpu_parity": {"exact_all_containers": all(r["parity_exact_all"] for r in runs.values()),
-                                "suite": "bench/results/modal-a100-20261121T164808Z.json: 39 passed, 1 skipped"},
+                                "suite": "bench/results/modal-a100-20261121T173127Z.json: 39 passed, 1 skipped "
+                                         "(clean head b7f2992)"},
                "f_same_call": {k: f"{v['agreement_with_lab']['same_call']} of {v['agreement_with_lab']['of']}"
                                for k, v in calls.items()},
                "calls": calls, "score_backend": score_backend,
-               "timing": "seconds = in-container compute for the whole unit; start-up, data load and adjacency apart"}
+               "timing": "seconds = in-container compute (GPU slots: the measured compute span across containers); "
+                         "start-up, data load, adjacency, upload and warm-up reported apart"}
     _save(gpu, payload)
     for k, v in unit.items():
         if "seconds" in v:
