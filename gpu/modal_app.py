@@ -457,14 +457,25 @@ def _tests(gpu: str) -> dict:
     return result
 
 
-def _fleet(gpu: str, containers: int, studies: int, fleet: str = "") -> dict:
+def _fleet_sizes(containers: int, studies: int, fleet: str = "") -> list[int]:
+    """Validated before any launch: every fleet size a whole number of containers, each with at least one study."""
+    try:
+        sizes = sorted({1, int(containers), *(int(x) for x in fleet.split(",") if x.strip())})
+    except ValueError:
+        raise SystemExit(f"--fleet must be comma-separated whole numbers, got {fleet!r}") from None
+    if sizes[0] < 1 or sizes[-1] > studies:
+        raise SystemExit(f"fleet sizes {sizes} must be 1..--studies ({studies}): no container may get zero studies")
+    return sizes
+
+
+def _fleet(gpu: str, sizes: list[int], studies: int) -> dict:
     """Studies 0..n-1 on 1 container, then sharded over N; merged features must be bit-identical."""
     import numpy as np
 
     fn = fleet_shard.with_options(gpu=gpu)
     seeds = list(range(studies))
     runs, merged = {}, {}
-    for n in sorted({1, containers, *(int(x) for x in fleet.split(",") if x)}):
+    for n in sizes:
         hours = (n * 150 + studies * 0.75) / 3600  # per container ~2.5 min start-up and prep; ~0.75 s/study on 1 GPU
         _spend(f"fleet N={n} x {gpu}, {studies} studies", hours * _gpu_rate(gpu),
                f"{hours:.2f} GPU-h x ${_gpu_rate(gpu):.2f}/h")
@@ -515,13 +526,14 @@ def run_ladder(gpu: str = DEFAULT_GPU, reps: int = 5, containers: int = 4, studi
     """make modal-ladder: kernel timing, fleet scaling and the R-15 hook, into one MEASURED file."""
     _launch()
     _check_gpu(gpu)
-    if reps < 3 or containers < 1 or studies < containers:
-        raise SystemExit("need --reps >= 3, --containers >= 1 and --studies >= --containers")
+    if reps < 3:
+        raise SystemExit("need --reps >= 3")
+    sizes = _fleet_sizes(containers, studies, fleet)
     print("volume:", fetch_data.remote())
     kernel, wall = _timed_call(time_kernel.with_options(gpu=gpu).remote, reps)
     kernel["modal_wall_s"] = wall
     kernel["startup_and_transfer_s"] = wall - kernel["in_function_s"]
-    payload = {"kind": "ladder", "kernel": kernel, "fleet": _fleet(gpu, containers, studies, fleet),
+    payload = {"kind": "ladder", "kernel": kernel, "fleet": _fleet(gpu, sizes, studies),
                "screen": screen_hook.with_options(gpu=gpu).remote(),
                "baseline_note": "numpy_reference runs in the same container as the GPU row; the EPYC rungs are in "
                                 "bench/results/cpu-ladder.json (same DESIGN, other host)"}

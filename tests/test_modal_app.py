@@ -231,3 +231,18 @@ def test_gpu_vs_startup_is_per_gpu_and_hardware_is_kept_per_block(modal_app, mon
         assert row["startup_s"] == [5.0, 5.0], g  # not 13 s for whichever GPU is collected second
         assert len({b["modal_task_id"] for b in row["gpus_per_block"]}) == 2, g  # one per block, none overwritten
         assert row["same_gpu_model"] is True, g
+
+
+@pytest.mark.parametrize("containers,studies,fleet", [(4, 16, "0"), (4, 16, "1,32"), (4, 16, "-2"), (4, 16, "a"),
+                                                      (32, 16, ""), (0, 16, "")])
+def test_bad_fleet_sizes_stop_before_any_launch(modal_app, monkeypatch, containers, studies, fleet):
+    def launched():
+        raise AssertionError("a Modal call ran before the fleet sizes were validated")
+
+    monkeypatch.setattr(modal_app, "fetch_data", type("F", (), {"remote": staticmethod(launched)}))
+    with pytest.raises(SystemExit):
+        modal_app.run_ladder("A100-40GB", containers=containers, studies=studies, fleet=fleet)
+
+
+def test_good_fleet_sizes_are_sorted_and_include_one(modal_app):
+    assert modal_app._fleet_sizes(4, 16, "8, 2,16") == [1, 2, 4, 8, 16]
