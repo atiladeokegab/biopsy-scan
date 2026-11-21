@@ -54,7 +54,8 @@ def compare(summary: list[dict], meta: dict, m: int, *, cohort: str) -> dict:
         a = schoenfeld_power(r["patients"], f, hr, alpha, m)
         points.append({"patients": int(r["patients"]), "analytic_power": a,
                        "sim_power": float(r["power"]), "sim_lo": float(r["power_lo"]), "sim_hi": float(r["power_hi"]),
-                       "sim_n": int(r["power_n"]), "sim_fwer": float(r["fwer"]),
+                       "sim_n": int(r["power_n"]), "sim_identification": float(r["identification_rate"]),
+                       "sim_mean_events": float(r["alternative_mean_events"]), "sim_fwer": float(r["fwer"]),
                        "sim_fwer_lo": float(r["fwer_lo"]), "sim_fwer_hi": float(r["fwer_hi"]),
                        "formula_minus_sim": a - float(r["power"]),
                        "formula_outside_sim_interval": not (float(r["power_lo"]) <= a <= float(r["power_hi"]))})

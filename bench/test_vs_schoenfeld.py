@@ -10,7 +10,7 @@ META = {"source_events": 38, "source_n": 159, "inference": "model-based Monte Ca
 def row(p, power, lo, hi, **kw):
     return {"cohort": "charville", "patients": p, "hr_per_source_sd": 2.0, "alpha": 0.05, "regions_per_patient": 2,
             "fov_um": 400.0, "eps": 0.1, "backend": "cpu", "power": power, "power_lo": lo, "power_hi": hi,
-            "power_n": 200, "fwer": 0.05, "fwer_lo": 0.02, "fwer_hi": 0.09, **kw}
+            "power_n": 200, "identification_rate": 0.0, "alternative_mean_events": 19.0, "fwer": 0.05, "fwer_lo": 0.02, "fwer_hi": 0.09, **kw}
 
 
 def test_formula_hits_the_textbook_80_percent_point():
