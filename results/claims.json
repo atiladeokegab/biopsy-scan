@@ -1,0 +1,152 @@
+{
+ "schema": "preflight-claim-ledger/1",
+ "about": "One entry per headline claim. Each value is recomputed from its committed source file by tests/test_claims.py, which fails on any drift; scripts/check_claims.py also scans README.md, docs/JUDGING.md, docs/SUBMISSION.md and the demo page for stale wording. Only claims whose source is on integration are listed; add new results as new entries when they merge.",
+ "rules": {
+  "fixed:N": "format the number with N decimals",
+  "pct:N": "multiply by 100 and format with N decimals",
+  "eq": "the value as stored (strings, integers, booleans)",
+  "ratio:N": "first path divided by second path, N decimals"
+ },
+ "claims": [
+  {
+   "id": "fleet-6.6x",
+   "claim": "MEASURED, observed 6.6× compute-span reduction 843.7→128.2 s for 1,000 Charville re-imaging/feature-generation studies, 8 A100-SXM4-40GB vs 1, one sweep; outputs bit-identical; inference outside timing",
+   "source": "bench/results/modal-a100-20261121T183709Z.json",
+   "pr": 75,
+   "label": "MEASURED",
+   "label_path": "status",
+   "quoted_as": "843.7→128.2 s",
+   "values": [
+    {"path": "fleet.runs.1.compute_span_s", "rule": "fixed:1", "expect": "843.7"},
+    {"path": "fleet.runs.8.compute_span_s", "rule": "fixed:1", "expect": "128.2"},
+    {"ratio": ["fleet.runs.1.compute_span_s", "fleet.runs.8.compute_span_s"], "rule": "ratio:1", "expect": "6.6"},
+    {"path": "fleet.studies", "rule": "eq", "expect": "1000"},
+    {"path": "fleet.runs.8.bit_identical_to_1", "rule": "eq", "expect": "True"}
+   ]
+  },
+  {
+   "id": "kernel-3.19x",
+   "claim": "GPU kernel, feature step only: 3.19× (median), NumPy 2.24 s vs GPU 0.70 s, exact parity",
+   "source": "bench/results/modal-a100-20261121T183709Z.json",
+   "pr": 75,
+   "label": "MEASURED",
+   "label_path": "status",
+   "quoted_as": "NumPy `2.24 s` vs GPU `0.70 s`",
+   "values": [
+    {"path": "kernel.speedup_median", "rule": "fixed:2", "expect": "3.19"},
+    {"path": "kernel.rows.numpy_reference.median_s", "rule": "fixed:2", "expect": "2.24"},
+    {"path": "kernel.rows.gpu.median_s", "rule": "fixed:2", "expect": "0.70"},
+    {"path": "kernel.parity_exact", "rule": "eq", "expect": "True"}
+   ]
+  },
+  {
+   "id": "fwer-0.060",
+   "claim": "R-15 clinical-null bootstrap FWER 0.060 (60 of 1,000) [0.046, 0.077] Clopper-Pearson 95% on the hard negative",
+   "source": "stats/results/hard-negative-f458ad1.json",
+   "pr": 99,
+   "label": "SYNTHETIC",
+   "label_path": "label",
+   "quoted_as": "0.060",
+   "values": [
+    {"path": "rates.bootstrap.rejections", "rule": "eq", "expect": "60"},
+    {"path": "n_datasets", "rule": "eq", "expect": "1000"},
+    {"path": "rates.bootstrap.rate", "rule": "fixed:3", "expect": "0.060"},
+    {"path": "rates.bootstrap.clopper_pearson_95[0]", "rule": "fixed:3", "expect": "0.046"},
+    {"path": "rates.bootstrap.clopper_pearson_95[1]", "rule": "fixed:3", "expect": "0.077"},
+    {"path": "rates.unadjusted.rate", "rule": "fixed:3", "expect": "0.997"}
+   ]
+  },
+  {
+   "id": "power-at-scale",
+   "claim": "68.3% [62.7, 73.6] at 400 patients; about 524 patients for 80%, interpolated between 500 and 600",
+   "source": "bench/results/power-at-scale.json",
+   "pr": 83,
+   "label": "ESTIMATE",
+   "label_path": "status",
+   "quoted_as": "68.3%",
+   "values": [
+    {"path": "points[patients=400].power", "rule": "pct:1", "expect": "68.3"},
+    {"path": "points[patients=400].power_lo", "rule": "pct:1", "expect": "62.7"},
+    {"path": "points[patients=400].power_hi", "rule": "pct:1", "expect": "73.6"},
+    {"path": "answer.n_80", "rule": "fixed:0", "expect": "524"},
+    {"path": "points[patients=500].power", "rule": "pct:1", "expect": "76.3"},
+    {"path": "points[patients=600].power", "rule": "pct:1", "expect": "91.3"}
+   ]
+  },
+  {
+   "id": "formula-vs-simulation-200",
+   "claim": "At 200 patients the Schoenfeld formula predicts 80.1%; simulation on real tissue gives 27.0% [22.1%, 32.4%] over 300 studies",
+   "source": "bench/results/vs-schoenfeld-300.json",
+   "pr": 53,
+   "label": "ESTIMATE",
+   "label_path": "status",
+   "quoted_as": "80.1%",
+   "values": [
+    {"path": "points[patients=200].analytic_power", "rule": "pct:1", "expect": "80.1"},
+    {"path": "points[patients=200].sim_power", "rule": "pct:1", "expect": "27.0"},
+    {"path": "points[patients=200].sim_lo", "rule": "pct:1", "expect": "22.1"},
+    {"path": "points[patients=200].sim_hi", "rule": "pct:1", "expect": "32.4"},
+    {"path": "points[patients=200].sim_n", "rule": "eq", "expect": "300"}
+   ]
+  },
+  {
+   "id": "charville-v2-maxT",
+   "claim": "Charville joint screen (v2): maxT p = 0.098 over 3,780 patterns, exploratory",
+   "source": "results/charville-v2.json",
+   "pr": 47,
+   "label": "MEASURED",
+   "label_path": "labels.maxT",
+   "quoted_as": "0.098 over 3,780",
+   "values": [
+    {"path": "maxT.p", "rule": "fixed:3", "expect": "0.098"},
+    {"path": "n_features_tested", "rule": "eq", "expect": "3780"},
+    {"path": "n_features_v1", "rule": "eq", "expect": "630"},
+    {"path": "n_patients", "rule": "eq", "expect": "159"},
+    {"path": "n_events", "rule": "eq", "expect": "38"},
+    {"path": "omnibus.p", "rule": "fixed:2", "expect": "0.17"},
+    {"path": "exploratory", "rule": "eq", "expect": "True"},
+    {"path": "maxT.top_hits[0].feature", "rule": "eq", "expect": "Tumor 5|Macrophage|100um|PD1"},
+    {"path": "maxT.top_hits[0].z", "rule": "fixed:2", "expect": "3.96"}
+   ]
+  },
+  {
+   "id": "upmc-r16-locked",
+   "claim": "UPMC R-16 locked test: HR per SD 1.82 [0.47, 6.97], one-sided p 0.193, C-index 0.548, does not pass; UNMEASURED (underpowered: conditional power 18% < 50%, 4 design events), inconclusive",
+   "source": "results/upmc-rediscovery.json",
+   "pr": 109,
+   "label": "UNMEASURED",
+   "label_path": "locked.status",
+   "quoted_as": "1.82",
+   "values": [
+    {"path": "locked.feature", "rule": "eq", "expect": "Tumor (Podo+)|Stromal / Fibroblast|25um|fraction"},
+    {"path": "locked.hr_per_sd", "rule": "fixed:2", "expect": "1.82"},
+    {"path": "locked.hr_per_sd_ci95[0]", "rule": "fixed:2", "expect": "0.47"},
+    {"path": "locked.hr_per_sd_ci95[1]", "rule": "fixed:2", "expect": "6.97"},
+    {"path": "locked.p_one_sided", "rule": "fixed:3", "expect": "0.193"},
+    {"path": "locked.c_index", "rule": "fixed:3", "expect": "0.548"},
+    {"path": "locked.locked_test_passes", "rule": "eq", "expect": "False"},
+    {"path": "locked.power.value", "rule": "pct:0", "expect": "18"},
+    {"path": "locked.power.design_events", "rule": "eq", "expect": "4"}
+   ]
+  },
+  {
+   "id": "upmc-r16-discovery-rank",
+   "claim": "UPMC R-16 discovery rank 366 of 612, discovery patients only",
+   "source": "results/upmc-rediscovery.json",
+   "pr": 109,
+   "label": "MEASURED",
+   "label_path": "discovery.status",
+   "quoted_as": "366",
+   "values": [
+    {"path": "discovery.rank", "rule": "eq", "expect": "366"},
+    {"path": "discovery.of", "rule": "eq", "expect": "612"}
+   ]
+  }
+ ],
+ "stale": [
+  {"pattern": "\\b2\\.23\\b", "why": "the kernel NumPy median is 2.2353 s, which rounds to 2.24"},
+  {"pattern": "0\\.1275", "why": "v1 Charville maxT p; the headline is the v2 joint screen, p = 0.098 over 3,780"},
+  {"pattern": "(?<![-_])\\bidentical\\b", "why": "CPU and GPU agree to rounding, not identically; only bit-identical fleet sharding is exact"},
+  {"pattern": "(?i)chance explains", "why": "a p-value does not prove chance: say not significant after correction; consistent with chance"}
+ ]
+}
