@@ -10,7 +10,7 @@ const text = (re) => (html.match(re)?.[1] ?? "").replace(/<[^>]+>/g, "").replace
 assert.equal(text(/<h1[^>]*>([\s\S]*?)<\/h1>/), "Thousands of studies, simulated in seconds, before you image a slide.");
 assert.equal(text(/<button[^>]*id="run"[^>]*>([\s\S]*?)<\/button>/), "Run the studies");
 
-// The old question in any form ("Can my study find it?", "Can your study find it?", ...), in every tracked file.
+// The old question in any form (my, your, our study, ...), in every tracked file.
 // docs/PRD.md is excluded: it is the spec that names the banned phrase.
 let hits = "";
 try {
