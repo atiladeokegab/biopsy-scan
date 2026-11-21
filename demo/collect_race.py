@@ -2,11 +2,12 @@
 
 Run: python3 -I demo/collect_race.py [extra.json ...]. Pages runs it before every deploy.
 A bench file feeds the race in one of two ways:
-  1. a top-level "race" list: [{"id": "preflight-a100", "seconds": 0.8, "label": "MEASURED",
-     "hardware": "Modal", "gpu": "1x NVIDIA A100"}]  (ids: preflight-cpu, preflight-a100, preflight-fleet; the
-     fleet row also takes "gpus": N), or
-  2. R-14's impl-a shape (cpu_model, cohorts[].timings[]): the Charville 3,780-candidate run fills "standard"
-     with its most-workers timing.
+  1. a top-level "race" list, one entry per row of the equal-work unit (one design point, 1,000 studies):
+     [{"id": "gpu-1", "seconds": 4.2, "startup_s": 90.0, "label": "MEASURED", "hardware": "Modal", "gpu": "1x NVIDIA H100"}]
+     ids: lab-cpu, preflight-cpu, gpu-1, gpu-16. "seconds" is compute time; start-up goes in "startup_s",
+     shown apart and never counted. Or
+  2. R-14's impl-a shape (cpu_model, cohorts[].timings[]): the Charville 3,780-candidate Cox screen fills the
+     "workflow" footnote only. It is different work, so it is never a race bar and never part of a ratio.
 A row no file feeds keeps its committed value (PENDING until measured). check_data.py then validates the result.
 It also writes demo/data/claims.json, the power and honesty numbers the page shows, from
 bench/results/vs-schoenfeld-300.json and results/charville-v2.json, so the page replays committed results offline.
@@ -19,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "demo" / "data" / "baseline.json"
 CLAIMS = ROOT / "demo" / "data" / "claims.json"
 PLANNED_PATIENTS = 200  # the demo's study: "they plan 200 patients"
-KEEP = ("seconds", "label", "hardware", "cores", "gpu", "gpus", "note")
+KEEP = ("seconds", "startup_s", "label", "hardware", "cores", "gpu", "note")
 
 
 def rows_from(path, d):
@@ -31,8 +32,10 @@ def rows_from(path, d):
             if c.get("cohort") == "charville" and c.get("candidates") == 3780 and c.get("timings"):
                 t = max(c["timings"], key=lambda t: t["workers"])
                 one = [x for x in c["timings"] if x["workers"] == 1]
-                yield "standard", {"seconds": round(t["wall_s"], 2), "label": t["label"], "hardware": d["cpu_model"],
+                yield "workflow", {"method": "Standard Cox screen of all 3,780 candidates (statsmodels PHReg)",
+                                   "seconds": round(t["wall_s"], 2), "label": t["label"], "hardware": d["cpu_model"],
                                    "cores": t["workers"], "gpu": None, "source": name,
+                                   "fingerprints": c.get("fingerprints"),
                                    **({"note": f"{one[0]['wall_s']:.1f} s on 1 core"} if one else {})}
 
 
@@ -47,6 +50,10 @@ def main(extra):
         if not isinstance(d, dict):
             continue
         for rid, fields in rows_from(path, d):
+            if rid == "workflow":
+                race["workflow"] = fields
+                print(f"workflow footnote: {fields['seconds']} s {fields['label']} from {fields['source']}")
+                continue
             if rid not in by_id:
                 sys.exit(f"{path}: race id {rid!r} is not a row in {OUT.name}")
             by_id[rid].update(fields)

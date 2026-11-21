@@ -66,4 +66,24 @@ assert.equal(mid[0].frac, 0.25); assert.equal(mid[0].clock, 15); // the slowest 
 assert.ok(mid[1].done && mid[1].clock === 15, "a 4x faster row finishes at a quarter of the race, showing its real 15 s");
 assert.ok(raceState(rows, 1e9).every((r, i) => (rows[i].seconds == null ? r.frac === 0 && r.clock === null : r.done)));
 bl.rows.forEach((r) => assert.ok(r.seconds == null || (r.label && r.source), `${r.id}: a time needs a label and a source`));
+// #79 review (Atlas): no ratio anywhere in the race or its workflow footnote, every string escaped,
+// and a row whose seconds are not a positive finite number is drawn as untimed.
+const { speedRaceHTML, workflowHTML } = await import("./race.js");
+const row = (o) => ({ id: "x", method: "m", role: "screen", label: "MEASURED", hardware: "h", cores: 8, gpu: null, source: "s", ...o });
+const both = speedRaceHTML({ rows: [row({ role: "baseline", seconds: 2 }), row({ seconds: 1 }), row({ seconds: 2 })] });
+assert.doesNotMatch(both, /×|faster|slower|speed-?up/i, "two MEASURED rows never print a ratio, slower or equal");
+const wf = workflowHTML({ method: "Cox screen", seconds: 63.84, label: "MEASURED", hardware: "EPYC", cores: 8, source: "f.json" });
+assert.match(wf, /^Workflow comparison, not part of the race: .*63\.8 s/);
+assert.doesNotMatch(wf, /×|faster|slower|speed-?up/i, "the workflow footnote is seconds only");
+assert.equal(workflowHTML(null), "");
+const evil = speedRaceHTML({ rows: [row({ seconds: 1, gpu: "<x-g>", hardware: "<x-h>", note: "<x-n>", method: "<x-m>", label: "<x-l>", source: "<x-s>" })] });
+assert.doesNotMatch(evil, /<x-/, "every dynamic string is escaped");
+assert.doesNotMatch(speedRaceHTML({ rows: [row({ seconds: 1, gpu: null, cores: "<x-c>" })] }), /<x-/, "cores escaped too");
+assert.doesNotMatch(workflowHTML({ method: "<x-m>", seconds: 1, label: "<x-l>", hardware: "<x-h>", cores: "<x-c>", note: "<x-n>", source: "<x-s>" }), /<x-/);
+for (const bad of [0, -1, NaN, Infinity, "5", true])
+  assert.match(speedRaceHTML({ rows: [row({ seconds: bad })] }), /class="pending"/, `seconds ${String(bad)} is never a bar`);
+assert.ok(raceState([row({ seconds: "5" }), row({ seconds: 4 })], 1e9)[0].clock === null);
+assert.match(speedRaceHTML({ rows: [row({ seconds: 4, startup_s: 90 })] }), /\+ 90\.0 s start-up, not counted/);
+assert.equal(bl.rows.length, 4, "the race is the four rows of one design point");
+assert.ok(!bl.rows.some((r) => /3,780|Cox/.test(r.method)), "the Cox screen is the workflow footnote, never a bar");
 console.log("race.test.mjs: ok");

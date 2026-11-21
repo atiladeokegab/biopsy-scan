@@ -114,15 +114,17 @@ export function createRace(cpuCanvas, gpuCanvas, out) {
   return { run, clear, redraw };
 }
 
-// THE SPEED RACE (data/baseline.json, filled from bench/results by collect_race.py): every row screens the same
-// 3,780 candidates. Each bar fills at its measured rate, scaled so the slowest timed row takes RACE_MS on screen;
-// its real seconds print at its finish. A row without a time is PENDING: no bar, no motion, no number.
-// No ratio is printed: #64's own file forbids quoting it as an equal-work speed-up.
+// THE SPEED RACE (data/baseline.json, filled from bench/results by collect_race.py): every row times the same unit,
+// one design point of 1,000 simulated studies. Each bar fills at its measured compute rate, scaled so the slowest
+// timed row takes RACE_MS on screen; its real seconds print at its finish, start-up shown apart and never counted.
+// A row without a time is PENDING: no bar, no motion, no number. No ratio is ever printed, and the workflow
+// footnote (different work: the R-14 Cox screen) is seconds only.
 export const RACE_MS = 10000;
+const timed = (r) => Number.isFinite(r.seconds) && r.seconds > 0;
 export function raceState(rows, t, total = RACE_MS) {
-  const max = Math.max(...rows.filter((r) => r.seconds != null).map((r) => r.seconds));
+  const max = Math.max(...rows.filter(timed).map((r) => r.seconds));
   return rows.map((r) => {
-    if (r.seconds == null) return { frac: 0, clock: null, done: false };
+    if (!timed(r)) return { frac: 0, clock: null, done: false };
     const frac = Math.min(1, t / ((r.seconds / max) * total));
     return { frac, clock: frac * r.seconds, done: frac === 1 };
   });
@@ -131,17 +133,33 @@ export function raceState(rows, t, total = RACE_MS) {
 const esc = (v) => String(v).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 const secs = (s) => (s < 600 ? `${s < 10 ? s.toFixed(2) : s.toFixed(1)} s` : duration(s));
 
-export function createSpeedRace(el, data, { reducedMotion = false } = {}) {
-  el.innerHTML = `<ol class="sr">${data.rows.map((r) => {
+const where = (r) => [r.hardware, r.gpu || (r.cores ? `${r.cores} core${r.cores > 1 ? "s" : ""}` : null)]
+  .filter(Boolean).map(esc).join(", ");
+
+// Every dynamic string is escaped; a row whose seconds are not a positive finite number is drawn as untimed.
+export function speedRaceHTML(data) {
+  return `<ol class="sr">${data.rows.map((r) => {
     const tag = `<span class="tag${r.label === "MEASURED" ? " ok" : ""}">${esc(r.label)}</span>`;
-    const src = [r.source, r.note].filter(Boolean).map(esc).join(" · ");
-    if (r.seconds == null) // no bar, no number: the track only says where the time will come from
+    const src = [r.source, r.note, r.startup_s > 0 ? `+ ${secs(r.startup_s)} start-up, not counted` : null]
+      .filter(Boolean).map(esc).join(" · ");
+    if (!timed(r)) // no bar, no number: the track only says where the time will come from
       return `<li class="pending"><span class="sr-name">${esc(r.method)}</span><span class="sr-time">${tag}</span>` +
         `<span class="sr-track">not yet timed · ${src}</span></li>`;
-    const on = `${esc(r.hardware)}, ${r.gpu ? esc(r.gpu) : `${r.cores} core${r.cores > 1 ? "s" : ""}`}`;
-    return `<li class="${r.role}"><span class="sr-name">${esc(r.method)}<small>${on}</small></span>` +
+    return `<li class="${r.role === "baseline" ? "baseline" : "screen"}"><span class="sr-name">${esc(r.method)}<small>${where(r)}</small></span>` +
       `<span class="sr-time">${tag}<b></b></span><span class="sr-track"><i></i></span><small class="sr-src">${src}</small></li>`;
   }).join("")}</ol>`;
+}
+
+// Different work from the race, so seconds only: never a bar, never a ratio against a race row.
+export function workflowHTML(w) {
+  if (!w || !timed(w)) return "";
+  return `Workflow comparison, not part of the race: ${esc(w.method)}, ${secs(w.seconds)} on ${where(w)} ` +
+    `<span class="tag${w.label === "MEASURED" ? " ok" : ""}">${esc(w.label)}</span>` +
+    `${w.note ? ` (${esc(w.note)})` : ""} · ${esc(w.source)}`;
+}
+
+export function createSpeedRace(el, data, { reducedMotion = false } = {}) {
+  el.innerHTML = speedRaceHTML(data);
   const lanes = [...el.querySelectorAll("li")];
   let timer = 0;
 
