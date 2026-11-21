@@ -210,7 +210,7 @@ def screen(X, time, event, clinical=None, strata=None, n_perm=999, backend="auto
         for out, value in zip((U, V, z), _stats(xp, Xg, Cg, M, m, a)):
             out[cols] = _host(value)[0]
     observed = float(np.abs(z).max())
-    null_maxT = _bootstrap(xp, groups, time, event, C, codes, base, J, n_perm, seed, block)
+    null_maxT = _bootstrap(xp, groups, time, event, C, codes, base, n_perm, seed, block)
     tol = 16 * np.finfo(np.float64).eps * max(1.0, observed)
     p = float((1 + np.sum(null_maxT >= observed - tol)) / (n_perm + 1)) if n_perm else float("nan")
     adjusted = ((1 + np.sum(null_maxT[:, None] >= np.abs(z)[None] - tol, axis=0)) / (n_perm + 1)
@@ -238,36 +238,39 @@ def screen(X, time, event, clinical=None, strata=None, n_perm=999, backend="auto
     }
 
 
-def _bootstrap(xp, groups, time, event, C, codes, base, J, B, seed, block):
-    """maxT of z over all candidates for B clinical-null resamples."""
-    if not B or not groups:
-        return np.zeros(B)
+def _null_draws(time, event, C, codes, base, B, seed, block):
+    """Yield clinical-null resamples (time, event), each [block, n_base], over base rows."""
     ix = np.flatnonzero(base)
     t, e, Cb, cb = time[ix], event[ix], C[ix], codes[ix]
-    Cb = Cb[:, np.ptp(Cb, axis=0) > 0] - Cb[:, np.ptp(Cb, axis=0) > 0].mean(0)
-    beta = _phreg(Cb, t, e, cb)
-    gamma = _phreg(Cb, t, 1 - e, cb)
-    w, wc = np.exp(Cb @ beta), np.exp(Cb @ gamma)
-    death = _breslow_steps(t, e, w, cb)
-    censor = _breslow_steps(t, 1 - e, wc, cb)
+    Cb = Cb[:, np.ptp(Cb, axis=0) > 0]
+    Cb = Cb - Cb.mean(0)
+    w, wc = np.exp(Cb @ _phreg(Cb, t, e, cb)), np.exp(Cb @ _phreg(Cb, t, 1 - e, cb))
+    death, censor = _breslow_steps(t, e, w, cb), _breslow_steps(t, 1 - e, wc, cb)
     end = np.array([t[cb == s].max() for s in range(cb.max() + 1)])[cb]
-    position = np.full(len(time), -1)
-    position[ix] = np.arange(len(ix))
     rng = np.random.default_rng(seed)
-    maxima = np.empty(B)
     for start in range(0, B, block):
         size = min(block, B - start)
         T = _draw(death, w, cb, rng.standard_exponential((size, len(ix))))
         Cens = np.minimum(_draw(censor, wc, cb, rng.standard_exponential((size, len(ix)))), end)
-        tb, eb = np.minimum(T, Cens), (T <= Cens).astype(np.float64)
-        zmax = np.zeros(size)
+        yield np.minimum(T, Cens), (T <= Cens).astype(np.float64)
+
+
+def _bootstrap(xp, groups, time, event, C, codes, base, B, seed, block):
+    """maxT of z over all candidates for B clinical-null resamples."""
+    if not B or not groups:
+        return np.zeros(B)
+    position = np.full(len(time), -1)
+    position[base] = np.arange(base.sum())
+    maxima = []
+    for tb, eb in _null_draws(time, event, C, codes, base, B, seed, block):
+        zmax = np.zeros(len(tb))
         for cols, rows, Xg, Cg, same, _ in groups:
             tg, eg = xp.asarray(tb[:, position[rows]]), xp.asarray(eb[:, position[rows]])
-            fitted = _newton(xp, Cg, tg, eg, same) if Cg.shape[1] else xp.zeros((size, 0))
+            fitted = _newton(xp, Cg, tg, eg, same) if Cg.shape[1] else xp.zeros((len(tb), 0))
             M, m, a = _risk(xp, tg, eg, xp.exp(fitted @ Cg.T), same)
             zmax = np.maximum(zmax, _host(xp.abs(_stats(xp, Xg, Cg, M, m, a)[2]).max(1)))
-        maxima[start:start + size] = zmax
-    return maxima
+        maxima.append(zmax)
+    return np.concatenate(maxima)
 
 
 def permutation_maxT(X, time, event, strata, n_perm=9999, *, seed=0, backend="auto", block=1024):
