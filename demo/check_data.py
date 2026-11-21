@@ -97,6 +97,7 @@ def check_baseline(b, w):
     need(isinstance(rows, list) and rows, w, "rows: non-empty list")
     for i, r in enumerate(rows):
         at = f"rows[{i}]"
+        need(isinstance(r.get("id"), str) and r["id"] not in [q.get("id") for q in rows[:i]], w, f"{at}.id: unique string")
         need(isinstance(r.get("method"), str) and r["method"].strip(), w, f"{at}.method: string")
         need(r.get("role") in ("baseline", "screen"), w, f"{at}.role: 'baseline' or 'screen'")
         # A number never travels without its label and its source.
@@ -115,8 +116,17 @@ def check_baseline(b, w):
     return f"{len(rows)} rows, {timed} timed"
 
 
+def check_claims(c, w):
+    need(c.get("schema") == "preflight-claims/1", w, "schema must be 'preflight-claims/1'")
+    for k in ("power", "false_alarms", "maxT"):  # every number on screen carries a label and a source
+        need(c.get(k, {}).get("label") in LABELS, w, f"{k}.label must be one of {LABELS}")
+        need(isinstance(c[k].get("source"), str) and c[k]["source"].strip(), w, f"{k}.source: string, required")
+    return "power, false_alarms, maxT"
+
+
 for name, check, required in (("grid.json", check_grid, True), ("tissue.json", check_tissue, True),
-                              ("bench.json", check_bench, False), ("baseline.json", check_baseline, False)):
+                              ("bench.json", check_bench, False), ("baseline.json", check_baseline, False),
+                              ("claims.json", check_claims, False)):
     path = DIR / name
     if not path.exists():
         need(not required, path, "missing")

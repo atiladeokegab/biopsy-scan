@@ -21,6 +21,7 @@ summary:
 # The demo page: validate its data files, then serve it (static; open http://localhost:8000, or `make demo PORT=8001` if 8000 is taken).
 PORT ?= 8000
 demo:
+	python3 -I demo/collect_race.py
 	python3 -I demo/check_data.py
 	python3 -m http.server $(PORT) -d demo
 

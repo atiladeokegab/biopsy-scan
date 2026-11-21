@@ -114,28 +114,58 @@ export function createRace(cpuCanvas, gpuCanvas, out) {
   return { run, clear, redraw };
 }
 
-// BASELINE VS SCREEN (data/baseline.json): one row per method; bars only for timed rows, scaled to the slowest.
-// A PENDING row shows no bar and no number. A screen row's ratio is shown only when it and the fastest
-// baseline row are both MEASURED.
-const esc = (v) => String(v).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
-export function baselineHTML(b) {
-  const timed = b.rows.filter((r) => r.seconds != null);
-  const max = Math.max(...timed.map((r) => r.seconds));
-  const base = b.rows.filter((r) => r.role === "baseline" && r.label === "MEASURED")
-    .sort((p, q) => p.seconds - q.seconds)[0];
-  const rows = b.rows.map((r) => {
-    const tag = `<span class="tag${r.label === "MEASURED" ? " ok" : ""}">${esc(r.label)}</span>`;
-    const on = r.seconds == null ? "" : `${esc(r.hardware)}, ${r.gpu ? esc(r.gpu) : `${r.cores} core${r.cores > 1 ? "s" : ""}`}`;
-    const ratio = r.role === "screen" && r.label === "MEASURED" && base
-      ? ` · ${x(base.seconds / r.seconds)} ${base.seconds >= r.seconds ? "faster" : "slower"} than the standard on ${base.cores ? `${base.cores} cores` : esc(base.gpu)}`
-      : "";
-    const bar = r.seconds == null
-      ? `<span class="bl-bar none">not yet timed · ${esc(r.source)}</span>`
-      : `<span class="bl-bar"><i class="bl-${r.role}" style="width:${(100 * r.seconds) / max}%"></i></span>`;
-    const time = r.seconds == null ? "" : r.seconds < 600 ? `${r.seconds} s` : duration(r.seconds);
-    return `<li><span class="bl-method">${esc(r.method)}<small>${on}${ratio}</small></span>` +
-      `<span class="bl-time">${time} ${tag}</span>${bar}` +
-      (r.seconds == null ? "" : `<small class="bl-src">${esc(r.source)}</small>`) + `</li>`;
+// THE SPEED RACE (data/baseline.json, filled from bench/results by collect_race.py): every row screens the same
+// 3,780 candidates. Each bar fills at its measured rate, scaled so the slowest timed row takes RACE_MS on screen;
+// its real seconds print at its finish. A row without a time is PENDING: no bar, no motion, no number.
+// No ratio is printed: #64's own file forbids quoting it as an equal-work speed-up.
+export const RACE_MS = 10000;
+export function raceState(rows, t, total = RACE_MS) {
+  const max = Math.max(...rows.filter((r) => r.seconds != null).map((r) => r.seconds));
+  return rows.map((r) => {
+    if (r.seconds == null) return { frac: 0, clock: null, done: false };
+    const frac = Math.min(1, t / ((r.seconds / max) * total));
+    return { frac, clock: frac * r.seconds, done: frac === 1 };
   });
-  return `<h3>Baseline vs screen</h3><p class="bl-task">${esc(b.task)}</p><ul>${rows.join("")}</ul>`;
+}
+
+const esc = (v) => String(v).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+const secs = (s) => (s < 600 ? `${s < 10 ? s.toFixed(2) : s.toFixed(1)} s` : duration(s));
+
+export function createSpeedRace(el, data, { reducedMotion = false } = {}) {
+  el.innerHTML = `<ol class="sr">${data.rows.map((r) => {
+    const tag = `<span class="tag${r.label === "MEASURED" ? " ok" : ""}">${esc(r.label)}</span>`;
+    const src = [r.source, r.note].filter(Boolean).map(esc).join(" · ");
+    if (r.seconds == null) // no bar, no number: the track only says where the time will come from
+      return `<li class="pending"><span class="sr-name">${esc(r.method)}</span><span class="sr-time">${tag}</span>` +
+        `<span class="sr-track">not yet timed · ${src}</span></li>`;
+    const on = `${esc(r.hardware)}, ${r.gpu ? esc(r.gpu) : `${r.cores} core${r.cores > 1 ? "s" : ""}`}`;
+    return `<li class="${r.role}"><span class="sr-name">${esc(r.method)}<small>${on}</small></span>` +
+      `<span class="sr-time">${tag}<b></b></span><span class="sr-track"><i></i></span><small class="sr-src">${src}</small></li>`;
+  }).join("")}</ol>`;
+  const lanes = [...el.querySelectorAll("li")];
+  let timer = 0;
+
+  function paint(t) {
+    raceState(data.rows, t).forEach((st, i) => {
+      if (st.clock == null) return;
+      lanes[i].querySelector("i").style.width = `${st.frac * 100}%`;
+      const b = lanes[i].querySelector("b");
+      b.textContent = st.frac === 0 ? "" : secs(st.done ? data.rows[i].seconds : st.clock);
+      lanes[i].classList.toggle("done", st.done);
+    });
+  }
+
+  function run() {
+    cancelAnimationFrame(timer);
+    const t0 = performance.now();
+    const step = (now) => {
+      const t = reducedMotion ? Infinity : now - t0;
+      paint(t);
+      if (t < RACE_MS) timer = requestAnimationFrame(step);
+    };
+    paint(0);
+    timer = requestAnimationFrame(step);
+  }
+
+  return { run };
 }

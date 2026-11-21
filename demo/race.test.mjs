@@ -55,17 +55,15 @@ assert.equal(out.cpu.innerHTML, "<b>0</b> of 100 studies");
 race.redraw(); // a resize after a clear keeps the lanes empty
 pump(1e9);
 assert.deepEqual(colours(gpu), new Set(["--surface-elevated"]), "a resize never plays the race");
-// Baseline vs screen: PENDING rows get no bar and no number; a ratio appears only from two MEASURED rows.
-const { baselineHTML } = await import("./race.js");
+// The speed race: bars fill at their measured rate; PENDING rows never move and never show a time.
+const { raceState, RACE_MS } = await import("./race.js");
 const { readFileSync } = await import("node:fs");
 const bl = JSON.parse(readFileSync(new URL("./data/baseline.json", import.meta.url), "utf8"));
-const items = (h) => h.split("<li>").slice(1);
-const committed = items(baselineHTML(bl));
-bl.rows.forEach((r, i) => assert.equal(committed[i].includes("<i "), r.seconds != null, `row ${i}: a bar only when timed`));
-assert.ok(!baselineHTML(bl).includes("faster"), "no speed-up while the screen rows are PENDING");
-const filled = structuredClone(bl);
-Object.assign(filled.rows[3], { label: "MEASURED", seconds: 0.5, hardware: "Modal", gpu: "NVIDIA L4" });
-assert.match(items(baselineHTML(filled))[3], /134× faster than the standard on 8 cores/);
-Object.assign(filled.rows[3], { label: "ESTIMATE" });
-assert.ok(!baselineHTML(filled).includes("faster"), "an ESTIMATE never yields a speed-up");
+const rows = [{ seconds: 60 }, { seconds: 15 }, { seconds: null }];
+assert.deepEqual(raceState(rows, 0).map((r) => r.frac), [0, 0, 0]);
+const mid = raceState(rows, RACE_MS / 4);
+assert.equal(mid[0].frac, 0.25); assert.equal(mid[0].clock, 15); // the slowest row: a quarter done at 15 real s
+assert.ok(mid[1].done && mid[1].clock === 15, "a 4x faster row finishes at a quarter of the race, showing its real 15 s");
+assert.ok(raceState(rows, 1e9).every((r, i) => (rows[i].seconds == null ? r.frac === 0 && r.clock === null : r.done)));
+bl.rows.forEach((r) => assert.ok(r.seconds == null || (r.label && r.source), `${r.id}: a time needs a label and a source`));
 console.log("race.test.mjs: ok");

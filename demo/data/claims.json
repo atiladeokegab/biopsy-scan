@@ -1,0 +1,30 @@
+{
+  "schema": "preflight-claims/1",
+  "power": {
+    "patients": 200,
+    "sim": 0.27,
+    "lo": 0.2205882653286876,
+    "hi": 0.32401877317210587,
+    "n": 300,
+    "label": "ESTIMATE",
+    "formula": 0.8011893244036327,
+    "formula_label": "ANALYTIC",
+    "source": "bench/results/vs-schoenfeld-300.json"
+  },
+  "false_alarms": {
+    "hits": 28,
+    "n": 700,
+    "target": 0.05,
+    "label": "ESTIMATE",
+    "source": "bench/results/vs-schoenfeld-300.json"
+  },
+  "maxT": {
+    "feature": "Tumor 5|Macrophage|100um|PD1",
+    "z": 3.9571818541499213,
+    "p": 0.0981,
+    "tests": 3780,
+    "label": "MEASURED",
+    "verdict": "exploratory, not a discovery",
+    "source": "results/charville-v2.json"
+  }
+}
