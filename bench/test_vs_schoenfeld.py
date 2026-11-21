@@ -37,3 +37,12 @@ def test_one_curve_per_design():
         compare([row(80, 0.1, 0, 0.2), row(300, 0.1, 0, 0.2, eps=0.2)], META, 630, cohort="charville")
     with pytest.raises(ValueError, match="repeat"):
         compare([row(80, 0.1, 0, 0.2), row(80, 0.1, 0, 0.2)], META, 630, cohort="charville")
+
+
+def test_control_design_is_a_third_line_at_the_same_points():
+    ctl = [row(80, 0.3, 0.2, 0.4, fov_um=None, eps=0.0), row(300, 0.99, 0.95, 1.0, fov_um=None, eps=0.0)]
+    res = compare([row(80, 0.1, 0.0, 0.2), row(300, 0.9, 0.8, 0.95)], META, 630, cohort="charville", control=ctl)
+    assert res["control"]["design"]["fov_um"] == "full core" and len(res["control"]["points"]) == 2
+    assert svg(res).count("<polyline") == 3 and "control" in svg(res)
+    with pytest.raises(ValueError, match="same patient counts"):
+        compare([row(80, 0.1, 0.0, 0.2), row(300, 0.9, 0.8, 0.95)], META, 630, cohort="charville", control=ctl[:1])

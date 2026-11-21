@@ -36,7 +36,8 @@ def schoenfeld_power(patients: float, event_fraction: float, hr_per_sd: float, a
     return N.cdf(s - z) + N.cdf(-s - z)
 
 
-def compare(summary: list[dict], meta: dict, m: int, *, cohort: str) -> dict:
+def compare(summary: list[dict], meta: dict, m: int, *, cohort: str, control: list[dict] | None = None) -> dict:
+    """control: an optional second atlas design (e.g. full core, no mis-calls) drawn as a reference line."""
     rows = [r for r in summary if r["cohort"] == cohort]
     if not rows:
         raise ValueError(f"no {cohort} rows in the atlas summary")
@@ -72,13 +73,20 @@ def compare(summary: list[dict], meta: dict, m: int, *, cohort: str) -> dict:
     inside = len(points) - len(over) - len(under)
     if inside and (over or under):
         verdict = verdict[:-1] + f"; inside it at the other {inside}."
-    design = {k: rows[0][k] for k in ("regions_per_patient", "fov_um", "eps", "backend")}
+    design = _design(rows[0])
+    extra = {}
+    if control is not None:
+        c = compare(control, meta, m, cohort=cohort)
+        if [p["patients"] for p in c["points"]] != [p["patients"] for p in points] or c["hr_per_sd"] != float(hr):
+            raise ValueError("the control must cover the same patient counts at the same planted effect")
+        extra["control"] = {"label": "MEASURED (sim), control design", "design": c["design"],
+                            "points": [{k: p[k] for k in ("patients", "sim_power", "sim_lo", "sim_hi", "sim_n",
+                                                          "sim_identification", "sim_fwer")} for p in c["points"]]}
     return {
         "schema": "preflight-vs-schoenfeld/1", "cohort": cohort, "verdict": verdict,
         "hr_per_sd": float(hr), "alpha": alpha, "features_m": m, "bonferroni_alpha": alpha / m,
         "event_fraction": f, "events": events, "patients_source": n,
-        "design": {**design, "fov_um": "full core" if design["fov_um"] is None else design["fov_um"],
-                   "regions_per_patient": "all" if design["regions_per_patient"] is None else design["regions_per_patient"]},
+        "design": design,
         "analytic": {"label": "ANALYTIC (formula)",
                      "method": "Schoenfeld (1983) events formula, continuous covariate (Hsieh and Lavori 2000), "
                                "D = patients x event fraction, two-sided, Bonferroni over m features; "
@@ -87,8 +95,17 @@ def compare(summary: list[dict], meta: dict, m: int, *, cohort: str) -> dict:
                       "method": meta.get("inference", "model-based Monte Carlo"),
                       "budget": meta.get("budget"), "seed": meta.get("seed"), "source_hash": meta.get("source_hash"),
                       "grammar_hash": meta.get("grammar_hash"), "atlas_code": meta.get("atlas_code")},
-        "points": points,
+        "points": points, **extra,
     }
+
+
+def _design(r: dict) -> dict:
+    return {"regions_per_patient": "all" if r["regions_per_patient"] is None else r["regions_per_patient"],
+            "fov_um": "full core" if r["fov_um"] is None else r["fov_um"], "eps": r["eps"], "backend": r["backend"]}
+
+
+def _fov(d: dict) -> str:
+    return d["fov_um"] if isinstance(d["fov_um"], str) else f'{d["fov_um"]:g} µm'
 
 
 def svg(res: dict) -> str:
@@ -98,7 +115,7 @@ def svg(res: dict) -> str:
     X = lambda v: L + (W - L - R) * (v - x0) / max(1, x1 - x0)  # noqa: E731
     Y = lambda v: T + (H - T - B) * (1 - v)  # noqa: E731
     d = res["design"]
-    fov = d["fov_um"] if isinstance(d["fov_um"], str) else f'{d["fov_um"]:g} µm'
+    fov = _fov(d)
     out = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" font-family="sans-serif" font-size="13">',
            f'<rect width="{W}" height="{H}" fill="#fff"/>',
            f'<text x="12" y="26" font-size="17" font-weight="bold">Textbook power formula vs Preflight, {escape(res["cohort"].title())}</text>',
@@ -120,12 +137,22 @@ def svg(res: dict) -> str:
         line = " ".join(f"{X(p['patients']):.1f},{Y(p[key]):.1f}" for p in pts)
         out.append(f'<polyline points="{line}" fill="none" stroke="{colour}" stroke-width="2.5"{dash}/>')
         out += [f'<circle cx="{X(p["patients"]):.1f}" cy="{Y(p[key]):.1f}" r="3.5" fill="{colour}"/>' for p in pts]
-    ya, ys = Y(pts[-1]["analytic_power"]) + 4, Y(pts[-1]["sim_power"]) + 4
-    if abs(ya - ys) < 36:  # end labels would overlap: the sim label (two lines) goes below the formula's, or above
-        ys = ya + 20 if ys >= ya else ya - 36
-    out += [f'<text x="{W - R + 10}" y="{ya:.1f}" fill="#b5462f" font-weight="bold">ANALYTIC (formula)</text>',
-            f'<text x="{W - R + 10}" y="{ys:.1f}" fill="#2f7d4f" font-weight="bold">MEASURED (sim)</text>',
-            f'<text x="{W - R + 10}" y="{ys + 16:.1f}" fill="#2f7d4f" font-size="11">band: 95% interval</text>']
+    labels = [(Y(pts[-1]["analytic_power"]) + 4, "#b5462f", ["ANALYTIC (formula)"]),
+              (Y(pts[-1]["sim_power"]) + 4, "#2f7d4f", ["MEASURED (sim)", "band: 95% interval"])]
+    if "control" in res:
+        c = res["control"]
+        line = " ".join(f"{X(p['patients']):.1f},{Y(p['sim_power']):.1f}" for p in c["points"])
+        out.append(f'<polyline points="{line}" fill="none" stroke="#777" stroke-width="1.5" stroke-dasharray="2 4"/>')
+        cd = c["design"]
+        labels.append((Y(c["points"][-1]["sim_power"]) + 4, "#666",
+                       ["MEASURED (sim), control", f"{_fov(cd)}, {float(cd['eps']):.0%} mis-called"]))
+    floor = T - 40
+    for y, colour, lines in sorted(labels):  # stack end labels so none overlap
+        y = max(y, floor)
+        for i, t in enumerate(lines):
+            weight = ' font-weight="bold"' if i == 0 else ' font-size="11"'
+            out.append(f'<text x="{W - R + 10}" y="{y + 16 * i:.1f}" fill="{colour}"{weight}>{escape(t)}</text>')
+        floor = y + 16 * len(lines) + 6
     fw = [p["sim_fwer"] for p in pts]
     n = pts[0]["sim_n"]
     foot = [f"MEASURED (sim) = model-based Monte Carlo: {n:,} planted-effect studies per point, re-imaged cell by cell",
@@ -144,12 +171,14 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("atlas_out", type=Path)
     ap.add_argument("--cohort", default="charville", choices=["charville", "upmc"])
+    ap.add_argument("--control", type=Path, help="a second atlas output dir drawn as a reference design")
     ap.add_argument("--name", default="vs-schoenfeld")
     a = ap.parse_args(argv)
     meta = json.loads((a.atlas_out / "metadata.json").read_text())
     audit = json.loads((ROOT / "audit" / "results" / f"{a.cohort}.json").read_text())
-    summary = pd.read_parquet(a.atlas_out / "summary.parquet").astype(object).where(lambda d: d.notna(), None)
-    res = compare(summary.to_dict("records"), meta, int(audit["n_features_tested"]), cohort=a.cohort)
+    read = lambda d: pd.read_parquet(d / "summary.parquet").astype(object).where(lambda t: t.notna(), None).to_dict("records")  # noqa: E731
+    res = compare(read(a.atlas_out), meta, int(audit["n_features_tested"]), cohort=a.cohort,
+                  control=read(a.control) if a.control else None)
     out = ROOT / "bench" / "results" / f"{a.name}.json"
     out.write_text(json.dumps(res, indent=1, allow_nan=False) + "\n")
     out.with_suffix(".svg").write_text(svg(res))
