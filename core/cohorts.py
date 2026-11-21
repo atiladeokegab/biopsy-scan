@@ -5,6 +5,8 @@ Everything read here is untrusted data: only parsed as CSV, never executed.
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import zipfile
 from pathlib import Path
@@ -36,6 +38,86 @@ EXPRESSION_TRANSFORM = "cohort z-score, input pre-normalised by source"
 
 UPMC_TUPLE = ["status", "primary_outcome", "recurred", "hpvstatus", "survival_status", "survival_day"]
 
+# The locked held-out UPMC patients (core/heldout.py). None only for invented test fixtures.
+LOCK_FILE: Path | None = ROOT / "core" / "upmc_locked.json"
+# "all" reads both sides: only the power/design-grid path (scripts/export_grid.py) may pass it.
+SPLITS = ("discovery", "locked", "all")
+
+
+class LockedPatientError(PermissionError):
+    """A discovery-side loader was asked for a locked held-out region."""
+
+
+def manifest_hash(m: dict) -> str:
+    """sha256 of the manifest's canonical JSON, without its own sha256 field."""
+    body = json.dumps({k: v for k, v in m.items() if k != "sha256"}, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(body.encode()).hexdigest()
+
+
+def locked_regions(cohort: str = "upmc", data_dir: Path = DATA_DIR) -> set[str]:
+    """Region IDs of the locked held-out patients. Raises if the manifest is missing or edited by hand,
+    or if data_dir's labels file is not the one the split was locked on."""
+    if cohort != "upmc" or LOCK_FILE is None:
+        return set()
+    m = json.loads(Path(LOCK_FILE).read_text())
+    if m.get("sha256") != manifest_hash(m):
+        raise ValueError(f"{LOCK_FILE}: sha256 does not match its content")
+    labels = Path(data_dir) / "upmc_labels.csv"
+    if hashlib.sha256(labels.read_bytes()).hexdigest() != m["labels_sha256"]:
+        raise ValueError(f"{labels}: sha256 differs from the labels the held-out split was locked on")
+    return set(m["locked_regions"])
+
+
+def _check_split(cohort: str, split: str) -> None:
+    if split not in SPLITS or (cohort != "upmc" and split == "locked"):
+        raise ValueError(f"unknown split {split!r} for {cohort}")
+
+
+def _split_regions(cohort: str, all_regions: list[str], region_ids, data_dir: Path, split: str) -> list[str]:
+    """The requested regions (default: every region of the split); raises for any outside the split."""
+    _check_split(cohort, split)
+    locked = locked_regions(cohort, data_dir)
+    on_side = lambda r: split == "all" or (r in locked) == (split == "locked")  # noqa: E731
+    region_ids = [r for r in all_regions if on_side(r)] if region_ids is None else list(region_ids)
+    wrong = [r for r in region_ids if not on_side(r)]
+    if wrong:
+        raise LockedPatientError(f"{len(wrong)} region(s) outside the {split} split, e.g. {wrong[0]}")
+    return region_ids
+
+
+def _cache(data_dir: Path, cohort: str, kind: str, split: str, side: list[str], all_regions: list[str]) -> Path:
+    """One cache per split, built from that split's regions only: a discovery read never opens a locked region's files."""
+    return Path(data_dir) / (f"{cohort}_{kind}.npz" if len(side) == len(all_regions) else f"{cohort}_{kind}.{split}.npz")
+
+
+def upmc_patient_ids(lab: pd.DataFrame) -> tuple[pd.Series, list[dict]]:
+    """The UPMC patient-grouping rule: one patient_id per region, "" when unmapped, plus the conflicts.
+
+    A case number (first word of sample_label_visualizer) is the patient. An NA region is the patient
+    "T:<clinical tuple>" when no case-numbered region shares its tuple. Unmapped and reported, never
+    guessed: a case whose regions disagree on the tuple; an NA region whose tuple also holds a case
+    number; an NA tuple spanning both coverslip groups (verified patients nest inside one group).
+    """
+    case = lab.sample_label_visualizer.where(lab.sample_label_visualizer != "NA", "").str.split(" ").str[0]
+    tup = lab[UPMC_TUPLE].agg("|".join, axis=1)
+    grp = _group("upmc", _coverslip(lab.region_id))
+    has = case != ""
+    pid = case.where(has, "T:" + tup)
+    cases_in_tuple = case.where(has).groupby(tup).transform("nunique")
+    rules = {
+        "case with conflicting outcomes": has & (tup.groupby(case).transform("nunique") > 1),
+        "NA region in a tuple holding a case number": ~has & (cases_in_tuple > 0),
+        "NA tuple spanning both coverslip groups": ~has & (cases_in_tuple == 0) & (grp.groupby(tup).transform("nunique") > 1),
+    }
+    conflicts = []
+    for kind, bad in rules.items():
+        for key in sorted(set(pid[bad])):
+            m = bad & (pid == key)
+            conflicts.append({"kind": kind, "group": key, "regions": sorted(lab.region_id[m]),
+                              "coverslips": sorted(set(_coverslip(lab.region_id[m])))})
+        pid = pid.where(~bad, "")
+    return pid, conflicts
+
 
 def _coverslip(region_id: pd.Series) -> pd.Series:
     return region_id.str.split("_").str[1]  # UPMC_c001_v001_r001_reg001 -> c001
@@ -47,19 +129,24 @@ def _group(cohort: str, coverslip: pd.Series) -> pd.Series:
     return (n >= 4).astype(int) if cohort == "upmc" else n - 1
 
 
-def load_regions(cohort: str, data_dir: Path = DATA_DIR, identity: str = "case") -> pd.DataFrame:
+def load_regions(cohort: str, data_dir: Path = DATA_DIR, identity: str = "case", split: str = "discovery") -> pd.DataFrame:
     """One row per region: region_id, coverslip, group, case, patient_id, time_days, event.
 
     identity "case" (default): verified identity = the case number in the sample label; UPMC regions
-    labelled NA are dropped. Only this identity is used for patient-level inference and the
+    labelled NA are dropped, and so is a case whose regions disagree on the clinical tuple (a conflict
+    listed by upmc_patient_ids). Only this identity is used for patient-level inference and the
     regions-per-patient axis; Charville is the patient-level cohort.
     UPMC only, provisional and descriptive only: "tuple" = one patient per clinical tuple (79);
     "tuple+case" = also split the tuples holding two case numbers (81). One all-NA tuple spans
-    both coverslip groups.
+    both coverslip groups. "patient" = upmc_patient_ids: the case number, else the clinical tuple of
+    NA regions; unmapped regions are dropped.
+    split (UPMC): "discovery" (default) never returns a locked held-out region; "locked" returns only those;
+    "all" returns both, for the power/design grid only.
     """
     if cohort not in COHORTS:
         raise ValueError(f"unknown cohort {cohort!r}")
-    if identity not in ("case", "tuple", "tuple+case") or (cohort != "upmc" and identity != "case"):
+    _check_split(cohort, split)
+    if identity not in ("case", "tuple", "tuple+case", "patient") or (cohort != "upmc" and identity != "case"):
         raise ValueError(f"unknown identity {identity!r} for {cohort}")
     lab = pd.read_csv(Path(data_dir) / f"{cohort}_labels.csv", dtype=str, keep_default_na=False)
     out = pd.DataFrame({"region_id": lab.region_id, "coverslip": _coverslip(lab.region_id)})
@@ -70,11 +157,15 @@ def load_regions(cohort: str, data_dir: Path = DATA_DIR, identity: str = "case")
         if identity == "tuple+case":
             n_cases = out.case.where(out.case != "").groupby(key).transform("nunique")
             key = key + np.where(n_cases > 1, "|" + out.case, "")
-        out["patient_id"] = out.case if identity == "case" else key
+        pid = upmc_patient_ids(lab)[0]  # "" for a case with conflicting outcomes: dropped under "case" too
+        out["patient_id"] = {"case": out.case.where(pid == out.case, ""), "patient": pid}.get(identity, key)
         out["time_days"] = lab.survival_day.astype(float)
         out["event"] = lab.survival_status.astype(float)  # any-cause death
-        if identity == "case":
-            out = out[out.case != ""].reset_index(drop=True)
+        if identity in ("case", "patient"):
+            out = out[out.patient_id != ""]
+        if split != "all":
+            locked = out.region_id.isin(locked_regions(cohort, data_dir))
+            out = out[locked if split == "locked" else ~locked].reset_index(drop=True)
     else:
         out["case"] = lab.sample_label_visualizer.str.split("_").str[0]
         out["patient_id"] = out.case
@@ -102,15 +193,15 @@ def load_patients(regions: pd.DataFrame) -> pd.DataFrame:
     return pts.reset_index()
 
 
-def load(cohort: str, data_dir: Path = DATA_DIR, *, include_channels: bool = False) -> dict:
+def load(cohort: str, data_dir: Path = DATA_DIR, split: str = "discovery", *, include_channels: bool = False) -> dict:
     """The patient-level cohort (docs/CONTRACT.md): usable patients with a verified identity only."""
-    reg = load_regions(cohort, data_dir)
+    reg = load_regions(cohort, data_dir, split=split)
     pts = load_patients(reg)
     pts = pts[pts.usable].reset_index(drop=True)
     pidx = {p: i for i, p in enumerate(pts.patient_id)}
     reg = reg[reg.patient_id.isin(pidx)].reset_index(drop=True)
     region_ids = list(reg.region_id)
-    c = load_cells(cohort, region_ids, data_dir)
+    c = load_cells(cohort, region_ids, data_dir, split)
     rid = np.repeat(np.arange(len(reg), dtype=np.int32), np.diff(c["region_ptr"]))
     out = {"cell_type": c["cell_type"].astype(np.int8), "x": c["xy_um"][:, 0].astype(np.float32),
            "y": c["xy_um"][:, 1].astype(np.float32), "region_id": rid,
@@ -119,7 +210,7 @@ def load(cohort: str, data_dir: Path = DATA_DIR, *, include_channels: bool = Fal
            "strata": pts.stratum.to_numpy(np.int32), "type_names": c["type_names"],
            "region_names": region_ids, "patient_names": list(pts.patient_id)}
     if include_channels:
-        ch = load_channels(cohort, region_ids, data_dir)
+        ch = load_channels(cohort, region_ids, data_dir, split)  # z-scored below on this split's cells only
         if ch["region_ids"] != region_ids or not np.array_equal(ch["region_ptr"], c["region_ptr"]):
             raise ValueError("cached channels do not match region geometry boundaries")
         raw = np.asarray(ch["channels_raw"], dtype=np.float64)
@@ -140,14 +231,18 @@ def load(cohort: str, data_dir: Path = DATA_DIR, *, include_channels: bool = Fal
     return out
 
 
-def load_channels(cohort: str, region_ids: list[str] | None = None, data_dir: Path = DATA_DIR) -> dict:
-    """Load raw aligned expression + morphology channels (N, 10) float64 matching load_cells order."""
+def load_channels(cohort: str, region_ids: list[str] | None = None, data_dir: Path = DATA_DIR,
+                  split: str = "discovery") -> dict:
+    """Load raw aligned expression + morphology channels (N, 10) float64 matching load_cells order.
+
+    Same split guard as load_cells: raises LockedPatientError for a region outside the split."""
     if cohort not in COHORTS:
         raise ValueError(f"unknown cohort {cohort!r}")
     data_dir = Path(data_dir)
     all_regions = list(pd.read_csv(data_dir / f"{cohort}_labels.csv", usecols=["region_id"], dtype=str).region_id)
-    region_ids = all_regions if region_ids is None else list(region_ids)
-    cache = data_dir / f"{cohort}_channels.npz"
+    side = _split_regions(cohort, all_regions, None, data_dir, split)
+    region_ids = _split_regions(cohort, all_regions, region_ids, data_dir, split)
+    cache = _cache(data_dir, cohort, "channels", split, side, all_regions)
     if cache.exists():
         z = np.load(cache, allow_pickle=False)
         if (
@@ -157,7 +252,7 @@ def load_channels(cohort: str, region_ids: list[str] | None = None, data_dir: Pa
             and "region_ptr" in z
             and z["channels_raw"].dtype == np.float64
             and list(z["channel_names"]) == list(EXPRESSION_CHANNELS)
-            and list(z["region_ids"]) == all_regions
+            and list(z["region_ids"]) == side  # a cache from another lock or split is rebuilt
         ):
             names, ptr = list(z["region_ids"]), np.asarray(z["region_ptr"], dtype=np.int64)
             if len(ptr) != len(names) + 1 or ptr[0] != 0 or ptr[-1] != len(z["channels_raw"]) or np.any(ptr[1:] < ptr[:-1]):
@@ -177,7 +272,10 @@ def load_channels(cohort: str, region_ids: list[str] | None = None, data_dir: Pa
             }
     chunks = []
     with zipfile.ZipFile(data_dir / f"{cohort}_raw_data.zip") as z:
-        for r in all_regions:
+        for r in side:
+            have = set(pd.read_csv(z.open(f"raw_data/{r}.expression.csv"), nrows=0).columns)
+            if missing := [m for m in EXPRESSION_MARKERS if m not in have]:  # UPMC's panel has no PD1, PDL1, GranzymeB
+                raise ValueError(f"{cohort} has no {', '.join(missing)} channels; the v2 panel is defined for charville only")
             d = pd.read_csv(z.open(f"raw_data/{r}.cell_data.csv"), usecols=["CELL_ID"])
             t = pd.read_csv(z.open(f"raw_data/{r}.cell_types.csv"), usecols=["CELL_ID"])
             e = pd.read_csv(z.open(f"raw_data/{r}.expression.csv"), usecols=["CELL_ID", *EXPRESSION_MARKERS])
@@ -195,34 +293,40 @@ def load_channels(cohort: str, region_ids: list[str] | None = None, data_dir: Pa
             chunks.append(vals)
     all_ch = np.concatenate(chunks, axis=0) if chunks else np.zeros((0, len(EXPRESSION_CHANNELS)), np.float64)
     ptr = np.concatenate([[0], np.cumsum([len(a) for a in chunks])]).astype(np.int64)
-    np.savez(cache, channels_raw=all_ch, region_ptr=ptr, region_ids=np.array(all_regions),
+    np.savez(cache, channels_raw=all_ch, region_ptr=ptr, region_ids=np.array(side, dtype=str),
              channel_names=np.array(EXPRESSION_CHANNELS))
-    return load_channels(cohort, region_ids, data_dir)
+    return load_channels(cohort, region_ids, data_dir, split)
 
 
-def load_cells(cohort: str, region_ids: list[str] | None = None, data_dir: Path = DATA_DIR) -> dict:
-    """Cells of the given regions (default: all, in label order), concatenated region by region.
+def load_cells(cohort: str, region_ids: list[str] | None = None, data_dir: Path = DATA_DIR,
+               split: str = "discovery") -> dict:
+    """Cells of the given regions (default: all of the split, in label order), concatenated region by region.
+
+    Raises LockedPatientError when asked for a region outside the split, e.g. a locked held-out region
+    from the discovery side.
 
     Returns xy_um float64 (N,2), cell_type int16 (N,), region_ptr int64 (R+1,), region_ids, type_names.
-    type_names is the sorted list of every type in the cohort, so codes are stable across calls.
+    type_names is the sorted list of every type in the split's regions (not just the requested ones), frozen in the
+    split's own cache: codes are stable across calls and the discovery codebook is never learnt from locked tissue.
     """
     data_dir = Path(data_dir)
     all_regions = list(pd.read_csv(data_dir / f"{cohort}_labels.csv", usecols=["region_id"], dtype=str).region_id)
-    region_ids = all_regions if region_ids is None else list(region_ids)
-    cache = data_dir / f"{cohort}_cells.npz"
+    side = _split_regions(cohort, all_regions, None, data_dir, split)
+    region_ids = _split_regions(cohort, all_regions, region_ids, data_dir, split)
+    cache = _cache(data_dir, cohort, "cells", split, side, all_regions)
     if cache.exists():
         z = np.load(cache, allow_pickle=False)
-        names, ptr = list(z["region_ids"]), z["region_ptr"]
-        pos = {r: i for i, r in enumerate(names)}
-        idx = [pos[r] for r in region_ids]
-        sl = [np.arange(ptr[i], ptr[i + 1]) for i in idx]
-        take = np.concatenate(sl) if sl else np.zeros(0, int)
-        return {"xy_um": z["xy_um"][take], "cell_type": z["cell_type"][take],
-                "region_ptr": np.concatenate([[0], np.cumsum([len(s) for s in sl])]).astype(np.int64),
-                "region_ids": region_ids, "type_names": list(z["type_names"])}
-    xy, ty = [], []
+        if list(z["region_ids"]) == side:  # a cache from another lock or split is rebuilt
+            ptr = z["region_ptr"]
+            pos = {r: i for i, r in enumerate(side)}
+            sl = [np.arange(ptr[pos[r]], ptr[pos[r] + 1]) for r in region_ids]
+            take = np.concatenate(sl) if sl else np.zeros(0, int)
+            return {"xy_um": z["xy_um"][take], "cell_type": z["cell_type"][take],
+                    "region_ptr": np.concatenate([[0], np.cumsum([len(s) for s in sl])]).astype(np.int64),
+                    "region_ids": region_ids, "type_names": [str(n) for n in z["type_names"]]}
+    xy, ty = [np.zeros((0, 2))], [np.zeros(0, str)]
     with zipfile.ZipFile(data_dir / f"{cohort}_raw_data.zip") as z:
-        for r in all_regions:
+        for r in side:
             d = pd.read_csv(z.open(f"raw_data/{r}.cell_data.csv"))
             t = pd.read_csv(z.open(f"raw_data/{r}.cell_types.csv"))
             m = d.merge(t, on="CELL_ID", how="inner", validate="one_to_one")
@@ -234,6 +338,6 @@ def load_cells(cohort: str, region_ids: list[str] | None = None, data_dir: Path 
     code = {n: i for i, n in enumerate(type_names)}
     np.savez(cache, xy_um=np.concatenate(xy), type_names=np.array(type_names),
              cell_type=np.array([code[n] for n in np.concatenate(ty)], np.int16),
-             region_ptr=np.concatenate([[0], np.cumsum([len(a) for a in xy])]).astype(np.int64),
-             region_ids=np.array(all_regions))
-    return load_cells(cohort, region_ids, data_dir)
+             region_ptr=np.concatenate([[0], np.cumsum([len(a) for a in xy[1:]])]).astype(np.int64),
+             region_ids=np.array(side, dtype=str))
+    return load_cells(cohort, region_ids, data_dir, split)

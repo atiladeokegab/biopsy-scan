@@ -70,7 +70,8 @@ def test_grammar_count_and_hash_are_frozen():
 
 
 @pytest.fixture
-def data_dir(tmp_path):
+def data_dir(tmp_path, monkeypatch):
+    monkeypatch.setattr(cohorts, "LOCK_FILE", None)  # invented regions, not the real cohort: no held-out lock
     (tmp_path / "upmc_labels.csv").write_text(
         "region_id,status,primary_outcome,recurred,hpvstatus,survival_status,survival_day,acquisition_id_visualizer,sample_label_visualizer\n"
         "UPMC_c001_v001_r001_reg001,DOD,0,1,0,1,831,a,NA\n"
