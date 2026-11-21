@@ -13,11 +13,12 @@ import json
 
 import numpy as np
 
-from core.cohorts import PIXEL_UM
+from core.cohorts import EXPRESSION_CHANNELS, EXPRESSION_TRANSFORM, PIXEL_UM
 
 RADII_UM = (25.0, 50.0, 100.0)
 STATS = ("fraction", "enrichment")
 GRAMMAR_VERSION = 1
+GRAMMAR_V2_VERSION = 2
 
 
 def is_tumour(name: str) -> bool:
@@ -32,8 +33,28 @@ def grammar(type_names: list[str]) -> dict:
             "weighting": "focal-cell mean, regions pooled", "pixel_um": PIXEL_UM}
 
 
+def grammar_v2(type_names: list[str], channels: tuple[str, ...] | list[str] = EXPRESSION_CHANNELS) -> dict:
+    """Grammar v2: frozen v1 features plus v2 per-channel neighbour expression/morphology means."""
+    focal = [i for i, n in enumerate(type_names) if is_tumour(n)]
+    return {
+        "version": GRAMMAR_V2_VERSION,
+        "type_names": [str(n) for n in type_names],
+        "focal_types": focal,
+        "radii_um": list(RADII_UM),
+        "stats": list(STATS),
+        "channels": [str(ch) for ch in channels],
+        "transform": EXPRESSION_TRANSFORM,
+        "order": "v1(t,j,r,s)_then_expr(t,j,r,m)",
+        "weighting": "focal-cell mean, regions pooled",
+        "pixel_um": PIXEL_UM,
+    }
+
+
 def n_features(g: dict) -> int:
-    return len(g["focal_types"]) * len(g["type_names"]) * len(g["radii_um"]) * len(g["stats"])
+    base = len(g["focal_types"]) * len(g["type_names"]) * len(g["radii_um"]) * len(g["stats"])
+    if "channels" in g:
+        return base + len(g["focal_types"]) * len(g["type_names"]) * len(g["radii_um"]) * len(g["channels"])
+    return base
 
 
 def grammar_hash(g: dict) -> str:
@@ -42,8 +63,17 @@ def grammar_hash(g: dict) -> str:
 
 def feature_names(g: dict) -> list[str]:
     tn = g["type_names"]
-    return [f"{tn[t]}|{tn[j]}|{int(r)}um|{s}" for t in g["focal_types"] for j in range(len(tn))
-            for r in g["radii_um"] for s in g["stats"]]
+    names = [f"{tn[t]}|{tn[j]}|{int(r)}um|{s}" for t in g["focal_types"] for j in range(len(tn))
+             for r in g["radii_um"] for s in g["stats"]]
+    if "channels" in g:
+        names.extend(
+            f"{tn[t]}|{tn[j]}|{int(r)}um|{ch}"
+            for t in g["focal_types"]
+            for j in range(len(tn))
+            for r in g["radii_um"]
+            for ch in g["channels"]
+        )
+    return names
 
 
 def features(S: np.ndarray, m: np.ndarray) -> np.ndarray:
@@ -54,3 +84,11 @@ def features(S: np.ndarray, m: np.ndarray) -> np.ndarray:
     with np.errstate(invalid="ignore", divide="ignore"):
         X = S / m[:, :, None, None, None]
     return X.reshape(len(S), -1)
+
+
+def features_v2(S_counts: np.ndarray, S_expr: np.ndarray, m: np.ndarray) -> np.ndarray:
+    """Patient v1+v2 features (P, C_v1 + C_expr) from region sums and focal counts m (P, T)."""
+    x1 = features(S_counts, m)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        x2 = (S_expr / m[:, :, None, None, None]).reshape(len(S_expr), -1)
+    return np.concatenate([x1, x2], axis=1)

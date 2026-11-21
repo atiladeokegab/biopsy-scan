@@ -21,6 +21,21 @@ COHORTS = ("upmc", "charville")
 # shortcut: CODEX 0.377 um per pixel (Wu et al. 2022 acquisition); confirm against the paper's methods if a scale check disagrees.
 PIXEL_UM = 0.377
 
+EXPRESSION_MARKERS = (
+    "PD1",
+    "PDL1",
+    "Ki67",
+    "GranzymeB",
+    "HLA-DR",
+    "aSMA",
+    "CollagenIV",
+    "Vimentin",
+    "Podoplanin",
+)
+FEATURE_MARKERS = ("SIZE",)
+EXPRESSION_CHANNELS = EXPRESSION_MARKERS + FEATURE_MARKERS
+EXPRESSION_TRANSFORM = "cohort z-score, input pre-normalised by source"
+
 UPMC_TUPLE = ["status", "primary_outcome", "recurred", "hpvstatus", "survival_status", "survival_day"]
 
 # The locked held-out UPMC patients (core/heldout.py). None only for invented test fixtures.
@@ -56,6 +71,18 @@ def locked_regions(cohort: str = "upmc", data_dir: Path = DATA_DIR) -> set[str]:
 def _check_split(cohort: str, split: str) -> None:
     if split not in SPLITS or (cohort != "upmc" and split == "locked"):
         raise ValueError(f"unknown split {split!r} for {cohort}")
+
+
+def _split_regions(cohort: str, all_regions: list[str], region_ids, data_dir: Path, split: str) -> list[str]:
+    """The requested regions (default: every region of the split); raises for any outside the split."""
+    _check_split(cohort, split)
+    locked = locked_regions(cohort, data_dir)
+    on_side = lambda r: split == "all" or (r in locked) == (split == "locked")  # noqa: E731
+    region_ids = [r for r in all_regions if on_side(r)] if region_ids is None else list(region_ids)
+    wrong = [r for r in region_ids if not on_side(r)]
+    if wrong:
+        raise LockedPatientError(f"{len(wrong)} region(s) outside the {split} split, e.g. {wrong[0]}")
+    return region_ids
 
 
 def upmc_patient_ids(lab: pd.DataFrame) -> tuple[pd.Series, list[dict]]:
@@ -159,21 +186,105 @@ def load_patients(regions: pd.DataFrame) -> pd.DataFrame:
     return pts.reset_index()
 
 
-def load(cohort: str, data_dir: Path = DATA_DIR, split: str = "discovery") -> dict:
+def load(cohort: str, data_dir: Path = DATA_DIR, split: str = "discovery", *, include_channels: bool = False) -> dict:
     """The patient-level cohort (docs/CONTRACT.md): usable patients with a verified identity only."""
     reg = load_regions(cohort, data_dir, split=split)
     pts = load_patients(reg)
     pts = pts[pts.usable].reset_index(drop=True)
     pidx = {p: i for i, p in enumerate(pts.patient_id)}
     reg = reg[reg.patient_id.isin(pidx)].reset_index(drop=True)
-    c = load_cells(cohort, list(reg.region_id), data_dir, split)
+    region_ids = list(reg.region_id)
+    c = load_cells(cohort, region_ids, data_dir, split)
     rid = np.repeat(np.arange(len(reg), dtype=np.int32), np.diff(c["region_ptr"]))
-    return {"cell_type": c["cell_type"].astype(np.int8), "x": c["xy_um"][:, 0].astype(np.float32),
-            "y": c["xy_um"][:, 1].astype(np.float32), "region_id": rid,
-            "patient_of_region": reg.patient_id.map(pidx).to_numpy(np.int32),
-            "time": pts.time_days.to_numpy(np.float64), "event": pts.event.to_numpy(bool),
-            "strata": pts.stratum.to_numpy(np.int32), "type_names": c["type_names"],
-            "region_names": list(reg.region_id), "patient_names": list(pts.patient_id)}
+    out = {"cell_type": c["cell_type"].astype(np.int8), "x": c["xy_um"][:, 0].astype(np.float32),
+           "y": c["xy_um"][:, 1].astype(np.float32), "region_id": rid,
+           "patient_of_region": reg.patient_id.map(pidx).to_numpy(np.int32),
+           "time": pts.time_days.to_numpy(np.float64), "event": pts.event.to_numpy(bool),
+           "strata": pts.stratum.to_numpy(np.int32), "type_names": c["type_names"],
+           "region_names": region_ids, "patient_names": list(pts.patient_id)}
+    if include_channels:
+        ch = load_channels(cohort, region_ids, data_dir, split)  # z-scored below on this split's cells only
+        if ch["region_ids"] != region_ids or not np.array_equal(ch["region_ptr"], c["region_ptr"]):
+            raise ValueError("cached channels do not match region geometry boundaries")
+        raw = np.asarray(ch["channels_raw"], dtype=np.float64)
+        if raw.ndim != 2 or raw.shape != (len(rid), len(EXPRESSION_CHANNELS)):
+            raise ValueError("cached channels shape does not match cohort cell count")
+        if not np.isfinite(raw).all():
+            raise ValueError("non-finite values in expression/feature channels")
+        mean = raw.mean(axis=0)
+        std = raw.std(axis=0)
+        z64 = np.divide(raw - mean, std, out=np.zeros_like(raw), where=std > 0)
+        out["channels"] = z64.astype(np.float32)
+        out["channel_names"] = ch["channel_names"]
+        out["channel_stats"] = {
+            "mean": mean.tolist(),
+            "std": std.tolist(),
+            "transform": EXPRESSION_TRANSFORM,
+        }
+    return out
+
+
+def load_channels(cohort: str, region_ids: list[str] | None = None, data_dir: Path = DATA_DIR,
+                  split: str = "discovery") -> dict:
+    """Load raw aligned expression + morphology channels (N, 10) float64 matching load_cells order.
+
+    Same split guard as load_cells: raises LockedPatientError for a region outside the split."""
+    if cohort not in COHORTS:
+        raise ValueError(f"unknown cohort {cohort!r}")
+    data_dir = Path(data_dir)
+    all_regions = list(pd.read_csv(data_dir / f"{cohort}_labels.csv", usecols=["region_id"], dtype=str).region_id)
+    region_ids = _split_regions(cohort, all_regions, region_ids, data_dir, split)
+    cache = data_dir / f"{cohort}_channels.npz"
+    if cache.exists():
+        z = np.load(cache, allow_pickle=False)
+        if (
+            "channels_raw" in z
+            and "channel_names" in z
+            and "region_ids" in z
+            and "region_ptr" in z
+            and z["channels_raw"].dtype == np.float64
+            and list(z["channel_names"]) == list(EXPRESSION_CHANNELS)
+            and list(z["region_ids"]) == all_regions
+        ):
+            names, ptr = list(z["region_ids"]), np.asarray(z["region_ptr"], dtype=np.int64)
+            if len(ptr) != len(names) + 1 or ptr[0] != 0 or ptr[-1] != len(z["channels_raw"]) or np.any(ptr[1:] < ptr[:-1]):
+                raise ValueError("corrupted channel cache region pointers")
+            pos = {r: i for i, r in enumerate(names)}
+            idx = [pos[r] for r in region_ids]
+            sl = [np.arange(ptr[i], ptr[i + 1]) for i in idx]
+            take = np.concatenate(sl) if sl else np.zeros(0, int)
+            vals = np.asarray(z["channels_raw"][take], dtype=np.float64)
+            if vals.ndim != 2 or vals.shape[1] != len(EXPRESSION_CHANNELS) or not np.isfinite(vals).all():
+                raise ValueError("non-finite or malformed values in cached expression/feature channels")
+            return {
+                "channels_raw": vals,
+                "region_ptr": np.concatenate([[0], np.cumsum([len(s) for s in sl])]).astype(np.int64),
+                "region_ids": region_ids,
+                "channel_names": list(EXPRESSION_CHANNELS),
+            }
+    chunks = []
+    with zipfile.ZipFile(data_dir / f"{cohort}_raw_data.zip") as z:
+        for r in all_regions:
+            d = pd.read_csv(z.open(f"raw_data/{r}.cell_data.csv"), usecols=["CELL_ID"])
+            t = pd.read_csv(z.open(f"raw_data/{r}.cell_types.csv"), usecols=["CELL_ID"])
+            e = pd.read_csv(z.open(f"raw_data/{r}.expression.csv"), usecols=["CELL_ID", *EXPRESSION_MARKERS])
+            f = pd.read_csv(z.open(f"raw_data/{r}.cell_features.csv"), usecols=["CELL_ID", *FEATURE_MARKERS])
+            m = (
+                d.merge(t, on="CELL_ID", how="inner", validate="one_to_one")
+                .merge(e, on="CELL_ID", how="inner", validate="one_to_one")
+                .merge(f, on="CELL_ID", how="inner", validate="one_to_one")
+            )
+            if len(m) != len(d):
+                raise ValueError(f"{r}: {len(d) - len(m)} cells missing type, expression, or feature channels")
+            vals = m[list(EXPRESSION_CHANNELS)].to_numpy(np.float64)
+            if not np.isfinite(vals).all():
+                raise ValueError(f"{r}: non-finite values in expression/feature channels")
+            chunks.append(vals)
+    all_ch = np.concatenate(chunks, axis=0) if chunks else np.zeros((0, len(EXPRESSION_CHANNELS)), np.float64)
+    ptr = np.concatenate([[0], np.cumsum([len(a) for a in chunks])]).astype(np.int64)
+    np.savez(cache, channels_raw=all_ch, region_ptr=ptr, region_ids=np.array(all_regions),
+             channel_names=np.array(EXPRESSION_CHANNELS))
+    return load_channels(cohort, region_ids, data_dir, split)
 
 
 def load_cells(cohort: str, region_ids: list[str] | None = None, data_dir: Path = DATA_DIR,
@@ -189,13 +300,8 @@ def load_cells(cohort: str, region_ids: list[str] | None = None, data_dir: Path 
     """
     data_dir = Path(data_dir)
     all_regions = list(pd.read_csv(data_dir / f"{cohort}_labels.csv", usecols=["region_id"], dtype=str).region_id)
-    _check_split(cohort, split)
-    locked = locked_regions(cohort, data_dir)
-    on_side = lambda r: split == "all" or (r in locked) == (split == "locked")  # noqa: E731
-    region_ids = [r for r in all_regions if on_side(r)] if region_ids is None else list(region_ids)
-    wrong = [r for r in region_ids if not on_side(r)]
-    if wrong:
-        raise LockedPatientError(f"{len(wrong)} region(s) outside the {split} split, e.g. {wrong[0]}")
+    region_ids = _split_regions(cohort, all_regions, region_ids, data_dir, split)
+    side_regions = set(_split_regions(cohort, all_regions, None, data_dir, split))
     cache = data_dir / f"{cohort}_cells.npz"
     if cache.exists():
         z = np.load(cache, allow_pickle=False)
@@ -205,7 +311,7 @@ def load_cells(cohort: str, region_ids: list[str] | None = None, data_dir: Path 
         sl = [np.arange(ptr[i], ptr[i + 1]) for i in idx]
         take = np.concatenate(sl) if sl else np.zeros(0, int)
         ct = z["cell_type"]
-        side = [np.arange(ptr[i], ptr[i + 1]) for r, i in pos.items() if on_side(r)]
+        side = [np.arange(ptr[i], ptr[i + 1]) for r, i in pos.items() if r in side_regions]
         seen = np.unique(ct[np.concatenate(side)]) if side else np.zeros(0, int)
         code = np.full(len(z["type_names"]), -1, np.int16)
         code[seen] = np.arange(len(seen))

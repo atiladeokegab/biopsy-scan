@@ -21,8 +21,9 @@ def test_discovery_loaders_never_return_locked_regions(data_dir):
 
 def test_guard_raises_when_discovery_asks_for_a_locked_region(data_dir):
     r = sorted(cohorts.locked_regions(data_dir=data_dir))[0]
-    with pytest.raises(cohorts.LockedPatientError):
-        cohorts.load_cells("upmc", [r], data_dir)
+    for loader in (cohorts.load_cells, cohorts.load_channels):
+        with pytest.raises(cohorts.LockedPatientError):
+            loader("upmc", [r], data_dir)
     assert cohorts.load_cells("upmc", [r], data_dir, split="locked")["region_ids"] == [r]
 
 
