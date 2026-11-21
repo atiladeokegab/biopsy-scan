@@ -128,7 +128,9 @@ lane's seconds. Each row's note gives its re-imaging share and that share's basi
 `lab-cpu` and `preflight-cpu` (perf_counter in single-thread workers, not CPU time), elapsed stage wall time for `gpu-1`
 and `hybrid`. `fused-cpu` ("8 CPU cores, fused kernel": the Numba lane with `reimage.fused`) comes from the
 `--compare-with` file that adds the `fused` arm to the four-arm file, on the same basis as `preflight-cpu`, and only
-when its X sha256 equals every other arm's on every shared study: same features, same top score (maxT).
+when its X sha256 equals every other arm's on every shared study and its per-study maxT is within 1e-9 of the
+Numba, A100 and hybrid arms' (the lab's maxT is its permutation statistic, so X only): same features, same top
+score. That file fills only `fused-cpu`; the four-arm file it copies from refreshes the other four.
 build-modal's `"kind": "design_point"` file (#75's `gpu/modal_app.py`; slots `a_lab_all_cores`,
 `b_ours_cpu_all_cores`, `c_ours_1_gpu`) can fill the first three rows, only when it
 says `"status": "MEASURED"`, `"studies": 1000` and carries its `scope`; a FAILED run, a 32-study trial or a generic
