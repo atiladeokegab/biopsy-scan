@@ -14,10 +14,10 @@ make tissue                             # fetches the data, then regenerates dem
 Browsers block `fetch` and modules from `file://`. If you double-click `index.html`, the page
 shows this command instead.
 
-1. **Tissue (3D).** Each patient is one thin slab of cells, coloured tumour, stroma or immune, and
-   the slabs are stacked. The view orbits slowly; drag it, or focus it and use the arrow keys.
-   The patients slider sets how many slabs show (one per 25 patients, up to the patients in
-   `tissue.json`).
+1. **Tissue (3D).** The first six patients in `tissue.json` are shown as thin slabs of cells, coloured
+   tumour, stroma or immune, three by two. Each core turns slowly in place; drag it, or focus it and
+   use the arrow keys. The scene is sized in core widths, so 720 µm real cores and 2,500 µm synthetic
+   ones both draw as fine dots.
    - The field-of-view squares drop onto each slab, one per region per patient. Cells outside
      every square dim.
    - The mis-call slider recolours that fraction of cells at random, so you can see the noise.

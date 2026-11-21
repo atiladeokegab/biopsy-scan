@@ -56,7 +56,8 @@ def _sample_record(
         "maxT": {
             "statistic": 3.1,
             "p": maxt_p,
-            "threshold_alpha_05": 3.65,
+            "conditional_cutoff_alpha_05": 3.65,
+            "cutoff_scope": "conditional_within_stratum_permutation_not_reusable_design_calibration",
             "n_resamples": 999,
             "top_hits": [
                 {
@@ -98,10 +99,18 @@ def _sample_record(
 
 def test_prepared_outcome_selection_covers_all_three_outcomes_and_keeps_upmc_descriptive() -> None:
     o1 = choose_prepared_outcome(cohort="charville", maxt_p=0.40, omnibus_p=0.004, top_hit_stable=False, n_events=38)
+    o1_low_events = choose_prepared_outcome(
+        cohort="charville", maxt_p=0.40, omnibus_p=0.004, top_hit_stable=False, n_events=3
+    )
     o2 = choose_prepared_outcome(cohort="charville", maxt_p=0.02, omnibus_p=0.02, top_hit_stable=True, n_events=38)
     o3 = choose_prepared_outcome(cohort="charville", maxt_p=0.50, omnibus_p=0.40, top_hit_stable=False, n_events=38)
     upmc = choose_prepared_outcome(cohort="upmc", maxt_p=0.01, omnibus_p=0.01, top_hit_stable=True, n_events=10)
     assert o1["key"] == "omnibus_only_diffuse"
+    assert o1_low_events["key"] == "omnibus_only_diffuse"
+    stmt = o1["statement"].lower()
+    assert "exploratory conditional association" in stmt
+    assert "diffuse" not in stmt
+    assert "signal is real" not in stmt
     assert o2["key"] == "real_hit_stable"
     assert o3["key"] == "atlas_design_choices"
     assert upmc["key"] == "atlas_design_choices"
@@ -120,6 +129,14 @@ def test_schema_validation_accepts_valid_record_and_rejects_missing_or_clinical_
 
     with pytest.raises(ValueError, match="exploratory"):
         validate_audit_result({**rec, "exploratory": False})
+
+    with pytest.raises(ValueError, match="threshold_alpha_05"):
+        validate_audit_result({**rec, "maxT": {**rec["maxT"], "threshold_alpha_05": 3.5}})
+
+    with pytest.raises(ValueError, match="conditional_cutoff_alpha_05"):
+        bad_maxt = dict(rec["maxT"])
+        bad_maxt.pop("conditional_cutoff_alpha_05")
+        validate_audit_result({**rec, "maxT": bad_maxt})
 
 
 def test_leakage_audit_detects_cross_coverslip_patient_overlap_and_works_on_contract_cells() -> None:
