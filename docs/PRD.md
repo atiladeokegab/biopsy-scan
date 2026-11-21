@@ -1,6 +1,6 @@
 # sota-parallelism-nov21: PRD v1
 
-> C-001 is proposed, not approved: R-12 and the novelty principle are marked "proposed (C-001)"; R-11 moves to rank 12. Spec of record: v1.
+> C-001 is proposed, not approved: R-12 and the novelty goal are marked "proposed (C-001)"; R-11 moves to rank 12. Spec of record: v1.
 
 ## Problem
 Before a lab images a spatial-biology cohort it must choose how many patients, how many regions per patient, how large a field of view and how fine a cell typing. Each choice trades cost against the chance of finding a real survival-linked spatial pattern, and today a lab sizes that by guesswork or a textbook formula that ignores the imaging. Simulating it honestly means re-imaging thousands of studies cell by cell from real tissue, which is CPU-days with the per-study cKDTree recount and permutation test a lab runs today.
@@ -25,7 +25,7 @@ Before a lab images a spatial-biology cohort it must choose how many patients, h
 - Every speed-up is quoted against rung 0, what a lab runs today
 - The tagline is the h1: "Thousands of studies, simulated in seconds, before you image a slide." The button reads "Run the studies". The phrase "Can my study find it?" appears nowhere in the project
 - Tests come from the goal: unseen geometries and tied studies, a planted signal and a hard negative; a check is believed only after it has been seen red
-- Novelty: Preflight produces new biology by combining protein expression, cell morphology, neighbourhood relations and stromal architecture at single-cell resolution, with an algorithm parallelised on GPU clusters so it is much faster than on a CPU _(proposed, C-001)_
+- Novelty goal (not yet measured): Preflight aims to produce new biology by combining protein expression, cell morphology, neighbourhood relations and stromal architecture at single-cell resolution, with an algorithm parallelised on GPU clusters, much faster than on a CPU _(proposed, C-001)_
 
 ## Non-goals
 - Segmentation, a backend service, or any clinical claim
@@ -121,11 +121,11 @@ Why: The submission is a live pitch; the deck carries the numbers and the before
 - A-10.2@1 Scenario: two before/after slides show the tissue's cell types: the true tissue, and the same tissue as a study sees it; one slide shows the fleet and the ladder against rung 0. Not yet built (`docs/SUBMISSION.md`)
 
 ### R-12 [P1 · Expression] Protein, morphology and stroma channels in the per-cell kernel (grammar v2, #41)
-rank 11 · state proposed (C-001) · needs R-1, R-3 · touches `core/cohorts.py`, `core/`, `reimage/gpu.py`, `results/charville-v2.json`
-Why: The novelty claim: grammar v1 has only neighbourhood relations; v2 adds protein expression, morphology and stromal architecture, computed by the same per-cell kernel
-- A-12.1@1 Scenario: for the 10 fixed channels (PD1, PDL1, Ki67, GranzymeB, HLA-DR, aSMA, CollagenIV, Vimentin, Podoplanin, SIZE; log1p then cohort-wide z-score fixed before re-imaging), the GPU kernel under the CUDA simulator matches the NumPy reference exactly or within a stated float tolerance; crop and mis-call change who the neighbours are, never a cell's expression; the v1 grammar hash is unchanged. Not yet built (`reimage/test_expression.py`)
-- A-12.2@1 Scenario: with v2 features on, the fleet result is still bit-identical to one device. Not yet built (`reimage/test_fleet_expression.py`)
-- A-12.3@1 Scenario: results/charville-v2.json on real Charville (159 patients, coverslip strata) gives grammar hashes for v1 and v2, the channel m, maxT, p and omnibus p over v1+v2, labelled exploratory (outcomes already seen), every number MEASURED or UNMEASURED. Not yet built (`audit/test_charville_v2.py`)
+rank 11 · state proposed (C-001) · needs R-1, R-2, R-3, R-6 · touches `core/`, `reimage/cpu.py`, `reimage/gpu.py`, `results/charville-v2.json`
+Why: The novelty goal: grammar v1 has only neighbourhood relations; v2 adds protein expression, morphology and stromal architecture from the same per-cell kernel, searched jointly with v1
+- A-12.1@1 Scenario: feature (t, j, r, m) is the mean of channel m over the visible type-j neighbours within r of each focal cell of type t, 0 when there are none; patient feature is the focal-cell-weighted mean, regions pooled; v2 columns are ordered t, j, r, m and appended after v1. Channels PD1, PDL1, Ki67, GranzymeB, HLA-DR, aSMA, CollagenIV, Vimentin, Podoplanin, SIZE take a cohort-wide z-score directly (no log1p; the source pre-normalises), z = 0 for a zero-variance channel, and any missing value fails loudly. Not yet built (`core/test_expression.py`)
+- A-12.2@1 Scenario: v1 outputs, hash and default ordering are byte-for-byte unchanged; CPU and GPU backends (CUDA simulator in CI) match the NumPy reference within a stated float tolerance; crop and mis-call change who the neighbours are, never a cell's expression; with v2 on, the fleet result is still bit-identical to one device. Not yet built (`reimage/test_expression.py`)
+- A-12.3@1 Scenario: maxT and omnibus run over v1+v2 jointly as one family; results/charville-v2.json on real Charville (159 patients, coverslip strata) gives v1 and v2 grammar hashes, the channel m, maxT, p and omnibus p, labelled exploratory (outcomes already seen), every number MEASURED or UNMEASURED. Not yet built (`audit/test_charville_v2.py`)
 
 ### R-11 [P2 · Submission] README, backup demo video and the submission form (#9-#12)
 rank 12 (proposed, C-001; was 11) · state approved · needs R-9, R-10 · touches `README.md`, `docs/film/`, `docs/SUBMISSION.md`
@@ -143,4 +143,3 @@ Why: The video is the backup if the live demo fails; the form is how the event r
 - Stress-test slices: non-proportional hazards, heavy censoring, unmeasured confounder
 - Step-down maxT under subset pivotality
 - Source bootstrap bands on the atlas
-
