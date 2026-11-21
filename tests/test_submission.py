@@ -64,3 +64,31 @@ def test_judging_quotes_the_merged_race_two_bin_and_matched_results_from_their_f
 
 def test_submission_does_not_claim_every_speed_up_is_against_rung_0():
     assert "Every speed-up is quoted against rung 0" not in SUBMISSION.read_text(encoding="utf-8")
+
+
+SIM_VS_REAL = "the difference interval contains zero at all three sizes; outcome model only, not imaging noise"
+
+
+def sim_vs_real_quotes():
+    """#119: the per-size difference and its paired interval, in points, from the committed file."""
+    import json
+
+    data = json.loads((ROOT / "bench/results/real-check-charville.json").read_text(encoding="utf-8"))
+    assert data["labels"] == {"counts": "MEASURED", "outcomes": "SYNTHETIC", "power": "ESTIMATE"}
+    assert len(data["points"]) == 3 and all(p["difference_interval_contains_zero"] for p in data["points"])
+    pp = lambda v: f"{100 * v:+.2f}".replace("-", "−")
+    return [f"{pp(p['difference'])} points [{pp(p['difference_lo'])}, {pp(p['difference_hi'])}]" for p in data["points"]]
+
+
+def test_both_docs_carry_sim_vs_real_with_its_labels_and_no_equivalence_claim():
+    judging, submission = JUDGING.read_text(encoding="utf-8"), SUBMISSION.read_text(encoding="utf-8")
+    row = next(line for line in judging.splitlines() if "real-check-charville.json" in line)
+    assert [q for q in sim_vs_real_quotes() if q not in row] == []
+    for text in (row, next(line for line in submission.splitlines() if "#119" in line)):
+        assert SIM_VS_REAL in text.lower()
+        assert "counts MEASURED" in text and "outcomes SYNTHETIC" in text and "power ESTIMATE" in text
+        assert "equivalen" not in text.lower()
+
+
+def test_matched_run_is_not_divided_per_core():
+    assert "per core" not in JUDGING.read_text(encoding="utf-8")
