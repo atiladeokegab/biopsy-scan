@@ -1,0 +1,37 @@
+{
+  "hardware": {
+    "cpu": "AMD EPYC 7B13",
+    "logical_cpus": 8,
+    "python": "3.11.17",
+    "numpy": "2.4.6",
+    "gpu": null,
+    "cores_per_socket": 4,
+    "sockets": 1
+  },
+  "data": "synthetic",
+  "design": {
+    "k": 4,
+    "fov_um": 500.0,
+    "eps": 0.1
+  },
+  "pool": {
+    "regions": 8,
+    "cells_per_region": 6000,
+    "side_um": 750.0,
+    "mean_neighbours_100um": 298.36008333333336
+  },
+  "prep_s": 10.8172018667683,
+  "rungs": {
+    "numpy_reference": {
+      "studies": 20,
+      "cold_s": 0.10001455806195736,
+      "amortised_s_per_study": 0.11369592696428299,
+      "total_s": 2.357279176823795,
+      "neighbour_reads": 143093970,
+      "reads_per_s": 60703022.114166915,
+      "studies_per_s": 8.795389832338893
+    },
+    "numba_all_core": "pending: reimage/ (#2) not merged",
+    "gpu": "pending: reimage/ (#2) not merged"
+  }
+}
