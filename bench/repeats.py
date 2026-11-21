@@ -20,18 +20,53 @@ HARNESS = {"pr": 120, "branch": "reimage-fast-b9", "commit": "a29f1b7bb3c1f0d747
            "runner": "bench/modal_design.py (unchanged, run from a detached checkout)"}
 
 
-def extract(path, arm: str) -> dict:
+ONE_ARM = {"all": False, "this_run": "one arm"}  # the runner's parity for a single-arm run without --compare-with
+Z_TOL = 1e-9
+
+
+def parity_vs_prior(studies: list, arm: str, prior: dict) -> dict:
+    """X sha256 against every prior arm on each shared study; lab p exactly equal to the prior lab's; maxT vs numba."""
+    keyed = {a: {(s["stream"], s["i"]): s for s in v["studies"]} for a, v in prior["arms"].items()}
+    x_n = x_bad = 0
+    stat_n, stat_worst = 0, 0.0
+    for s in studies:
+        k = (s["stream"], s["i"])
+        for a, ks in keyed.items():
+            if k in ks:
+                x_n += 1
+                x_bad += ks[k]["x_sha"] != s["x_sha"]
+        ref = keyed["lab" if arm == "lab" else "numba"].get(k)
+        if ref is not None:
+            stat_n += 1
+            if arm == "lab":
+                stat_worst = max(stat_worst, 0.0 if ref["p"] == s["p"] else float("inf"))
+            else:
+                stat_worst = max(stat_worst, abs(s["maxT"] - ref["maxT"]) / max(1.0, abs(ref["maxT"])))
+    stat = "p, exact" if arm == "lab" else f"maxT vs numba, rel <= {Z_TOL}"
+    ok = x_n > 0 and x_bad == 0 and stat_n == len(studies) and stat_worst <= (0.0 if arm == "lab" else Z_TOL)
+    return {"x_compared": x_n, "x_mismatched": x_bad, "statistic": stat, "statistic_compared": stat_n,
+            "statistic_max_rel_diff": stat_worst, "all": bool(ok)}
+
+
+def extract(path, arm: str, prior: dict | None = None) -> dict:
+    """One arm's walls from a runner result. A single-arm run is FAILED by the runner only for want of a parity
+    partner; it is accepted when its tree was clean and nothing failed, and checked against `prior` instead."""
     data = Path(path).read_bytes()
     r = json.loads(data)
-    if r["status"] != "MEASURED":
-        raise ValueError(f"{path}: status {r['status']}, need MEASURED")
+    one_arm_only = (r["status"] == "FAILED" and r.get("parity") == ONE_ARM and r.get("clean_tree")
+                    and not r.get("errors") and r.get("same_container_class"))
+    if r["status"] != "MEASURED" and not one_arm_only:
+        raise ValueError(f"{path}: status {r['status']}, need MEASURED or a clean single-arm run")
     a = r["arms"][arm]
     st = a["stages"]
-    return {"file": Path(path).name, "file_sha256": hashlib.sha256(data).hexdigest(), "source_commit": r["source_commit"],
-            "workers": a["workers"], "evaluated_studies": st["evaluated_studies"], "studies_wall_s": st["studies_wall_s"],
-            "compute_wall_s": st["compute_wall_s"], "wall_per_study_s": st["wall_per_study_s"],
-            "end_to_end_in_container_s": st["end_to_end_in_container_s"], "warm_s": a["warm_s"],
-            "host": a["host"], "modal": r["modal"]}
+    out = {"file": Path(path).name, "file_sha256": hashlib.sha256(data).hexdigest(), "source_commit": r["source_commit"],
+           "runner_status": r["status"], "workers": a["workers"], "evaluated_studies": st["evaluated_studies"],
+           "studies_wall_s": st["studies_wall_s"], "compute_wall_s": st["compute_wall_s"],
+           "wall_per_study_s": st["wall_per_study_s"], "end_to_end_in_container_s": st["end_to_end_in_container_s"],
+           "warm_s": a["warm_s"], "host": a["host"], "modal": r["modal"]}
+    if prior is not None:
+        out["parity_vs_prior"] = parity_vs_prior(a["studies"], arm, prior)
+    return out
 
 
 def _spread(values) -> dict:
@@ -51,19 +86,32 @@ def main(argv=None):
     ap.add_argument("--lab", nargs="+", required=True)
     ap.add_argument("--fused", nargs="+", required=True)
     ap.add_argument("--spend", required=True)
+    ap.add_argument("--prior", required=True, help="a MEASURED modal-design result from #113/#120 at the same seeds")
     ap.add_argument("--output", required=True)
     a = ap.parse_args(argv)
     out = Path(a.output)
     if out.exists():
         raise FileExistsError(f"preserving existing evidence: {out}")
-    repeats = {"lab": [extract(p, "lab") for p in a.lab], "fused": [extract(p, "fused") for p in a.fused]}
+    prior_bytes = Path(a.prior).read_bytes()
+    prior = json.loads(prior_bytes)
+    if prior["status"] != "MEASURED":
+        raise ValueError("--prior must be MEASURED")
+    repeats = {"lab": [extract(p, "lab", prior) for p in a.lab], "fused": [extract(p, "fused", prior) for p in a.fused]}
     commits = {x["source_commit"] for reps in repeats.values() for x in reps}
     if commits != {HARNESS["commit"]}:
         raise ValueError(f"every repeat must run #120 at {HARNESS['commit']}, got {commits}")
     s = summarize(repeats)
     spend = json.loads(Path(a.spend).read_text())
     doc = {
-        "status": "MEASURED", "harness": HARNESS,
+        "status": "MEASURED" if all(x["parity_vs_prior"]["all"] for v in repeats.values() for x in v) else "FAILED",
+        "labels": {"compute": "MEASURED", "outcomes": "SYNTHETIC (atlas/simulation.py at 79a7792)"},
+        "harness": HARNESS,
+        "parity": {"prior": {"file": Path(a.prior).name, "sha256": hashlib.sha256(prior_bytes).hexdigest(),
+                             "source_commit": prior["source_commit"], "where": "reimage-fast-b9 (#120), from #113"},
+                   "rule": "each repeat: X sha256 equal to every prior arm on every shared study (same seeds); lab p "
+                           "exactly equal to the prior lab arm's; fused maxT within 1e-9 of the prior numba arm's. "
+                           "Single-arm runs have no in-run partner, so the runner marks them FAILED with parity "
+                           "'one arm'; this check replaces that."},
         "scope": "wall per evaluated study = studies_wall_s / evaluated_studies inside the container (re-imaging and "
                  "scoring; excludes data load, outcome prep, adjacency and warm-up), as the race reports it. lab: "
                  "8 single-thread workers, cKDTree + 1,000-shuffle permutation test, null + alternative studies. "
