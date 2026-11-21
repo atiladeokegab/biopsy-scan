@@ -19,7 +19,7 @@ About half of patients with locally advanced head and neck cancer relapse ([PMC7
 Finding a pattern like that takes enough patients. Real cohorts are small:
 
 - **Charville** (colorectal, 159 patients, 38 events): the best of 630 spatial features has p = 0.13 after maxT correction. MEASURED, exploratory: the outcomes had already been seen. Nothing survives correction.
-- **The textbook formula** says 200 patients give 80% power (ANALYTIC, Schoenfeld). Simulating those studies on real tissue, with sampling and mis-calls, gives about 27–32% (ESTIMATE: 32% from 60 studies per point, merged in #44; 27% [22%, 32%] from 300, in review in #53).
+- **The textbook formula** says 200 patients give 80% power (ANALYTIC, Schoenfeld). Simulating those studies on real tissue, with sampling and mis-calls, gives about 27–32% (ESTIMATE: 32% from 60 studies per point, merged in #44; 27% [22%, 32%] from 300, merged in #53).
 
 A lab that trusts the formula images 200 patients and most likely finds nothing. Preflight shows that before the first slide.
 
@@ -60,7 +60,7 @@ Speed-ups count only at equal output. Re-imaging ratios are against rung 0. A GP
 
 ## Status
 
-Each row has one status. **BUILT**: merged on `integration`. **IN REVIEW**: open PR. **PLANNED**: in the v4 PRD (C-003), not built yet. **NOT CLAIMED**: not in this build.
+Each row has one status. **BUILT**: merged on `integration`. **IN REVIEW**: open PR. **IN PROGRESS**: being built on a branch, no PR yet. **PLANNED**: in the v4 PRD (C-003), not built yet. **NOT CLAIMED**: not in this build.
 
 | Item | Status | Where |
 |---|---|---|
@@ -74,7 +74,7 @@ Each row has one status. **BUILT**: merged on `integration`. **IN REVIEW**: open
 | Charville v2 result: strongest feature is PD1 on macrophages within 100 µm of "Tumor 5" cells (one tumour cell type), z = 3.96, maxT-adjusted p = 0.098 (MEASURED). Not significant after correction: exploratory | BUILT | #47 |
 | Rung 0: what a lab runs today, timed on real Charville | BUILT | #43 |
 | Textbook formula versus simulated power, 60 studies per point | BUILT | #44 |
-| The same comparison at 300 studies per point | IN REVIEW | #53 |
+| The same comparison at 300 studies per point (ESTIMATE) | BUILT | #53 |
 | Design atlas: calibrated study simulations and streamed runner (draft) | IN REVIEW | #45 |
 | Demo race plays only on "Run the studies" | BUILT | #48 |
 | Pitch scenes: two real UPMC patients and the wall of 3,780 features | BUILT | #55 |
@@ -86,7 +86,7 @@ Each row has one status. **BUILT**: merged on `integration`. **IN REVIEW**: open
 | R2–R4 on GPU as the per-study kernel: clinical-adjusted score screen, 10,000-shuffle maxT as one product, a valid adjusted null (R-15) | PLANNED | #68 |
 | Rediscovery of the Helsinki pattern on the locked UPMC patients, with Preflight's power for that set first; exploratory, no survival claim (R-16) | PLANNED | #69 |
 | R5 and Translate 1–2: minimal panels and IHC format simulation on UPMC (R-17) | PLANNED | #70 |
-| The same screen rerun on Charville (R-18) | PLANNED | #71 |
+| The same screen rerun on Charville (R-18, issue #71) | IN PROGRESS | branch `r18-charville-screen` |
 | R6: learned features and knockoffs | NOT CLAIMED | |
 | Translate 3 (brightfield scoring engine) and 4 (markers from H&E) | NOT CLAIMED | |
 | HANCOCK validation on real brightfield IHC | NOT CLAIMED | |
