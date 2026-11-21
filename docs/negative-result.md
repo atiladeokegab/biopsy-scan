@@ -19,11 +19,13 @@ Method:
 - Output parity was asserted for every study.
 - The 1-minute load average was recorded around every timing.
 
-The VM was heavily shared throughout: load average 48 to 150 on 8 CPUs, from other team jobs.
+The VM was heavily shared throughout: load average 48 to 174 on 8 CPUs, from other team jobs.
 
-MEASURED, seconds per study. Each configuration was timed in three separate runs at load 50 to
-150. The NumPy and Numba columns come from one run, the first shown; the ratio and launch columns
-give every run, separated by slashes. The ratio is Numba over NumPy, paired within a run.
+MEASURED, seconds per study. Each run timed 2 studies (seeds 1 and 2), and every row is the mean
+of those 2 studies. The 8-thread omp row was timed in three separate runs, 1 thread and PASSIVE in
+two, and the other rows in one. The NumPy and Numba columns come from the first run shown; the
+ratio and launch columns give every run, separated by slashes. The ratio is Numba over NumPy,
+paired within a run.
 
 | Configuration | NumPy | Numba | Ratio | Empty parallel launch | Numba CPU time |
 |---|---|---|---|---|---|
@@ -95,4 +97,4 @@ dedicated host and the worst on an oversubscribed one. PASSIVE is the safe defau
 The container runs under Modal's sandbox, which reports a load average of 0 and hides the CPU
 model. "Quiet" therefore means 8 dedicated cores, not an observed idle host (MEASURED: Numba's
 range across 10 studies was 11% to 23% of the median, by mode). The run cost about $0.05 of container
-time, logged in `bench/results/modal-spend.json`.
+time, logged in `bench/results/modal-spend-numba.json`.
