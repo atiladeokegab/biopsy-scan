@@ -52,7 +52,7 @@ def test_ladder_devices_flag_records_request_and_never_fakes_gpu(tmp_path):
 
 
 def test_fleet_reports_1_2_4_8_measured_or_unmeasured_without_guessing(tmp_path, monkeypatch):
-    path = fleet.main(["--out", str(tmp_path), "--trials", "2", "--cells", "200"])
+    path = fleet.main(["--out", str(tmp_path), "--trials", "2", "--cells", "120"])
     res = json.loads(path.read_text())
     rows = res["fleet"]
     assert [r["devices"] for r in rows] == [1, 2, 4, 8]
@@ -64,5 +64,38 @@ def test_fleet_reports_1_2_4_8_measured_or_unmeasured_without_guessing(tmp_path,
             assert isinstance(r["studies_per_s"], float) and r["studies_per_s"] > 0
 
     monkeypatch.setenv("NUMBA_ENABLE_CUDASIM", "1")
-    sim_res = fleet.run_fleet(studies=2, cells=200)
+    sim_res = fleet.run_fleet(studies=2, cells=120)
     assert all(r["status"] == "UNMEASURED" and "simulator" in r["reason"].lower() for r in sim_res["fleet"])
+
+
+def test_fleet_requires_actual_executed_shard_count_and_device_names(monkeypatch):
+    """Even with 8 mocked GPUs, 2 trials must mark 4 and 8 GPUs UNMEASURED, and missing names reject MEASURED."""
+    monkeypatch.delenv("NUMBA_ENABLE_CUDASIM", raising=False)
+    monkeypatch.setattr(fleet, "cuda_simulator", lambda: False)
+    monkeypatch.setattr(fleet, "visible_gpus", lambda: 8)
+    calls = []
+
+    def fake_sharded(design, seeds, *, devices=None, fake_shards=False):
+        del fake_shards
+        calls.append((len(seeds), devices))
+        ref = fleet.reimage_run({**design, "backend": "numpy"}, seeds)
+        executed = min(len(seeds), devices)
+        return ref, {"devices_executed": executed, "device_names": [f"MockGPU-{i}" for i in range(executed)]}
+
+    monkeypatch.setattr(fleet, "run_sharded_with_meta", fake_sharded)
+    res = fleet.run_fleet(studies=2, cells=60, patients=4, regions_per_patient=1, k=1)
+    by_dev = {r["devices"]: r for r in res["fleet"]}
+    assert by_dev[1]["status"] == "MEASURED" and by_dev[1]["gpus"] == ["MockGPU-0"]
+    assert by_dev[2]["status"] == "MEASURED" and by_dev[2]["gpus"] == ["MockGPU-0", "MockGPU-1"]
+    assert by_dev[4]["status"] == "UNMEASURED" and by_dev[4]["studies_per_s"] is None
+    assert by_dev[8]["status"] == "UNMEASURED" and by_dev[8]["studies_per_s"] is None
+
+    # Empty device name must never yield MEASURED.
+    def fake_unnamed(design, seeds, *, devices=None, fake_shards=False):
+        del fake_shards
+        ref = fleet.reimage_run({**design, "backend": "numpy"}, seeds)
+        return ref, {"devices_executed": devices, "device_names": ["" for _ in range(devices)]}
+
+    monkeypatch.setattr(fleet, "run_sharded_with_meta", fake_unnamed)
+    res2 = fleet.run_fleet(studies=2, cells=60, patients=4, regions_per_patient=1, k=1, device_counts=[1])
+    assert res2["fleet"][0]["status"] == "UNMEASURED" and "name" in res2["fleet"][0]["reason"].lower()

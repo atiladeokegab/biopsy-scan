@@ -54,27 +54,37 @@ def _validate_seeds(seeds: Any) -> np.ndarray:
     return arr
 
 
-def _shard_worker(payload: tuple[int, int, dict[str, Any], np.ndarray]) -> tuple[int, np.ndarray]:
+def _selected_device_name() -> str:
+    from numba import cuda
+
+    dev = cuda.get_current_device()
+    raw = getattr(dev, "name", "")
+    return raw.decode() if isinstance(raw, bytes) else str(raw)
+
+
+def _shard_worker(payload: tuple[int, int, dict[str, Any], np.ndarray]) -> tuple[int, np.ndarray, str]:
     """Execute one contiguous study-seed shard on one bound CUDA device (in a spawned worker)."""
     shard_id, device_id, design, shard_seeds = payload
+    dev_name = ""
     if design.get("backend") == "gpu":
         from numba import cuda
 
         cuda.select_device(device_id)
+        dev_name = _selected_device_name()
     from reimage import run
 
     out = run(design, shard_seeds, devices=1)
-    return shard_id, out
+    return shard_id, out, dev_name
 
 
-def run_sharded(
+def run_sharded_with_meta(
     design: dict[str, Any],
     seeds: Any,
     *,
     devices: int | None = None,
     fake_shards: bool = False,
-) -> np.ndarray:
-    """Run seeded re-imaging across contiguous device shards and merge deterministically."""
+) -> tuple[np.ndarray, dict[str, Any]]:
+    """Run seeded re-imaging across contiguous device shards and return merged output + device metadata."""
     seed_arr = _validate_seeds(seeds)
     if "cells" not in design:
         raise ValueError("design must provide cells")
@@ -91,13 +101,13 @@ def run_sharded(
         if devices is None or devices == 1:
             from reimage import run
 
-            return run({**design}, seed_arr, devices=1)
+            return run({**design}, seed_arr, devices=1), {"devices_executed": 1, "device_names": []}
         bounds = shard_bounds(len(seed_arr), devices)
         ctx = mp.get_context("spawn")
         payloads = [(sid, 0, dict(design), seed_arr[s:e]) for sid, s, e in bounds]
         with ctx.Pool(len(payloads)) as pool:
             parts = sorted(pool.map(_shard_worker, payloads), key=lambda item: item[0])
-        return np.concatenate([part for _, part in parts], axis=0)
+        return np.concatenate([part for _, part, _ in parts], axis=0), {"devices_executed": len(parts), "device_names": []}
 
     from numba import cuda
 
@@ -113,7 +123,10 @@ def run_sharded(
         payloads = [(sid, sid % n_sim_gpus, dict(design), seed_arr[s:e]) for sid, s, e in bounds]
         with ctx.Pool(len(payloads)) as pool:
             parts = sorted(pool.map(_shard_worker, payloads), key=lambda item: item[0])
-        return np.concatenate([part for _, part in parts], axis=0)
+        return (
+            np.concatenate([part for _, part, _ in parts], axis=0),
+            {"devices_executed": len(parts), "device_names": [n for _, _, n in parts]},
+        )
 
     n_avail = visible_gpus()
     if n_avail < 1:
@@ -125,12 +138,28 @@ def run_sharded(
     bounds = shard_bounds(len(seed_arr), target)
     if len(bounds) == 1:
         cuda.select_device(0)
+        name = _selected_device_name()
         from reimage import run
 
-        return run(dict(design), seed_arr, devices=1)
+        return run(dict(design), seed_arr, devices=1), {"devices_executed": 1, "device_names": [name]}
 
     ctx = mp.get_context("spawn")
     payloads = [(sid, sid, dict(design), seed_arr[s:e]) for sid, s, e in bounds]
     with ctx.Pool(len(payloads)) as pool:
         parts = sorted(pool.map(_shard_worker, payloads), key=lambda item: item[0])
-    return np.concatenate([part for _, part in parts], axis=0)
+    return (
+        np.concatenate([part for _, part, _ in parts], axis=0),
+        {"devices_executed": len(parts), "device_names": [n for _, _, n in parts]},
+    )
+
+
+def run_sharded(
+    design: dict[str, Any],
+    seeds: Any,
+    *,
+    devices: int | None = None,
+    fake_shards: bool = False,
+) -> np.ndarray:
+    """Run seeded re-imaging across contiguous device shards and merge deterministically."""
+    out, _ = run_sharded_with_meta(design, seeds, devices=devices, fake_shards=fake_shards)
+    return out

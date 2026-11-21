@@ -97,6 +97,6 @@ def test_fleet_script_writes_1_2_4_8_measured_or_unmeasured(tmp_path):
     assert [row["devices"] for row in data["fleet"]] == [1, 2, 4, 8]
     for row in data["fleet"]:
         if row["status"] == "MEASURED":
-            assert row["gpu"] and row["studies_per_s"] > 0
+            assert len(row["gpus"]) == row["devices"] and all(row["gpus"]) and row["studies_per_s"] > 0
         else:
             assert row["status"] == "UNMEASURED" and row["studies_per_s"] is None

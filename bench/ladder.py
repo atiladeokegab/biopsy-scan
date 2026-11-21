@@ -135,6 +135,9 @@ def _gpu_shard_worker(payload: tuple[int, int, list[dict], dict, list[int]]) -> 
     from reimage import gpu
 
     cuda.select_device(device_id)
+    dev = cuda.get_current_device()
+    raw_name = getattr(dev, "name", "")
+    device_name = raw_name.decode() if isinstance(raw_name, bytes) else str(raw_name)
     prepared = {id(reg["nbr"]): gpu.prepare(reg["nbr"], K) for reg in pool}
     times, reads, outs = [], 0, []
     for seed in seed_list:
@@ -153,7 +156,7 @@ def _gpu_shard_worker(payload: tuple[int, int, list[dict], dict, list[int]]) -> 
             reads += len(reg["nbr"]["idx"])
         times.append(time.perf_counter() - t0)
         outs.append(reg_outs)
-    return {"shard_id": shard_id, "times": times, "reads": reads, "outputs": outs}
+    return {"shard_id": shard_id, "device_name": device_name, "times": times, "reads": reads, "outputs": outs}
 
 
 def time_gpu_sharded(
@@ -196,20 +199,24 @@ def time_gpu_sharded(
             results = sorted(proc_pool.map(_gpu_shard_worker, payloads), key=lambda item: item["shard_id"])
     wall_s = time.perf_counter() - t0
 
-    all_times = [t for r in results for t in r["times"]]
     all_outputs = [o for r in results for o in r["outputs"]]
     total_reads = sum(r["reads"] for r in results)
-    warm = all_times[1:] or all_times
-    amort = statistics.median(warm)
+    # Discard each shard's first (cold) sample individually before computing warm median.
+    warm_times = [t for r in results for t in r["times"][1:]]
+    if not warm_times:
+        warm_times = [r["times"][0] for r in results]
+    amort = statistics.median(warm_times)
     timing = {
         "trials": studies,
         "devices": len(payloads),
+        "device_names": [r["device_name"] for r in results],
         "cold_s": max(r["times"][0] for r in results),
         "amortised_s_per_trial": amort,
         "total_s": wall_s,
         "neighbour_reads": total_reads,
         "reads_per_s": total_reads / wall_s if wall_s > 0 else 0.0,
-        "trials_per_s": studies / wall_s if wall_s > 0 else 0.0,
+        "trials_per_s": 1.0 / amort if amort > 0 else 0.0,
+        "wall_trials_per_s": studies / wall_s if wall_s > 0 else 0.0,
     }
     return timing, all_outputs[0], all_outputs
 
