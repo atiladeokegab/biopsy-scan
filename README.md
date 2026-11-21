@@ -2,7 +2,7 @@
 
 # Preflight
 
-Rehearse the study before you image the tissue. Preflight re-images thousands of simulated spatial-biology studies cell by cell from real head and neck cancer tissue on a GPU, so a lab sees in seconds which designs (patients, regions per patient, field of view, mis-call rate) can actually detect a survival-linked spatial pattern. Team Dry Lab, SoTA Scientific Parallelism Hackathon 2026.
+Thousands of studies, simulated in seconds, before you image a slide. Preflight re-images thousands of simulated spatial-biology studies cell by cell from real head and neck cancer tissue on a GPU, so a lab sees in seconds which designs (patients, regions per patient, field of view, mis-call rate) can actually detect a survival-linked spatial pattern. Team Dry Lab, SoTA Scientific Parallelism Hackathon 2026.
 
 ## What it does
 
