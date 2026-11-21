@@ -1,4 +1,4 @@
-.PHONY: smoke install test data summary demo tissue
+.PHONY: smoke install test data summary demo tissue deploy
 
 install:
 	uv sync --dev
@@ -24,3 +24,10 @@ demo:
 # Regenerate demo/data/tissue.json from real Charville cells (fetches the data first; seeded, so deterministic).
 tissue: data
 	uv run python -I scripts/export_tissue.py
+
+# The public demo: .github/workflows/pages.yml publishes demo/ to GitHub Pages on every push to
+# integration. This target checks the data the workflow will publish and prints the URL.
+PAGES_URL ?= https://atiladeokegab.github.io/sota-parallelism-nov21/
+deploy:
+	python3 -I demo/check_data.py demo/data
+	@echo "Deployed by .github/workflows/pages.yml on push to integration: $(PAGES_URL)"
