@@ -13,6 +13,8 @@ import json
 
 import numpy as np
 
+from core.cohorts import PIXEL_UM
+
 RADII_UM = (25.0, 50.0, 100.0)
 STATS = ("fraction", "enrichment")
 GRAMMAR_VERSION = 1
@@ -25,9 +27,9 @@ def is_tumour(name: str) -> bool:
 def grammar(type_names: list[str]) -> dict:
     """The grammar for a cohort's sorted type list; focal = the tumour types."""
     focal = [i for i, n in enumerate(type_names) if is_tumour(n)]
-    return {"version": GRAMMAR_VERSION, "type_names": list(type_names), "focal_types": focal,
+    return {"version": GRAMMAR_VERSION, "type_names": [str(n) for n in type_names], "focal_types": focal,
             "radii_um": list(RADII_UM), "stats": list(STATS), "order": "t,j,r,s",
-            "weighting": "focal-cell mean, regions pooled"}
+            "weighting": "focal-cell mean, regions pooled", "pixel_um": PIXEL_UM}
 
 
 def n_features(g: dict) -> int:
