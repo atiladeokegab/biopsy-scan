@@ -52,6 +52,6 @@ replaces it.
 ## Hard lines
 
 - No invented numbers. Every figure carries MEASURED, SYNTHETIC, UNMEASURED, ESTIMATE or ANALYTIC.
-- Charville is the only patient-level cohort; UPMC is descriptive only.
+- Charville is the only patient-level cohort; UPMC is descriptive apart from one pre-registered locked test (R-16), which is UNMEASURED (underpowered) and inconclusive: `results/upmc-rediscovery.json`.
 - Real-data results are exploratory: their outcomes have already been seen.
 - Every speed-up is quoted against rung 0, what a lab runs today.
