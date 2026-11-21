@@ -16,6 +16,9 @@ export function speedWord(cpuSeconds, gpuSeconds) {
 }
 
 const fmt = (n) => n.toLocaleString("en-GB");
+// The race plays only when "Run the studies" is pressed; a changed design clears the lanes, so no stale run shows.
+export const raceAction = ({ pressed, changed }) => (pressed ? "run" : changed ? "clear" : null);
+
 export const duration = (s) =>
   s < 60 ? `${+s.toPrecision(2)} s` : s < 3600 ? `${+(s / 60).toPrecision(2)} min` : `${+(s / 3600).toPrecision(2)} h`;
 
@@ -40,10 +43,21 @@ function tile(L, i, colour) {
 
 export function createRace(cpuCanvas, gpuCanvas, out) {
   const HIT = tok("--accent"), MISS = tok("--tile-miss"), EMPTY = tok("--surface-elevated");
-  let timer = 0;
+  let timer = 0, last = null, lastN = 0;
 
-  function run({ studies: n, power, bench, reducedMotion }) {
+  function clear(n) {
     cancelAnimationFrame(timer);
+    last = null; lastN = n;
+    const cpu = layout(cpuCanvas, n), gpu = layout(gpuCanvas, n);
+    for (let i = 0; i < n; i++) { tile(cpu, i, EMPTY); tile(gpu, i, EMPTY); }
+    out.cpu.innerHTML = out.gpu.innerHTML = `<b>0</b> of ${fmt(n)} studies`;
+    out.speed.textContent = "";
+  }
+
+  function run(args) {
+    const { studies: n, power, bench, reducedMotion } = args;
+    cancelAnimationFrame(timer);
+    last = args;
     // Study outcomes: a fixed order per run, with round(power * n) hits, the same on both lanes.
     const hits = Math.round(power * n);
     const found = new Uint8Array(n);
@@ -94,5 +108,8 @@ export function createRace(cpuCanvas, gpuCanvas, out) {
     timer = requestAnimationFrame(step);
   }
 
-  return { run };
+  // Resize: repaint at the new size, never replaying the race.
+  const redraw = () => (last ? run({ ...last, reducedMotion: true }) : clear(lastN));
+
+  return { run, clear, redraw };
 }
