@@ -41,6 +41,11 @@ def test_discovery_reads_an_archive_with_no_locked_files(data_dir):
         assert len(c["cell_type"]) == len(ch["channels_raw"]) == 2 * len(c["region_ids"])
     with pytest.raises(KeyError):  # the locked side really is missing from this archive
         cohorts.load_cells("upmc", data_dir=data_dir, split="locked")
+    (data_dir / "upmc_channels.discovery.npz").unlink()  # a panel without PD1 (as real UPMC) is refused by name
+    with zipfile.ZipFile(zp, "a") as z:
+        z.writestr(f"raw_data/{c['region_ids'][0]}.expression.csv", "CELL_ID,Ki67\n1,0\n2,1\n")
+    with pytest.raises(ValueError, match="no PD1, PDL1, GranzymeB, HLA-DR"):
+        cohorts.load_channels("upmc", data_dir=data_dir)
 
 
 def test_guard_raises_when_discovery_asks_for_a_locked_region(data_dir):

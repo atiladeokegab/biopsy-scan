@@ -273,6 +273,9 @@ def load_channels(cohort: str, region_ids: list[str] | None = None, data_dir: Pa
     chunks = []
     with zipfile.ZipFile(data_dir / f"{cohort}_raw_data.zip") as z:
         for r in side:
+            have = set(pd.read_csv(z.open(f"raw_data/{r}.expression.csv"), nrows=0).columns)
+            if missing := [m for m in EXPRESSION_MARKERS if m not in have]:  # UPMC's panel has no PD1, PDL1, GranzymeB
+                raise ValueError(f"{cohort} has no {', '.join(missing)} channels; the v2 panel is defined for charville only")
             d = pd.read_csv(z.open(f"raw_data/{r}.cell_data.csv"), usecols=["CELL_ID"])
             t = pd.read_csv(z.open(f"raw_data/{r}.cell_types.csv"), usecols=["CELL_ID"])
             e = pd.read_csv(z.open(f"raw_data/{r}.expression.csv"), usecols=["CELL_ID", *EXPRESSION_MARKERS])
