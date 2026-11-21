@@ -143,6 +143,12 @@ keeps its committed value.
 }
 ```
 
+`interim` (optional): measured groups shown until the design point is timed, each racing on its own scale,
+from the Modal runner's `"kind": "ladder"` file (#75): one study, NumPy against 1 GPU in the same container, and
+16 studies on 1 against 4 GPU containers, compute only with start-up apart. Today it was filled by
+`python3 -I demo/collect_race.py <path to #75's bench/results/modal-a100-20261121T171213Z.json>`; once #75
+merges, Pages refills it from the tree.
+
 The checker rejects a number without a label or source, a PENDING or UNMEASURED row with a number, and checks
 every field on its own (`seconds` and `startup_s` positive finite numbers, `cores` a positive integer, text
 fields non-empty strings). The page escapes every string it inserts. On screen each timed bar fills at its
@@ -156,15 +162,13 @@ The power result at the demo's 200 patients (simulated, its 95% interval, and th
 false-alarm rate pooled over every null study, and the maxT result, each with its `label` and `source`
 (`bench/results/vs-schoenfeld-300.json`, `results/charville-v2.json`).
 
-## `data/patch.json` (`preflight-patch/1`): written by `scripts/export_patch.py`
+## `data/biomarker.json` (`preflight-biomarker/1`): build-8's file from #82, copied verbatim
 
-One real Charville 500 µm patch (`cells`: `x`, `y` in µm, `k` one of `t5`, `tumour`, `mac`, `mac_pd1`,
-`immune`, `other`), chosen by `window_rule` for the most PD1+ macrophages near Tumor 5, the 100 µm
-`radius_um`, how a macrophage is drawn PD1+ (`pd1_rule`), and `km`: the cohort's Kaplan-Meier steps split at
-the median of the per-patient feature value (or null), with `note`, shown beside the curves: "exploratory,
-cutoff chosen on the same cohort, no p-value". Needs the raw data:
-`DATA_DIR=... uv run python -I scripts/export_patch.py`. `data/biomarker.json` (build-8, #82) is a separate
-file with two whole regions, one per arm; this page does not read it.
+The KM split at the cohort median (`km.arms[].curve`, `n`, `events`, `p_value: null`) and one real region per
+arm (the arm's median patient; columnar `cells`, `counts`). The page leads with the curves and the death counts,
+shows `km.label` ("exploratory, cutoff chosen on the same cohort, no p-value") beside them, and states each
+region's counts. `check_data.py` refuses a file without `exploratory: true`, with a p-value, or without "no
+p-value" in its label. PD1 is not replicated in a second cohort, and the page says so.
 
 ## How the page picks a grid point
 

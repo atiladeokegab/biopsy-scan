@@ -1,8 +1,16 @@
-// THE PATTERN (data/patch.json, from scripts/export_patch.py): one real Charville patch, PD1+ macrophages
+// THE PATTERN (data/biomarker.json, build-8's #82): one real Charville region per KM arm, PD1+ macrophages
 // lit up inside the 100 µm reach of Tumor 5 cells, and the cohort's Kaplan-Meier split on the pattern score.
 import { tok } from "./chart.js";
 
-export function drawPatch(canvas, b) {
+// #82's columnar region: type 0 Tumor 5, 1 macrophage, 2 other; pd1_pos per cell (display rule in the file).
+export function drawRegion(canvas, r) {
+  const { x, y, type, pd1_pos } = r.cells;
+  const k = (i) => (type[i] === 0 ? "t5" : type[i] === 1 ? (pd1_pos[i] ? "mac_pd1" : "mac") : "other");
+  drawPatch(canvas, { window_um: Math.max(r.width_um, r.height_um), radius_um: 100,
+    cells: x.map((xi, i) => ({ x: xi, y: y[i], k: k(i) })) });
+}
+
+function drawPatch(canvas, b) {
   const dpr = Math.min(devicePixelRatio, 2);
   const w = canvas.clientWidth, h = canvas.clientHeight, side = Math.min(w, h);
   canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);

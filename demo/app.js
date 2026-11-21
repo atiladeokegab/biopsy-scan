@@ -1,9 +1,9 @@
-// The Preflight demo. Hero: the pattern (patch.json), "Run the studies" and the speed race (baseline.json),
+// The Preflight demo. Hero: the pattern (biomarker.json, #82), "Run the studies" and the speed race (baseline.json),
 // then the power and honesty results (claims.json). Below: explore a design (grid.json, tissue.json, four sliders).
 // Every file is local, so a served checkout replays the committed results with no network (schemas in README.md).
 import { createTissue } from "./tissue.js";
 import { createSpeedRace, workflowHTML } from "./race.js";
-import { drawPatch, drawKM } from "./bio.js";
+import { drawRegion, drawKM } from "./bio.js";
 import { drawChart, pct, fovLabel } from "./chart.js";
 
 const $ = (id) => document.getElementById(id);
@@ -101,27 +101,46 @@ async function getJSON(path) {
 const pct1 = (v) => `${(v * 100).toFixed(v < 0.1 ? 1 : 0)}%`;
 const tagOf = (el, label) => { el.textContent = label; el.classList.toggle("ok", label === "MEASURED"); };
 
+const drawRegions = () => biomarker?.regions.forEach((r) => drawRegion($(`reg-${r.arm}`), r));
+
 // The hero and the results: each file on its own, so one missing file never blanks the others.
 async function hero() {
   const [bl, cl, bm] = await Promise.allSettled(
-    ["data/baseline.json", "data/claims.json", "data/patch.json"].map(getJSON));
+    ["data/baseline.json", "data/claims.json", "data/biomarker.json"].map(getJSON));
   if (bl.status === "fulfilled") {
-    const race = createSpeedRace($("speed-race"), bl.value, { reducedMotion });
-    $("speed-task").textContent = bl.value.task;
-    $("workflow").innerHTML = workflowHTML(bl.value.workflow);
-    $("run").addEventListener("click", () => race.run());
+    const d = bl.value, races = [];
+    // Until the design point is timed, the measured pairs (#75's ladder file) race, each on its own scale.
+    if (!d.rows.some((r) => r.seconds > 0) && d.interim?.length) {
+      $("speed-title").textContent = "How fast, measured so far";
+      $("speed-dp").hidden = false;
+      for (const g of d.interim) {
+        const head = document.createElement("p"), lanes = document.createElement("div");
+        head.className = "sr-head"; head.textContent = g.title; head.title = g.unit;
+        $("speed-interim").append(head, lanes);
+        races.push(createSpeedRace(lanes, g, { reducedMotion }));
+      }
+    } else $("speed-task").textContent = d.task;
+    races.push(createSpeedRace($("speed-race"), d, { reducedMotion }));
+    $("workflow").innerHTML = workflowHTML(d.workflow);
+    $("run").addEventListener("click", () => races.forEach((r) => r.run()));
   } else $("run").disabled = true;
 
   if (bm.status === "fulfilled") {
     biomarker = bm.value;
-    drawPatch($("bio"), biomarker);
+    const arm = (n) => biomarker.km.arms.find((a) => a.name === n);
+    drawKM($("km"), { high: { steps: arm("high").curve }, low: { steps: arm("low").curve } });
+    $("km-note").textContent = biomarker.km.label.replace(/^exploratory,\s*/, "");
+    for (const n of ["high", "low"]) $(`km-${n.slice(0, 2)}`).textContent = `${arm(n).events} of ${arm(n).n} died`;
+    drawRegions();
+    for (const r of biomarker.regions) {
+      const c = r.counts, s = (k) => (c[k] === 1 ? "" : "s");
+      $(`reg-${r.arm}-cap`).textContent = `${r.arm === "high" ? "High" : "Low"} arm, median patient: ` +
+        `${c.tumour} Tumor 5 cell${s("tumour")}, ${c.macrophages} macrophages, ${c.pd1_pos_macrophages} PD1+, ` +
+        `${c.pd1_pos_near_tumour} PD1+ within 100 µm`;
+    }
     tagOf($("bio-tag"), biomarker.source);
-    if (biomarker.km) {
-      drawKM($("km"), biomarker.km);
-      $("km-note").textContent = biomarker.km.note;
-      $("km-hi").textContent = `${biomarker.km.high.events}/${biomarker.km.high.n} died`;
-      $("km-lo").textContent = `${biomarker.km.low.events}/${biomarker.km.low.n} died`;
-    } else $("km").closest(".km").hidden = true;
+    $("bio-cap").textContent = `Top of 3,780 patterns, z = ${biomarker.feature.z.toFixed(2)}. ${biomarker.note} ` +
+      "Not replicated in a second cohort.";
   }
 
   if (cl.status === "fulfilled") {
@@ -139,9 +158,6 @@ async function hero() {
     $("mt-detail").textContent = `for the pattern after ${mt.tests.toLocaleString("en-GB")} tests (maxT): ${mt.verdict}.`;
     tagOf($("mt-tag"), mt.label);
     $("fa-src").textContent = `${fa.source} · ${mt.source}`;
-    $("bio-cap").textContent =
-      `Real Charville tissue (patient ${biomarker ? biomarker.patient : "—"}, ${biomarker ? biomarker.window_um : 500} µm square, the patch with the most PD1+ macrophages near Tumor 5). ` +
-      `The top of ${mt.tests.toLocaleString("en-GB")} patterns: z = ${mt.z.toFixed(2)}, maxT p = ${mt.p.toFixed(3)} after ${mt.tests.toLocaleString("en-GB")} tests. Exploratory, not a discovery.`;
   }
 }
 
@@ -192,4 +208,4 @@ async function main() {
 
 main();
 let resizeT;
-addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(() => biomarker && drawPatch($("bio"), biomarker), 200); });
+addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(drawRegions, 200); });

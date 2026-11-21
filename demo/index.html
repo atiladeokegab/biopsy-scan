@@ -31,18 +31,21 @@
         <span class="tag ok" id="bio-tag">MEASURED</span>
       </figcaption>
       <div class="bio-body">
-        <canvas id="bio" role="img" aria-label="A real Charville tissue patch: PD1-positive macrophages near Tumor 5 cells"></canvas>
         <div class="km">
-          <p class="km-title">Survival, split at the median <span class="tag">exploratory</span></p>
-          <p class="km-note" id="km-note">exploratory, cutoff chosen on the same cohort, no p-value</p>
+          <p class="km-title">Survival, split at the cohort median of the pattern</p>
+          <p class="km-note"><span class="tag">exploratory</span> <span id="km-note">cutoff chosen on the same cohort, no p-value</span></p>
           <svg id="km" viewBox="0 0 220 150" role="img" aria-label="Kaplan-Meier survival, high against low pattern score"></svg>
           <p class="km-key"><span><i class="hi"></i>high <b id="km-hi"></b></span> <span><i class="lo"></i>low <b id="km-lo"></b></span></p>
+        </div>
+        <div class="regions">
+          <figure><canvas id="reg-high" role="img" aria-label="A real Charville region from the high arm's median patient"></canvas><figcaption id="reg-high-cap"></figcaption></figure>
+          <figure><canvas id="reg-low" role="img" aria-label="A real Charville region from the low arm's median patient"></canvas><figcaption id="reg-low-cap"></figcaption></figure>
         </div>
       </div>
       <p class="legend bio-legend">
         <span><i class="ring"></i>100 µm of Tumor 5</span> <span><i class="t5"></i>Tumor 5</span>
         <span><i class="pd1"></i>PD1+ macrophage</span> <span><i class="mac"></i>macrophage</span>
-        <span><i class="t"></i>other tumour</span> <span><i class="o"></i>other cells</span>
+        <span><i class="o"></i>other cells</span>
       </p>
       <p class="bio-cap" id="bio-cap"></p>
     </figure>
@@ -52,6 +55,8 @@
         <h2 id="speed-title"><span id="speed-task">One design point: 1,000 simulated studies on real Charville tissue</span>, four ways</h2>
         <button id="run" type="button" class="go">Run the studies</button>
       </div>
+      <div id="speed-interim"></div>
+      <p class="sr-head" id="speed-dp" hidden>Not yet timed: one design point, 1,000 studies, four ways</p>
       <div id="speed-race"></div>
       <p class="speed-note">Each bar fills at its measured rate, scaled so the race takes about 10 s; real seconds print at the finish, start-up shown apart. A bar with no measured time stays PENDING.</p>
       <p class="workflow" id="workflow"></p>
