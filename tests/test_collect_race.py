@@ -32,14 +32,17 @@ def test_committed_race_matches_bench_results():
     """Atlas #79 (1): every number shown is the one in the file it cites."""
     b = json.loads((ROOT / "demo" / "data" / "baseline.json").read_text())
     race = {r["id"]: r for r in b["rows"]} | {"workflow": b["workflow"], "scope": b.get("scope")}
+    fed = {}  # as main(): a later file's fields for the same id win
     for path in sorted((ROOT / "bench" / "results").glob("*.json")):
         d = json.loads(path.read_text())
         for rid, fields in (cr.rows_from(path, d) if isinstance(d, dict) else []):
-            if rid == "interim":
-                assert b["interim"] == fields, "interim: rerun python3 -I demo/collect_race.py"
-                continue
-            for k, v in fields.items():
-                assert race[rid][k] == v, f"{rid}.{k}: rerun python3 -I demo/collect_race.py"
+            fed[rid] = fields if rid in ("interim", "scope") else fed.get(rid, {}) | fields
+    for rid, fields in fed.items():
+        if rid == "interim":
+            assert b["interim"] == fields, "interim: rerun python3 -I demo/collect_race.py"
+            continue
+        for k, v in fields.items():
+            assert race[rid][k] == v, f"{rid}.{k}: rerun python3 -I demo/collect_race.py"
     for r in [*b["rows"], b["workflow"]]:
         if r and r["seconds"] is not None:
             assert (ROOT / r["source"]).is_file(), f"{r['source']}: a timed row cites a committed file"
@@ -265,8 +268,8 @@ def _four(**over):
     stages = {"compute_wall_s": 372.0, "end_to_end_in_container_s": 592.0, "evaluated_studies": 3000}
     arm = lambda a, w: {"container_class": "Modal A100 + 8 cores + 64 GiB", "workers": w, "split": {"reimage_share": 0.98},
                         "host": {"gpu": "NVIDIA A100-SXM4-40GB, 40960 MiB, 610"},
-                        "stages": stages}
-    d = {"status": "MEASURED", "design": {"studies_per_stream": 1000}, "parity": {"all": True},
+                        "stages": {**stages, "evaluated_studies": 2000 if a == "lab" else 3000}}
+    d = {"status": "MEASURED", "design": {"studies_per_stream": 1000, "streams": {"calibration": 101, "null": 202, "alternative": 303}}, "parity": {"all": True},
          "labels": {"compute": "MEASURED", "outcomes": "SYNTHETIC (atlas/simulation.py at 79a7792)", "rates": "ESTIMATE (x)"},
          "arms": {a: arm(a, 1 if a == "gpu" else 8) for a in ("lab", "numba", "gpu", "hybrid")}}
     return d | over
@@ -280,7 +283,7 @@ def test_the_four_arm_file_fills_exactly_the_four_declared_lanes():
     assert rows["gpu-1"]["cores"] is None and rows["lab-cpu"]["gpu"] is None and rows["lab-cpu"]["seconds"] == 372.0
     three = _four()
     del three["arms"]["hybrid"]
-    for bad in (three, _four(status="FAILED"), _four(parity={"all": False}), _four(design={"studies_per_stream": 20})):
+    for bad in (three, _four(status="FAILED"), _four(parity={"all": False}), _four(design={"studies_per_stream": 20, "streams": {}})):
         assert list(cr.rows_from(Path("modal-design.json"), bad)) == []
 
 
@@ -298,3 +301,106 @@ def test_interim_seconds_display_as_the_raw_file_rounds():
            "fleet-1": LADDER["fleet"]["runs"]["1"]["compute_span_s"], "fleet-8": LADDER["fleet"]["runs"]["8"]["compute_span_s"]}
     assert {i: show(rows[i]) for i in raw} == {i: show(v) for i, v in raw.items()}
     assert show(rows["kernel-numpy"]) == "2.24"
+
+
+def _fused_parity():
+    """bench/design_batch.prior_parity's shape: X for every arm; maxT for the batched arms (not the lab's permutation)."""
+    maxT = {"maxT_max_rel_diff": 1.6e-15, "maxT_within_tol": True, "maxT_compared": 3000}
+    return {"all": True, "against_prior": {"fused": {"lab": {"x_bitwise": True, "x_compared": 2000}, "all": True,
+                                                     **{a: {"x_bitwise": True, "x_compared": 3000, **maxT}
+                                                        for a in ("numba", "gpu", "hybrid")}}}}
+
+
+def test_the_five_arm_file_fills_only_the_fused_lane_and_only_with_full_x_parity():
+    """Lead (21 Nov): a fifth lane, fused-cpu, from the --compare-with file, only with full X parity."""
+    five = _four()
+    for a in ("lab", "numba", "gpu", "hybrid"):
+        five["arms"][a]["source"] = "bench/results/modal-design-four.json (source_commit x)"
+    five["arms"]["fused"] = {**five["arms"]["numba"], "source": "this run"}
+    five["parity"] = _fused_parity()
+    rows = dict(cr.rows_from(Path("modal-design.json"), five))
+    assert sorted(rows) == ["fused-cpu", "scope"]
+    f = rows["fused-cpu"]
+    assert (f["seconds"], f["cores"], f["gpu"]) == (372.0, 8, None)
+    assert f["note"].endswith("of summed worker wall time; same features, same top score; run on a different host "
+                              "of the same container class, about 2 h after the lab, Numba and A100 lanes and 70 min after "
+                              "the hybrid; one sweep")
+    assert "fused lane: same features, same top score" in rows["scope"]["comparison"]
+    five["parity"]["against_prior"]["fused"]["gpu"]["x_bitwise"] = False
+    assert list(cr.rows_from(Path("modal-design.json"), five)) == []
+    five["parity"]["against_prior"]["fused"]["gpu"] = {"x_bitwise": True, "x_compared": 0}
+    assert list(cr.rows_from(Path("modal-design.json"), five)) == []
+
+
+def test_a_four_arm_file_refreshes_every_lane_even_when_arms_are_copied_from_an_earlier_file():
+    """Prometheus #120 round 2 (1): 194458Z copies lab, numba and gpu from 185537Z; it must still refresh them."""
+    four = _four()
+    for a in ("lab", "numba", "gpu"):
+        four["arms"][a]["source"] = "bench/results/modal-design-earlier.json (source_commit x)"
+    assert sorted(dict(cr.rows_from(Path("modal-design.json"), four))) == ["gpu-1", "hybrid", "lab-cpu",
+                                                                           "preflight-cpu", "scope"]
+
+
+def test_the_fused_lane_needs_complete_maxT_parity_on_every_batched_arm():
+    """Prometheus #120 round 2 (2): partial or false maxT parity refuses the lane; X parity alone is not enough."""
+    five = _four()
+    five["arms"]["fused"] = {**five["arms"]["numba"], "source": "this run"}
+    five["parity"] = _fused_parity()
+    assert "fused-cpu" in dict(cr.rows_from(Path("modal-design.json"), five))
+    bad = [("numba", "maxT_within_tol", False), ("gpu", "maxT_max_rel_diff", 2e-9), ("hybrid", "maxT_max_rel_diff", None),
+           ("gpu", "maxT_within_tol", None), ("numba", "maxT_max_rel_diff", float("nan"))]
+    for arm, key, value in bad:
+        five["parity"] = _fused_parity()
+        e = five["parity"]["against_prior"]["fused"][arm]
+        e.pop(key) if value is None else e.update({key: value})
+        assert list(cr.rows_from(Path("modal-design.json"), five)) == [], (arm, key, value)
+    five["parity"] = _fused_parity()
+    five["parity"]["against_prior"]["fused"]["all"] = False
+    assert list(cr.rows_from(Path("modal-design.json"), five)) == []
+    five["parity"] = _fused_parity()
+    del five["parity"]["against_prior"]["fused"]["hybrid"]
+    assert list(cr.rows_from(Path("modal-design.json"), five)) == []
+
+
+def test_the_fused_lane_needs_full_coverage_not_one_compared_study():
+    """Lead ruling on #120 (escalation): x_compared must be every shared study (2,000 lab, 3,000 batched), per arm."""
+    five = _four()
+    five["arms"]["fused"] = {**five["arms"]["numba"], "source": "this run"}
+    five["parity"] = _fused_parity()
+    assert "fused-cpu" in dict(cr.rows_from(Path("modal-design.json"), five))
+    for arm in ("lab", "numba", "gpu", "hybrid"):
+        five["parity"] = _fused_parity()
+        five["parity"]["against_prior"]["fused"][arm]["x_compared"] = 1
+        assert list(cr.rows_from(Path("modal-design.json"), five)) == [], arm
+    five["parity"] = _fused_parity()
+    five["parity"]["against_prior"]["fused"]["lab"]["x_compared"] = 3000  # more than the lab ran: not its coverage
+    assert list(cr.rows_from(Path("modal-design.json"), five)) == []
+
+
+def test_the_fused_lane_binds_to_the_planned_studies_even_when_every_observed_count_is_one():
+    """Lead ruling on #120 (last round): the plan comes from the design (2,000 lab, 3,000 batched), never from counts."""
+    five = _four()
+    five["arms"]["fused"] = {**five["arms"]["numba"], "source": "this run"}
+    for a in five["arms"]:
+        five["arms"][a]["stages"] = {**five["arms"][a]["stages"], "evaluated_studies": 1}
+    five["parity"] = _fused_parity()
+    for e in five["parity"]["against_prior"]["fused"].values():
+        if isinstance(e, dict):
+            e.update(x_compared=1, **({"maxT_compared": 1} if "maxT_within_tol" in e else {}))
+    assert list(cr.rows_from(Path("modal-design.json"), five)) == []
+
+
+def test_maxT_coverage_is_inferred_from_X_only_for_the_legacy_064bd6e_file(capsys):
+    """Lead ruling on #120: a file without maxT_compared is refused unless it is the legacy 064bd6e result."""
+    five = _four()
+    five["arms"]["fused"] = {**five["arms"]["numba"], "source": "this run"}
+    five["parity"] = _fused_parity()
+    for a in ("numba", "gpu", "hybrid"):
+        del five["parity"]["against_prior"]["fused"][a]["maxT_compared"]
+    for commit in (None, "1234567890abcdef", "064bd6e"):  # absent, another commit, a bare prefix
+        five["source_commit"] = commit
+        assert list(cr.rows_from(Path("modal-design.json"), five)) == [], commit
+    five["source_commit"] = "064bd6e95f721c8be7747d4cfef5eb5bd4bbd79d"
+    capsys.readouterr()
+    assert "fused-cpu" in dict(cr.rows_from(Path("modal-design.json"), five))
+    assert "maxT coverage inferred from X coverage (legacy file, prior_parity at 064bd6e)" in capsys.readouterr().err

@@ -16,6 +16,7 @@ Arms:
   gpu    per study: CSR re-imaging with the numba.cuda kernel; then every study's Cox score
          in blocks on the GPU (stats.screen.screen_studies).
   hybrid the numba arm's re-imaging on the CPU pool feeding the gpu arm's batched GPU scoring.
+  fused  the numba arm with reimage.fused: mis-call, crop and counting in one pass over visible focal cells.
 CPU stages run studies in a pool of single-thread workers; the gpu arm is one process.
 Parity: X bit-identical across arms (sha256 per study); z of gpu vs numba within 1e-9 on every z when both run
 together; hybrid (and any --compare-with arm) checked through each study's maxT only.
@@ -33,7 +34,8 @@ ROOT = 20261121
 STREAMS = {"calibration": 101, "null": 202, "alternative": 303}
 ALPHA, HR, LAB_RESAMPLES = 0.05, 2.0, 1000
 Z_TOL = 1e-9
-CPU_REIMAGE = ("numba", "hybrid")  # Numba CSR re-imaging on the CPU pool
+CPU_REIMAGE = ("numba", "hybrid", "fused")  # Numba CSR re-imaging on the CPU pool
+CPU_SCORE = ("numba", "fused")  # per-study NumPy screen_batch in the pool
 GPU_SCORE = ("gpu", "hybrid")  # batched screen_studies on the GPU
 # atlas (#5) is not on this branch yet: its outcome model is read from this commit (ATLAS_SIMULATION = a copy).
 ATLAS_PIN = ("79a77926aa0c07fc2c85574736f0f1396767ded0", "atlas/simulation.py")
@@ -117,7 +119,7 @@ def prepare(arm: str, cells: dict, plan: dict) -> dict:
         need = sorted({r for rows in studies.values() for s in rows for r in s["regions"]})
         cells["_nbr"] = {r: neighbours(L["xy"](r)) for r in need}
         from reimage import cpu, gpu
-        module = cpu if arm in CPU_REIMAGE else gpu
+        module = cpu if arm in CPU_REIMAGE else gpu  # fused.prepare is cpu.prepare
         _S["prepared"] = {id(cells["_nbr"][r]): module.prepare(cells["_nbr"][r], L["K"]) for r in need}
     adjacency_s = perf_counter() - t
     _S.update(cells=cells, studies=studies, arm=arm, plant=models["alternative"]["feature"])
@@ -129,8 +131,8 @@ def _kernel(arm: str):
     if arm == "lab":
         from bench.lab_today import tree_region
         return tree_region
-    from reimage import cpu, gpu
-    module = cpu if arm in CPU_REIMAGE else gpu
+    from reimage import cpu, fused, gpu
+    module = fused if arm == "fused" else cpu if arm in CPU_REIMAGE else gpu
     prepared = _S["prepared"]  # adjacency and CSR built once per cohort in prepare()
 
     def region(nbr, xy, types, focal, K, **kw):
@@ -152,7 +154,7 @@ def one_study(job: tuple[str, int]) -> dict:
         from stats import permutation_test
         r = permutation_test(X, s["time"], s["event"], s["strata"], n_resamples=LAB_RESAMPLES, seed=s["image_seed"])
         rec.update(p=float(r["p"]), maxT=float(r["maxT"]), test_s=perf_counter() - t)
-    elif _S["arm"] == "numba":
+    elif _S["arm"] in CPU_SCORE:
         from stats import screen_batch
         z = screen_batch(X, s["time"][None], s["event"][None], strata=s["strata"], backend="numpy")["z"][0]
         rec.update(z=z, score_s=perf_counter() - t)
@@ -287,7 +289,7 @@ def stage_times(arm_out: dict) -> dict:
           "reimage_worker_wall_s": sum(r["reimage_s"] for r in recs), "studies_wall_s": arm_out["studies_wall_s"]}
     if arm == "lab":
         st["scoring_and_calibration_worker_wall_s"] = sum(r["test_s"] for r in recs)
-    elif arm == "numba":
+    elif arm in CPU_SCORE:
         st["scoring_worker_wall_s"] = sum(r["score_s"] for r in recs)
         st["calibration_s"] = "the calibration stream's studies, inside reimage and scoring"
     else:
@@ -308,18 +310,29 @@ def complete(st: dict, load_s, warm_s, warm_score_s) -> dict:
     return st
 
 
-def prior_parity(records: list, prior_arms: dict) -> dict:
-    """A new arm against a committed result's arms: X sha256 per shared study; batched maxT within Z_TOL."""
+def planned_ids(arm: str, studies_per_stream: int) -> set:
+    """The design's study IDs for an arm: every stream, except the lab skips calibration (as run_arm)."""
+    return {(s, i) for s in STREAMS if not (arm == "lab" and s == "calibration") for i in range(studies_per_stream)}
+
+
+def prior_parity(records: list, prior_arms: dict, *, arm: str, studies_per_stream: int) -> dict:
+    """A new arm against a committed result's arms: X sha256 per shared study; batched maxT within Z_TOL.
+
+    Bound to the plan, never to observed counts: the compared studies must be exactly the planned IDs both arms
+    share (2,000 with the lab, 3,000 otherwise at 1,000 per stream), or x_bitwise is False. maxT is compared over
+    the same studies (maxT_compared)."""
     new = {(r["stream"], r["i"]): r for r in records}
     out, ok = {}, True
     for a, o in prior_arms.items():
         old = {(s["stream"], s["i"]): s for s in o["studies"]}
+        plan = planned_ids(arm, studies_per_stream) & planned_ids(a, studies_per_stream)
         common = [k for k in new if k in old]
-        e = {"x_bitwise": bool(common) and all(new[k]["x_sha"] == old[k]["x_sha"] for k in common),
-             "x_compared": len(common)}
+        full = bool(plan) and set(common) == plan
+        e = {"x_bitwise": full and all(new[k]["x_sha"] == old[k]["x_sha"] for k in common),
+             "x_compared": len(common), "x_planned": len(plan)}
         if a != "lab" and common:  # the lab's maxT is its permutation statistic, not compared
             d = max(abs(float(np.abs(new[k]["z"]).max()) - old[k]["maxT"]) / max(1.0, old[k]["maxT"]) for k in common)
-            e.update(maxT_max_rel_diff=d, maxT_within_tol=bool(d <= Z_TOL))
+            e.update(maxT_max_rel_diff=d, maxT_within_tol=bool(d <= Z_TOL), maxT_compared=len(common))
         ok &= e["x_bitwise"] and e.get("maxT_within_tol", True)
         out[a] = e
     out["all"] = bool(ok)
@@ -333,7 +346,7 @@ def split(arm: str, stages: dict) -> dict:
     else:
         r = stages["reimage_worker_wall_s"]
         basis = "worker wall seconds (perf_counter in single-thread workers) summed over studies; not CPU time"
-        sc = stages["scoring_worker_wall_s"] if arm == "numba" else stages["scoring_and_calibration_worker_wall_s"]
+        sc = stages["scoring_worker_wall_s"] if arm in CPU_SCORE else stages["scoring_and_calibration_worker_wall_s"]
     return {"reimage_s": r, "scoring_s": sc, "basis": basis, "reimage_share": r / (r + sc),
             "dominant": "re-imaging" if r >= sc else "scoring"}
 

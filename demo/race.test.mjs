@@ -84,7 +84,7 @@ for (const bad of [0, -1, NaN, Infinity, "5", true])
   assert.match(speedRaceHTML({ rows: [row({ seconds: bad })] }), /class="pending"/, `seconds ${String(bad)} is never a bar`);
 assert.ok(raceState([row({ seconds: "5" }), row({ seconds: 4 })], 1e9)[0].clock === null);
 assert.match(speedRaceHTML({ rows: [row({ seconds: 4, startup_s: 90 })] }), /\+ 90\.0 s start-up, not counted/);
-assert.equal(bl.rows.length, 4, "the race is the four rows of one design point");
+assert.equal(bl.rows.length, 5, "the race is the five rows of one design point");
 assert.ok(!bl.rows.some((r) => /3,780|Cox/.test(r.method)), "the Cox screen is the workflow footnote, never a bar");
 // The lead's bug: bars must be proportional. Final width = seconds / slowest, on one shared scale per pair.
 const pair = [row({ seconds: 2.88 }), row({ seconds: 0.873 })];

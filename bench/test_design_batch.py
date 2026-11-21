@@ -57,9 +57,12 @@ def test_hybrid_parity_split_and_headline():
     assert par["all"] and par["z_hybrid_vs_numba"]["compared"] == 2
     arms["hybrid"]["records"][1]["z"] = np.array([0.5, 3.1])
     assert not db.parity(arms)["all"]
-    prior = {"gpu": {"studies": [{"stream": "null", "i": 0, "x_sha": "null0", "maxT": 3.0}]}}
-    assert db.prior_parity(_arm("hybrid", z)["records"], prior)["all"]
-    assert not db.prior_parity(arms["hybrid"]["records"], prior)["all"]  # maxT 3.1 against 3.0
+    z["alternative"] = [[0.0, 1.0]]
+    prior = {"gpu": {"studies": [{"stream": s, "i": 0, "x_sha": f"{s}0", "maxT": float(np.abs(v[0]).max())}
+                                 for s, v in z.items()]}}
+    assert db.prior_parity(_arm("hybrid", z)["records"], prior, arm="hybrid", studies_per_stream=1)["all"]
+    z["null"] = [[0.5, 3.1]]
+    assert not db.prior_parity(_arm("hybrid", z)["records"], prior, arm="hybrid", studies_per_stream=1)["all"]
     s = {"hybrid": {"split": db.split("hybrid", {"studies_wall_s": 9.0, "scoring_wall_s": 1.0}),
                     "stages": {"wall_per_study_s": 0.1}},
          "numba": {"split": db.split("numba", {"reimage_worker_wall_s": 3.0, "scoring_worker_wall_s": 1.0}),
@@ -75,3 +78,34 @@ def test_legacy_stage_names_are_renamed_and_the_end_to_end_adds_every_recorded_s
     assert "reimage_cpu_s" not in st and st["reimage_worker_wall_s"] == 80.0 and st["scoring_worker_wall_s"] == 2.0
     assert st["compute_wall_s"] == 12.0 and st["wall_per_study_s"] == 3.0 and st["end_to_end_in_container_s"] == 30.0
     assert db.split("numba", st)["reimage_share"] == 80 / 82
+
+
+def test_prior_parity_needs_every_shared_study_not_one():
+    """Lead ruling on #120 (escalation): one shared study per arm is not parity; coverage must be full."""
+    new = _arm("fused", {s: [[1.0, 2.0], [1.0, 2.5], [1.0, 3.0]] for s in db.STREAMS})["records"]
+    studies = lambda a: [{"stream": r["stream"], "i": r["i"], "x_sha": r["x_sha"], "maxT": float(np.abs(r["z"]).max())}
+                         for r in new if a != "lab" or r["stream"] != "calibration"]
+    arms = ("lab", "numba", "gpu", "hybrid")
+    assert db.prior_parity(new, {a: {"studies": studies(a)} for a in arms}, arm="fused", studies_per_stream=3)["all"]
+    for a in arms:  # every study but one under keys the new arm never ran: x_compared = 1
+        prior = {b: {"studies": studies(b)} for b in arms}
+        prior[a]["studies"] = [s if k == 0 else {**s, "i": 10 + k} for k, s in enumerate(studies(a))]
+        out = db.prior_parity(new, prior, arm="fused", studies_per_stream=3)
+        assert out[a]["x_compared"] == 1 and not out[a]["x_bitwise"] and not out["all"], a
+
+
+def test_prior_parity_binds_to_the_planned_studies_not_the_observed_ones():
+    """Lead ruling on #120 (last round): one real study each side, every observed count 1, is not parity."""
+    one = _arm("fused", {"null": [[1.0, 2.0]]})["records"]
+    prior = {a: {"studies": [{"stream": "null", "i": 0, "x_sha": "null0", "maxT": 2.0}]}
+             for a in ("lab", "numba", "gpu", "hybrid")}
+    out = db.prior_parity(one, prior, arm="fused", studies_per_stream=1000)
+    assert not out["all"] and all(not out[a]["x_bitwise"] for a in prior)
+    assert (out["lab"]["x_planned"], out["numba"]["x_planned"]) == (2000, 3000)
+    # the whole plan at 2 studies per stream passes, and reports maxT over every batched study
+    z = {s: [[1.0, 2.0 + i] for i in range(2)] for s in db.STREAMS}
+    new = _arm("fused", z)["records"]
+    full = {a: {"studies": [{"stream": r["stream"], "i": r["i"], "x_sha": r["x_sha"], "maxT": float(np.abs(r["z"]).max())}
+                            for r in new if a != "lab" or r["stream"] != "calibration"]} for a in prior}
+    out = db.prior_parity(new, full, arm="fused", studies_per_stream=2)
+    assert out["all"] and out["lab"]["x_compared"] == 4 and out["gpu"]["maxT_compared"] == 6

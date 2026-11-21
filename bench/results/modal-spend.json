@@ -304,6 +304,27 @@
       },
       "note": "single-attempt estimates at list price, not billing ceilings (est_usd: each container once to its timeout; actual: containers x local wall); one container was preempted and restarted by Modal; invoice not verified",
       "counted": "est_usd (the pre-run estimate; actual.est_usd is the post-run single-attempt estimate)"
+    },
+    {
+      "utc": "2026-11-21T20:55Z",
+      "run": "build-9 modal-design 1000/stream, arms ['fused']",
+      "containers": 1,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 5.0,
+      "est_usd": 1.24,
+      "basis": "1500 s ceiling x per-arm $/h {'fused': 2.987568}",
+      "source_commit": "064bd6e95f721c8be7747d4cfef5eb5bd4bbd79d",
+      "container_class": "all arms identical",
+      "actual": {
+        "modal_wall_s": 361.7,
+        "est_usd": 0.3,
+        "basis": "each container x local wall (an upper bound: includes queueing)",
+        "result": "bench/results/modal-design-20261121T205536Z.json"
+      },
+      "running_total_usd": 44.556,
+      "counted": "actual (container x wall); total recounted at the merge with #115's 20:02-20:10Z entries (was 41.456)"
     }
   ],
   "container_usd_per_hour_H100": 4.58,

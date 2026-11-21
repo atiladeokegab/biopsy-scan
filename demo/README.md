@@ -115,7 +115,7 @@ The checker enforces these rules:
 
 ## `data/baseline.json` (`preflight-baseline/1`): the speed race, filled by `collect_race.py`
 
-Four rows, the four declared arms, all timing the same `task`: one design point on real Charville, FWER and power
+Five rows, the five declared arms, all timing the same `task`: one design point on real Charville, FWER and power
 from 1,000 simulated studies each, as in-container study and scoring wall time: load, outcome prep, adjacency,
 warm-up and the cutoff and rate summary are outside the bars. There is no 16-GPU lane. Never edit a time by hand:
 `python3 -I demo/collect_race.py` (run by `make demo` and by Pages before every deploy) fills rows from
@@ -126,7 +126,11 @@ with its parity gate passed (X sha256 on every shared study; z in full for gpu, 
 and warm-up; the local cutoff and rate summary is not counted. Calibration-study evaluation is inside each batched
 lane's seconds. Each row's note gives its re-imaging share and that share's basis: summed worker wall time for
 `lab-cpu` and `preflight-cpu` (perf_counter in single-thread workers, not CPU time), elapsed stage wall time for `gpu-1`
-and `hybrid`.
+and `hybrid`. `fused-cpu` ("8 CPU cores, fused kernel": the Numba lane with `reimage.fused`) comes from the
+`--compare-with` file that adds the `fused` arm to the four-arm file, on the same basis as `preflight-cpu`, and only
+when its X sha256 equals every other arm's on every shared study and its per-study maxT is within 1e-9 of the
+Numba, A100 and hybrid arms' (the lab's maxT is its permutation statistic, so X only): same features, same top
+score. That file fills only `fused-cpu`; the four-arm file it copies from refreshes the other four.
 build-modal's `"kind": "design_point"` file (#75's `gpu/modal_app.py`; slots `a_lab_all_cores`,
 `b_ours_cpu_all_cores`, `c_ours_1_gpu`) can fill the first three rows, only when it
 says `"status": "MEASURED"`, `"studies": 1000` and carries its `scope`; a FAILED run, a 32-study trial or a generic
