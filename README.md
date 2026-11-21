@@ -10,7 +10,7 @@ Decode searches every spatial pattern in multiplex tissue (3,780 today) with an 
 |---|---|---|---|
 | **Correctness** | The Numba kernel equals the NumPy reference cell for cell, including where NaNs fall, on 100 real Charville studies. The CUDA kernel matches it too | MEASURED (CPU); TESTED (CUDA simulator) | `bench/results/cpu-ladder.json`, `reimage/test_backends.py` |
 | | The score statistic equals statsmodels PHReg (Breslow ties), and its variance equals exhaustive permutations | TESTED | `stats/test_reference.py`, `tests/test_score_contract.py` |
-| | 39 of 39 GPU tests pass on a real NVIDIA A100-SXM4-40GB: kernels, expression channels and the fleet | MEASURED | `bench/results/modal-a100-20261121T164808Z.json` (#75) |
+| | 39 of 39 GPU tests pass on a real NVIDIA A100-SXM4-40GB: kernels, expression channels and the fleet | MEASURED | `bench/results/modal-a100-20261121T164808Z.json` (PR #75, in review) |
 | | When nothing is there, the search raises a false alarm in 28 of 700 null studies: 4.0% (95% CI 2.7–5.7%), inside the promised 5% | ESTIMATE | `bench/results/vs-schoenfeld-300.json` |
 | **Reshaping for parallelism** | Every study is independent: the kernel re-images a batch of studies with one GPU warp per cell, and the fleet shards studies across GPUs with results bit-identical to one device | TESTED (CUDA simulator) | `reimage/test_backends.py`, `reimage/test_fleet.py` |
 | | Testing all 3,780 patterns is one matrix product per study, U = X'r. One screen with 10,000 shuffles is about 38 million tests | TESTED (CPU) | `stats/test_reference.py` |
@@ -77,7 +77,7 @@ Requirements: [docs/PRD.md](docs/PRD.md) (v4).
 
 ## What is next, and the limits
 
-- **GPU numbers are PENDING.** The CUDA kernels pass in the CUDA simulator; A100 and fleet timings land from the Modal runs. No GPU ratio is quoted until then.
+- **GPU numbers are PENDING.** The CUDA kernels pass on a real A100 (39 of 39 tests, PR #75); A100 and fleet timings land from the Modal runs. No GPU ratio is quoted until then.
 - **The GPU screen (R-15)** with clinical covariates and a refit bootstrap null is in build, as are the rediscovery of the Helsinki pattern on locked UPMC patients (R-16), minimal panels and stain-format simulation (R-17), and the Charville rerun (R-18). Issues #66 to #71.
 - **Real data is exploratory.** Both cohorts' outcomes were seen before the event. UPMC cannot carry a survival claim: 80 patients and 27 deaths, 23 and 8 locked (MEASURED, PR #62).
 - **The demo's power chart is SYNTHETIC** until the design atlas (#45) replaces `demo/data/grid.json`. Its tissue is real Charville cells.
