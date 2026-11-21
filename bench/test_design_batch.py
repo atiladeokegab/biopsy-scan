@@ -75,3 +75,18 @@ def test_legacy_stage_names_are_renamed_and_the_end_to_end_adds_every_recorded_s
     assert "reimage_cpu_s" not in st and st["reimage_worker_wall_s"] == 80.0 and st["scoring_worker_wall_s"] == 2.0
     assert st["compute_wall_s"] == 12.0 and st["wall_per_study_s"] == 3.0 and st["end_to_end_in_container_s"] == 30.0
     assert db.split("numba", st)["reimage_share"] == 80 / 82
+
+
+def test_prior_parity_needs_every_shared_study_not_one():
+    """Lead ruling on #120 (escalation): one shared study per arm is not parity; coverage must be full."""
+    z = {"null": [[1.0, 2.0], [1.0, 2.5], [1.0, 3.0]]}
+    new = _arm("fused", z)["records"]
+    full = {"stream": "null", "i": 0, "x_sha": "null0", "maxT": 2.0}, {"stream": "null", "i": 1, "x_sha": "null1", "maxT": 2.5}, \
+           {"stream": "null", "i": 2, "x_sha": "null2", "maxT": 3.0}
+    arms = ("lab", "numba", "gpu", "hybrid")
+    assert db.prior_parity(new, {a: {"studies": list(full)} for a in arms})["all"]
+    for a in arms:  # the same three studies, two of them under keys the new arm never ran: x_compared = 1
+        prior = {b: {"studies": list(full)} for b in arms}
+        prior[a]["studies"] = [full[0], {**full[1], "i": 10}, {**full[2], "i": 11}]
+        out = db.prior_parity(new, prior)
+        assert out[a]["x_compared"] == 1 and not out[a]["x_bitwise"] and not out["all"], a

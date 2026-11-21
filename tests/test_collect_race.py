@@ -360,3 +360,19 @@ def test_the_fused_lane_needs_complete_maxT_parity_on_every_batched_arm():
     five["parity"] = _fused_parity()
     del five["parity"]["against_prior"]["fused"]["hybrid"]
     assert list(cr.rows_from(Path("modal-design.json"), five)) == []
+
+
+def test_the_fused_lane_needs_full_coverage_not_one_compared_study():
+    """Lead ruling on #120 (escalation): x_compared must be every shared study (2,000 lab, 3,000 batched), per arm."""
+    five = _four()
+    five["arms"]["lab"]["stages"] = {**five["arms"]["lab"]["stages"], "evaluated_studies": 2000}
+    five["arms"]["fused"] = {**five["arms"]["numba"], "source": "this run"}
+    five["parity"] = _fused_parity()
+    assert "fused-cpu" in dict(cr.rows_from(Path("modal-design.json"), five))
+    for arm in ("lab", "numba", "gpu", "hybrid"):
+        five["parity"] = _fused_parity()
+        five["parity"]["against_prior"]["fused"][arm]["x_compared"] = 1
+        assert list(cr.rows_from(Path("modal-design.json"), five)) == [], arm
+    five["parity"] = _fused_parity()
+    five["parity"]["against_prior"]["fused"]["lab"]["x_compared"] = 3000  # more than the lab ran: not its coverage
+    assert list(cr.rows_from(Path("modal-design.json"), five)) == []
