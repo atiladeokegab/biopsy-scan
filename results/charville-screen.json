@@ -10,72 +10,92 @@
   "n_perm": 999,
   "seed": 0,
   "maxT": {
-    "p": 0.101,
-    "statistic": 3.9571818541499213
+    "p": 0.278,
+    "statistic": 4.084449051400471
   },
   "top_candidates": [
     {
       "rank": 1,
-      "feature": "Tumor 5|Macrophage|100um|PD1",
-      "z": 3.9571818541499213,
-      "adjusted_p": 0.101
+      "feature": "Tumor 2 (Ki67 Proliferating)|CD4 T cell|100um|enrichment",
+      "z": 4.084449051400471,
+      "adjusted_p": 0.278
     },
     {
       "rank": 2,
-      "feature": "Tumor 3|Blood vessel|100um|enrichment",
-      "z": 3.457000725630962,
-      "adjusted_p": 0.473
+      "feature": "Tumor 2 (Ki67 Proliferating)|Stroma|100um|enrichment",
+      "z": 3.927051094576532,
+      "adjusted_p": 0.382
     },
     {
       "rank": 3,
-      "feature": "Tumor 7|Tumor 4|100um|aSMA",
-      "z": 3.3025444382682116,
-      "adjusted_p": 0.666
+      "feature": "Tumor 7|Tumor 4|25um|fraction",
+      "z": 3.751057733009262,
+      "adjusted_p": 0.511
     },
     {
       "rank": 4,
-      "feature": "Tumor 3|Blood vessel|50um|enrichment",
-      "z": 3.261202177293202,
-      "adjusted_p": 0.729
+      "feature": "Tumor 2 (Ki67 Proliferating)|CD8 T cell|100um|enrichment",
+      "z": 3.639881937930938,
+      "adjusted_p": 0.63
     },
     {
       "rank": 5,
-      "feature": "Tumor 7|Tumor 4|25um|fraction",
-      "z": 3.224954235520248,
-      "adjusted_p": 0.753
+      "feature": "Tumor 5|Macrophage|100um|PD1",
+      "z": 3.5647582004496376,
+      "adjusted_p": 0.704
     },
     {
       "rank": 6,
-      "feature": "Tumor 2 (Ki67 Proliferating)|Stroma|100um|enrichment",
-      "z": 3.1856807816979025,
-      "adjusted_p": 0.788
+      "feature": "Tumor 3|Blood vessel|100um|enrichment",
+      "z": 3.534610342236776,
+      "adjusted_p": 0.727
     },
     {
       "rank": 7,
-      "feature": "Tumor 7|Macrophage|25um|enrichment",
-      "z": 3.146350992879998,
-      "adjusted_p": 0.832
+      "feature": "Tumor 3|Blood vessel|50um|enrichment",
+      "z": 3.4800044148826297,
+      "adjusted_p": 0.771
     },
     {
       "rank": 8,
-      "feature": "Tumor 2 (Ki67 Proliferating)|CD4 T cell|100um|enrichment",
-      "z": 3.0894633327655345,
-      "adjusted_p": 0.879
+      "feature": "Tumor 7|Tumor 4|50um|fraction",
+      "z": 3.380197199313594,
+      "adjusted_p": 0.847
     },
     {
       "rank": 9,
-      "feature": "Tumor 7|Macrophage|50um|enrichment",
-      "z": 3.0811825524896403,
-      "adjusted_p": 0.885
+      "feature": "Tumor 7|Tumor 4|25um|Ki67",
+      "z": -3.3391522777019462,
+      "adjusted_p": 0.869
     },
     {
       "rank": 10,
       "feature": "Tumor 2 (Ki67 Proliferating)|CD4 T cell|50um|enrichment",
-      "z": 3.0718845660420517,
-      "adjusted_p": 0.893
+      "z": 3.2807409661087883,
+      "adjusted_p": 0.899
     }
   ],
-  "backend": "numpy_reference (shim)",
-  "code_revision": "ed7fa3c68bf3924af953155b7fdcf0e91561da50",
-  "wall_s": 399.12704273080453
+  "backend": "numpy",
+  "null": {
+    "name": "clinical-null parametric bootstrap",
+    "events": "Breslow stratified Cox model on C, fitted on patients with an endpoint, stratum and complete C",
+    "censoring": "Breslow stratified Cox model on C for the censoring times, truncated at each stratum's last follow-up",
+    "refit": "null model refitted per resample and per complete-case mask; U, V, z recomputed for every candidate",
+    "assumptions": [
+      "proportional hazards in C within strata",
+      "censoring independent of X given C and stratum",
+      "no candidate effect given C (the null being tested)"
+    ],
+    "B": 999,
+    "seed": 0
+  },
+  "code_revision": "8145b03",
+  "wall_s": 62.331985337000006,
+  "runner": {
+    "where": "modal",
+    "cpu": 8.0,
+    "modal_wall_s": 62.33995461463928,
+    "logical_cpus": 24,
+    "local_wall_s": 69.23282814025879
+  }
 }
