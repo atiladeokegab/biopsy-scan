@@ -8,6 +8,16 @@
   },
   "note": "Every repeat-sweep run (#120's runner, unchanged): copied from the runner's own bench/results/modal-spend.json in throwaway checkouts. Cap 4 USD (lead).",
   "cap_usd": 4.0,
+  "completed_usd": {
+    "value": 2.646,
+    "runs": 10,
+    "label": "MEASURED wall x rate (upper bound: includes queueing)"
+  },
+  "aborted_usd": {
+    "value": 0.251,
+    "runs": 3,
+    "label": "ESTIMATE: local wall from start to abort x rate"
+  },
   "entries": [
     {
       "utc": "2026-11-21T22:01Z",
@@ -199,6 +209,26 @@
       "cap_usd": 1.5,
       "est_usd": 1.0,
       "basis": "1200 s ceiling x per-arm $/h {'fused': 2.987568}",
+      "source_commit": "0b27ea1f79db7d45a7be0c35b2866f0dce338d3d",
+      "container_class": "all arms identical",
+      "actual": {
+        "modal_wall_s": 367.0,
+        "est_usd": 0.305,
+        "basis": "each container x local wall (an upper bound: includes queueing)",
+        "result": "bench/results/modal-design-20261121T221554Z.json",
+        "note": "restored 23:40Z from the run's own ledger copy: lost when merging the two loops' ledgers (same minute and run name as the a29f1b7 run one second later)"
+      }
+    },
+    {
+      "utc": "2026-11-21T22:15Z",
+      "run": "modal-design 1000/stream, arms ['fused']",
+      "containers": 1,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 1.5,
+      "est_usd": 1.0,
+      "basis": "1200 s ceiling x per-arm $/h {'fused': 2.987568}",
       "source_commit": "a29f1b7bb3c1f0d747121b52c04b285aa1bd6d93",
       "container_class": "all arms identical",
       "actual": {
@@ -250,5 +280,5 @@
       "running_total_usd": 41.757
     }
   ],
-  "running_total_usd": 2.592
+  "running_total_usd": 2.897
 }
