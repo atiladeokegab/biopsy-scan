@@ -1,9 +1,9 @@
 """CUDA CSR counting: a cooperative warp per focal cell, with resident adjacency."""
 
 import numpy as np
-from numba import cuda, int64
+from numba import cuda, float64, int64
 
-from ._common import check_types, count_inputs, region
+from ._common import check_channels, check_types, count_inputs, region, region_v2
 
 
 @cuda.jit
@@ -78,3 +78,104 @@ def reimage_region(nbr, xy, types, focal, K, crop=None, eps=0.0, M=None, u=None,
         lambda _nbr, observed, visible, _K: prepared.reimage_counts(observed, visible)
     )
     return region(counter, nbr, xy, types, focal, K, crop, eps, M, u, rng)
+
+
+@cuda.jit
+def _counts_and_channels(ptr, idx, ends, observed, visible, channels, K, M, out_counts, out_ch):
+    """Single CSR warp-per-cell pass accumulating neighbour type counts and M channel sums."""
+    i = cuda.blockIdx.x
+    lane = cuda.threadIdx.x
+    count_bins = 3 * K
+    ch_bins = count_bins * M
+    buf = cuda.shared.array(0, dtype=float64)
+    for slot in range(lane, count_bins + ch_bins, cuda.blockDim.x):
+        buf[slot] = 0.0
+    cuda.syncthreads()
+    if visible[i]:
+        for entry in range(ptr[i] + lane, ptr[i + 1], cuda.blockDim.x):
+            j = idx[entry]
+            if visible[j]:
+                obs_j = int64(observed[j])
+                for r in range(3):
+                    if entry < ends[i, r]:
+                        rk = r * K + obs_j
+                        cuda.atomic.add(buf, rk, 1.0)
+                        base = count_bins + rk * M
+                        for c in range(M):
+                            cuda.atomic.add(buf, base + c, float64(channels[j, c]))
+    cuda.syncthreads()
+    for bin_index in range(lane, count_bins, cuda.blockDim.x):
+        out_counts[i, bin_index // K, bin_index % K] = int64(buf[bin_index])
+    for slot in range(lane, ch_bins, cuda.blockDim.x):
+        rk = slot // M
+        out_ch[i, rk // K, rk % K, slot % M] = buf[count_bins + slot]
+
+
+class _ResidentCountsAndChannels:
+    def __init__(self, nbr, channels, K):
+        if not cuda.is_available():
+            raise RuntimeError("CUDA is unavailable; select the CPU backend explicitly")
+        n = len(nbr["ptr"]) - 1
+        ptr, idx, ends, _, _ = count_inputs(
+            nbr, np.zeros(n, dtype=np.int8), np.ones(n, dtype=bool), K,
+        )
+        ch = check_channels(channels, n)
+        self.n, self.K, self.M = n, int(K), int(ch.shape[1])
+        self.source = nbr
+        self.shared_bytes = 3 * self.K * (1 + self.M) * np.dtype(np.float64).itemsize
+        if (not cuda.config.ENABLE_CUDASIM
+                and self.shared_bytes > cuda.get_current_device().MAX_SHARED_MEMORY_PER_BLOCK):
+            raise ValueError("K and M exceed the device's shared-memory capacity")
+        self.ptr, self.idx, self.ends, self.channels = (
+            cuda.to_device(a) for a in (ptr, idx, ends, ch)
+        )
+
+    def reimage_counts_and_channels(self, observed, visible):
+        observed, visible = check_types(observed, self.K), np.asarray(visible)
+        if len(observed) != self.n or visible.shape != (self.n,) or visible.dtype != np.bool_:
+            raise ValueError("labels and boolean visibility must match the prepared region")
+        if not self.n:
+            return (
+                np.zeros((0, 3, self.K), dtype=np.int64),
+                np.zeros((0, 3, self.K, self.M), dtype=np.float64),
+            )
+        out_counts = cuda.device_array((self.n, 3, self.K), dtype=np.int64)
+        out_ch = cuda.device_array((self.n, 3, self.K, self.M), dtype=np.float64)
+        _counts_and_channels[self.n, 32, 0, self.shared_bytes](
+            self.ptr,
+            self.idx,
+            self.ends,
+            cuda.to_device(np.ascontiguousarray(observed)),
+            cuda.to_device(np.ascontiguousarray(visible)),
+            self.channels,
+            self.K,
+            self.M,
+            out_counts,
+            out_ch,
+        )
+        return out_counts.copy_to_host(), out_ch.copy_to_host()
+
+
+def prepare_v2(nbr, channels, K):
+    """Upload adjacency and fixed cell channels once for repeated v2 region acquisitions."""
+    return _ResidentCountsAndChannels(nbr, channels, K)
+
+
+def reimage_counts_and_channels(nbr, observed, visible, channels, K):
+    """GPU v2 count and channel-sum entry point."""
+    count_inputs(nbr, observed, visible, K)
+    return prepare_v2(nbr, channels, K).reimage_counts_and_channels(observed, visible)
+
+
+def reimage_region_v2(nbr, xy, types, channels, focal, K, crop=None, eps=0.0, M=None, u=None,
+                      rng=None, prepared=None):
+    """Reference-compatible v1+v2 GPU region output, optionally reusing prepare_v2."""
+    if prepared is not None and (
+        prepared.K != K or prepared.n != len(types) or prepared.M != np.asarray(channels).shape[1]
+        or prepared.source is not nbr
+    ):
+        raise ValueError("prepared v2 snapshot belongs to a different region, K, or channel count")
+    counter = reimage_counts_and_channels if prepared is None else (
+        lambda _nbr, observed, visible, _channels, _K: prepared.reimage_counts_and_channels(observed, visible)
+    )
+    return region_v2(counter, nbr, xy, types, channels, focal, K, crop, eps, M, u, rng)

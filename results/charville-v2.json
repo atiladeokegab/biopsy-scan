@@ -1,0 +1,297 @@
+{
+  "schema_version": 1,
+  "cohort": "charville",
+  "exploratory": true,
+  "already_seen": true,
+  "already_seen_disclosure": "Both cohorts' outcomes have been examined by reviewers already; all real-data results are already-seen and exploratory, not confirmatory.",
+  "clinical_claims": false,
+  "inference_scope": "patient_level_exploratory",
+  "grammar_v1_hash": "772f6a845266470456af96f92d0573cc1bec72432ad74d789439baff066c2156",
+  "grammar_v2_hash": "26a745f831ef71ec2c8ae5bf65f3668d29fd0f53ab97699cf52ac0cc13f11564",
+  "channels": [
+    "PD1",
+    "PDL1",
+    "Ki67",
+    "GranzymeB",
+    "HLA-DR",
+    "aSMA",
+    "CollagenIV",
+    "Vimentin",
+    "Podoplanin",
+    "SIZE"
+  ],
+  "m": 10,
+  "transform": "cohort z-score, input pre-normalised by source",
+  "n_patients": 159,
+  "n_events": 38,
+  "n_regions": 286,
+  "n_features_v1": 630,
+  "n_features_v2_expr": 3150,
+  "n_features_total": 3780,
+  "n_features_tested": 3780,
+  "nan_policy": "complete_case_per_feature (11880 NaN cells preserved)",
+  "strata_note": "Coverslip strata c001-c004 mapped to 0-3 (patient-level cohort; 38 events).",
+  "leakage_audit": {
+    "total_patients": 159,
+    "patients_spanning_multiple_coverslips": 0,
+    "mean_leakage_fraction": 0.0,
+    "min_leakage_fraction": 0.0,
+    "max_leakage_fraction": 0.0,
+    "per_coverslip": [
+      {
+        "coverslip": "c001",
+        "n_patients": 40,
+        "shared_patients": 0,
+        "leakage_fraction": 0.0
+      },
+      {
+        "coverslip": "c002",
+        "n_patients": 33,
+        "shared_patients": 0,
+        "leakage_fraction": 0.0
+      },
+      {
+        "coverslip": "c003",
+        "n_patients": 48,
+        "shared_patients": 0,
+        "leakage_fraction": 0.0
+      },
+      {
+        "coverslip": "c004",
+        "n_patients": 38,
+        "shared_patients": 0,
+        "leakage_fraction": 0.0
+      }
+    ]
+  },
+  "maxT": {
+    "statistic": 3.9571818569247457,
+    "p": 0.0981,
+    "conditional_cutoff_alpha_05": 4.11603663534363,
+    "cutoff_scope": "conditional_within_stratum_permutation_not_reusable_design_calibration",
+    "n_resamples": 9999,
+    "top_hits": [
+      {
+        "rank": 1,
+        "family": "v2",
+        "feature": "Tumor 5|Macrophage|100um|PD1",
+        "grammar_index": 2600,
+        "z": 3.9571818569247457,
+        "adjusted_p": 0.0981,
+        "lopo": {
+          "n_patients": 159,
+          "min_z": 3.3264102632774324,
+          "max_z": 4.334592388862969,
+          "max_abs_z_delta": 0.6307715936473133,
+          "sign_flips": 0,
+          "rank1_retained_fraction": 0.9937106918238994,
+          "most_influential_patient_index": 126,
+          "most_influential_patient_name": "24231"
+        }
+      },
+      {
+        "rank": 2,
+        "family": "v1",
+        "feature": "Tumor 3|Blood vessel|100um|enrichment",
+        "grammar_index": 191,
+        "z": 3.457000725630962,
+        "adjusted_p": 0.489,
+        "lopo": {
+          "n_patients": 159,
+          "min_z": 3.190692333346158,
+          "max_z": 3.7032172061906627,
+          "max_abs_z_delta": 0.26630839228480374,
+          "sign_flips": 0,
+          "rank1_retained_fraction": null,
+          "most_influential_patient_index": 33,
+          "most_influential_patient_name": "22380"
+        }
+      },
+      {
+        "rank": 3,
+        "family": "v2",
+        "feature": "Tumor 7|Tumor 4|100um|aSMA",
+        "grammar_index": 3685,
+        "z": 3.302544458554025,
+        "adjusted_p": 0.6665,
+        "lopo": {
+          "n_patients": 159,
+          "min_z": 3.0002290193949155,
+          "max_z": 3.52268547012284,
+          "max_abs_z_delta": 0.30231543915910963,
+          "sign_flips": 0,
+          "rank1_retained_fraction": null,
+          "most_influential_patient_index": 146,
+          "most_influential_patient_name": "24256"
+        }
+      },
+      {
+        "rank": 4,
+        "family": "v1",
+        "feature": "Tumor 3|Blood vessel|50um|enrichment",
+        "grammar_index": 189,
+        "z": 3.261202177293202,
+        "adjusted_p": 0.715,
+        "lopo": {
+          "n_patients": 159,
+          "min_z": 2.919853683109365,
+          "max_z": 3.4863668566542665,
+          "max_abs_z_delta": 0.34134849418383695,
+          "sign_flips": 0,
+          "rank1_retained_fraction": null,
+          "most_influential_patient_index": 33,
+          "most_influential_patient_name": "22380"
+        }
+      },
+      {
+        "rank": 5,
+        "family": "v1",
+        "feature": "Tumor 7|Tumor 4|25um|fraction",
+        "grammar_index": 606,
+        "z": 3.224954235520248,
+        "adjusted_p": 0.7528,
+        "lopo": {
+          "n_patients": 159,
+          "min_z": 2.8073345091545407,
+          "max_z": 3.622826417067336,
+          "max_abs_z_delta": 0.4176197263657073,
+          "sign_flips": 0,
+          "rank1_retained_fraction": null,
+          "most_influential_patient_index": 128,
+          "most_influential_patient_name": "24234"
+        }
+      },
+      {
+        "rank": 6,
+        "family": "v1",
+        "feature": "Tumor 2 (Ki67 Proliferating)|Stroma|100um|enrichment",
+        "grammar_index": 137,
+        "z": 3.1856807816979025,
+        "adjusted_p": 0.7944,
+        "lopo": {
+          "n_patients": 159,
+          "min_z": 2.555031046184669,
+          "max_z": 3.33629334617958,
+          "max_abs_z_delta": 0.6306497355132334,
+          "sign_flips": 0,
+          "rank1_retained_fraction": null,
+          "most_influential_patient_index": 21,
+          "most_influential_patient_name": "22245"
+        }
+      },
+      {
+        "rank": 7,
+        "family": "v1",
+        "feature": "Tumor 7|Macrophage|25um|enrichment",
+        "grammar_index": 571,
+        "z": 3.146350992879998,
+        "adjusted_p": 0.83,
+        "lopo": {
+          "n_patients": 159,
+          "min_z": 2.8184657123928383,
+          "max_z": 3.488318517770844,
+          "max_abs_z_delta": 0.3419675248908458,
+          "sign_flips": 0,
+          "rank1_retained_fraction": null,
+          "most_influential_patient_index": 7,
+          "most_influential_patient_name": "21947"
+        }
+      },
+      {
+        "rank": 8,
+        "family": "v1",
+        "feature": "Tumor 2 (Ki67 Proliferating)|CD4 T cell|100um|enrichment",
+        "grammar_index": 107,
+        "z": 3.0894633327655345,
+        "adjusted_p": 0.8748,
+        "lopo": {
+          "n_patients": 159,
+          "min_z": 2.46542610142049,
+          "max_z": 3.2589366597990894,
+          "max_abs_z_delta": 0.6240372313450444,
+          "sign_flips": 0,
+          "rank1_retained_fraction": null,
+          "most_influential_patient_index": 21,
+          "most_influential_patient_name": "22245"
+        }
+      },
+      {
+        "rank": 9,
+        "family": "v1",
+        "feature": "Tumor 7|Macrophage|50um|enrichment",
+        "grammar_index": 573,
+        "z": 3.0811825524896403,
+        "adjusted_p": 0.8819,
+        "lopo": {
+          "n_patients": 159,
+          "min_z": 2.7384654163257376,
+          "max_z": 3.4564219816206454,
+          "max_abs_z_delta": 0.37523942913100505,
+          "sign_flips": 0,
+          "rank1_retained_fraction": null,
+          "most_influential_patient_index": 7,
+          "most_influential_patient_name": "21947"
+        }
+      },
+      {
+        "rank": 10,
+        "family": "v1",
+        "feature": "Tumor 2 (Ki67 Proliferating)|CD4 T cell|50um|enrichment",
+        "grammar_index": 105,
+        "z": 3.0718845660420517,
+        "adjusted_p": 0.8879,
+        "lopo": {
+          "n_patients": 159,
+          "min_z": 2.5765586403677654,
+          "max_z": 3.2448953310798117,
+          "max_abs_z_delta": 0.49532592567428635,
+          "sign_flips": 0,
+          "rank1_retained_fraction": null,
+          "most_influential_patient_index": 21,
+          "most_influential_patient_name": "22245"
+        }
+      }
+    ]
+  },
+  "omnibus": {
+    "statistics": {
+      "maxT": 3.9571818569247457,
+      "sum_z2": 4298.2459405914,
+      "HC": 8.58082375931744
+    },
+    "component_p": {
+      "maxT": 0.0981,
+      "sum_z2": 0.201,
+      "HC": 0.1611
+    },
+    "p": 0.1688
+  },
+  "prepared_outcome": {
+    "key": "atlas_design_choices",
+    "label": "The atlas shows design choices matter",
+    "statement": "Exploratory already-seen cohort search did not isolate a stable single-pattern hit; the cohort-specific atlas quantifies how regions per patient, field of view, and cell-typing mis-calls govern study power."
+  },
+  "runtime": {
+    "status": "MEASURED",
+    "backend": "numpy_reference",
+    "wall_s": 1816.588669677265,
+    "hardware": {
+      "cpu": "x86_64",
+      "gpu": null
+    }
+  },
+  "gpu_timing": {
+    "status": "UNMEASURED",
+    "reason": "no CUDA device on CPU run host"
+  },
+  "labels": {
+    "cohort_counts": "MEASURED",
+    "grammar_hashes": "MEASURED",
+    "maxT": "MEASURED",
+    "omnibus": "MEASURED",
+    "lopo": "MEASURED",
+    "leakage_audit": "MEASURED",
+    "runtime": "MEASURED",
+    "gpu_timing": "UNMEASURED"
+  }
+}
