@@ -290,12 +290,22 @@ def _timed_call(fn, *args, **kwargs):
     return result, time.perf_counter() - t0
 
 
+_LAUNCH: dict = {}
+
+
+def _launch() -> dict:
+    """The revision the run was launched from (recorded at start: the tree may move while it runs)."""
+    if not _LAUNCH:
+        git = lambda *a: subprocess.run(["git", *a], cwd=REPO, capture_output=True, text=True).stdout.strip()  # noqa: E731
+        _LAUNCH.update(commit=git("rev-parse", "HEAD"), dirty=bool(git("status", "--porcelain", "--untracked-files=no")),
+                       launched_utc=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+    return _LAUNCH
+
+
 def _save(gpu: str, payload: dict) -> Path:
-    git = lambda *a: subprocess.run(["git", *a], cwd=REPO, capture_output=True, text=True).stdout.strip()  # noqa: E731
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     report = {"schema_version": 1, "status": "MEASURED", "runner": "modal", "gpu_requested": gpu,
-              "commit": git("rev-parse", "HEAD"), "dirty": bool(git("status", "--porcelain")),
-              "utc": stamp, **payload}
+              **_launch(), "utc": stamp, **payload}
     path = REPO / "bench" / "results" / f"modal-{gpu.lower()}-{stamp}.json"
     path.write_text(json.dumps(report, indent=2, default=_jsonable) + "\n")
     print(path)
@@ -351,6 +361,7 @@ def _fleet(gpu: str, containers: int, studies: int) -> dict:
 @app.local_entrypoint()
 def run_tests(gpu: str = DEFAULT_GPU):
     """make modal-gpu-tests: pytest on a real GPU; exits non-zero if any test failed."""
+    _launch()
     result = _tests(_check_gpu(gpu))
     _save(gpu, {"kind": "gpu_tests", "gpu_tests": result})
     print(f"{result['passed']} passed, {result['failed']} failed, {result['errors']} errors, "
@@ -362,6 +373,7 @@ def run_tests(gpu: str = DEFAULT_GPU):
 @app.local_entrypoint()
 def run_ladder(gpu: str = DEFAULT_GPU, reps: int = 5, containers: int = 4, studies: int = 16):
     """make modal-ladder: kernel timing, fleet scaling and the R-15 hook, into one MEASURED file."""
+    _launch()
     _check_gpu(gpu)
     if reps < 3 or containers < 1 or studies < containers:
         raise SystemExit("need --reps >= 3, --containers >= 1 and --studies >= --containers")
@@ -385,6 +397,7 @@ def run_ladder(gpu: str = DEFAULT_GPU, reps: int = 5, containers: int = 4, studi
 @app.local_entrypoint()
 def run_ab(gpu: str = DEFAULT_GPU, reps: int = 3):
     """make modal-ab: R-14 vs R-15 CPU vs R-15 GPU, interleaved on one 16-core GPU container."""
+    _launch()
     _check_gpu(gpu)
     if reps < 3:
         raise SystemExit("need --reps >= 3")

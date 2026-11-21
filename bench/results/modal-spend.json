@@ -1,0 +1,38 @@
+{
+  "workspace_profile": "fhl-08",
+  "cap_usd": 150,
+  "rates_usd_per_hour": {
+    "A100": 2.5,
+    "H100": 3.95,
+    "L4": 0.8,
+    "cpu_core": 0.047,
+    "memory_gib": 0.008,
+    "source": "modal.com/pricing as known to the builder; conservative A100 80GB rate"
+  },
+  "container_usd_per_hour_A100": 3.13,
+  "entries": [
+    {
+      "utc": "2026-11-21T16:44Z",
+      "run": "modal-gpu-tests GPU=A100",
+      "containers": 1,
+      "est_hours": 0.5,
+      "est_usd": 1.57,
+      "basis": "1 x A100 + 8 cores + 32 GiB for the 1800 s timeout ceiling",
+      "running_total_usd": 1.57,
+      "actual": {
+        "modal_wall_s": 121.8,
+        "est_usd": 0.11,
+        "result": "bench/results/modal-a100-20261121T164808Z.json"
+      }
+    },
+    {
+      "utc": "2026-11-21T17:01Z",
+      "run": "modal-ladder GPU=A100 CONTAINERS=4 STUDIES=16 REPS=5",
+      "containers": "1 (kernel) + 1 + 4 (fleet) + 1 (screen hook)",
+      "est_hours": 1.2,
+      "est_usd": 3.76,
+      "basis": "7 container runs x ~10 min x $3.13/h, rounded up",
+      "running_total_usd": 5.33
+    }
+  ]
+}
