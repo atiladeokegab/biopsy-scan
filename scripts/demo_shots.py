@@ -120,6 +120,8 @@ def _click(page, selector: str, cursor: bool) -> None:
     target = page.locator(selector)
     if cursor:
         b = target.bounding_box()
+        if b is None:  # hidden or detached: there is nowhere to glide to
+            raise SystemExit(f"click target not visible: {selector}")
         page.evaluate(CURSOR_JS, [round(b["x"] + b["width"] / 2), round(b["y"] + b["height"] / 2), GLIDE_MS])
         page.wait_for_timeout(300)  # let the eye land before the click
     target.click()
