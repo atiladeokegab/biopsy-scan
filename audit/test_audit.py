@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import pandas as pd
 import pytest
 
+from audit.leakage import compute_leakage_audit
 from audit.schema import (
     AUDIT_SCHEMA_VERSION,
     PREPARED_OUTCOMES,
@@ -119,3 +121,22 @@ def test_schema_validation_accepts_valid_record_and_rejects_missing_or_clinical_
     bad_exploratory = {**rec, "exploratory": False}
     with pytest.raises(ValueError, match="exploratory"):
         validate_audit_result(bad_exploratory)
+
+
+def test_leakage_audit_detects_cross_coverslip_patient_overlap() -> None:
+    regions = pd.DataFrame([
+        {"region_id": "r1", "coverslip": "c001", "patient_id": "P1"},
+        {"region_id": "r2", "coverslip": "c002", "patient_id": "P1"},
+        {"region_id": "r3", "coverslip": "c001", "patient_id": "P2"},
+        {"region_id": "r4", "coverslip": "c002", "patient_id": "P3"},
+        {"region_id": "r5", "coverslip": "c003", "patient_id": "P4"},
+    ])
+    out = compute_leakage_audit(regions)
+    assert out["total_patients"] == 4
+    assert out["patients_spanning_multiple_coverslips"] == 1
+    assert out["min_leakage_fraction"] == pytest.approx(0.0)
+    assert out["max_leakage_fraction"] == pytest.approx(0.5)
+    by_cov = {row["coverslip"]: row for row in out["per_coverslip"]}
+    assert by_cov["c001"] == {"coverslip": "c001", "n_patients": 2, "shared_patients": 1, "leakage_fraction": pytest.approx(0.5)}
+    assert by_cov["c002"] == {"coverslip": "c002", "n_patients": 2, "shared_patients": 1, "leakage_fraction": pytest.approx(0.5)}
+    assert by_cov["c003"] == {"coverslip": "c003", "n_patients": 1, "shared_patients": 0, "leakage_fraction": pytest.approx(0.0)}
