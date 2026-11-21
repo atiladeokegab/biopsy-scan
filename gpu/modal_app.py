@@ -45,8 +45,21 @@ base = (
     .run_commands(f"mkdir -p {PINNED_DIR}", *(f"curl -fsSL {RAW}/{sha}/{path} -o {PINNED_DIR}/{name}.py"
                                               for name, (sha, path) in PINS.items()))
 )
-SOURCE = dict(ignore=[".venv", ".git", ".worktrees", "data", "demo", "results", "bench/results", "**/__pycache__",
-                      "node_modules"])
+
+
+def tracked_only(repo: Path):
+    """An add_local_dir ignore that uploads git-tracked files only: no .env, keys, caches or other untracked files."""
+    tracked: set[str] = set()
+
+    def ignore(rel: Path) -> bool:
+        if not tracked:  # lazy: the container re-imports this module and has no .git
+            out = subprocess.run(["git", "ls-files", "-z"], cwd=repo, capture_output=True, text=True, check=True).stdout
+            tracked.update(f for f in out.split("\0") if f)
+        return rel.as_posix() not in tracked
+    return ignore
+
+
+SOURCE = dict(ignore=tracked_only(REPO))
 image = base.workdir(APP_DIR).add_local_dir(REPO, APP_DIR, **SOURCE)
 gpu_function = dict(image=image, volumes={DATA_DIR: data}, gpu=DEFAULT_GPU, timeout=3600, memory=32768, cpu=8.0)
 
@@ -172,19 +185,20 @@ def time_kernel(reps: int = 5) -> dict:
         t0 = time.perf_counter()
         out[name] = fn(0)
         first_call[name] = time.perf_counter() - t0
-    assert np.array_equal(out["numpy_reference"], out["gpu"], equal_nan=True), "warm-up parity failed"
+    same = lambda: bool(np.array_equal(out["numpy_reference"], out["gpu"], equal_nan=True))  # noqa: E731
+    parity = same()
     times = {name: [] for name in fns}
     for seed in range(reps):
         for name in (fns if seed % 2 == 0 else reversed(list(fns))):
             t0 = time.perf_counter()
             out[name] = fns[name](seed)
             times[name].append(time.perf_counter() - t0)
-        assert np.array_equal(out["numpy_reference"], out["gpu"], equal_nan=True), f"parity failed at seed {seed}"
+        parity = parity and same()
     rows = {name: _spread(ts) for name, ts in times.items()}
     return {"design": {**DESIGN, "cohort": "charville", "regions": len(cells["patient_of_region"]),
                        "cells": len(cells["cell_type"])},
             "seeds": list(range(reps)), "unit": "one study: patient and region sampling, crop, mis-call, recount, features",
-            "parity": f"exact, including NaN placement, on all {reps} seeds and the warm-up",
+            "parity": "exact, including NaN placement, on every seed and the warm-up", "parity_exact": parity,
             "rows": rows, "speedup_median": rows["numpy_reference"]["median_s"] / rows["gpu"]["median_s"],
             "first_call_s": first_call, "preparation_s": prep,
             "in_function_s": time.perf_counter() - entered, "host": hardware(), "gpu": gpu_info()}
@@ -224,17 +238,19 @@ def screen_hook() -> dict:
 
     rng = np.random.default_rng(0)
     X, t, ev = rng.normal(size=(159, 630)), rng.exponential(size=159), (rng.random(159) < 0.3).astype(float)
-    result = {"status": "MEASURED", "shape": list(X.shape), "n_perm": 999, "data": "synthetic null"}
+    # Backend results and the device record live under separate keys: a backend named "gpu" must not be
+    # overwritten by the device's metadata.
+    backends = {}
     for backend in ("numpy", "gpu", "cupy"):  # brief names "gpu"; the R-15 branch currently names it "cupy"
         try:
             t0 = time.perf_counter()
             out = screen(X, t, ev, n_perm=999, backend=backend)
-            result[backend] = {"s": time.perf_counter() - t0, "maxT": out["maxT"], "p": out["p"],
-                               "backend": out["metadata"]["backend"]}
+            backends[backend] = {"s": time.perf_counter() - t0, "maxT": out["maxT"], "p": out["p"],
+                                 "backend": out["metadata"]["backend"]}
         except (ValueError, RuntimeError) as e:
-            result[backend] = f"unavailable: {e}"
-    result["gpu"] = gpu_info()
-    return result
+            backends[backend] = f"unavailable: {e}"
+    return {"status": "MEASURED", "shape": list(X.shape), "n_perm": 999, "data": "synthetic null",
+            "backends": backends, "gpu": gpu_info()}
 
 
 @app.function(image=image, volumes={DATA_DIR: data}, gpu=DEFAULT_GPU, timeout=3600, memory=65536, cpu=16.0)
@@ -428,13 +444,32 @@ def _launch() -> dict:
     return _LAUNCH
 
 
+PARITY_KEYS = {"parity_exact", "parity_exact_all", "bit_identical_to_1", "bit_identical_to_N1",
+               "exact_all_containers", "gpu_matches_cpu_z"}
+
+
+def parity_failures(x, path: str = "") -> list[str]:
+    """Every parity flag anywhere in the payload that is not exactly True."""
+    if isinstance(x, dict):
+        return [f for k, v in x.items() for f in ([f"{path}{k}"] if k in PARITY_KEYS and v is not True
+                                                  else parity_failures(v, f"{path}{k}."))]
+    return []
+
+
 def _save(gpu: str, payload: dict) -> Path:
+    """Write the evidence file. Fail-closed: if any parity flag is false the run is FAILED and the file holds no
+    timing or ratio, only what failed; the process then exits non-zero."""
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    report = {"schema_version": 1, "status": "MEASURED", "runner": "modal", "gpu_requested": gpu,
-              **_launch(), "utc": stamp, **payload}
+    failed = parity_failures(payload)
+    head = {"schema_version": 1, "runner": "modal", "gpu_requested": gpu, **_launch(), "utc": stamp}
+    report = ({**head, "status": "FAILED", "kind": payload.get("kind"), "parity_failed": failed,
+               "note": "parity false: no timing or ratio is published for this run"} if failed
+              else {**head, "status": "MEASURED", **payload})
     path = REPO / "bench" / "results" / f"modal-{gpu.lower()}-{stamp}.json"
     path.write_text(json.dumps(report, indent=2, default=_jsonable) + "\n")
     print(path)
+    if failed:
+        raise SystemExit(f"FAILED: parity false at {', '.join(failed)}; no timing published")
     return path
 
 
