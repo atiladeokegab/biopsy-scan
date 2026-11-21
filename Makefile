@@ -1,4 +1,4 @@
-.PHONY: smoke install test data summary demo tissue deploy modal-gpu-tests modal-ladder modal-ab
+.PHONY: smoke install test data summary demo tissue deploy modal-gpu-tests modal-ladder modal-ab modal-design
 
 install:
 	uv sync --dev
@@ -46,3 +46,8 @@ modal-ladder: install
 
 modal-ab: install
 	uv run modal run gpu/modal_app.py::run_ab --gpu $(GPU) --reps 3
+
+# One design point (1,000 Charville studies) by the lab's way and ours, on CPU, 1 GPU and N GPUs.
+FLEET ?= 1,2,4,8,16
+modal-design: install
+	uv run modal run gpu/modal_app.py::run_design --gpu $(GPU) --studies 1000 --fleet $(FLEET)

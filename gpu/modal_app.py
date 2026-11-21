@@ -29,6 +29,11 @@ TEST_FILES = ("reimage/test_backends.py", "reimage/test_expression.py", "reimage
 
 app = modal.App("preflight-gpu")
 data = modal.Volume.from_name("preflight-data", create_if_missing=True)
+# Branch heads not merged yet, pinned by sha: R-15's stats.screen and R-14's bench.impl_a. _pinned() loads them.
+PINS = {"stats.screen": ("8add7f9bfafcb12725bb9c685d5e6075b4f1643d", "stats/screen.py"),
+        "bench.impl_a": ("54ad25a69cdfa3165ef28d0b13b9a4082e6a52dc", "bench/impl_a.py")}
+PINNED_DIR = "/root/pins"
+RAW = "https://raw.githubusercontent.com/atiladeokegab/sota-parallelism-nov21"
 base = (
     # CUDA devel image: numba's CUDA target needs NVVM and libdevice from the toolkit, not just the driver.
     modal.Image.from_registry("nvidia/cuda:12.4.1-devel-ubuntu22.04", add_python="3.11")
@@ -37,19 +42,12 @@ base = (
     # shortcut: cupy is only for R-15's stats.screen GPU backend, not a project dependency; drop it if R-15 lands one.
     .uv_pip_install("cupy-cuda12x")
     .env({"DATA_DIR": DATA_DIR, "PYTHONPATH": APP_DIR, "CUDA_HOME": "/usr/local/cuda"})
+    .run_commands(f"mkdir -p {PINNED_DIR}", *(f"curl -fsSL {RAW}/{sha}/{path} -o {PINNED_DIR}/{name}.py"
+                                              for name, (sha, path) in PINS.items()))
 )
 SOURCE = dict(ignore=[".venv", ".git", ".worktrees", "data", "demo", "results", "bench/results", "**/__pycache__",
                       "node_modules"])
 image = base.workdir(APP_DIR).add_local_dir(REPO, APP_DIR, **SOURCE)
-# ab_screen's code: R-15 (stats.screen) merged with R-14 (bench/impl_a.py) at pinned heads from the public repo.
-PINS = {"r15-gpu-score-screen": "8add7f9bfafcb12725bb9c685d5e6075b4f1643d",
-        "r14-cpu-baseline": "54ad25a69cdfa3165ef28d0b13b9a4082e6a52dc"}
-PINNED_DIR = "/root/pinned"
-ab_image = base.run_commands(
-    f"git clone -q https://github.com/atiladeokegab/sota-parallelism-nov21 {PINNED_DIR}",
-    f"cd {PINNED_DIR} && git checkout -q {PINS['r15-gpu-score-screen']}"
-    f" && git -c user.email=ci@invalid -c user.name=ci merge -q --no-edit {PINS['r14-cpu-baseline']}",
-).env({"PYTHONPATH": PINNED_DIR}).workdir(PINNED_DIR)
 gpu_function = dict(image=image, volumes={DATA_DIR: data}, gpu=DEFAULT_GPU, timeout=3600, memory=32768, cpu=8.0)
 
 
@@ -67,6 +65,27 @@ def gpu_info() -> dict:
             "cuda_driver_api": driver_cuda.group(1) if driver_cuda else None,
             "cuda_runtime": ".".join(map(str, runtime)), "all": q,
             "modal_task_id": os.environ.get("MODAL_TASK_ID")}
+
+
+def _pinned(name: str):
+    """Import `name` from this tree if it has landed, else from its pinned branch file; ImportError if neither."""
+    import importlib
+    import importlib.util
+    import sys
+
+    try:
+        return importlib.import_module(name)
+    except ImportError:
+        pass
+    path = Path(PINNED_DIR) / f"{name}.py"
+    if not path.exists():
+        raise ImportError(f"{name} is neither in this tree nor pinned at {path}")
+    importlib.import_module(name.rsplit(".", 1)[0])  # the parent package, for the module's relative imports
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 NEEDED = ("charville_labels.csv", "charville_raw_data.zip")
@@ -198,7 +217,7 @@ def fleet_shard(seeds: list[int]) -> dict:
 def screen_hook() -> dict:
     """R-15's stats.screen on the GPU when that branch has landed; a clean SKIPPED when it has not."""
     try:
-        from stats.screen import screen
+        screen = _pinned("stats.screen").screen
     except ImportError as e:
         return {"status": "SKIPPED", "reason": f"stats.screen not importable ({e})"}
     import numpy as np
@@ -218,7 +237,7 @@ def screen_hook() -> dict:
     return result
 
 
-@app.function(image=ab_image, volumes={DATA_DIR: data}, gpu=DEFAULT_GPU, timeout=3600, memory=65536, cpu=16.0)
+@app.function(image=image, volumes={DATA_DIR: data}, gpu=DEFAULT_GPU, timeout=3600, memory=65536, cpu=16.0)
 def ab_screen(reps: int = 3, n_perm: int = 999) -> dict:
     """One quiet container, Charville v2 (3,780 candidates): R-14 full fits (all cores) vs R-15 screen on CPU and GPU.
 
@@ -234,15 +253,14 @@ def ab_screen(reps: int = 3, n_perm: int = 999) -> dict:
     entered = time.perf_counter()
     parts, skipped, screens = {}, {}, {}
     try:
-        from bench import impl_a
-
+        impl_a = _pinned("bench.impl_a")
         d = impl_a.inputs("charville")
         parts["A_r14_full_fits"] = lambda: impl_a.time_full_run(d["X"], d["time"], d["event"], d["C"], d["strata"])[0]
     except ImportError as e:
         skipped["A_r14_full_fits"] = str(e)
         d = None
     try:
-        from stats.screen import screen
+        screen = _pinned("stats.screen").screen
         if d is None:
             raise ImportError("needs bench.impl_a.inputs for the shared Charville v2 inputs")
         C = d["C"] if d["C"].shape[1] else None
@@ -281,6 +299,106 @@ def ab_screen(reps: int = 3, n_perm: int = 999) -> dict:
         b, c = screens["B_r15_screen_cpu"], screens["C_r15_screen_gpu"]
         result["gpu_matches_cpu_z"] = bool(np.allclose(b["z"], c["z"], rtol=1e-9, atol=1e-9))
     return result
+
+
+# ---- the design point: S studies end to end (gpu/design_point.py), the speed unit ----
+
+SINGLE_THREAD = {k: "1" for k in ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS", "NUMBA_NUM_THREADS")}
+CPU_CORES = 32.0
+_POOL: dict = {}  # set before fork; workers inherit it
+
+
+def _lab_one(seed):
+    from bench.real_cpu import DESIGN
+    from gpu import design_point as dp
+
+    return dp.lab_study(_POOL["cells"], DESIGN, seed)
+
+
+def _ours_one(seed):
+    from bench.real_cpu import DESIGN
+    from gpu import design_point as dp
+
+    return dp.our_study(_POOL["cells"], DESIGN, seed, _POOL["kernel"], _POOL["score"])
+
+
+@app.function(image=image, volumes={DATA_DIR: data}, cpu=CPU_CORES, memory=65536, timeout=3600, env=SINGLE_THREAD)
+def cpu_design(method: str, seeds: list[int]) -> dict:
+    """All cores, one single-threaded process per core: 'lab' (tree recount + 1,000 shuffles per study) or
+    'ours' (CSR kernel on CPU + R-15 screen, numpy backend). Pool wall includes fork and per-worker JIT."""
+    import multiprocessing as mp
+
+    import numpy as np
+
+    from bench.ladder import hardware
+
+    entered = time.perf_counter()
+    if method == "lab":
+        from core.cohorts import load
+
+        cells, prep = load("charville"), {}
+        cells["_nbr"] = {r: None for r in range(len(cells["patient_of_region"]))}  # the tree path builds no CSR
+        one = _lab_one
+    elif method == "ours":
+        from reimage import cpu
+
+        cells, L, prep = _charville()
+        prepared = {id(nbr): cpu.prepare(nbr, L["K"]) for nbr in cells["_nbr"].values()}
+        screen = _pinned("stats.screen").screen
+        _POOL["kernel"] = lambda nbr, xy, types, focal, K, **kw: cpu.reimage_region(
+            nbr, xy, types, focal, K, prepared=prepared[id(nbr)], **kw)
+        _POOL["score"] = lambda X, t, e, s: screen(X, t, e, strata=s, n_perm=0, backend="numpy")["z"]
+        one = _ours_one
+    else:
+        raise ValueError("method must be 'lab' or 'ours'")
+    _POOL["cells"] = cells
+    workers = len(os.sched_getaffinity(0))
+    t0 = time.perf_counter()
+    with mp.get_context("fork").Pool(workers) as pool:
+        out = pool.map(one, seeds, chunksize=1)
+    wall = time.perf_counter() - t0
+    res = {"method": method, "seeds": [seeds[0], seeds[-1]], "studies": len(seeds), "workers": workers,
+           "compute_s": wall, "preparation_s": prep, "in_function_s": time.perf_counter() - entered,
+           "host": hardware(), "load_avg_1m_end": os.getloadavg()[0]}
+    if method == "lab":
+        res["maxT"], res["p"] = (np.array(c) for c in zip(*out))
+    else:
+        res["z"], res["null_z"] = (np.array(c) for c in zip(*out))
+    return res
+
+
+@app.function(**gpu_function, single_use_containers=True)
+def gpu_design(seeds: list[int], score_backend: str = "cupy") -> dict:
+    """Our method on this container's GPU: CSR kernel + R-15 screen; first seed checked against NumPy."""
+    import numpy as np
+
+    from bench.real_cpu import DESIGN
+    from core.reimage_ref import reimage
+    from gpu import design_point as dp
+    from reimage import gpu
+
+    entered = time.perf_counter()
+    cells, L, prep = _charville()
+    prepared = {id(nbr): gpu.prepare(nbr, L["K"]) for nbr in cells["_nbr"].values()}
+    screen = _pinned("stats.screen").screen
+
+    def kernel(nbr, xy, types, focal, K, **kw):
+        return gpu.reimage_region(nbr, xy, types, focal, K, prepared=prepared[id(nbr)], **kw)
+
+    def score(X, t, e, s):
+        return screen(X, t, e, strata=s, n_perm=0, backend=score_backend)["z"]
+
+    t0 = time.perf_counter()  # warm-up (JIT, cupy kernels) doubles as the parity check; not timed below
+    parity = bool(np.array_equal(reimage(cells, DESIGN, seeds[0]),
+                                 reimage(cells, DESIGN, seeds[0], region_kernel=kernel), equal_nan=True))
+    dp.our_study(cells, DESIGN, seeds[0], kernel, score)
+    prep["warm_up_and_parity"] = time.perf_counter() - t0
+    t0 = time.perf_counter()
+    pairs = [dp.our_study(cells, DESIGN, s, kernel, score) for s in seeds]
+    compute = time.perf_counter() - t0
+    return {"seeds": seeds, "z": np.array([p[0] for p in pairs]), "null_z": np.array([p[1] for p in pairs]),
+            "compute_s": compute, "preparation_s": prep, "parity_seed": seeds[0], "parity_exact": parity,
+            "score_backend": score_backend, "in_function_s": time.perf_counter() - entered, "gpu": gpu_info()}
 
 
 # ---- local side: validates arguments, calls Modal, writes the evidence file ----
@@ -417,3 +535,101 @@ def run_ab(gpu: str = DEFAULT_GPU, reps: int = 3):
     for key, row in result["rows"].items():
         print(f"  {key}: median {row['median_s']:.2f} s [{row['min_s']:.2f}, {row['max_s']:.2f}]")
     print("  skipped:", result["skipped"] or "none")
+
+
+RATES = {"A100": 2.50, "H100": 3.95, "L4": 0.80, "cpu_core": 0.047, "memory_gib": 0.008}
+SPEND = REPO / "bench" / "results" / "modal-spend.json"
+CAP_USD = 150.0
+
+
+def _gpu_rate(gpu: str) -> float:
+    return RATES[gpu] + 8 * RATES["cpu_core"] + 32 * RATES["memory_gib"]  # gpu_function's 8 cores, 32 GiB
+
+
+def _spend(run: str, est_usd: float, basis: str) -> None:
+    """Log the estimate before a run; refuse when the running total would pass the cap."""
+    log = json.loads(SPEND.read_text())
+    total = round(log["entries"][-1].get("running_total_usd", 0) + est_usd, 2) if log["entries"] else est_usd
+    if total > CAP_USD:
+        raise SystemExit(f"{run}: running total ${total} would pass the ${CAP_USD} cap; stopping, tell the lead")
+    log["entries"].append({"utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ"), "run": run,
+                           "est_usd": round(est_usd, 2), "basis": basis, "running_total_usd": total})
+    SPEND.write_text(json.dumps(log, indent=2) + "\n")
+    print(f"spend: {run} est ${est_usd:.2f}, running total ${total}")
+
+
+@app.local_entrypoint()
+def run_design(gpu: str = DEFAULT_GPU, studies: int = 1000, fleet: str = "1,2,4,8,16", lab_studies: int = 1000,
+               score_backend: str = "cupy"):
+    """make modal-design: one design point of `studies` Charville studies, every slot on the same unit."""
+    import sys
+
+    import numpy as np
+
+    sys.path.insert(0, str(REPO))  # the local side needs the repo's packages too
+    from gpu import design_point as dp
+
+    _launch()
+    _check_gpu(gpu)
+    ns = sorted({int(n) for n in fleet.split(",")})
+    if not 1 <= lab_studies <= studies or ns[0] != 1 or ns[-1] > studies:
+        raise SystemExit("need 1 <= lab_studies <= studies and a fleet list starting at 1")
+    print("volume:", fetch_data.remote())
+    seeds = list(range(studies))
+    cpu_usd = 2 * (CPU_CORES * RATES["cpu_core"] + 64 * RATES["memory_gib"]) * 0.5  # two CPU boxes, <= 30 min each
+    _spend(f"design-point CPU slots (a, b), {studies} studies", cpu_usd, "2 x (32 cores + 64 GiB) x 0.5 h")
+    lab_call = cpu_design.spawn("lab", seeds[:lab_studies])
+    ours_call = cpu_design.spawn("ours", seeds)
+    gfn = gpu_design.with_options(gpu=gpu)
+    runs, merged = {}, {}
+    for n in ns:
+        hours = (n * 180 + studies * 1.5) / 3600  # per container ~3 min start-up and prep; ~1.5 s/study on 1 GPU
+        _spend(f"design-point fleet N={n} x {gpu}, {studies} studies", hours * _gpu_rate(gpu),
+               f"{hours:.2f} GPU-h x ${_gpu_rate(gpu):.2f}/h")
+        shards = [a.tolist() for a in np.array_split(seeds, n)]
+        parts, wall = _timed_call(lambda: list(gfn.map(shards, kwargs={"score_backend": score_backend})))
+        merged[n] = (np.concatenate([p["z"] for p in parts]), np.concatenate([p["null_z"] for p in parts]))
+        slowest = max(parts, key=lambda p: p["in_function_s"])
+        runs[str(n)] = {"containers_requested": n, "containers_seen": len({p["gpu"]["modal_task_id"] for p in parts}),
+                        "gpus": sorted({p["gpu"]["model"] for p in parts}),
+                        "compute_s": max(p["compute_s"] for p in parts), "modal_wall_s": wall,
+                        "startup_and_transfer_s": wall - slowest["in_function_s"],
+                        "preparation_s_slowest": slowest["preparation_s"],
+                        "parity_exact_all": all(p["parity_exact"] for p in parts),
+                        "bit_identical_to_N1": bool(all(np.array_equal(a, b) for a, b in zip(merged[n], merged[1])))}
+        print(f"  N={n}: compute {runs[str(n)]['compute_s']:.1f} s, wall {wall:.1f} s")
+    t1 = runs["1"]["compute_s"]
+    for n in ns:
+        r = runs[str(n)]
+        r["speedup_vs_N1"] = t1 / r["compute_s"]
+        r["efficiency"] = t1 / (n * r["compute_s"])
+    lab, ours_cpu = lab_call.get(), ours_call.get()
+    calls = {}
+    for name, (z, z0) in (("b_ours_cpu", (ours_cpu["z"], ours_cpu["null_z"])), ("c_ours_1_gpu", merged[1])):
+        c, cut = dp.our_calls(z, z0)
+        calls[name] = {"threshold": cut, "positives": int(c.sum()), "agreement_with_lab": dp.agreement(
+            lab["p"], c[:lab_studies])}
+    lab_scale = studies / lab_studies
+    unit = {
+        "a_lab_all_cores": {"label": "MEASURED" if lab_scale == 1 else "ESTIMATE", "seconds": lab["compute_s"] * lab_scale,
+                            "measured_studies": lab_studies, "measured_seconds": lab["compute_s"],
+                            "basis": "measured" if lab_scale == 1 else f"linear: {lab_studies} measured studies x {lab_scale:g}",
+                            "workers": lab["workers"], "host": lab["host"], "positives": int((lab["p"] <= dp.ALPHA).sum())},
+        "b_ours_cpu_all_cores": {"label": "MEASURED", "seconds": ours_cpu["compute_s"], "workers": ours_cpu["workers"],
+                                 "host": ours_cpu["host"]},
+        "c_ours_1_gpu": {"label": "MEASURED", "seconds": t1, "gpu": runs["1"]["gpus"]},
+        "d_ours_n_gpu": {"label": "MEASURED", "runs": runs},
+    }
+    payload = {"kind": "design_point", "studies": studies, "unit": f"one design point: {studies} Charville studies end "
+               "to end (re-image, score, call), bench/real_cpu.py DESIGN", "methods": dp.__doc__, "slots": unit,
+               "e_gpu_parity": {"exact_all_containers": all(r["parity_exact_all"] for r in runs.values()),
+                                "suite": "bench/results/modal-a100-20261121T164808Z.json: 39 passed, 1 skipped"},
+               "f_same_call": {k: f"{v['agreement_with_lab']['same_call']} of {v['agreement_with_lab']['of']}"
+                               for k, v in calls.items()},
+               "calls": calls, "score_backend": score_backend,
+               "timing": "seconds = in-container compute for the whole unit; start-up, data load and adjacency apart"}
+    _save(gpu, payload)
+    for k, v in unit.items():
+        if "seconds" in v:
+            print(f"  {k}: {v['seconds']:.1f} s ({v['label']})")
+    print("  same call:", payload["f_same_call"])
