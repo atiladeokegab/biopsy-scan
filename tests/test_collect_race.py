@@ -31,7 +31,7 @@ def test_other_bench_files_feed_nothing():
 def test_committed_race_matches_bench_results():
     """Atlas #79 (1): every number shown is the one in the file it cites."""
     b = json.loads((ROOT / "demo" / "data" / "baseline.json").read_text())
-    race = {r["id"]: r for r in b["rows"]} | {"workflow": b["workflow"]}
+    race = {r["id"]: r for r in b["rows"]} | {"workflow": b["workflow"], "scope": b.get("scope")}
     for path in sorted((ROOT / "bench" / "results").glob("*.json")):
         d = json.loads(path.read_text())
         for rid, fields in (cr.rows_from(path, d) if isinstance(d, dict) else []):
@@ -151,9 +151,8 @@ DP = {"schema_version": 1, "runner": "modal", "status": "MEASURED", "kind": "des
 def test_design_point_fills_the_four_rows_only_when_measured_at_1000_studies():
     """Atlas #79 re-check (b): a FAILED run, or any workload but the declared design point, fills nothing."""
     rows = dict(cr.rows_from(Path("dp.json"), DP))
-    assert sorted(rows) == ["gpu-1", "gpu-16", "lab-cpu", "preflight-cpu", "scope"]
+    assert sorted(rows) == ["gpu-1", "lab-cpu", "preflight-cpu", "scope"], "no 16-GPU lane (lead, 2026-11-21)"
     assert rows["gpu-1"]["gpu"] == "1x NVIDIA H100" and rows["lab-cpu"]["cores"] == 48
-    assert (rows["gpu-16"]["seconds"], rows["gpu-16"]["startup_s"], rows["gpu-16"]["gpu"]) == (54.1, 6.2, "16x NVIDIA H100")
     # Atlas #79 round 3 (1)(2): the measured compute span, the calls timed apart, the scope kept
     assert rows["preflight-cpu"]["calls_s"] == 0.41 and rows["gpu-1"]["calls_s"] == 0.38 and "calls_s" not in rows["lab-cpu"]
     assert rows["scope"] == {k: DP["scope"][k] for k in ("comparison", "calibration")}
@@ -211,7 +210,8 @@ def test_timed_design_point_rows_need_their_scope_on_the_page():
     b = json.loads((ROOT / "demo" / "data" / "baseline.json").read_text())
     rows = dict(cr.rows_from(Path("dp.json"), DP))
     scope = rows.pop("scope")
-    timed = b | {"rows": [r | rows.get(r["id"], {}) for r in b["rows"]]}
+    unscoped = {k: v for k, v in b.items() if k != "scope"}  # the committed race carries its own scope
+    timed = unscoped | {"rows": [r | rows.get(r["id"], {}) for r in b["rows"]]}
     assert _check(timed) and "scope" in _check(timed)
     assert _check(timed | {"scope": scope}) is None
     assert _check(timed | {"scope": scope, "rows": [r | {"calls_s": -1} for r in timed["rows"]]})
@@ -259,6 +259,29 @@ def test_python_and_browser_claims_validators_agree():
             return False
     assert json.loads(out) == [py_ok(c) for c in cases]
     assert json.loads(out) == [True] + [False] * len(BAD_CLAIMS)
+
+
+def _four(**over):
+    stages = {"compute_wall_s": 372.0, "end_to_end_in_container_s": 592.0, "evaluated_studies": 3000}
+    arm = lambda a, w: {"container_class": "Modal A100 + 8 cores + 64 GiB", "workers": w, "split": {"reimage_share": 0.98},
+                        "host": {"gpu": "NVIDIA A100-SXM4-40GB, 40960 MiB, 610"},
+                        "stages": stages}
+    d = {"status": "MEASURED", "design": {"studies_per_stream": 1000}, "parity": {"all": True},
+         "labels": {"compute": "MEASURED", "outcomes": "SYNTHETIC (atlas/simulation.py at 79a7792)", "rates": "ESTIMATE (x)"},
+         "arms": {a: arm(a, 1 if a == "gpu" else 8) for a in ("lab", "numba", "gpu", "hybrid")}}
+    return d | over
+
+
+def test_the_four_arm_file_fills_exactly_the_four_declared_lanes():
+    rows = dict(cr.rows_from(Path("modal-design.json"), _four()))
+    assert sorted(rows) == ["gpu-1", "hybrid", "lab-cpu", "preflight-cpu", "scope"]
+    h = rows["hybrid"]
+    assert (h["seconds"], h["startup_s"], h["cores"], h["gpu"]) == (372.0, 220.0, 8, "1x NVIDIA A100-SXM4-40GB")
+    assert rows["gpu-1"]["cores"] is None and rows["lab-cpu"]["gpu"] is None and rows["lab-cpu"]["seconds"] == 372.0
+    three = _four()
+    del three["arms"]["hybrid"]
+    for bad in (three, _four(status="FAILED"), _four(parity={"all": False}), _four(design={"studies_per_stream": 20})):
+        assert list(cr.rows_from(Path("modal-design.json"), bad)) == []
 
 
 def test_interim_seconds_display_as_the_raw_file_rounds():
