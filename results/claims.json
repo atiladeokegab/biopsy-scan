@@ -8,7 +8,8 @@
   "word": "the first word of a string label",
   "eq": "the value as stored (strings, integers, booleans)",
   "ratio": "first path divided by second path, then the rule",
-  "product": "first path times second path, then the rule"
+  "product": "first path times second path, then the rule",
+  "md": "the string with | escaped as \\\\| (inside a Markdown table cell)"
  },
  "claims": [
   {
@@ -531,9 +532,56 @@
      "path": "locked.power.design_events",
      "rule": "eq",
      "expect": "4"
+    },
+    {
+     "name": "feature_md",
+     "path": "locked.feature",
+     "rule": "md",
+     "expect": "Tumor (Podo+)\\|Stromal / Fibroblast\\|25um\\|fraction"
+    },
+    {
+     "name": "min_power",
+     "path": "locked.power.min_power",
+     "rule": "pct:0",
+     "expect": "50"
+    },
+    {
+     "name": "n_patients",
+     "path": "locked.n_patients",
+     "rule": "eq",
+     "expect": "16"
+    },
+    {
+     "name": "n_events",
+     "path": "locked.n_events",
+     "rule": "eq",
+     "expect": "4"
+    },
+    {
+     "name": "charville_hit",
+     "path": "charville_top_hit.status",
+     "rule": "eq",
+     "expect": "NOT TESTABLE"
     }
    ],
-   "quotes": []
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "`{n_patients}` locked patients, `{n_events}` events) | Locked feature `{feature_md}`: HR per SD `{hr_per_sd}` `[{hr_lo}, {hr_hi}]`, one-sided p `{p_one_sided}`, C-index `{c_index}`; the locked test does not pass. **{label}** (underpowered: conditional power `{power}%` < `{min_power}%` with `{design_events}` design events), so these numbers are inconclusive."
+    },
+    {
+     "file": "docs/JUDGING.md",
+     "text": "the frozen rule's feature (`{feature_md}`) gives HR per SD {hr_per_sd} [{hr_lo}, {hr_hi}], one-sided p {p_one_sided}, C-index {c_index}, so the locked test does not pass. It is inconclusive: underpowered, conditional power {power}% < {min_power}% with {design_events} design events."
+    },
+    {
+     "file": "docs/JUDGING.md",
+     "text": "| `results/upmc-rediscovery.json` (#109) | {label} (underpowered) |"
+    },
+    {
+     "file": "docs/SUBMISSION.md",
+     "text": "one pre-registered locked test (R-16), which is {label} (underpowered) and inconclusive: `results/upmc-rediscovery.json`."
+    }
+   ]
   },
   {
    "id": "upmc-r16-discovery-rank",
@@ -556,7 +604,16 @@
      "expect": "612"
     }
    ],
-   "quotes": []
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "Discovery rank `{rank}` of `{of}` (**{label}**, discovery patients only)"
+    },
+    {
+     "file": "docs/JUDGING.md",
+     "text": "Discovery rank {rank} of {of} ({label}, discovery patients only)"
+    }
+   ]
   }
  ],
  "stale": [

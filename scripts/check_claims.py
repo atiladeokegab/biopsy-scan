@@ -42,6 +42,8 @@ def render(value, rule):
         return f"{value:,.{int(n)}f}" if n else f"{value:,}"
     if kind == "word":
         return value.split()[0]
+    if kind == "md":  # a pipe inside a Markdown table cell is written \|
+        return str(value).replace("|", "\\|")
     raise ValueError(f"unknown rule {rule}")
 
 
