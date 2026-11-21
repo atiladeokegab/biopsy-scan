@@ -1,0 +1,43 @@
+{
+  "hardware": {
+    "cpu": "AMD EPYC 7B13",
+    "logical_cpus": 8,
+    "python": "3.11.17",
+    "numpy": "2.4.6",
+    "gpu": null,
+    "cores_per_socket": 4,
+    "sockets": 1
+  },
+  "data": "synthetic",
+  "design": {
+    "k": 4,
+    "fov_um": 500.0,
+    "eps": 0.1
+  },
+  "pool": {
+    "regions": 8,
+    "cells_per_region": 6000,
+    "side_um": 750.0,
+    "mean_neighbours_100um": 298.36008333333336
+  },
+  "prep_s": 9.171478146221489,
+  "seed": 0,
+  "rungs": {
+    "numpy_reference": {
+      "trials": 20,
+      "cold_s": 0.10607487708330154,
+      "amortised_s_per_trial": 0.10986635740846395,
+      "total_s": 2.256645380984992,
+      "neighbour_reads": 143093970,
+      "reads_per_s": 63410038.28325992,
+      "trials_per_s": 9.101967368246992
+    },
+    "numba_all_core": "pending: reimage.cpu unavailable (ModuleNotFoundError: No module named 'reimage')",
+    "gpu": "pending: reimage.gpu unavailable (ModuleNotFoundError: No module named 'reimage')"
+  },
+  "unit": {
+    "trial": "4 region looks: crop + mis-call + neighbour recount + region sums",
+    "excludes": "patient sampling and aggregation, features, outcomes, statistics; prep_s (neighbour lists) is reported separately"
+  },
+  "baseline": "numpy_reference"
+}
