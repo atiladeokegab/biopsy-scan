@@ -42,7 +42,7 @@ All real-data results are exploratory: the outcomes have already been seen.
 | Rung 0, what a lab runs today (cKDTree recount plus 1,000 permutations, single core) | 7.52 s per study (mean of 3) | `bench/results/cpu-ladder.json` `lab_today` | MEASURED |
 | Rung 0 for one 1,000-study design | 7,521 s, about 2.1 h | same, `extrapolation` | ESTIMATE |
 | Preflight re-imaging on CPU, Charville, 100 studies | NumPy reference 2.98 s; Numba with 8 threads 3.26 s per study; the two agree exactly, including where NaNs fall | `cpu-ladder.json` `rows` | MEASURED |
-| R-14 baseline: one full PHReg fit for each of the 3,780 Charville patterns, 8 cores | 67.1 s | PR #64 (open); its results JSON is not committed yet | MEASURED per #64 (not verifiable on `integration`) |
+| R-14 baseline: one full PHReg fit for each of the 3,780 Charville patterns, 8 cores | 67.1 s | PR #64; the rerun commits as `bench/results/impl-a-charville-amd-epyc-7b13.json` | reported, rerun pending |
 | R-15 CPU score screen, same work as the GPU | n/a | R-15 | PENDING |
 | GPU re-imaging and GPU screen | n/a | Modal run | PENDING |
 
@@ -54,7 +54,7 @@ The rung-0 row and the reshaped row cover different scopes, so their ratio is no
 |---|---|---|
 | The textbook formula overstates power at 6 of 7 patient counts and understates it at 1. At 200 patients it says 80%; simulation on real tissue gives 27% (95% CI 22 to 32%)[^60] | `bench/results/vs-schoenfeld-300.json` (#53) | ESTIMATE (300 studies per point) |
 | Charville, 630 cell-mix patterns: the best pattern has maxT p = 0.13 (9,999 resamples) and omnibus p = 0.14. Chance explains it | `audit/results/charville.json` | MEASURED, negative |
-| Charville, 3,780 patterns with protein channels: the top candidate moves to PD1 on macrophages within 100 µm of tumour, z = 3.96. Adjusted p = 0.098 and omnibus p = 0.17, so it is not significant. It stays rank 1 in 158 of 159 leave-one-patient-out drops | `results/charville-v2.json` (#47) | MEASURED, negative |
+| Charville, 3,780 patterns with protein channels: the top candidate moves to PD1 on macrophages within 100 µm of Tumor 5 cells (`Tumor 5|Macrophage|100um|PD1`), z = 3.96. Adjusted p = 0.098 and omnibus p = 0.17, so it is not significant. It stays rank 1 in 158 of 159 leave-one-patient-out drops | `results/charville-v2.json` (#47) | MEASURED, negative |
 | On a loaded shared 8-core VM, Numba all-core was no faster than NumPy (3.26 vs 2.98 s per study) | `bench/results/cpu-ladder.json` | MEASURED, negative |
 | The R-16 rediscovery candidate is fixed before any search | #61 | TESTED (`audit/test_rediscovery_definition.py`) |
 
