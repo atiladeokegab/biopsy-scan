@@ -46,3 +46,16 @@ export function bioTexts(b) {
   }
   return out;
 }
+
+// The dials' grid: Atlas's grid is simulated on real tissue (source) with synthetic outcomes (meta.simulation_label).
+export function gridTexts(g) {
+  const outcomes = g.meta?.simulation_label ?? g.source;
+  need(["MEASURED", "SYNTHETIC"].includes(g.source) && ["MEASURED", "SYNTHETIC"].includes(outcomes) && fin(g.effect_hr_per_sd), "grid");
+  const legacy = /legacy R4/.test(g.note ?? "");
+  return {
+    provenance: `MEASURED tissue · ${outcomes} outcomes`,
+    "grid-tag": g.source === "MEASURED" ? `MEASURED simulation · ${outcomes} outcomes` : "SYNTHETIC grid",
+    planted: `Planted ${outcomes === "SYNTHETIC" ? "synthetic " : ""}effect: HR ${g.effect_hr_per_sd} per SD` +
+      (legacy ? ", legacy Cox score test (R4); not the PD1 pattern, not the R15 screen" : ""),
+  };
+}

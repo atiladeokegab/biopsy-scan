@@ -4,7 +4,7 @@
 import { createTissue } from "./tissue.js";
 import { createSpeedRace, workflowHTML, pairRatio } from "./race.js";
 import { drawRegion, drawKM } from "./bio.js";
-import { claimTexts, bioTexts } from "./claims.js";
+import { claimTexts, bioTexts, gridTexts } from "./claims.js";
 import { drawChart, pct, fovLabel } from "./chart.js";
 
 const $ = (id) => document.getElementById(id);
@@ -52,9 +52,9 @@ function setSliders(c) {
 }
 
 function verdict(power) {
-  if (power >= 0.8) return "Yes. Most studies like yours find the pattern.";
+  if (power >= 0.8) return "Yes. Most studies like yours find the planted effect.";
   if (power >= 0.5) return "Maybe. Many studies like yours miss it.";
-  return "Unlikely. Most studies like yours miss the pattern.";
+  return "Unlikely. Most studies like yours miss the planted effect.";
 }
 
 // "≈1.8 regions per patient" when the cohort gives a mean; the chart still marks it on the whole-number line.
@@ -86,7 +86,6 @@ function update() {
   shown = p;
   $("power").textContent = pct(p.power);
   $("ident").textContent = pct(p.identification_rate);
-  $("planted").textContent = `Planted pattern: HR ${grid.effect_hr_per_sd} per SD`;
   $("verdict").textContent = verdict(p.power);
   $("snap").textContent = AXES.every((k) => want[k] === p[k]) ? "" : `Nearest grid point: ${describe(p)}.`;
   $("chart-title").textContent = drawChart($("chart"), grid, p);
@@ -169,8 +168,7 @@ async function main() {
   }
   [grid, tissue] = [gr.value, ti.value];
 
-  const prov = (d) => (d.source === "MEASURED" ? "MEASURED" : "SYNTHETIC");
-  $("provenance").textContent = `${prov(tissue)} tissue · ${prov(grid)} grid`;
+  for (const [id, v] of Object.entries(gridTexts(grid))) $(id).textContent = v;
   $("note").textContent =
     `HR ${grid.effect_hr_per_sd} per SD planted · ${grid.studies_per_point.toLocaleString("en-GB")} studies per point. ` +
     `White ring: your design. Green: our cohort (${cohortRegions(grid.cohort)}).` +
@@ -195,6 +193,11 @@ async function main() {
   // Field of view: 200 µm up to the core's width in 100 µm steps, then one more stop for "full core".
   FULL_SLIDER = Math.floor(tissue.region_um / FOV_STEP) * FOV_STEP + FOV_STEP;
   Object.assign($("fov"), { min: 200, step: FOV_STEP, max: FULL_SLIDER });
+  // The other dials span exactly the grid's axes; an axis with one value is shown but fixed.
+  for (const [id, k, f] of [["patients", "patients", 1], ["regions", "regions", 1], ["miscall", "miscall", 100]]) {
+    const v = grid.axes[k];
+    Object.assign($(id), { min: Math.min(...v) * f, max: Math.max(...v) * f, disabled: v.length < 2 });
+  }
   setSliders({ ...grid.cohort, fov_um: 400, miscall: 0.1 });
   update();
 }

@@ -42,6 +42,12 @@ Regenerate the placeholders: `python3 -I demo/synth_data.py`. It writes the **SY
 `grid.json` (a toy attenuation model) and `tissue.json` (random tumour nests with an immune rim).
 The page labels both SYNTHETIC until each file says `"source": "MEASURED"`.
 
+The committed `grid.json` is Atlas's Charville grid, copied verbatim from `atlas/results/production/charville/grid.json`
+at atlas commit 3faac76 (sha256 638534d2…): 48 designs, 1,000 planted-effect studies each, simulated on real tissue
+with SYNTHETIC Weibull outcomes (HR 2 per SD). It is the legacy R4 Cox score power, not the PD1 pattern and not the
+R15 screen, and the page says so. For a MEASURED grid, `check_data` also requires each power to equal its count over
+the studies and sit inside its interval, and the note to name the synthetic outcomes, legacy R4 and not R15.
+
 ## `data/tissue.json` (`preflight-tissue/1`): written from the core loaders
 
 ```jsonc

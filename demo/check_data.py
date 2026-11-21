@@ -55,6 +55,17 @@ def check_grid(g, w):
         for k in ("power", "identification_rate"):
             need(num(p.get(k)) and 0 <= p[k] <= 1, w, f"points[{i}].{k}: 0..1")
         need(p["identification_rate"] <= p["power"] + 1e-9, w, f"points[{i}]: identification_rate above power")
+        if g["source"] == "MEASURED":  # Atlas's simulated grid: every shown rate is its count over its studies, inside its interval
+            n = g["studies_per_point"]
+            need(isinstance(p.get("power_count"), int) and abs(p["power_count"] / n - p["power"]) < 1e-9, w,
+                 f"points[{i}].power: power_count / studies_per_point")
+            need(num(p.get("power_lo")) and num(p.get("power_hi")) and p["power_lo"] <= p["power"] <= p["power_hi"], w,
+                 f"points[{i}]: power_lo <= power <= power_hi")
+            need(num(p.get("fwer")) and 0 <= p["fwer"] <= 1, w, f"points[{i}].fwer: 0..1")
+    if g["source"] == "MEASURED":
+        note = g.get("note", "")
+        need("SYNTHETIC" in note and "legacy R4" in note and "not an R15" in note, w,
+             "note: a MEASURED grid says its outcomes are SYNTHETIC, its test is legacy R4 and it is not R15")
     return f"{len(pts)} points, source {g['source']}"
 
 

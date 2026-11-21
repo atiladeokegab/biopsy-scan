@@ -136,4 +136,11 @@ assert.match(bt["reg-high-cap"], /0 of them within 100 µm/); assert.match(bt["r
 assert.match(bt["bio-cap"], /Can't be tested in our second cohort: it has no PD1 stain\.$/);
 assert.doesNotMatch(Object.values(bt).join(" "), /not replicated|discovery/i);
 assert.throws(() => bioTexts({ ...bm, feature: { ...bm.feature, z: "3.96" } }), /bad data/);
+// The dials: Atlas's grid is the legacy R4 Cox score power under synthetic outcomes, and the page says so.
+const { gridTexts } = await import("./claims.js");
+const grid = JSON.parse(readFileSync(new URL("./data/grid.json", import.meta.url), "utf8"));
+const gt = gridTexts(grid);
+assert.equal(gt.provenance, "MEASURED tissue · SYNTHETIC outcomes");
+assert.equal(gt["grid-tag"], "MEASURED simulation · SYNTHETIC outcomes");
+assert.match(gt.planted, /^Planted synthetic effect: HR 2 per SD, legacy Cox score test \(R4\); not the PD1 pattern, not the R15 screen$/);
 console.log("race.test.mjs: ok");
