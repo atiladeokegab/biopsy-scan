@@ -138,13 +138,15 @@ def measure(cohort, patient_ids, time, event, strata, C, c_names, X, names, core
 
 def run_cohort(cohort: str, cores: int) -> dict:
     from core import cohorts
-    from core.grammar import feature_names, grammar
-    from core.truth import truth
+    from core.grammar import feature_names, grammar_v2
+    from core.truth import truth_v2
 
-    c = cohorts.load(cohort)
-    X = truth(c)
+    c = cohorts.load(cohort, include_channels=True)
+    names = feature_names(grammar_v2(c["type_names"], c["channel_names"]))
+    X = truth_v2(c)  # every candidate: the v1 spatial features plus v2 neighbour expression (3,780 on Charville)
+    if X.shape[1] != len(names):
+        raise ValueError(f"{cohort}: X has {X.shape[1]} columns, the v2 grammar names {len(names)}")
     C, c_names = clinical(cohort, c["patient_names"])
-    names = feature_names(grammar(c["type_names"]))
     return measure(cohort, c["patient_names"], c["time"], c["event"], c["strata"], C, c_names, X, names, cores)
 
 
