@@ -1,7 +1,7 @@
 // The Preflight demo: three linked views (tissue, race, answer) driven by four sliders.
 // Data: data/grid.json, data/tissue.json, optional data/bench.json (schemas in README.md).
 import { createTissue } from "./tissue.js";
-import { createRace, raceAction } from "./race.js";
+import { createRace, raceAction, baselineHTML } from "./race.js";
 import { drawChart, pct, fovLabel } from "./chart.js";
 
 const $ = (id) => document.getElementById(id);
@@ -137,6 +137,8 @@ async function main() {
   } catch (err) {
     $("tissue-caption").textContent = "This browser could not start WebGL, so the 3D tissue is off. Everything else works.";
   }
+  // Baseline vs screen: hidden if baseline.json is missing or broken (check_data.py says why).
+  getJSON("data/baseline.json").then((b) => { $("baseline").innerHTML = baselineHTML(b); $("baseline").hidden = false; }, () => {});
   race = createRace($("cpu"), $("gpu"), { cpu: $("cpu-count"), gpu: $("gpu-count"), speed: $("race-speed") });
 
   for (const id of ["patients", "regions", "fov", "miscall"]) $(id).addEventListener("input", () => update({}));

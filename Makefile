@@ -8,7 +8,9 @@ test:
 
 # The event smoke: offline, tiny invented fixture, no real data. Plus the demo's race regression (Node).
 smoke: install test
+	python3 -I demo/check_data.py demo/data
 	node demo/race.test.mjs
+	node demo/copy.test.mjs
 
 data:
 	./scripts/fetch_data.sh

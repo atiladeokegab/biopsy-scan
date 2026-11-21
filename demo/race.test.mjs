@@ -55,4 +55,17 @@ assert.equal(out.cpu.innerHTML, "<b>0</b> of 100 studies");
 race.redraw(); // a resize after a clear keeps the lanes empty
 pump(1e9);
 assert.deepEqual(colours(gpu), new Set(["--surface-elevated"]), "a resize never plays the race");
+// Baseline vs screen: PENDING rows get no bar and no number; a ratio appears only from two MEASURED rows.
+const { baselineHTML } = await import("./race.js");
+const { readFileSync } = await import("node:fs");
+const bl = JSON.parse(readFileSync(new URL("./data/baseline.json", import.meta.url), "utf8"));
+const items = (h) => h.split("<li>").slice(1);
+const committed = items(baselineHTML(bl));
+bl.rows.forEach((r, i) => assert.equal(committed[i].includes("<i "), r.seconds != null, `row ${i}: a bar only when timed`));
+assert.ok(!baselineHTML(bl).includes("faster"), "no speed-up while the screen rows are PENDING");
+const filled = structuredClone(bl);
+Object.assign(filled.rows[3], { label: "MEASURED", seconds: 0.5, hardware: "Modal", gpu: "NVIDIA L4" });
+assert.match(items(baselineHTML(filled))[3], /134× faster than the standard on 8 cores/);
+Object.assign(filled.rows[3], { label: "ESTIMATE" });
+assert.ok(!baselineHTML(filled).includes("faster"), "an ESTIMATE never yields a speed-up");
 console.log("race.test.mjs: ok");

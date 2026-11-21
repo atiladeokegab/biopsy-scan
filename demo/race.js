@@ -9,9 +9,9 @@ const CPU_SHOW_MS = 7000; // how long we let the CPU lane crawl before stopping 
 const UNMEASURED_CPU_MS = 140; // on-screen ms per CPU study when unmeasured: a display pace, not a measurement
 
 // Which way the measured comparison points: a slower GPU must never read as "1× faster".
+const x = (v) => `${v < 10 ? v.toFixed(1) : fmt(Math.round(v))}×`;
 export function speedWord(cpuSeconds, gpuSeconds) {
   const r = cpuSeconds / gpuSeconds;
-  const x = (v) => `${v < 10 ? v.toFixed(1) : fmt(Math.round(v))}×`;
   return r > 1.05 ? `GPU ${x(r)} faster` : r < 0.95 ? `GPU ${x(1 / r)} slower` : "about the same";
 }
 
@@ -112,4 +112,30 @@ export function createRace(cpuCanvas, gpuCanvas, out) {
   const redraw = () => (last ? run({ ...last, reducedMotion: true }) : clear(lastN));
 
   return { run, clear, redraw };
+}
+
+// BASELINE VS SCREEN (data/baseline.json): one row per method; bars only for timed rows, scaled to the slowest.
+// A PENDING row shows no bar and no number. A screen row's ratio is shown only when it and the fastest
+// baseline row are both MEASURED.
+const esc = (v) => String(v).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+export function baselineHTML(b) {
+  const timed = b.rows.filter((r) => r.seconds != null);
+  const max = Math.max(...timed.map((r) => r.seconds));
+  const base = b.rows.filter((r) => r.role === "baseline" && r.label === "MEASURED")
+    .sort((p, q) => p.seconds - q.seconds)[0];
+  const rows = b.rows.map((r) => {
+    const tag = `<span class="tag${r.label === "MEASURED" ? " ok" : ""}">${esc(r.label)}</span>`;
+    const on = r.seconds == null ? "" : `${esc(r.hardware)}, ${r.gpu ? esc(r.gpu) : `${r.cores} core${r.cores > 1 ? "s" : ""}`}`;
+    const ratio = r.role === "screen" && r.label === "MEASURED" && base
+      ? ` · ${x(base.seconds / r.seconds)} ${base.seconds >= r.seconds ? "faster" : "slower"} than the standard on ${base.cores ? `${base.cores} cores` : esc(base.gpu)}`
+      : "";
+    const bar = r.seconds == null
+      ? `<span class="bl-bar none">not yet timed · ${esc(r.source)}</span>`
+      : `<span class="bl-bar"><i class="bl-${r.role}" style="width:${(100 * r.seconds) / max}%"></i></span>`;
+    const time = r.seconds == null ? "" : r.seconds < 600 ? `${r.seconds} s` : duration(r.seconds);
+    return `<li><span class="bl-method">${esc(r.method)}<small>${on}${ratio}</small></span>` +
+      `<span class="bl-time">${time} ${tag}</span>${bar}` +
+      (r.seconds == null ? "" : `<small class="bl-src">${esc(r.source)}</small>`) + `</li>`;
+  });
+  return `<h3>Baseline vs screen</h3><p class="bl-task">${esc(b.task)}</p><ul>${rows.join("")}</ul>`;
 }
