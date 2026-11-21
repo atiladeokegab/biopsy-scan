@@ -1,0 +1,126 @@
+{
+  "cohort": "charville",
+  "status": "MEASURED",
+  "inference": "exploratory (outcomes already seen)",
+  "n_patients": 159,
+  "n_events": 38,
+  "n_features_tested": 3780,
+  "clinical_covariates": null,
+  "strata": "coverslip groups",
+  "n_perm": 999,
+  "seed": 0,
+  "maxT": {
+    "p": 0.243,
+    "statistic": 4.084449051400471
+  },
+  "top_candidates": [
+    {
+      "rank": 1,
+      "feature": "Tumor 2 (Ki67 Proliferating)|CD4 T cell|100um|enrichment",
+      "z": 4.084449051400471,
+      "adjusted_p": 0.243
+    },
+    {
+      "rank": 2,
+      "feature": "Tumor 2 (Ki67 Proliferating)|Stroma|100um|enrichment",
+      "z": 3.9270510945765325,
+      "adjusted_p": 0.36
+    },
+    {
+      "rank": 3,
+      "feature": "Tumor 7|Tumor 4|25um|fraction",
+      "z": 3.7510577330092607,
+      "adjusted_p": 0.522
+    },
+    {
+      "rank": 4,
+      "feature": "Tumor 2 (Ki67 Proliferating)|CD8 T cell|100um|enrichment",
+      "z": 3.639881937930937,
+      "adjusted_p": 0.618
+    },
+    {
+      "rank": 5,
+      "feature": "Tumor 5|Macrophage|100um|PD1",
+      "z": 3.564758200449639,
+      "adjusted_p": 0.694
+    },
+    {
+      "rank": 6,
+      "feature": "Tumor 3|Blood vessel|100um|enrichment",
+      "z": 3.5346103422367783,
+      "adjusted_p": 0.725
+    },
+    {
+      "rank": 7,
+      "feature": "Tumor 3|Blood vessel|50um|enrichment",
+      "z": 3.480004414882628,
+      "adjusted_p": 0.764
+    },
+    {
+      "rank": 8,
+      "feature": "Tumor 7|Tumor 4|50um|fraction",
+      "z": 3.3801971993135944,
+      "adjusted_p": 0.829
+    },
+    {
+      "rank": 9,
+      "feature": "Tumor 7|Tumor 4|25um|Ki67",
+      "z": -3.339152277701947,
+      "adjusted_p": 0.847
+    },
+    {
+      "rank": 10,
+      "feature": "Tumor 2 (Ki67 Proliferating)|CD4 T cell|50um|enrichment",
+      "z": 3.280740966108788,
+      "adjusted_p": 0.889
+    }
+  ],
+  "backend": "numpy",
+  "null": {
+    "name": "clinical-null parametric bootstrap",
+    "events": "Breslow stratified Cox model on C, fitted on patients with an endpoint, stratum and complete C",
+    "censoring": "Breslow stratified Cox model on C for the censoring times, truncated at each stratum's last follow-up",
+    "refit": "null model refitted per resample and per complete-case mask; U, V, z recomputed for every candidate",
+    "baseline": "cumulative baseline hazard interpolated linearly between the Breslow jumps (a continuous baseline, not the literal Breslow step distribution)",
+    "streams": "resample b draws from SeedSequence(seed).spawn(B)[b]: the same resamples for any block or backend",
+    "failed_fits": "a resample whose null refit does not converge has null maxT NaN (counted in 'nonconverged') and counts as exceeding in p and adjusted_p (conservative); zero-event resamples are kept with U = V = z = 0",
+    "assumptions": [
+      "proportional hazards in C within strata",
+      "censoring independent of X given C and stratum",
+      "event and censoring times conditionally independent given C and stratum",
+      "no candidate effect given C (the null being tested)"
+    ],
+    "B": 999,
+    "seed": 0,
+    "nonconverged": 0
+  },
+  "code_revision": "cae6c10",
+  "wall_s": 57.593243396999995,
+  "runner": {
+    "where": "modal",
+    "cpu": 8.0,
+    "modal_wall_s": 57.59417200088501,
+    "logical_cpus": 24,
+    "local_wall_s": 66.74385571479797
+  },
+  "superseded_runs": [
+    {
+      "code_revision": "d751361",
+      "r15_head": "91d765e",
+      "modal_app": "ap-kTbapBDPSdWZExWaMZNMie",
+      "maxT_p": 0.278,
+      "top_feature": "Tumor 2 (Ki67 Proliferating)|CD4 T cell|100um|enrichment",
+      "top_z": 4.084449051400471
+    },
+    {
+      "code_revision": "8145b03",
+      "r15_head": "4fa7790",
+      "modal_app": "ap-bLiCKX1j5e61cW3RZF9VlH",
+      "maxT_p": 0.278,
+      "top_feature": "Tumor 2 (Ki67 Proliferating)|CD4 T cell|100um|enrichment",
+      "top_z": 4.084449051400471
+    }
+  ],
+  "r15_head": "9e287ecc49585727db606c17e842df80e332e3dd",
+  "modal_app": "ap-Z6PXLy8c0jbIRnlVWajRdx"
+}

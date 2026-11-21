@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "runner": "modal",
+  "gpu_requested": "A100-40GB",
+  "commit": "3188a456b7856b5ec5bbfa6bd3c5d7288edd9af4",
+  "dirty": false,
+  "launched_utc": "2026-11-21T18:43:03Z",
+  "utc": "20261121T184502Z",
+  "pricing": {
+    "source": "https://modal.com/pricing",
+    "read_utc": "2026-11-21T17:36Z",
+    "unit": "USD per second",
+    "A100-40GB": 0.000583,
+    "A100-80GB": 0.000694,
+    "H100": 0.001097,
+    "L4": 0.000222,
+    "cpu_core": 1.31e-05,
+    "memory_gib": 2.22e-06,
+    "note": "preemptible Function list price; cpu is per physical core (2 vCPU)"
+  },
+  "status": "MEASURED",
+  "kind": "gpu_tests",
+  "gpu_tests": {
+    "exit_code": 0,
+    "passed": 39,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 1,
+    "skips": [
+      "test_gpu_selection_never_reports_cpu_fallback: this check requires CUDA to be unavailable"
+    ],
+    "files": [
+      "reimage/test_backends.py",
+      "reimage/test_expression.py",
+      "reimage/test_fleet.py"
+    ],
+    "unexpected_skips": [],
+    "coverage": {
+      "cuda_simulator_subprocess": 3,
+      "in_process_with_real_device": 36,
+      "simulator_tests": [
+        "test_gpu_deterministic_float64_order_and_rejects_cpu_snapshot",
+        "test_gpu_v2_matches_reference_and_fleet_is_bit_identical_under_cuda_simulator",
+        "test_two_fake_shards_on_cuda_simulator_are_bit_identical"
+      ],
+      "note": "in-process tests ran with a real CUDA device and the simulator off; not every one of them launches a GPU kernel (some are CPU or NumPy checks)"
+    },
+    "summary": [
+      "39 passed, 1 skipped, 1 warning in 112.48s (0:01:52)"
+    ],
+    "in_function_s": 113.867501345,
+    "gpu": {
+      "model": "NVIDIA A100-SXM4-40GB",
+      "memory": "40960 MiB",
+      "driver": "610.57.04",
+      "count": 1,
+      "cuda_driver_api": null,
+      "cuda_runtime": "12.4",
+      "all": [
+        "NVIDIA A100-SXM4-40GB, 40960 MiB, 610.57.04"
+      ],
+      "modal_task_id": "ta-01M7ZPPKH8MJN0TJ5ZDQZF26XR"
+    },
+    "modal_wall_s": 118.21445323713124,
+    "startup_and_transfer_s": 4.346951892131244
+  }
+}

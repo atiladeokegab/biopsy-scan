@@ -9,9 +9,9 @@ const CPU_SHOW_MS = 7000; // how long we let the CPU lane crawl before stopping 
 const UNMEASURED_CPU_MS = 140; // on-screen ms per CPU study when unmeasured: a display pace, not a measurement
 
 // Which way the measured comparison points: a slower GPU must never read as "1× faster".
+const x = (v) => `${v < 10 ? v.toFixed(1) : fmt(Math.round(v))}×`;
 export function speedWord(cpuSeconds, gpuSeconds) {
   const r = cpuSeconds / gpuSeconds;
-  const x = (v) => `${v < 10 ? v.toFixed(1) : fmt(Math.round(v))}×`;
   return r > 1.05 ? `GPU ${x(r)} faster` : r < 0.95 ? `GPU ${x(1 / r)} slower` : "about the same";
 }
 
@@ -112,4 +112,82 @@ export function createRace(cpuCanvas, gpuCanvas, out) {
   const redraw = () => (last ? run({ ...last, reducedMotion: true }) : clear(lastN));
 
   return { run, clear, redraw };
+}
+
+// THE SPEED RACE (data/baseline.json, filled from bench/results by collect_race.py): every row times the same unit,
+// one design point of 1,000 simulated studies. Each bar fills at its measured compute rate, scaled so the slowest
+// timed row takes RACE_MS on screen; its real seconds print at its finish, start-up shown apart and never counted.
+// A row without a time is PENDING: no bar, no motion, no number. The page computes no ratio: a measured pair's
+// same-scope MEASURED pair; the workflow footnote (different work: the R-14 Cox screen) is seconds only.
+export const RACE_MS = 10000;
+const timed = (r) => Number.isFinite(r.seconds) && r.seconds > 0 && !["PENDING", "UNMEASURED"].includes(r.label);
+export function raceState(rows, t, total = RACE_MS) {
+  const max = Math.max(...rows.filter(timed).map((r) => r.seconds));
+  // One shared clock: every bar grows at the same pace and stops at its own time, so its final width is
+  // seconds / slowest and a faster run ends sooner with a shorter bar.
+  return rows.map((r) => {
+    if (!timed(r)) return { frac: 0, clock: null, done: false };
+    const clock = Math.min(r.seconds, (t / total) * max);
+    return { frac: clock / max, clock, done: clock === r.seconds };
+  });
+}
+
+const esc = (v) => String(v).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+export const secs = (s) => (s < 3600 ? `${s < 10 ? s.toFixed(2) : s.toFixed(1)} s` : duration(s));
+
+const where = (r) => [r.hardware, r.gpu || (r.cores ? `${r.cores} core${r.cores > 1 ? "s" : ""}` : null)]
+  .filter(Boolean).map(esc).join(", ");
+
+// Every dynamic string is escaped; a row whose seconds are not a positive finite number is drawn as untimed.
+export function speedRaceHTML(data) {
+  const sc = data.scope; // the design point's own qualifications (#75): printed whenever its lanes are timed
+  return (sc ? `<p class="sr-head">${esc(sc.comparison)}. ${esc(sc.calibration)}.</p>` : "") + `<ol class="sr">${data.rows.map((r) => {
+    const tag = `<span class="tag${r.label === "MEASURED" ? " ok" : ""}">${esc(r.label)}</span>`;
+    const src = [r.source, r.note, Number.isFinite(r.startup_s) && r.startup_s > 0 ? `+ ${secs(r.startup_s)} start-up, not counted` : null,
+      Number.isFinite(r.calls_s) ? `+ ${secs(r.calls_s)} threshold and calls, timed apart` : null]
+      .filter(Boolean).map(esc).join(" · ");
+    if (!timed(r)) // no bar, no number: the track only says where the time will come from
+      return `<li class="pending"><span class="sr-name">${esc(r.method)}</span><span class="sr-time">${tag}</span>` +
+        `<span class="sr-track">not yet timed · ${src}</span></li>`;
+    return `<li class="${r.role === "baseline" ? "baseline" : "screen"}"><span class="sr-name">${esc(r.method)}<small>${where(r)}</small></span>` +
+      `<span class="sr-time">${tag}<b></b></span><span class="sr-track"><i></i></span><small class="sr-src">${src}</small></li>`;
+  }).join("")}</ol>`;
+}
+
+// Different work from the race, so seconds only: never a bar, never a ratio against a race row.
+export function workflowHTML(w) {
+  if (!w || !timed(w)) return "";
+  return `Workflow comparison, not part of the race: ${esc(w.method)}, ${secs(w.seconds)} on ${where(w)} ` +
+    `<span class="tag${w.label === "MEASURED" ? " ok" : ""}">${esc(w.label)}</span>` +
+    `${w.note ? ` (${esc(w.note)})` : ""} · ${esc(w.source)}`;
+}
+
+export function createSpeedRace(el, data, { reducedMotion = false } = {}) {
+  el.innerHTML = speedRaceHTML(data);
+  const lanes = [...el.querySelectorAll("li")];
+  let timer = 0;
+
+  function paint(t) {
+    raceState(data.rows, t).forEach((st, i) => {
+      if (st.clock == null) return;
+      lanes[i].querySelector("i").style.width = `${st.frac * 100}%`;
+      const b = lanes[i].querySelector("b");
+      b.textContent = st.frac === 0 ? "" : secs(st.done ? data.rows[i].seconds : st.clock);
+      lanes[i].classList.toggle("done", st.done);
+    });
+  }
+
+  function run() {
+    cancelAnimationFrame(timer);
+    const t0 = performance.now();
+    const step = (now) => {
+      const t = reducedMotion ? Infinity : now - t0;
+      paint(t);
+      if (t < RACE_MS) timer = requestAnimationFrame(step);
+    };
+    paint(0);
+    timer = requestAnimationFrame(step);
+  }
+
+  return { run };
 }

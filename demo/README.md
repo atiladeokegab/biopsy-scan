@@ -42,6 +42,13 @@ Regenerate the placeholders: `python3 -I demo/synth_data.py`. It writes the **SY
 `grid.json` (a toy attenuation model) and `tissue.json` (random tumour nests with an immune rim).
 The page labels both SYNTHETIC until each file says `"source": "MEASURED"`.
 
+The committed `grid.json` is Atlas's Charville grid, copied verbatim from `atlas/results/production/charville/grid.json`
+at commit 79a7792 (public on PR #45; sha256 e0581681…): 48 designs, 1,000 planted-effect studies each, simulated on real tissue
+with SYNTHETIC Weibull outcomes (HR 2 per SD). It is the legacy R4 Cox score power, not the PD1 pattern and not the
+R15 screen, and the page says so. Its metric label is `status` / `labels.power` (ESTIMATE; outcomes SYNTHETIC), shown as "ESTIMATE simulation ·
+SYNTHETIC outcomes"; its `source: MEASURED` is kept only for compatibility and never shown as the label. For a MEASURED grid, `check_data` also requires each power to equal its count over
+the studies and sit inside its interval, and the note to name the synthetic outcomes, legacy R4 and not R15.
+
 ## `data/tissue.json` (`preflight-tissue/1`): written from the core loaders
 
 ```jsonc
@@ -105,6 +112,80 @@ The checker enforces these rules:
   "gpu_seconds": 4.2                  // end to end on the GPU
 }
 ```
+
+## `data/baseline.json` (`preflight-baseline/1`): the speed race, filled by `collect_race.py`
+
+Four rows, all timing the same `task`: one design point, 1,000 simulated studies on real Charville, end to end
+(demo-plan-v3, revision 16:58Z). Never edit a time by hand: `python3 -I demo/collect_race.py` (run by `make demo`
+and by Pages before every deploy) fills rows from `bench/results/*.json`. Only build-modal's `"kind": "design_point"`
+file (#75's `gpu/modal_app.py`; slots `a_lab_all_cores`, `b_ours_cpu_all_cores`, `c_ours_1_gpu`,
+`d_ours_n_gpu.runs["16"]`) fills the four rows (ids `lab-cpu`, `preflight-cpu`, `gpu-1`, `gpu-16`), and only when it
+says `"status": "MEASURED"`, `"studies": 1000` and carries its `scope`; a FAILED run, a 32-study trial or a generic
+`race` list is refused. `seconds` is in-container compute (`gpu-16`: the measured compute span across containers);
+start-up goes in `startup_s` and the threshold-and-calls step in `calls_s`, each printed apart and never counted.
+GPU lanes need `e_gpu_parity.exact_all_containers`. The file's `scope` (WORKFLOW comparison, EXPLORATORY
+calibration) is copied to `baseline.json` and printed above the race; `check_data` refuses timed rows without it.
+A row no file feeds keeps its committed value.
+
+```jsonc
+{
+  "schema": "preflight-baseline/1",
+  "task": "One design point: 1,000 simulated studies on real Charville tissue, end to end",
+  "rows": [{
+    "id": "lab-cpu",             // unique; bench files address rows by id
+    "method": "The lab way: a shuffle test in every study, all CPU cores",
+    "role": "baseline",          // "baseline" (grey bar) or "screen" (Preflight, accent bar)
+    "label": "PENDING",          // MEASURED, ESTIMATE, SYNTHETIC, UNMEASURED or PENDING
+    "seconds": null,             // compute seconds; null when PENDING or UNMEASURED, a positive number otherwise
+    "startup_s": null,           // optional, shown apart
+    "hardware": null,            // required when timed
+    "cores": null,               // a positive integer, or "gpu": "1x NVIDIA H100"; one is required when timed
+    "gpu": null,
+    "source": "build-modal",     // always required
+    "note": null                 // optional
+  }],
+  "workflow": {                  // optional footnote: different work, seconds only, never a bar or a ratio
+    "method": "Standard Cox screen of all 3,780 candidates (statsmodels PHReg)",
+    "seconds": 63.84, "label": "MEASURED", "hardware": "AMD EPYC 7B13", "cores": 8, "gpu": null,
+    "source": "bench/results/impl-a-charville-amd-epyc-7b13.json", "note": "298.3 s on 1 core",
+    "fingerprints": {"patient_rows": "...", "X": "...", "C": "..."}  // copied from the file, to match later screens
+  }
+}
+```
+
+`interim` (optional): measured groups shown until the design point is timed, each racing on its own scale,
+from the one Modal `"kind": "ladder"` file Atlas cleared (#75, `CLEARED_LADDER` in `collect_race.py`): one study's
+feature step, NumPy against 1 GPU in the same container, and 1,000 studies on 1 A100 against 8 (compute span,
+start-up apart). Each group carries its `scope_line`, Atlas's cleared wording with the file's numbers, printed beside
+its bars; the page computes no ratio of its own. Any other ladder file, or a 1-vs-8 pair that is not bit-identical,
+fully overlapped and on one GPU model, feeds nothing. Today it was filled by
+`python3 -I demo/collect_race.py <path to #75's bench/results/modal-a100-20261121T183709Z.json>`; once #75
+merges, Pages refills it from the tree.
+
+The checker rejects a number without a label or source, a PENDING or UNMEASURED row with a number, and checks
+every field on its own (`seconds` and `startup_s` positive finite numbers, `cores` a positive integer, text
+fields non-empty strings). The page escapes every string it inserts. On screen each timed bar fills at its
+rate (the slowest timed row takes 10 s) and prints its real seconds at the finish; a PENDING row has no bar and
+never moves. No ratio is printed anywhere: the R-14 Cox screen produces different output from the race's
+unit, so it is only the workflow footnote, in seconds.
+
+## `data/claims.json` (`preflight-claims/1`): written by `collect_race.py`
+
+The power result at the demo's 200 patients (simulated, its 95% interval, and the Schoenfeld formula) with
+`power.model`, which names its simulated design (a planted HR 2 per SD among 630 features) and says it is not
+the PD1 pattern's power; the false-alarm count pooled over `false_alarms.designs` null designs (a pooled
+summary, not per-design error control); and the maxT result, each with its `label` and `source`
+(`bench/results/vs-schoenfeld-300.json`, `results/charville-v2.json`). `claims.js` checks every number it
+renders and throws on a bad file; `app.js` draws each panel on its own, so one bad file leaves only its panel
+on the placeholder.
+
+## `data/biomarker.json` (`preflight-biomarker/1`): build-8's file from #82, copied verbatim
+
+The KM split at the cohort median (`km.arms[].curve`, `n`, `events`, `p_value: null`) and one real region per
+arm (the arm's median patient; columnar `cells`, `counts`). The page leads with the curves and the death counts,
+shows `km.label` ("exploratory, cutoff chosen on the same cohort, no p-value") beside them, and states each
+region's counts. `check_data.py` refuses a file without `exploratory: true`, with a p-value, or without "no
+p-value" in its label. The hit cannot be tested in our second cohort (UPMC has no PD1 stain), and the page says so; it never says "not replicated".
 
 ## How the page picks a grid point
 

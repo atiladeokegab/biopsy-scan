@@ -1,0 +1,133 @@
+{
+  "schema": "preflight-baseline/1",
+  "task": "One design point: 1,000 simulated studies on real Charville tissue, end to end",
+  "rows": [
+    {
+      "id": "lab-cpu",
+      "method": "The lab way: a shuffle test in every study, all CPU cores",
+      "role": "baseline",
+      "label": "PENDING",
+      "seconds": null,
+      "hardware": null,
+      "cores": null,
+      "gpu": null,
+      "source": "build-modal"
+    },
+    {
+      "id": "preflight-cpu",
+      "method": "Preflight: one calibrated threshold per design, CPU",
+      "role": "screen",
+      "label": "PENDING",
+      "seconds": null,
+      "hardware": null,
+      "cores": null,
+      "gpu": null,
+      "source": "build-modal"
+    },
+    {
+      "id": "gpu-1",
+      "method": "Preflight on 1 GPU",
+      "role": "screen",
+      "label": "PENDING",
+      "seconds": null,
+      "hardware": null,
+      "cores": null,
+      "gpu": null,
+      "source": "build-modal"
+    },
+    {
+      "id": "gpu-16",
+      "method": "Preflight on 16 GPUs",
+      "role": "screen",
+      "label": "PENDING",
+      "seconds": null,
+      "hardware": null,
+      "cores": null,
+      "gpu": null,
+      "source": "build-modal"
+    }
+  ],
+  "workflow": {
+    "method": "Standard Cox screen of all 3,780 candidates (statsmodels PHReg)",
+    "seconds": 63.84,
+    "label": "MEASURED",
+    "hardware": "AMD EPYC 7B13",
+    "cores": 8,
+    "gpu": null,
+    "source": "bench/results/impl-a-charville-amd-epyc-7b13.json",
+    "fingerprints": {
+      "patient_rows": "d6a5bb66450dc402b8145af053bc04a3bc01a96c051f6457369348aabdad25a9",
+      "X": "af18604288184da1562ae5c86edd25750de4b488310341c5bc2bf3f585d42cdb",
+      "C": "49a9e619c3b1590fe236cfe933b24a129ce730d805e78a8fb844ff75bfb99d93"
+    },
+    "note": "298.3 s on 1 core"
+  },
+  "interim": [
+    {
+      "title": "One study",
+      "unit": "one study: patient and region sampling, crop, mis-call, recount, features",
+      "same_scope": true,
+      "scope_line": "MEASURED, 3.19× faster: feature step only, NumPy vs GPU, same container, median of 5, exact parity",
+      "rows": [
+        {
+          "id": "kernel-numpy",
+          "method": "NumPy reference, same container",
+          "role": "baseline",
+          "label": "MEASURED",
+          "seconds": 2.235,
+          "hardware": "Modal GPU container, on its CPU",
+          "cores": null,
+          "gpu": null,
+          "note": "median of 5",
+          "source": "bench/results/modal-a100-20261121T183709Z.json"
+        },
+        {
+          "id": "kernel-gpu",
+          "method": "The same step on 1 GPU",
+          "role": "screen",
+          "label": "MEASURED",
+          "seconds": 0.702,
+          "hardware": "Modal",
+          "cores": null,
+          "gpu": "NVIDIA A100-SXM4-40GB",
+          "note": "median of 5, exact parity",
+          "source": "bench/results/modal-a100-20261121T183709Z.json"
+        }
+      ]
+    },
+    {
+      "title": "1,000 studies: 1 A100 against 8",
+      "unit": "compute_s excludes start-up, data load, adjacency and warm-up; those are reported per run. Scaling uses the measured compute span (first start to last end across containers); studies / max(shard compute) assumes perfect overlap and is labelled ESTIMATE",
+      "same_scope": true,
+      "scope_line": "MEASURED, observed 6.6× compute-span reduction 843.7→128.2 s for 1,000 Charville re-imaging/feature-generation studies, 8 A100-SXM4-40GB vs 1, one sweep; outputs bit-identical; inference outside timing",
+      "rows": [
+        {
+          "id": "fleet-1",
+          "method": "1 A100, all 1,000 studies",
+          "role": "baseline",
+          "label": "MEASURED",
+          "seconds": 843.72,
+          "startup_s": 34.7,
+          "note": "compute span",
+          "hardware": "Modal",
+          "gpu": "1x NVIDIA A100-SXM4-40GB",
+          "cores": null,
+          "source": "bench/results/modal-a100-20261121T183709Z.json"
+        },
+        {
+          "id": "fleet-8",
+          "method": "8 A100s, 125 studies each",
+          "role": "screen",
+          "label": "MEASURED",
+          "seconds": 128.2,
+          "startup_s": 7.0,
+          "note": "compute span",
+          "hardware": "Modal",
+          "gpu": "8x NVIDIA A100-SXM4-40GB",
+          "cores": null,
+          "source": "bench/results/modal-a100-20261121T183709Z.json"
+        }
+      ]
+    }
+  ]
+}

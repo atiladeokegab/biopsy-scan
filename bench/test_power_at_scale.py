@@ -1,0 +1,198 @@
+import json
+from pathlib import Path
+
+import pytest
+
+from bench.power_at_scale import answer, crossing
+
+RESULT = Path(__file__).parent / "results" / "power-at-scale.json"
+
+
+def pt(n, p, lo, hi):
+    return {"patients": n, "power": p, "power_lo": lo, "power_hi": hi}
+
+
+def test_crossing_interpolates_the_first_bracket():
+    assert crossing([300, 400, 600], [0.4, 0.6, 0.9]) == pytest.approx(400 + 0.2 / 0.3 * 200)
+    assert crossing([300, 400], [0.4, 0.6]) is None
+    assert crossing([100, 200, 300], [0.85, 0.7, 0.9]) == 100.0  # first crossing, not the last
+
+
+def test_answer_says_plainly_when_80_is_never_reached():
+    a = answer([pt(300, 0.4, 0.35, 0.47), pt(1000, 0.7, 0.64, 0.75)])
+    assert a["n_80"] is None and a["statement"].startswith("Simulated power never reached 80% up to 1000 patients")
+    assert a["smallest_patients_pointwise_lower_bound_clears_80"] is None and "beyond 1000" in a["statement"]
+    b = answer([pt(300, 0.4, 0.35, 0.47), pt(600, 0.82, 0.77, 0.86)])
+    assert b["n_80"] is not None and b["n_80_pointwise_ci_crossings"][0] <= b["n_80"]
+    assert b["n_80_pointwise_ci_crossings"][1] is None
+    c = answer([pt(300, 0.4, 0.35, 0.47), pt(600, 0.82, 0.77, 0.86), pt(800, 0.9, 0.86, 0.93), pt(1000, 0.95, 0.92, 0.97)])
+    assert c["smallest_patients_pointwise_lower_bound_clears_80"] == 800
+
+
+@pytest.mark.skipif(not RESULT.exists(), reason="power-at-scale.json not built yet")
+def test_committed_result_is_a_labelled_estimate_with_its_own_answer():
+    res = json.loads(RESULT.read_text())
+    assert res["schema"] == "preflight-power-at-scale/1"
+    assert res["status"] == "ESTIMATE" and res["label"] == "ESTIMATE: simulated"
+    base = json.loads((RESULT.parent / "vs-schoenfeld-300.json").read_text())
+    assert res["simulated"]["seed"] == base["simulated"]["seed"] and res["simulated"]["budget"] == base["simulated"]["budget"]
+    assert res["design"] == {k: v for k, v in base["design"].items() if k != "backend"}
+    ns = [p["patients"] for p in res["points"]]
+    assert ns == sorted(set(ns)) and max(ns) > 300
+    for p in res["points"]:
+        assert 0 <= p["power_lo"] <= p["power"] <= p["power_hi"] <= 1
+        assert p["power_n"] == base["simulated"]["budget"]["alternative"]
+        if p["patients"] > 300:
+            assert p["backend"] == "gpu" and p["hardware"] and p["wall_s"] > 0 and p["source"].startswith("bench/results/modal-power-")
+    assert res["complete"] == (not res["answer"]["missing_patients"])
+    assert res["answer"] == answer(res["points"], res["answer"]["missing_patients"])  # recomputed, never typed in
+
+
+@pytest.mark.skipif(not RESULT.exists(), reason="power-at-scale.json not built yet")
+def test_committed_result_is_exactly_what_its_raw_modal_runs_rebuild():
+    from bench.power_at_scale import build
+
+    res = json.loads(RESULT.read_text())
+    names = {p["source"] for p in res["points"]} | {r for p in res["points"] for r in p.get("replicated_by", [])}
+    names |= {f["source"] for f in res["failed_points"] if "source" in f}
+    runs = []
+    for name in sorted(names - {"bench/results/vs-schoenfeld-300.json"}):
+        run = json.loads((RESULT.parents[2] / name).read_text())
+        run["_file"] = Path(name).name
+        runs.append(run)
+    assert runs and build(runs, res["planned_patients"]) == res
+
+
+REAL = RESULT.parent / "modal-power-a100-40gb-20261121T175238Z.json"  # a real producer run: P=40 on the A100
+
+
+def real(patients=40, **summary):
+    run = json.loads(REAL.read_text())
+    run["_file"] = REAL.name
+    point = run["points"][0]
+    point["patients"] = point["summary"]["patients"] = patients
+    point["summary"]["resample_ratio"] = patients / 159
+    point["summary"].update(summary)
+    return run
+
+
+def test_a_real_replicate_of_53_merges_and_is_recorded():
+    from bench.power_at_scale import build
+
+    p40 = next(p for p in build([real()])["points"] if p["patients"] == 40)
+    assert p40["source"] == "bench/results/vs-schoenfeld-300.json" and p40["replicated_by"] == [f"bench/results/{REAL.name}"]
+    p400 = next(p for p in build([real(400)])["points"] if p["patients"] == 400)
+    assert p400["hardware"] == "NVIDIA A100-SXM4-40GB" and p400["backend"] == "gpu"
+
+
+@pytest.mark.parametrize("change, match", [
+    ({"alpha": 0.5}, "different design"), ({"cohort": "upmc"}, "different design"),
+    ({"backend": "cpu"}, "backend"), ({"calibration_n": 1}, "study counts"), ({"power_n": 1}, "study counts"),
+    ({"seed": 1}, "seed"), ({"fwer": 2.0}, "rates"), ({"power_lo": 0.5}, "rates"), ({"power": 0.5}, "rates"),
+    ({"power_hi": 0.2}, "rates"), ({"runtime_s": 0.0}, "timing"), ({"runtime_s": float("nan")}, "timing"),
+    ({"resample_ratio": 1.0}, "resampl"), ({"source_n": 160}, "resampl"), ({"source_hash": "0" * 64}, "source"),
+])
+def test_merger_validates_the_summary_itself(change, match):
+    from bench.power_at_scale import build
+
+    with pytest.raises(ValueError, match=match):
+        build([real(400, **change)])
+
+
+@pytest.mark.parametrize("change, match", [
+    ({"plant_feature": 19}, "frozen model"), ({"shape": 5}, "frozen model"),
+    ({"plant_mean": 0.5}, "frozen model"), ({"plant_sd": 0.5}, "frozen model"),
+    ({"target_event_fraction": 0.5}, "frozen model"), ({"source_events": 37}, "frozen model"),
+    ({"censoring_tail_policy": "none"}, "frozen model"), ({"administrative_horizons_json": "{}"}, "frozen model"),
+    ({"error_control_scope": "conditional"}, "frozen model"), ({"plant_feature": None}, "frozen model"),
+    ({"threshold": float("nan")}, "cutoff"), ({"threshold": float("inf")}, "cutoff"),
+    ({"threshold": None}, "cutoff"), ({"threshold": "3.7"}, "cutoff"),
+])
+def test_merger_refuses_a_shard_with_another_model_or_no_finite_cutoff(change, match):
+    from bench.power_at_scale import build
+
+    with pytest.raises(ValueError, match=match):
+        build([real(400, **change)])
+
+
+def test_frozen_model_is_the_one_every_committed_shard_ran():
+    from bench.power_at_scale import FROZEN_MODEL
+
+    for f in sorted(RESULT.parent.glob("modal-power-*.json")):
+        for point in json.loads(f.read_text())["points"]:
+            assert {k: point["summary"][k] for k in FROZEN_MODEL} == FROZEN_MODEL, f.name
+
+
+def test_merger_refuses_wrong_pin_status_and_mismatched_p():
+    from bench.power_at_scale import build
+
+    for key, value in (("pin", "0" * 40), ("status", "ESTIMATE"), ("backend", "cpu")):
+        bad = real(400)
+        bad[key] = value
+        with pytest.raises(ValueError):
+            build([bad])
+    bad = real(400)
+    bad["points"][0]["summary"]["patients"] = 40
+    with pytest.raises(ValueError, match="summary is for P=40"):
+        build([bad])
+
+
+def test_conflicting_duplicates_are_refused_in_either_order():
+    from bench.power_at_scale import build
+
+    from bench.power_at_scale import clopper_pearson
+
+    lo, hi = clopper_pearson(30, 300)
+    other = real(400, power=0.1, power_count=30, power_lo=lo, power_hi=hi)
+    for order in ([real(400), other], [other, real(400)]):
+        with pytest.raises(ValueError, match="P=400 twice with different results"):
+            build(order)
+    with pytest.raises(ValueError, match="P=40 twice with different results"):
+        build([real(40, power=0.1, power_count=30, power_lo=lo, power_hi=hi)])
+
+
+def test_failed_points_are_kept_and_mark_the_curve_partial():
+    from bench.power_at_scale import build
+
+    failed = real(500)
+    failed["points"] = [{"patients": 500, "error": "boom"}]
+    res = build([real(400), failed])
+    assert res["complete"] is False and res["failed_points"] == [{"patients": 500, "error": "boom", "source": f"bench/results/{REAL.name}"}]
+    assert res["answer"]["statement"].startswith("PARTIAL") and "never reached" not in res["answer"]["statement"]
+    assert build([real(400)])["complete"] is True
+
+
+def test_success_counts_must_be_integers_and_mean_events_bounded():
+    from bench.power_at_scale import build, clopper_pearson
+
+    lo, hi = clopper_pearson(19.5, 300)
+    with pytest.raises(ValueError, match="integer"):
+        build([real(400, power_count=19.5, power=19.5 / 300, power_lo=lo, power_hi=hi)])
+    for bad in (float("nan"), -1.0, 401.0):
+        with pytest.raises(ValueError, match="mean events"):
+            build([real(400, alternative_mean_events=bad)])
+
+
+def test_replicates_must_agree_on_hardware_and_science_in_either_order():
+    from bench.power_at_scale import build
+
+    h100 = real(400)
+    h100["points"][0]["gpu"]["model"] = "NVIDIA H100"
+    h100["_file"] = "modal-power-h100.json"
+    events = real(400, alternative_mean_events=10.6567)
+    events["_file"] = "modal-power-z.json"
+    for other in (h100, events):
+        for order in ([real(400), other], [other, real(400)]):
+            with pytest.raises(ValueError, match="P=400 twice with different results"):
+                build(order)
+    a, b = real(400), real(400)
+    b["_file"] = "modal-power-b.json"
+    assert build([a, b])["points"] == build([b, a])["points"]  # provenance does not depend on argument order
+
+
+def test_planned_counts_that_never_ran_make_the_curve_partial():
+    from bench.power_at_scale import build
+
+    res = build([real(400)], planned=[400, 500])
+    assert res["complete"] is False and res["answer"]["missing_patients"] == [500]
+    assert res["planned_patients"] == [400, 500] and build([real(400)], planned=[400])["complete"] is True

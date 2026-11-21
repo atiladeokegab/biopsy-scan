@@ -1,6 +1,6 @@
-# IDEA v6: Can your study find it? (BUILD PLAN, for approval 1)
+# IDEA v6: Thousands of studies, simulated in seconds, before you image a slide. (BUILD PLAN, for approval 1)
 
-**The current build plan is the doc "Build plan: Can your study find it? (v6)": https://claude.ai/artifact/2DkGkU62tfth2m11KfVUWz.** It was written after Fable's v4 regrade (6/4/3/5; `blind-review/fable-v4.md`, evidence in `fable-v4-evidence/`).
+**The current build plan is the doc "Build plan (v6)": https://claude.ai/artifact/2DkGkU62tfth2m11KfVUWz.** It was written after Fable's v4 regrade (6/4/3/5; `blind-review/fable-v4.md`, evidence in `fable-v4-evidence/`).
 
 What changed in v6:
 - The three CPU shortcuts Fable built (nesting, region pool, analytic mis-calls) are now the reshaping we claim.
@@ -14,7 +14,7 @@ The v5 and v4 text below is history.
 
 ## v5: changes after Atlas's v4 regrade (5/5/5/7; `blind-review/atlas-v4.md`); the lead accepted all
 
-The v4 text below stands, except where this table overrides it. The full integrated plan is in the shared doc "Can your study find it? Full plan v5". Fable's v4 regrade is still pending; fold it in when it lands.
+The v4 text below stands, except where this table overrides it. The full integrated plan is in the shared doc "Full plan v5". Fable's v4 regrade is still pending; fold it in when it lands.
 
 | # | Atlas v4 finding | v5 action |
 |---|---|---|

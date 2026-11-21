@@ -1,0 +1,73 @@
+{
+  "cohort": "charville",
+  "result_label": "SYNTHETIC",
+  "source_n": 159,
+  "source_events": 38,
+  "source_regions": 286,
+  "source_cells": 619645,
+  "source_hash": "2ca08fb03ed2ecd51e552a5ab1bbe6caede58f54c07971ed35af08c10db4aa1b",
+  "region_um": 720.8240356445312,
+  "region_width_median_um": 645.0469970703125,
+  "region_height_median_um": 539.4869995117188,
+  "region_um_definition": "maximum x/y bounding-box span across source regions",
+  "max_regions_per_patient": 2,
+  "grammar_hash": "772f6a845266470456af96f92d0573cc1bec72432ad74d789439baff066c2156",
+  "budget": {
+    "calibration": 10000,
+    "null": 10000,
+    "alternative": 1000,
+    "nested": 20,
+    "direct": 20,
+    "permutations": 999,
+    "batch": 8
+  },
+  "hr_per_source_sd": 2.0,
+  "seed": 20261121,
+  "backend": "numpy",
+  "numpy_version": "2.4.6",
+  "topology_encoding": "uint8 upper-radius cache",
+  "inference": "model-based Monte Carlo under the empirical verified source; no clinical claim",
+  "planned_fov_um": [
+    200,
+    300,
+    400,
+    500,
+    600,
+    null
+  ],
+  "requested_fov_um": [
+    null,
+    200.0,
+    300.0,
+    400.0,
+    500.0,
+    600.0
+  ],
+  "censoring_tail": "administrative horizon at stratum maximum follow-up",
+  "mc_interval_scope": "conditional on source, acquisition bank and realized calibration; excludes source and bank-construction uncertainty",
+  "method_check_scope": "paired differences with conservative 95% bounds; interval containing zero does not establish equivalence",
+  "direct_check_scope": "bank and direct imaging use the same bank-derived cutoff",
+  "code_fingerprint": "19d1f91b650f4017b4aef9df78c7bbaccfbf90a397dfc9ee848bc7572a99ae76",
+  "reference_generator": {
+    "code_fingerprint": "286e1ac0ca834863aed3e8974ddda1862f6d452954a7d97d4ed3ae0170522fec",
+    "backend": "numpy",
+    "software": {
+      "numpy": "2.4.6",
+      "scipy": "1.17.1",
+      "numba": "0.68.1"
+    }
+  },
+  "inference_scope": "empirical-source study-design simulation",
+  "run_id": "9ff87444ab4a15b7ec262e808761c48a73d51e5e14c68dfc8fce4960a77f716d",
+  "completed_designs": 48,
+  "completed_fov_um": [
+    null,
+    200.0,
+    300.0,
+    400.0,
+    500.0,
+    600.0
+  ],
+  "measurement_model": "finite-bank approximation",
+  "bank_draws": 64
+}

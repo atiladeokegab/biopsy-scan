@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "runner": "modal",
+  "gpu_requested": "H100",
+  "commit": "f33b22c2c738c43499be54bf2712fc02122495c3",
+  "dirty": false,
+  "launched_utc": "2026-11-21T17:32:20Z",
+  "utc": "20261121T173408Z",
+  "status": "MEASURED",
+  "kind": "gpu_tests",
+  "gpu_tests": {
+    "exit_code": 0,
+    "passed": 39,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 1,
+    "skips": [
+      "test_gpu_selection_never_reports_cpu_fallback: this check requires CUDA to be unavailable"
+    ],
+    "files": [
+      "reimage/test_backends.py",
+      "reimage/test_expression.py",
+      "reimage/test_fleet.py"
+    ],
+    "summary": [
+      "39 passed, 1 skipped, 1 warning in 102.90s (0:01:42)"
+    ],
+    "in_function_s": 103.770111712,
+    "gpu": {
+      "model": "NVIDIA H100 80GB HBM3",
+      "memory": "81559 MiB",
+      "driver": "620.70.06",
+      "count": 1,
+      "cuda_driver_api": null,
+      "cuda_runtime": "12.4",
+      "all": [
+        "NVIDIA H100 80GB HBM3, 81559 MiB, 620.70.06"
+      ],
+      "modal_task_id": "ta-01M7ZJN3S1RYAWWGYF4A5CVDHR"
+    },
+    "modal_wall_s": 108.03586567565799,
+    "startup_and_transfer_s": 4.2657539636579855
+  }
+}

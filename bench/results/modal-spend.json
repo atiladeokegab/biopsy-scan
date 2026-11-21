@@ -1,0 +1,161 @@
+{
+  "workspace_profile": "fhl-08",
+  "cap_usd": 150,
+  "rates_usd_per_hour": {
+    "A100": 2.0988,
+    "A100_80GB": 2.4984,
+    "H100": 3.9492,
+    "L4": 0.7992,
+    "cpu_core": 0.04716,
+    "memory_gib": 0.007992,
+    "source": "https://modal.com/pricing read 2026-11-21T17:36Z: per second A100 40 GB $0.000583, A100 80 GB $0.000694, H100 SXM5 $0.001097, L4 $0.000222, CPU $0.0000131/physical core, memory $0.00000222/GiB; x3600. Functions are preemptible by default; non-preemptible CPU and memory cost 3x. gpu='A100' runs gave A100-SXM4-40GB. Entries before this time used the earlier, higher unsourced rates (A100 $2.50/h)."
+  },
+  "container_usd_per_hour_A100": 2.73,
+  "entries": [
+    {
+      "utc": "2026-11-21T16:44Z",
+      "run": "modal-gpu-tests GPU=A100",
+      "containers": 1,
+      "est_hours": 0.5,
+      "est_usd": 1.57,
+      "basis": "1 x A100 + 8 cores + 32 GiB for the 1800 s timeout ceiling",
+      "running_total_usd": 1.57,
+      "actual": {
+        "modal_wall_s": 121.8,
+        "est_usd": 0.11,
+        "result": "bench/results/modal-a100-20261121T164808Z.json"
+      }
+    },
+    {
+      "utc": "2026-11-21T17:01Z",
+      "run": "modal-ladder GPU=A100 CONTAINERS=4 STUDIES=16 REPS=5",
+      "containers": "1 (kernel) + 1 + 4 (fleet) + 1 (screen hook)",
+      "est_hours": 1.2,
+      "est_usd": 3.76,
+      "basis": "7 container runs x ~10 min x $3.13/h, rounded up",
+      "running_total_usd": 5.33,
+      "actual": {
+        "result": "bench/results/modal-a100-20261121T171213Z.json",
+        "note": "first attempt at 17:01Z failed at fetch (Zenodo 403) after ~3 min CPU only; rerun completed",
+        "gpu_container_s": 630.0,
+        "est_usd": 0.55
+      }
+    },
+    {
+      "utc": "2026-11-21T17:17Z",
+      "run": "design-point CPU slots (a, b), 32 studies",
+      "est_usd": 2.02,
+      "basis": "2 x (32 cores + 64 GiB) x 0.5 h",
+      "running_total_usd": 7.35
+    },
+    {
+      "utc": "2026-11-21T17:17Z",
+      "run": "design-point fleet N=1 x A100, 32 studies",
+      "est_usd": 0.2,
+      "basis": "0.06 GPU-h x $3.13/h",
+      "running_total_usd": 7.55
+    },
+    {
+      "utc": "2026-11-21T17:19Z",
+      "run": "design-point fleet N=2 x A100, 32 studies",
+      "est_usd": 0.35,
+      "basis": "0.11 GPU-h x $3.13/h",
+      "running_total_usd": 7.9
+    },
+    {
+      "utc": "2026-11-21T17:36Z",
+      "run": "GPU comparison A100/H100, 1000 studies",
+      "est_usd": 4.28,
+      "basis": "0.93 GPU-h x $4.58/h",
+      "running_total_usd": 12.18
+    },
+    {
+      "utc": "2026-11-21T18:00Z",
+      "run": "fleet N=1 x A100, 1000 studies",
+      "est_usd": 0.68,
+      "basis": "0.25 GPU-h x $2.73/h",
+      "running_total_usd": 12.86
+    },
+    {
+      "utc": "2026-11-21T18:16Z",
+      "run": "fleet N=2 x A100, 1000 studies",
+      "est_usd": 0.8,
+      "basis": "0.29 GPU-h x $2.73/h",
+      "running_total_usd": 13.66
+    },
+    {
+      "utc": "2026-11-21T18:23Z",
+      "run": "fleet N=4 x A100, 1000 studies",
+      "est_usd": 1.02,
+      "basis": "0.38 GPU-h x $2.73/h",
+      "running_total_usd": 14.68
+    },
+    {
+      "utc": "2026-11-21T18:28Z",
+      "run": "fleet N=8 x A100, 1000 studies",
+      "est_usd": 1.48,
+      "basis": "0.54 GPU-h x $2.73/h",
+      "running_total_usd": 16.16
+    },
+    {
+      "utc": "2026-11-21T18:31Z",
+      "run": "fleet N=16 x A100, 1000 studies",
+      "est_usd": 2.39,
+      "basis": "0.88 GPU-h x $2.73/h",
+      "running_total_usd": 18.55
+    },
+    {
+      "utc": "2026-11-21T18:45Z",
+      "run": "OTHER AGENT, logged for the lead: Hermes R-18: 3 CPU runs (ap-bLiCKX1j5e61cW3RZF9VlH, ap-kTbapBDPSdWZExWaMZNMie, one failed)",
+      "est_usd": 0.15,
+      "basis": "Hermes's estimate, CPU only",
+      "running_total_usd": 18.7
+    },
+    {
+      "utc": "2026-11-21T18:45Z",
+      "run": "OTHER AGENT, logged for the lead: build-8 biomarker export proof: 2 runs",
+      "est_usd": 0.02,
+      "basis": "build-8's estimate",
+      "running_total_usd": 18.72
+    },
+    {
+      "utc": "2026-11-21T18:45Z",
+      "run": "OTHER AGENT, logged for the lead: Atlas T-1219 CPU resume (app ap-Ls4TsdCuuxTlgBBF6xUaNu)",
+      "est_usd": 3.03,
+      "basis": "upper bound from Atlas's own ledger; SUPERSEDED upper bound, not counted (Atlas confirmed same app as the $0.9018 entry)",
+      "running_total_usd": 18.72,
+      "counted": false,
+      "superseded_by": "the Atlas PR45 continuation entry below: same app, $0.9018 from atlas/results/production/modal-execution.json at 04ffa170"
+    },
+    {
+      "utc": "2026-11-21T18:45Z",
+      "run": "OTHER AGENT, logged for the lead: build-11 power-at-scale (app preflight-power)",
+      "est_usd": 13.0,
+      "basis": "estimate; detail in bench/results/modal-spend-power.json",
+      "running_total_usd": 31.72
+    },
+    {
+      "utc": "2026-11-21T18:45Z",
+      "run": "OTHER AGENT, logged for the lead: build-10 smoke bisect",
+      "est_usd": 0.5,
+      "basis": "build-10's estimate",
+      "running_total_usd": 32.22
+    },
+    {
+      "utc": "2026-11-21T18:45Z",
+      "run": "OTHER AGENT, logged for the lead: disk-cleaner quiet CPU (ap-XEwtGfiGVY39U04T7w2CPi, 2026-11-21T18:03Z)",
+      "est_usd": 0.05,
+      "basis": "CPU only, 8 cores + 16 GiB, 332 s container time, ~$0.047 at sourced rates, $3 cap; result bench/results/modal-quiet-cpu-20261121T180327Z.json; ledger bench/results/modal-spend-numba.json (PR #94)",
+      "running_total_usd": 32.27
+    },
+    {
+      "utc": "2026-11-21T19:10Z",
+      "run": "OTHER AGENT, logged for the lead: Atlas PR45 continuation (app ap-Ls4TsdCuuxTlgBBF6xUaNu)",
+      "est_usd": 0.9018,
+      "basis": "estimated_cpu_memory_usd in atlas/results/production/modal-execution.json at 04ffa170; CPU/RAM only, excludes image builds, storage and network; invoice not verified. Replaces the earlier 'Atlas T-1219 CPU resume' upper bound (same app)",
+      "running_total_usd": 33.17
+    }
+  ],
+  "container_usd_per_hour_H100": 4.58,
+  "note": "One workspace total across agents. Entries before 2026-11-21T17:36Z used pre-sourced rates; later ones use modal.com/pricing read at 17:36Z. Other agents' entries are their own estimates, logged here by build-modal."
+}

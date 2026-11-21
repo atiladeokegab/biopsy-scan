@@ -1,10 +1,12 @@
-"""Check demo/data/{grid,tissue,bench}.json against the schemas in demo/README.md.
+"""Check demo/data/{grid,tissue,bench,baseline,claims,biomarker}.json against the schemas in demo/README.md.
 
-Run: python3 -I demo/check_data.py [data_dir]. bench.json is optional (absent = UNMEASURED).
+Run: python3 -I demo/check_data.py [data_dir]. bench.json is optional (absent = UNMEASURED); so is
+baseline.json (absent = no baseline panel; race.test.mjs still requires the committed one).
 Exit 0 when every present file is valid; otherwise it names the first problem.
 """
 
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -53,6 +55,20 @@ def check_grid(g, w):
         for k in ("power", "identification_rate"):
             need(num(p.get(k)) and 0 <= p[k] <= 1, w, f"points[{i}].{k}: 0..1")
         need(p["identification_rate"] <= p["power"] + 1e-9, w, f"points[{i}]: identification_rate above power")
+        if g["source"] == "MEASURED":  # Atlas's simulated grid: every shown rate is its count over its studies, inside its interval
+            n = g["studies_per_point"]
+            need(isinstance(p.get("power_count"), int) and abs(p["power_count"] / n - p["power"]) < 1e-9, w,
+                 f"points[{i}].power: power_count / studies_per_point")
+            need(num(p.get("power_lo")) and num(p.get("power_hi")) and p["power_lo"] <= p["power"] <= p["power_hi"], w,
+                 f"points[{i}]: power_lo <= power <= power_hi")
+            need(num(p.get("fwer")) and 0 <= p["fwer"] <= 1, w, f"points[{i}].fwer: 0..1")
+    if "status" in g:  # Atlas's grid: status is the metric's label and must match labels.power
+        need(g["status"] in LABELS and (g.get("labels") or {}).get("power") == g["status"], w,
+             "status: a label, equal to labels.power")
+    if g["source"] == "MEASURED":
+        note = g.get("note", "")
+        need("SYNTHETIC" in note and "legacy R4" in note and "not an R15" in note, w,
+             "note: a MEASURED grid says its outcomes are SYNTHETIC, its test is legacy R4 and it is not R15")
     return f"{len(pts)} points, source {g['source']}"
 
 
@@ -86,11 +102,124 @@ def check_bench(b, w):
     return f"status {b['status']}"
 
 
-for name, check, required in (("grid.json", check_grid, True), ("tissue.json", check_tissue, True),
-                              ("bench.json", check_bench, False)):
-    path = DIR / name
-    if not path.exists():
-        need(not required, path, "missing")
-        print(f"{path}: absent (the page shows UNMEASURED)")
-        continue
-    print(f"{path}: ok, {check(json.loads(path.read_text()), path)}")
+LABELS = ("MEASURED", "ESTIMATE", "SYNTHETIC", "UNMEASURED", "PENDING")
+
+
+def pos(v):
+    return num(v) and math.isfinite(v) and v > 0
+
+
+def text(v):
+    return isinstance(v, str) and v.strip() != ""
+
+
+def check_timing(r, w, at):
+    """One timed or untimed entry; every field is checked on its own, whatever the others say."""
+    need(text(r.get("method")), w, f"{at}.method: string")
+    need(r.get("label") in LABELS, w, f"{at}.label must be one of {LABELS}")  # a number never travels without
+    need(text(r.get("source")), w, f"{at}.source: string, required")          # its label and its source
+    for k, ok, what in (("cores", lambda v: isinstance(v, int) and not isinstance(v, bool) and v > 0, "positive int"),
+                        ("gpu", text, "non-empty string"), ("hardware", text, "non-empty string"),
+                        ("startup_s", pos, "positive finite number"), ("note", text, "non-empty string"),
+                        ("calls_s", lambda v: num(v) and math.isfinite(v) and v >= 0, "non-negative finite number")):
+        need(r.get(k) is None or ok(r[k]), w, f"{at}.{k}: {what} or null")
+    if r["label"] in ("PENDING", "UNMEASURED"):
+        need(r.get("seconds") is None and r.get("startup_s") is None, w, f"{at}: a {r['label']} row has seconds: null, never a number")
+        return
+    need(pos(r.get("seconds")), w, f"{at}.seconds: positive finite number when {r['label']}")
+    need(r.get("hardware") is not None, w, f"{at}.hardware: required when timed")
+
+
+def check_baseline(b, w):
+    need(b.get("schema") == "preflight-baseline/1", w, "schema must be 'preflight-baseline/1'")
+    need(text(b.get("task")), w, "task: string, the one unit of work every row times")
+    rows = b.get("rows")
+    need(isinstance(rows, list) and rows, w, "rows: non-empty list")
+    for i, r in enumerate(rows):
+        need(text(r.get("id")) and r["id"] not in [q.get("id") for q in rows[:i]], w, f"rows[{i}].id: unique string")
+        need(r.get("role") in ("baseline", "screen"), w, f"rows[{i}].role: 'baseline' or 'screen'")
+        check_timing(r, w, f"rows[{i}]")
+    for g, grp in enumerate(b.get("interim") or []):  # measured pairs shown until the design point is timed
+        need(text(grp.get("title")) and text(grp.get("unit")), w, f"interim[{g}]: title, unit")
+        need(grp.get("same_scope") in (None, True, False), w, f"interim[{g}].same_scope: boolean")
+        need(grp.get("scope_line") is None or text(grp["scope_line"]), w, f"interim[{g}].scope_line: the cleared scope line, text")
+        need(isinstance(grp.get("rows"), list) and grp["rows"], w, f"interim[{g}].rows: non-empty list")
+        for i, r in enumerate(grp["rows"]):
+            check_timing(r, w, f"interim[{g}].rows[{i}]")
+    if b.get("workflow") is not None:  # different work: shown as a footnote, never as a bar or a ratio
+        check_timing(b["workflow"], w, "workflow")
+    timed = sum(r["seconds"] is not None for r in rows)
+    sc = b.get("scope") or {}
+    need(not timed or all(text(sc.get(k)) for k in ("comparison", "calibration")), w,
+         "scope.comparison and scope.calibration: required once a race row is timed (WORKFLOW/EXPLORATORY)")
+    return f"{len(rows)} rows, {timed} timed"
+
+
+def check_biomarker(b, w):
+    """build-8's file (#82): two real regions, one per KM arm, and the KM curves; exploratory, never a p-value."""
+    need(b.get("schema") == "preflight-biomarker/1", w, "schema must be 'preflight-biomarker/1'")
+    need(b.get("source") in LABELS and b.get("exploratory") is True, w, "source label, and exploratory: true")
+    need(text(b.get("label")) and "no p-value" in b["label"], w, "label must say: no p-value")
+    need(text(b.get("note")), w, "note: string")
+    km = b.get("km") or {}
+    need(km.get("p_value") is None, w, "km.p_value must be null: the cutoff was chosen on the same cohort")
+    need(sorted(a.get("name", "") for a in km.get("arms", [])) == ["high", "low"], w, "km.arms: high and low")
+    for a in km["arms"]:
+        c = a.get("curve")
+        need(isinstance(a.get("n"), int) and isinstance(a.get("events"), int), w, f"km {a['name']}: n, events ints")
+        need(isinstance(c, list) and c and c[0] == [0.0, 1.0], w, f"km {a['name']}.curve: starts at [0, 1]")
+        need(all(u[0] <= v[0] and u[1] >= v[1] for u, v in zip(c, c[1:])), w, f"km {a['name']}.curve: monotone")
+    regions = b.get("regions") or []
+    need(sorted(r.get("arm", "") for r in regions) == ["high", "low"], w, "regions: one per arm")
+    for r in regions:
+        cells = r.get("cells", {})
+        n = len(cells.get("x", []))
+        need(n > 0 and all(len(cells.get(k, [])) == n for k in ("y", "type", "pd1_pos", "near_tumour")), w,
+             f"region {r['arm']}: columnar cells of equal length")
+        need(pos(r.get("width_um")) and pos(r.get("height_um")), w, f"region {r['arm']}: width_um, height_um")
+        need(r.get("type_names", [])[:2] == ["Tumor 5", "Macrophage"], w, f"region {r['arm']}: type 0 Tumor 5, 1 Macrophage")
+    arms = " / ".join(f"{a['events']}/{a['n']}" for a in km["arms"])
+    return f"{len(regions)} regions, km {arms}"
+
+
+CLAIM_NUMBERS = {"power": ("patients", "sim", "lo", "hi", "n", "formula"), "false_alarms": ("hits", "n", "designs", "target"),
+                 "maxT": ("z", "p", "tests")}
+
+
+def check_claims(c, w):
+    """Every number the page shows from claims.json is finite, labelled, and traced to a committed file."""
+    need(c.get("schema") == "preflight-claims/1", w, "schema must be 'preflight-claims/1'")
+    root = Path(__file__).resolve().parents[1]
+    for k, fields in CLAIM_NUMBERS.items():
+        b = c.get(k)
+        need(isinstance(b, dict), w, f"{k}: object")
+        need(b.get("label") in LABELS, w, f"{k}.label must be one of {LABELS}")
+        need(text(b.get("source")) and (root / b["source"]).is_file(), w, f"{k}.source: a committed file, required")
+        for f in fields:
+            need(num(b.get(f)) and math.isfinite(b[f]), w, f"{k}.{f}: finite number")
+    # The same rules as claims.js claimTexts, which renders them (tests/test_collect_race.py checks they agree).
+    pw, fa, mt = c["power"], c["false_alarms"], c["maxT"]
+    count = lambda v, lo: isinstance(v, int) and not isinstance(v, bool) and v >= lo
+    rate = lambda v: 0 <= v <= 1
+    need(count(pw["patients"], 1) and count(pw["n"], 1), w, "power.patients, power.n: positive integers")
+    need(all(rate(pw[f]) for f in ("sim", "lo", "hi", "formula")) and pw["lo"] <= pw["sim"] <= pw["hi"], w,
+         "power: sim, lo, hi, formula in [0, 1] and lo <= sim <= hi")
+    need(count(fa["n"], 1) and count(fa["designs"], 1) and count(fa["hits"], 0) and fa["hits"] <= fa["n"], w,
+         "false_alarms: n, designs positive integers; hits an integer in [0, n]")
+    need(rate(fa["target"]), w, "false_alarms.target in [0, 1]")
+    need(0 < mt["p"] <= 1 and count(mt["tests"], 1), w, "maxT: p in (0, 1], tests a positive integer")
+    need(pw.get("formula_label") == "ANALYTIC", w, "power.formula_label: ANALYTIC")
+    need(text(pw.get("model")) and "not the PD1" in pw["model"], w, "power.model: says it is not PD1's power")
+    return "power, false_alarms, maxT"
+
+
+if __name__ == "__main__":
+    for name, check, required in (("grid.json", check_grid, True), ("tissue.json", check_tissue, True),
+                                  ("bench.json", check_bench, False), ("baseline.json", check_baseline, False),
+                                  ("claims.json", check_claims, False), ("biomarker.json", check_biomarker, False)):
+        path = DIR / name
+        if not path.exists():
+            need(not required, path, "missing")
+            print(f"{path}: absent (" + "the page hides that panel)" if name in ("baseline.json", "claims.json", "biomarker.json") else "the page shows UNMEASURED)")
+            continue
+        print(f"{path}: ok, {check(json.loads(path.read_text()), path)}")
