@@ -74,6 +74,8 @@ def build(runs: list[dict]) -> dict:
                            "in_container_s": r["in_function_s"], "source": f"bench/results/{run['_file']}"})
             seen.add(r["patients"])
     points.sort(key=lambda p: p["patients"])
+    if len({p["hardware"] for p in points if p["backend"] == "gpu"}) > 1:
+        raise ValueError("the GPU points ran on more than one GPU model; pin one for the whole curve")
     return {"schema": "preflight-power-at-scale/1", "status": "ESTIMATE", "label": LABEL,
             "question": "How many patients does this design need for 80% power?",
             "answer": answer(points),

@@ -1,7 +1,7 @@
 """How many patients for 80% power? The vs-schoenfeld-300 simulation, extended to larger cohorts on Modal GPUs.
 
     ATLAS_SNAPSHOT=/path/to/atlas-snapshot timeout 3h uv run --with modal modal run gpu/power_at_scale.py \
-        --patients 400,500,600 --gpu A100
+        --patients 400,500,600
 
 One fresh GPU container per patient count, all in parallel. Same code as bench/results/vs-schoenfeld-300.json:
 the repo at PIN (core, reimage, stats) plus the frozen atlas snapshot whose per-file sha256 that file records
@@ -60,7 +60,7 @@ def gpu_info() -> dict:
     return {"model": name, "memory": memory, "driver": driver, "modal_task_id": os.environ.get("MODAL_TASK_ID")}
 
 
-@app.function(image=image, volumes={DATA_DIR: data}, gpu="A100", timeout=4 * 3600, memory=32768, cpu=8.0,
+@app.function(image=image, volumes={DATA_DIR: data}, gpu="A100-40GB", timeout=4 * 3600, memory=32768, cpu=8.0,
               single_use_containers=True)
 def power_point(patients: int, backend: str, snapshot_sha256_12: dict) -> dict:
     """One design point, start to finish, in this container: calibrate, null, planted; the atlas's own summary."""
@@ -91,7 +91,7 @@ def _jsonable(x):
 
 
 @app.local_entrypoint()
-def run(patients: str, gpu: str = "A100", backend: str = "gpu"):
+def run(patients: str, gpu: str = "A100-40GB", backend: str = "gpu"):
     if not os.environ.get("ATLAS_SNAPSHOT"):
         raise SystemExit("set ATLAS_SNAPSHOT to the frozen atlas snapshot directory (it must hold atlas/*.py)")
     record = json.loads(RECORD.read_text())["simulated"]["atlas_code"]["sha256_12"]
