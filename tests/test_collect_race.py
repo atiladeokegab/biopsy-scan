@@ -79,26 +79,40 @@ LADDER = {"kind": "ladder", "status": "MEASURED",
                               "gpu": {"median_s": 0.87341, "samples_s": [1] * 5}}},
           "fleet": {"studies": 16, "design": "bench/real_cpu.py DESIGN", "note": "compute only", "runs": {
               "4": {"gpus": ["A100-40", "A100-80"], "containers_seen": 4, "studies_per_container": [4] * 4,
-                    "compute_s_max": 3.7977, "startup_and_transfer_s": 5.0945},
+                    "compute_s_max": 3.7977, "compute_span_s": 3.9512, "all_overlapped": True,
+                    "startup_and_transfer_s": 5.0945},
               "1": {"gpus": ["A100-40"], "containers_seen": 1, "studies_per_container": [16],
-                    "compute_s_max": 11.4448, "startup_and_transfer_s": 90.293}}}}
+                    "compute_s_max": 11.4448, "compute_span_s": 11.4448, "all_overlapped": True,
+                    "startup_and_transfer_s": 90.293},
+              "16": {"gpus": ["A100-40"], "containers_seen": 16, "studies_per_container": [1] * 16,
+                     "compute_s_max": 0.9, "compute_span_s": 6.1, "all_overlapped": False,
+                     "startup_and_transfer_s": 140.0}}}}
 
 
 def test_ladder_feeds_interim_compute_only_with_startup_apart():
-    """The lead's interim race: kernel 0.873 vs 2.880 s/study, fleet 3.80 vs 11.44 s compute, from the file."""
+    """Kernel 0.873 vs 2.880 s/study; fleet rows are the measured compute span, overlapped runs only (Atlas #75)."""
     [(rid, groups)] = cr.rows_from(Path("modal-a100-x.json"), LADDER)
     assert rid == "interim"
     k, f = ({r["id"]: r for r in g["rows"]} for g in groups)
     assert (k["kernel-numpy"]["seconds"], k["kernel-gpu"]["seconds"], k["kernel-gpu"]["gpu"]) == (2.88, 0.873, "NVIDIA H100")
     assert [r["id"] for r in groups[1]["rows"]] == ["fleet-1", "fleet-4"]
     assert (f["fleet-1"]["seconds"], f["fleet-1"]["startup_s"]) == (11.44, 90.3), "start-up is apart, never in seconds"
-    assert (f["fleet-4"]["seconds"], f["fleet-4"]["gpu"]) == (3.8, "4x A100-40 / A100-80")
+    assert (f["fleet-4"]["seconds"], f["fleet-4"]["gpu"]) == (3.95, "4x A100-40 / A100-80"), "span, not longest shard"
+    assert "fleet-16" not in f, "the 16 containers did not all overlap: no 16-way row"
     assert all(r["source"] == "bench/results/modal-a100-x.json" for g in groups for r in g["rows"])
     assert not any("speedup" in key or "ratio" in key for g in groups for r in g["rows"] for key in r)
     b = json.loads((ROOT / "demo" / "data" / "baseline.json").read_text())
     assert _check(b | {"interim": groups}) is None
     assert _check(b | {"interim": [groups[0] | {"rows": [k["kernel-gpu"] | {"label": "PENDING"}]}]}), "PENDING with a number"
     assert list(cr.rows_from(Path("x.json"), LADDER | {"status": "FAILED"})) == []
+
+
+def test_a_ladder_file_without_the_measured_span_feeds_nothing():
+    """Atlas #75 (c): the pre-span harness file (171213Z) and the corrected one coexist; only the corrected one feeds."""
+    old = json.loads(json.dumps(LADDER))
+    for r in old["fleet"]["runs"].values():
+        del r["compute_span_s"]
+    assert list(cr.rows_from(Path("modal-a100-old.json"), old)) == []
 
 
 # The shape #75's gpu/modal_app.py run_design_point writes (origin/modal-gpu 25fcaca, lines 704-760), values invented.
@@ -144,7 +158,7 @@ def test_interim_titles_say_exactly_what_ran():
     """Atlas #79 re-check (a): the kernel step is feature generation only, never 're-imaged and scored'."""
     [(_, groups)] = cr.rows_from(Path("m.json"), LADDER)
     assert groups[0]["title"] == "One study: re-imaging and feature extraction only (scoring not timed)"
-    assert groups[1]["same_scope"] is False and "longest-shard compute" in groups[1]["title"]
+    assert groups[1]["same_scope"] is False and "measured compute span" in groups[1]["title"]
     b = json.loads((ROOT / "demo" / "data" / "baseline.json").read_text())
     assert not any("scored" in g["title"] for g in b.get("interim", []))
 

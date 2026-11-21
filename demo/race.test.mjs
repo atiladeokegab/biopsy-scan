@@ -108,11 +108,12 @@ assert.equal(pairRatio(bl), null, "the design-point race never prints a ratio");
 assert.equal(pairRatio(g([row({ seconds: 3 }), row({ seconds: 2 }), row({ seconds: 1 })])), null);
 for (const grp of (bl.interim ?? []).filter((x) => x.same_scope)) assert.match(pairRatio(grp), /×\d\.\d faster$/, grp.title);
 // Atlas #79 re-check at 9355de6, each written red first.
-// (2) the old fleet file times the longest shard, overlap unverified: no ratio for it; the kernel pair says what ran.
+// (2) fleet rows are the measured compute span (Atlas #75), overlapped runs only; still no ratio printed here.
 for (const grp of bl.interim ?? []) {
   if (/fleet/.test(grp.title)) {
-    assert.equal(pairRatio(grp), null, "no fleet ratio from longest-shard compute");
-    assert.match(grp.title, /longest-shard compute/);
+    assert.equal(pairRatio(grp), null, "no fleet ratio printed from the interim group");
+    assert.match(grp.title, /measured compute span/);
+    assert.ok(!grp.rows.some((r) => r.id === "fleet-16"), "no 16-way row: those containers did not all overlap");
   } else assert.match(grp.title, /re-imaging and feature extraction only \(scoring not timed\)/);
 }
 // (5) a PENDING row with a number is still PENDING; a non-numeric startup_s is never formatted.

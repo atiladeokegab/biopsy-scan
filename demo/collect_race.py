@@ -74,7 +74,9 @@ def rows_from(path, d):
             print(f"{name}: refused for the race: {why}", file=sys.stderr)
         else:
             yield from design_point(name, d)
-    if d.get("kind") == "ladder" and d.get("status") == "MEASURED":
+    # Only the corrected harness (measured compute span per fleet run) feeds the page; older ladder files feed nothing.
+    if (d.get("kind") == "ladder" and d.get("status") == "MEASURED"
+            and all("compute_span_s" in r for r in d.get("fleet", {}).get("runs", {}).values())):
         yield "interim", interim(name, d)
     if "cpu_model" in d:
         for c in d.get("cohorts", []):
@@ -89,18 +91,20 @@ def rows_from(path, d):
 
 
 def interim(name, d):
-    """The ladder file's kernel pair and fleet pair, copied as measured; no ratio is kept."""
+    """The ladder file's kernel pair and its fully overlapped fleet runs, copied as measured; no ratio is kept."""
     k, f, lab = d["kernel"], d["fleet"], d["status"]
     rows = k["rows"]
     fleet = []
     for n, r in sorted(f["runs"].items(), key=lambda kv: int(kv[0])):
+        if not r.get("all_overlapped"):  # e.g. N=16: Modal staggered the starts, so no N-way claim
+            continue
         g = sorted(set(r["gpus"]))
         each = r["studies_per_container"][0]
         fleet.append({"id": f"fleet-{n}", "method": f"{n} GPU container{'s' if int(n) > 1 else ''}, "
                       + (f"{each} studies each" if int(n) > 1 else f"all {each} studies"),
                       "role": "baseline" if n == "1" else "screen",
-                      "label": lab, "seconds": round(r["compute_s_max"], 2), "startup_s": round(r["startup_and_transfer_s"], 1),
-                      "note": "longest shard's compute", "hardware": "Modal", "gpu": f"{r['containers_seen']}x {' / '.join(g)}", "cores": None, "source": name})
+                      "label": lab, "seconds": round(r["compute_span_s"], 2), "startup_s": round(r["startup_and_transfer_s"], 1),
+                      "note": "compute span: first container start to last container end; inference outside timing", "hardware": "Modal", "gpu": f"{r['containers_seen']}x {' / '.join(g)}", "cores": None, "source": name})
     return [
         {"title": "One study: re-imaging and feature extraction only (scoring not timed)", "unit": k["unit"],
          "same_scope": True, "rows": [
@@ -110,9 +114,8 @@ def interim(name, d):
             {"id": "kernel-gpu", "method": "The same step on 1 GPU", "role": "screen", "label": lab,
              "seconds": round(rows["gpu"]["median_s"], 3), "hardware": "Modal", "cores": None, "gpu": k["gpu"]["model"],
              "note": f"median of {len(rows['gpu']['samples_s'])}, exact parity", "source": name}]},
-        # shortcut: this file times each shard, not the overlap, so no ratio; use the compute span once the
-        # corrected harness's file lands.
-        {"title": f"{f['studies']} studies on a fleet: longest-shard compute only, overlap not verified",
+        {"title": f"{f['studies']} Charville re-imaging/feature-generation studies on a fleet: measured compute span, "
+                  "outputs bit-identical",
          "unit": f["note"], "same_scope": False, "rows": fleet}]
 
 
