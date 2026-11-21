@@ -276,7 +276,7 @@ Expected 50–200× over 8 cores and 10–30× over a 64-core node. These are es
 | Area | Directories | Owner | Issues |
 |---|---|---|---|
 | Core contract | `core/` | — | — |
-| Reference statistics | `stats/` | @atiladeokegab | #4 |
+| Reference statistics | `stats/` | @atiladeokegab [Atlas] | #4 |
 | Re-imaging kernel | `reimage/` | @FHL-08 | #2 |
 | Atlas | `atlas/` | @atiladeokegab | #5 |
 | Benchmarks | `bench/` | @FHL-08 | #3 |
