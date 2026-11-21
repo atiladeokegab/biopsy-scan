@@ -29,7 +29,7 @@ TEST_FILES = ("reimage/test_backends.py", "reimage/test_expression.py", "reimage
 
 app = modal.App("preflight-gpu")
 data = modal.Volume.from_name("preflight-data", create_if_missing=True)
-image = (
+base = (
     # CUDA devel image: numba's CUDA target needs NVVM and libdevice from the toolkit, not just the driver.
     modal.Image.from_registry("nvidia/cuda:12.4.1-devel-ubuntu22.04", add_python="3.11")
     .apt_install("curl", "git")
@@ -37,10 +37,19 @@ image = (
     # shortcut: cupy is only for R-15's stats.screen GPU backend, not a project dependency; drop it if R-15 lands one.
     .uv_pip_install("cupy-cuda12x")
     .env({"DATA_DIR": DATA_DIR, "PYTHONPATH": APP_DIR, "CUDA_HOME": "/usr/local/cuda"})
-    .workdir(APP_DIR)
-    .add_local_dir(REPO, APP_DIR, ignore=[".venv", ".git", ".worktrees", "data", "demo", "results",
-                                          "bench/results", "**/__pycache__", "node_modules"])
 )
+SOURCE = dict(ignore=[".venv", ".git", ".worktrees", "data", "demo", "results", "bench/results", "**/__pycache__",
+                      "node_modules"])
+image = base.workdir(APP_DIR).add_local_dir(REPO, APP_DIR, **SOURCE)
+# ab_screen's code: R-15 (stats.screen) merged with R-14 (bench/impl_a.py) at pinned heads from the public repo.
+PINS = {"r15-gpu-score-screen": "8add7f9bfafcb12725bb9c685d5e6075b4f1643d",
+        "r14-cpu-baseline": "54ad25a69cdfa3165ef28d0b13b9a4082e6a52dc"}
+PINNED_DIR = "/root/pinned"
+ab_image = base.run_commands(
+    f"git clone -q https://github.com/atiladeokegab/sota-parallelism-nov21 {PINNED_DIR}",
+    f"cd {PINNED_DIR} && git checkout -q {PINS['r15-gpu-score-screen']}"
+    f" && git -c user.email=ci@invalid -c user.name=ci merge -q --no-edit {PINS['r14-cpu-baseline']}",
+).env({"PYTHONPATH": PINNED_DIR}).workdir(PINNED_DIR)
 gpu_function = dict(image=image, volumes={DATA_DIR: data}, gpu=DEFAULT_GPU, timeout=3600, memory=32768, cpu=8.0)
 
 
@@ -201,6 +210,71 @@ def screen_hook() -> dict:
     return result
 
 
+@app.function(image=ab_image, volumes={DATA_DIR: data}, gpu=DEFAULT_GPU, timeout=3600, memory=65536, cpu=16.0)
+def ab_screen(reps: int = 3, n_perm: int = 999) -> dict:
+    """One quiet container, Charville v2 (3,780 candidates): R-14 full fits (all cores) vs R-15 screen on CPU and GPU.
+
+    Interleaved A, B, C, A, B, C ... so all three share one window; a part that will not import is SKIPPED.
+    A is a workflow comparison (different outputs); B vs C is the equal-work pair.
+    """
+    from functools import partial
+
+    import numpy as np
+
+    from bench.ladder import hardware
+
+    entered = time.perf_counter()
+    parts, skipped, screens = {}, {}, {}
+    try:
+        from bench import impl_a
+
+        d = impl_a.inputs("charville")
+        parts["A_r14_full_fits"] = lambda: impl_a.time_full_run(d["X"], d["time"], d["event"], d["C"], d["strata"])[0]
+    except ImportError as e:
+        skipped["A_r14_full_fits"] = str(e)
+        d = None
+    try:
+        from stats.screen import screen
+        if d is None:
+            raise ImportError("needs bench.impl_a.inputs for the shared Charville v2 inputs")
+        C = d["C"] if d["C"].shape[1] else None
+
+        def run_screen(backend, key=None):
+            out = screen(d["X"], d["time"], d["event"], clinical=C, strata=d["strata"], n_perm=n_perm, backend=backend)
+            if key:
+                screens[key] = out
+
+        for key, backend in (("B_r15_screen_cpu", "numpy"), ("C_r15_screen_gpu", "cupy")):
+            run_screen(backend)  # warm-up: imports, BLAS and CUDA kernels; not timed
+            parts[key] = partial(run_screen, backend, key)
+    except (ImportError, RuntimeError) as e:  # RuntimeError: cupy or its device unavailable
+        for key in ("B_r15_screen_cpu", "C_r15_screen_gpu"):
+            if key not in parts:
+                skipped[key] = str(e)
+        parts.pop("C_r15_screen_gpu", None)
+    prep = time.perf_counter() - entered
+    samples = {k: [] for k in parts}
+    load = [os.getloadavg()[0]]
+    for _ in range(reps):
+        for key, fn in parts.items():
+            t0 = time.perf_counter()
+            fn()
+            samples[key].append(time.perf_counter() - t0)
+            load.append(os.getloadavg()[0])
+    result = {"inputs": {"cohort": "charville", "features": d and d["features"], "patients": d and len(d["time"]),
+                         "candidates": d and int(d["X"].shape[1]), "events": d and int(np.sum(d["event"]))},
+              "order": list(parts), "reps": reps, "n_perm": n_perm, "skipped": skipped, "pins": PINS,
+              "rows": {k: _spread(v) for k, v in samples.items()}, "preparation_s": prep,
+              "cores": len(os.sched_getaffinity(0)), "load_avg_1m": {"min": min(load), "max": max(load)},
+              "host": hardware(), "gpu": gpu_info(), "in_function_s": time.perf_counter() - entered,
+              "labels": {"A_vs_B": "workflow comparison: full Cox fits vs a score screen, different outputs",
+                         "B_vs_C": "equal work: same statistic and resamples on CPU and GPU"}}
+    if "B_r15_screen_cpu" in screens and "C_r15_screen_gpu" in screens:
+        b, c = screens["B_r15_screen_cpu"], screens["C_r15_screen_gpu"]
+        result["gpu_matches_cpu_z"] = bool(np.allclose(b["z"], c["z"], rtol=1e-9, atol=1e-9))
+    return result
+
+
 # ---- local side: validates arguments, calls Modal, writes the evidence file ----
 
 def _check_gpu(gpu: str) -> str:
@@ -306,3 +380,19 @@ def run_ladder(gpu: str = DEFAULT_GPU, reps: int = 5, containers: int = 4, studi
     for n, row in payload["fleet"]["runs"].items():
         print(f"  {n} container(s): wall {row['modal_wall_s']:.1f} s, compute {row['compute_s_max']:.2f} s, "
               f"bit-identical {row['bit_identical_to_1']}")
+
+
+@app.local_entrypoint()
+def run_ab(gpu: str = DEFAULT_GPU, reps: int = 3):
+    """make modal-ab: R-14 vs R-15 CPU vs R-15 GPU, interleaved on one 16-core GPU container."""
+    _check_gpu(gpu)
+    if reps < 3:
+        raise SystemExit("need --reps >= 3")
+    print("volume:", fetch_data.remote())
+    result, wall = _timed_call(ab_screen.with_options(gpu=gpu).remote, reps)
+    result["modal_wall_s"] = wall
+    result["startup_and_transfer_s"] = wall - result["in_function_s"]
+    _save(gpu, {"kind": "ab_screen", "ab_screen": result})
+    for key, row in result["rows"].items():
+        print(f"  {key}: median {row['median_s']:.2f} s [{row['min_s']:.2f}, {row['max_s']:.2f}]")
+    print("  skipped:", result["skipped"] or "none")

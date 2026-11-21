@@ -30,11 +30,12 @@ def modal_app(monkeypatch, tmp_path):
 
 def test_functions_and_gpu_parameters_exist(modal_app):
     assert modal_app.GPUS == ("A100", "H100", "L4") and modal_app.DEFAULT_GPU == "A100"
-    for name in ("gpu_tests", "time_kernel", "fleet_shard", "screen_hook"):
+    for name in ("gpu_tests", "time_kernel", "fleet_shard", "screen_hook", "ab_screen"):
         assert getattr(modal_app, name)._spec_.gpus == "A100", name
     assert modal_app.fetch_data._spec_.gpus is None  # the data download is CPU only
     assert "/data" in modal_app.time_kernel._spec_.volumes
-    assert callable(modal_app.run_tests) and callable(modal_app.run_ladder)
+    assert modal_app.ab_screen._spec_.cpu >= 16  # the quiet A/B box
+    assert callable(modal_app.run_tests) and callable(modal_app.run_ladder) and callable(modal_app.run_ab)
     assert modal_app._check_gpu("H100") == "H100"
     with pytest.raises(SystemExit):
         modal_app._check_gpu("T4")

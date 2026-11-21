@@ -1,4 +1,4 @@
-.PHONY: smoke install test data summary demo tissue deploy modal-gpu-tests modal-ladder
+.PHONY: smoke install test data summary demo tissue deploy modal-gpu-tests modal-ladder modal-ab
 
 install:
 	uv sync --dev
@@ -43,3 +43,6 @@ modal-gpu-tests: install
 
 modal-ladder: install
 	uv run modal run gpu/modal_app.py::run_ladder --gpu $(GPU) --reps $(REPS) --containers $(CONTAINERS) --studies $(STUDIES)
+
+modal-ab: install
+	uv run modal run gpu/modal_app.py::run_ab --gpu $(GPU) --reps 3
