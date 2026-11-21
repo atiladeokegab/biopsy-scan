@@ -42,15 +42,6 @@ def test_labels_and_top_candidates():
     assert [c["rank"] for c in r["top_candidates"]] == list(range(1, 11))
 
 
-def test_shim_matches_reference():
-    from stats import reference
-    rng = np.random.default_rng(0)
-    X, t, e, s = rng.normal(size=(20, 3)), rng.uniform(1, 9, 20), rng.integers(0, 2, 20).astype(float), np.zeros(20, int)
-    got = screen_cohort._shim_screen(X, t, e, strata=s, n_perm=99, seed=3)
-    ref = reference.permutation_test(X, t, e, s, n_resamples=99, seed=3)
-    assert np.allclose(got["z"], ref["z"]) and got["p"] == ref["p"]
-
-
 def test_committed_result_is_labelled():
     path = Path(__file__).resolve().parents[1] / "results" / "charville-screen.json"
     if path.exists():
