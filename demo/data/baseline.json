@@ -64,66 +64,68 @@
   },
   "interim": [
     {
-      "title": "One study: re-imaging and feature extraction only (scoring not timed)",
+      "title": "One study",
       "unit": "one study: patient and region sampling, crop, mis-call, recount, features",
       "same_scope": true,
+      "scope": "MEASURED, 3.19× faster: feature step only, NumPy vs GPU, same container, median of 5, exact parity",
       "rows": [
         {
           "id": "kernel-numpy",
           "method": "NumPy reference, same container",
           "role": "baseline",
           "label": "MEASURED",
-          "seconds": 2.88,
+          "seconds": 2.235,
           "hardware": "Modal GPU container, on its CPU",
           "cores": null,
           "gpu": null,
           "note": "median of 5",
-          "source": "bench/results/modal-a100-20261121T171213Z.json"
+          "source": "bench/results/modal-a100-20261121T183709Z.json"
         },
         {
           "id": "kernel-gpu",
           "method": "The same step on 1 GPU",
           "role": "screen",
           "label": "MEASURED",
-          "seconds": 0.873,
+          "seconds": 0.702,
           "hardware": "Modal",
           "cores": null,
           "gpu": "NVIDIA A100-SXM4-40GB",
           "note": "median of 5, exact parity",
-          "source": "bench/results/modal-a100-20261121T171213Z.json"
+          "source": "bench/results/modal-a100-20261121T183709Z.json"
         }
       ]
     },
     {
-      "title": "16 studies on a fleet: longest-shard compute only, overlap not verified",
-      "unit": "compute_s excludes start-up, data load, adjacency and warm-up; those are reported per run",
-      "same_scope": false,
+      "title": "1,000 studies: 1 A100 against 8",
+      "unit": "compute_s excludes start-up, data load, adjacency and warm-up; those are reported per run. Scaling uses the measured compute span (first start to last end across containers); studies / max(shard compute) assumes perfect overlap and is labelled ESTIMATE",
+      "same_scope": true,
+      "scope": "MEASURED, observed 6.6× compute-span reduction 843.7→128.2 s for 1,000 Charville re-imaging/feature-generation studies, 8 A100-SXM4-40GB vs 1, one sweep; outputs bit-identical; inference outside timing",
       "rows": [
         {
           "id": "fleet-1",
-          "method": "1 GPU container, all 16 studies",
+          "method": "1 A100, all 1,000 studies",
           "role": "baseline",
           "label": "MEASURED",
-          "seconds": 11.44,
-          "startup_s": 90.3,
-          "note": "longest shard's compute",
+          "seconds": 843.72,
+          "startup_s": 34.7,
+          "note": "compute span",
           "hardware": "Modal",
           "gpu": "1x NVIDIA A100-SXM4-40GB",
           "cores": null,
-          "source": "bench/results/modal-a100-20261121T171213Z.json"
+          "source": "bench/results/modal-a100-20261121T183709Z.json"
         },
         {
-          "id": "fleet-4",
-          "method": "4 GPU containers, 4 studies each",
+          "id": "fleet-8",
+          "method": "8 A100s, 125 studies each",
           "role": "screen",
           "label": "MEASURED",
-          "seconds": 3.8,
-          "startup_s": 5.1,
-          "note": "longest shard's compute",
+          "seconds": 128.2,
+          "startup_s": 7.0,
+          "note": "compute span",
           "hardware": "Modal",
-          "gpu": "4x NVIDIA A100-SXM4-40GB / NVIDIA A100-SXM4-80GB",
+          "gpu": "8x NVIDIA A100-SXM4-40GB",
           "cores": null,
-          "source": "bench/results/modal-a100-20261121T171213Z.json"
+          "source": "bench/results/modal-a100-20261121T183709Z.json"
         }
       ]
     }
