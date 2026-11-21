@@ -139,5 +139,5 @@ cell. A batched backend may run many studies per launch, but it must reproduce t
 
 ## Check
 
-`make smoke` = `uv sync --dev` + `uv run pytest -q` over `core/ stats/ reimage/ bench/ tests/`, tiny invented
+`make smoke` = `uv sync --dev` + `uv run pytest -q` over `core/ stats/ reimage/ bench/ audit/ tests/`, tiny invented
 fixtures, offline, no real data.
