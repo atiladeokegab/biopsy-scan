@@ -22,7 +22,7 @@ A live 5-minute pitch to the judges, including a live demo of about 60 s, with t
 | Deck | PDF exported at freeze to `docs/assets/preflight-deck.pdf` | not yet exported |
 | Live demo | https://atiladeokegab.github.io/sota-parallelism-nov21/ | live once PR #36 merges |
 | Offline fallback | `make demo` (checks `demo/data`, then serves `demo/` locally) | in integration |
-| Demo video (backup) | `docs/film/` | not yet recorded |
+| Demo video (backup) | `docs/film/` | recorded (proof-v5); attached at submission |
 | README | `README.md`: what it is, how to run it, a screenshot from the final run | not yet refreshed |
 
 ## Run order on stage

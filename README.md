@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 Live interactive demo: <https://atiladeokegab.github.io/sota-parallelism-nov21/>  
-A recorded walkthrough is attached to the submission.
+A recorded walkthrough accompanies the submission.
 
 ![Preflight 3D tissue viewer and power gap demo](docs/assets/demo-1280.png)
 
