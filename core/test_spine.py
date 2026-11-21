@@ -162,3 +162,18 @@ def test_reimage_design_draws_are_seeded_and_change_x():
     d = draw(cells, design, 7)
     assert all(len(row) == 1 and row[0][1] is not None for row in d["looks"])
     assert len(draw(cells, dict(design, patients=[2, 0]), 7)["patients"]) == 2
+
+
+def test_injected_region_kernel_gives_identical_x_in_draw_order():
+    cells = study_cells()
+    design = {"patients": 4, "regions_per_patient": 1, "fov_um": 150.0, "eps": 0.25, "seed": 0}
+    seen = []
+
+    def kernel(nbr, xy, types, focal, K, crop=None, M=None, u=None):
+        seen.append((len(xy), crop, u[0]))
+        return reimage_region(nbr, xy, types, focal, K, crop=crop, M=M, u=u)
+
+    X = reimage(cells, design, 11, region_kernel=kernel)
+    assert np.array_equal(X, reimage(cells, design, 11), equal_nan=True)
+    looks = [look for row in draw(cells, design, 11)["looks"] for look in row]
+    assert [(c, u[0]) for _, c, u in looks] == [(c, u0) for _, c, u0 in seen]

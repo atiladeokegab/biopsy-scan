@@ -103,11 +103,15 @@ def draw(cells: dict, design: dict, seed) -> dict:
     return {"patients": idx, "looks": looks}
 
 
-def reimage(cells: dict, design: dict, seed) -> np.ndarray:
+def reimage(cells: dict, design: dict, seed, region_kernel=None) -> np.ndarray:
     """One simulated study -> X float64 [P', C], rows in drawn-patient order, NaN where no focal cell.
 
+    This wrapper owns patient and region sampling and the RNG order; it calls
+    region_kernel(nbr, xy, types, focal, K, crop=crop, M=M, u=u) -> (S, m) once per sampled region,
+    in draw order (default reimage_region), so numba/GPU kernels drop in with identical sampling.
     Neighbour lists are built once per region and cached in cells["_nbr"].
     """
+    region_kernel = region_kernel or reimage_region
     L = layout(cells)
     d = draw(cells, design, seed)
     M = confusion_matrix(L["K"], float(design.get("eps") or 0.0))
@@ -120,7 +124,7 @@ def reimage(cells: dict, design: dict, seed) -> np.ndarray:
             xy, ty = L["xy"](r), L["types"](r)
             if r not in cache:
                 cache[r] = neighbours(xy)
-            s_, m_ = reimage_region(cache[r], xy, ty, L["focal"], K, crop=crop, M=M, u=u)
+            s_, m_ = region_kernel(cache[r], xy, ty, L["focal"], K, crop=crop, M=M, u=u)
             S[i] += s_
             m[i] += m_
     return features(S, m)
