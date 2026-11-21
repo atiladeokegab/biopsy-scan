@@ -66,6 +66,15 @@ def fit_all(time, event, strata, C, X, workers: int) -> dict:
     return {"coef": coef, "se": se, "p": p, "n": n.astype(int)}
 
 
+def time_full_run(X, time, event, C, strata, workers: int | None = None) -> tuple[float, dict]:
+    """One timed Implementation A run on these inputs: (wall seconds, outputs of fit_all). Workers default to all
+    cores. The entry point R-15 interleaves with its screen (A, B, A, B) for the same-window comparison."""
+    workers = workers or len(os.sched_getaffinity(0))
+    t0 = clock.perf_counter()
+    r = fit_all(time, event, strata, C, X, workers)
+    return clock.perf_counter() - t0, r
+
+
 def fingerprint(a) -> str:
     a = np.ascontiguousarray(a, np.float64)
     return hashlib.sha256(repr(a.shape).encode() + a.tobytes()).hexdigest()
@@ -119,9 +128,7 @@ def measure(cohort, patient_ids, time, event, strata, C, c_names, X, names, core
     res = None
     for w in sorted({1, cores}):
         before = os.getloadavg()
-        t0 = clock.perf_counter()
-        r = fit_all(*args, workers=w)
-        wall = clock.perf_counter() - t0
+        wall, r = time_full_run(args[4], *args[:2], args[3], args[2], workers=w)
         if res is not None:  # the A-14.1 property on real data: the worker count never changes a result
             for k in r:
                 np.testing.assert_array_equal(r[k], res[k])
@@ -136,18 +143,33 @@ def measure(cohort, patient_ids, time, event, strata, C, c_names, X, names, core
     return out
 
 
-def run_cohort(cohort: str, cores: int) -> dict:
-    from core import cohorts
-    from core.grammar import feature_names, grammar_v2
-    from core.truth import truth_v2
+V2 = {"charville": True, "upmc": False}  # Charville: the 3,780-candidate v2 search space; UPMC: v1 (lead's ruling)
 
-    c = cohorts.load(cohort, include_channels=True)
-    names = feature_names(grammar_v2(c["type_names"], c["channel_names"]))
-    X = truth_v2(c)  # every candidate: the v1 spatial features plus v2 neighbour expression (3,780 on Charville)
+
+def inputs(cohort: str, v2: bool | None = None) -> dict:
+    """One cohort's real inputs: X [P, J], time, event, strata, C [P, k], patient_ids, names, c_names."""
+    from core import cohorts
+    from core.grammar import feature_names, grammar, grammar_v2
+    from core.truth import truth, truth_v2
+
+    v2 = V2[cohort] if v2 is None else v2
+    c = cohorts.load(cohort, include_channels=v2)
+    if v2:  # the v1 spatial features plus v2 neighbour expression (3,780 on Charville)
+        names, X = feature_names(grammar_v2(c["type_names"], c["channel_names"])), truth_v2(c)
+    else:
+        names, X = feature_names(grammar(c["type_names"])), truth(c)
     if X.shape[1] != len(names):
-        raise ValueError(f"{cohort}: X has {X.shape[1]} columns, the v2 grammar names {len(names)}")
+        raise ValueError(f"{cohort}: X has {X.shape[1]} columns, the grammar names {len(names)}")
     C, c_names = clinical(cohort, c["patient_names"])
-    return measure(cohort, c["patient_names"], c["time"], c["event"], c["strata"], C, c_names, X, names, cores)
+    return {"X": X, "time": c["time"], "event": c["event"].astype(float), "strata": c["strata"], "C": C,
+            "patient_ids": c["patient_names"], "names": names, "c_names": c_names, "features": "v2" if v2 else "v1"}
+
+
+def run_cohort(cohort: str, cores: int) -> dict:
+    d = inputs(cohort)
+    out = measure(cohort, d["patient_ids"], d["time"], d["event"], d["strata"], d["C"], d["c_names"], d["X"],
+                  d["names"], cores)
+    return {"features": d["features"], **out}
 
 
 def report(cohorts: list[dict], cores: int) -> dict:
