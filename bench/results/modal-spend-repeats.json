@@ -1,0 +1,254 @@
+{
+  "workspace_profile": "fhl-08",
+  "rates_usd_per_hour": {
+    "A100": 2.0988,
+    "cpu_core": 0.04716,
+    "memory_gib": 0.007992,
+    "source": "#120's bench/modal_design.py RATES"
+  },
+  "note": "Every repeat-sweep run (#120's runner, unchanged): copied from the runner's own bench/results/modal-spend.json in throwaway checkouts. Cap 4 USD (lead).",
+  "cap_usd": 4.0,
+  "entries": [
+    {
+      "utc": "2026-11-21T22:01Z",
+      "run": "modal-design 100/stream, arms ['lab']",
+      "containers": 1,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 1.5,
+      "est_usd": 0.75,
+      "basis": "900 s ceiling x per-arm $/h {'lab': 2.987568}",
+      "source_commit": "a29f1b7bb3c1f0d747121b52c04b285aa1bd6d93",
+      "container_class": "all arms identical",
+      "actual": {
+        "modal_wall_s": 248.7,
+        "est_usd": 0.206,
+        "basis": "each container x local wall (an upper bound: includes queueing)",
+        "result": "bench/results/modal-design-20261121T220121Z.json"
+      },
+      "running_total_usd": 41.662
+    },
+    {
+      "utc": "2026-11-21T22:01Z",
+      "run": "modal-design 1000/stream, arms ['fused']",
+      "containers": 1,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 1.5,
+      "est_usd": 1.0,
+      "basis": "1200 s ceiling x per-arm $/h {'fused': 2.987568}",
+      "source_commit": "a29f1b7bb3c1f0d747121b52c04b285aa1bd6d93",
+      "container_class": "all arms identical",
+      "actual": {
+        "modal_wall_s": 362.9,
+        "est_usd": 0.301,
+        "basis": "each container x local wall (an upper bound: includes queueing)",
+        "result": "bench/results/modal-design-20261121T220121Z.json"
+      },
+      "running_total_usd": 41.757
+    },
+    {
+      "utc": "2026-11-21T22:05Z",
+      "run": "modal-design 100/stream, arms ['lab']",
+      "containers": 1,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 1.5,
+      "est_usd": 0.75,
+      "basis": "900 s ceiling x per-arm $/h {'lab': 2.987568}",
+      "source_commit": "a29f1b7bb3c1f0d747121b52c04b285aa1bd6d93",
+      "container_class": "all arms identical",
+      "running_total_usd": 42.206,
+      "actual": {
+        "modal_wall_s": 160,
+        "est_usd": 0.133,
+        "basis": "local wall from start to abort x rate (ESTIMATE)",
+        "note": "aborted at 22:07:41Z: single-arm runs looked FAILED; the loop was restarted"
+      }
+    },
+    {
+      "utc": "2026-11-21T22:08Z",
+      "run": "modal-design 100/stream, arms ['lab']",
+      "containers": 1,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 1.5,
+      "est_usd": 0.75,
+      "basis": "900 s ceiling x per-arm $/h {'lab': 2.987568}",
+      "source_commit": "a29f1b7bb3c1f0d747121b52c04b285aa1bd6d93",
+      "container_class": "all arms identical",
+      "running_total_usd": 42.206,
+      "actual": {
+        "modal_wall_s": 71,
+        "est_usd": 0.059,
+        "basis": "local wall from start to abort x rate (ESTIMATE)",
+        "note": "aborted at ~22:09:25Z: #120's head moved to 0b27ea1"
+      }
+    },
+    {
+      "utc": "2026-11-21T22:08Z",
+      "run": "modal-design 1000/stream, arms ['fused']",
+      "containers": 1,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 1.5,
+      "est_usd": 1.0,
+      "basis": "1200 s ceiling x per-arm $/h {'fused': 2.987568}",
+      "source_commit": "a29f1b7bb3c1f0d747121b52c04b285aa1bd6d93",
+      "container_class": "all arms identical",
+      "running_total_usd": 42.456,
+      "actual": {
+        "modal_wall_s": 71,
+        "est_usd": 0.059,
+        "basis": "local wall from start to abort x rate (ESTIMATE)",
+        "note": "aborted at ~22:09:25Z: #120's head moved to 0b27ea1"
+      }
+    },
+    {
+      "utc": "2026-11-21T22:09Z",
+      "run": "modal-design 100/stream, arms ['lab']",
+      "containers": 1,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 1.5,
+      "est_usd": 0.75,
+      "basis": "900 s ceiling x per-arm $/h {'lab': 2.987568}",
+      "source_commit": "0b27ea1f79db7d45a7be0c35b2866f0dce338d3d",
+      "container_class": "all arms identical",
+      "actual": {
+        "modal_wall_s": 258.9,
+        "est_usd": 0.215,
+        "basis": "each container x local wall (an upper bound: includes queueing)",
+        "result": "bench/results/modal-design-20261121T220939Z.json"
+      },
+      "running_total_usd": 41.671
+    },
+    {
+      "utc": "2026-11-21T22:09Z",
+      "run": "modal-design 1000/stream, arms ['fused']",
+      "containers": 1,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 1.5,
+      "est_usd": 1.0,
+      "basis": "1200 s ceiling x per-arm $/h {'fused': 2.987568}",
+      "source_commit": "0b27ea1f79db7d45a7be0c35b2866f0dce338d3d",
+      "container_class": "all arms identical",
+      "actual": {
+        "modal_wall_s": 367.1,
+        "est_usd": 0.305,
+        "basis": "each container x local wall (an upper bound: includes queueing)",
+        "result": "bench/results/modal-design-20261121T220939Z.json"
+      },
+      "running_total_usd": 41.761
+    },
+    {
+      "utc": "2026-11-21T22:10Z",
+      "run": "modal-design 1000/stream, arms ['fused']",
+      "containers": 1,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 1.5,
+      "est_usd": 1.0,
+      "basis": "1200 s ceiling x per-arm $/h {'fused': 2.987568}",
+      "source_commit": "a29f1b7bb3c1f0d747121b52c04b285aa1bd6d93",
+      "container_class": "all arms identical",
+      "actual": {
+        "modal_wall_s": 324.8,
+        "est_usd": 0.27,
+        "basis": "each container x local wall (an upper bound: includes queueing)",
+        "result": "bench/results/modal-design-20261121T221020Z.json"
+      },
+      "running_total_usd": 41.726
+    },
+    {
+      "utc": "2026-11-21T22:14Z",
+      "run": "modal-design 100/stream, arms ['lab']",
+      "containers": 1,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 1.5,
+      "est_usd": 0.75,
+      "basis": "900 s ceiling x per-arm $/h {'lab': 2.987568}",
+      "source_commit": "0b27ea1f79db7d45a7be0c35b2866f0dce338d3d",
+      "container_class": "all arms identical",
+      "actual": {
+        "modal_wall_s": 245.2,
+        "est_usd": 0.203,
+        "basis": "each container x local wall (an upper bound: includes queueing)",
+        "result": "bench/results/modal-design-20261121T221407Z.json"
+      },
+      "running_total_usd": 41.659
+    },
+    {
+      "utc": "2026-11-21T22:15Z",
+      "run": "modal-design 1000/stream, arms ['fused']",
+      "containers": 1,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 1.5,
+      "est_usd": 1.0,
+      "basis": "1200 s ceiling x per-arm $/h {'fused': 2.987568}",
+      "source_commit": "a29f1b7bb3c1f0d747121b52c04b285aa1bd6d93",
+      "container_class": "all arms identical",
+      "actual": {
+        "modal_wall_s": 366.2,
+        "est_usd": 0.304,
+        "basis": "each container x local wall (an upper bound: includes queueing)",
+        "result": "bench/results/modal-design-20261121T221555Z.json"
+      },
+      "running_total_usd": 41.76
+    },
+    {
+      "utc": "2026-11-21T22:18Z",
+      "run": "modal-design 100/stream, arms ['lab']",
+      "containers": 1,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 1.5,
+      "est_usd": 0.75,
+      "basis": "900 s ceiling x per-arm $/h {'lab': 2.987568}",
+      "source_commit": "0b27ea1f79db7d45a7be0c35b2866f0dce338d3d",
+      "container_class": "all arms identical",
+      "actual": {
+        "modal_wall_s": 283.8,
+        "est_usd": 0.236,
+        "basis": "each container x local wall (an upper bound: includes queueing)",
+        "result": "bench/results/modal-design-20261121T221820Z.json"
+      },
+      "running_total_usd": 41.692
+    },
+    {
+      "utc": "2026-11-21T22:22Z",
+      "run": "modal-design 1000/stream, arms ['fused']",
+      "containers": 1,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 1.5,
+      "est_usd": 1.0,
+      "basis": "1200 s ceiling x per-arm $/h {'fused': 2.987568}",
+      "source_commit": "0b27ea1f79db7d45a7be0c35b2866f0dce338d3d",
+      "container_class": "all arms identical",
+      "actual": {
+        "modal_wall_s": 362.7,
+        "est_usd": 0.301,
+        "basis": "each container x local wall (an upper bound: includes queueing)",
+        "result": "bench/results/modal-design-20261121T222213Z.json"
+      },
+      "running_total_usd": 41.757
+    }
+  ],
+  "running_total_usd": 2.592
+}
