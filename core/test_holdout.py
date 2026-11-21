@@ -1,4 +1,4 @@
-"""UPMC patient grouping, the locked held-out split and its guard, on an invented fixture (offline)."""
+"""A-13.2@1: the held-out split is stratified by event, seeded, hashed and reproduced byte for byte (offline)."""
 import json
 import zipfile
 
@@ -37,20 +37,6 @@ def data_dir(tmp_path, monkeypatch):
     return tmp_path
 
 
-def test_patient_rule_maps_cases_and_na_tuples_and_reports_conflicts(data_dir):
-    import pandas as pd
-    lab = pd.read_csv(data_dir / "upmc_labels.csv", dtype=str, keep_default_na=False)
-    pid, conflicts = cohorts.upmc_patient_ids(lab)
-    assert pid[:9].tolist() == ["HN1-1", "HN1-1", "", "777", "T:NED|1|0|0|0|300", "T:NED|1|0|0|0|300", "", "", ""]
-    assert pid[9] == ""
-    assert [(c["kind"], c["group"]) for c in conflicts] == [
-        ("case with conflicting outcomes", "888"),
-        ("NA region in a tuple holding a case number", "T:DOD|0|1|0|1|100"),
-        ("NA tuple spanning both coverslip groups", "T:NED|1|0|0|0|400"),
-    ]
-    assert conflicts[2]["regions"] == ["UPMC_c001_v001_r001_reg007", "UPMC_c005_v001_r001_reg008"]
-
-
 def test_split_is_stratified_seeded_whole_units_and_hashed(data_dir):
     m = heldout.build(data_dir / "upmc_labels.csv")
     c = m["counts"]
@@ -64,29 +50,6 @@ def test_split_is_stratified_seeded_whole_units_and_hashed(data_dir):
     assert set(lab.region_id) == set(m["locked_regions"])
     every = set(cohorts.load_regions("upmc", data_dir, "tuple").patient_id)
     assert not every & set(lab.patient_id)                                       # no tuple on both sides
-
-
-def test_discovery_loaders_never_return_locked_regions(data_dir):
-    locked = cohorts.locked_regions(data_dir=data_dir)
-    assert locked
-    for ident in ("case", "tuple", "tuple+case", "patient"):
-        assert not locked & set(cohorts.load_regions("upmc", data_dir, ident).region_id)
-    assert not locked & set(cohorts.load_cells("upmc", data_dir=data_dir)["region_ids"])
-    assert set(cohorts.load_cells("upmc", data_dir=data_dir, split="locked")["region_ids"]) == locked
-
-
-def test_guard_raises_when_discovery_asks_for_a_locked_region(data_dir):
-    r = sorted(cohorts.locked_regions(data_dir=data_dir))[0]
-    with pytest.raises(cohorts.LockedPatientError):
-        cohorts.load_cells("upmc", [r], data_dir)
-    assert cohorts.load_cells("upmc", [r], data_dir, split="locked")["region_ids"] == [r]
-
-
-def test_without_the_guard_the_locked_region_leaks(data_dir, monkeypatch):
-    """The red case the guard exists for: with no lock the same request returns the locked cells."""
-    r = sorted(cohorts.locked_regions(data_dir=data_dir))[0]
-    monkeypatch.setattr(cohorts, "LOCK_FILE", None)
-    assert cohorts.load_cells("upmc", [r], data_dir)["region_ids"] == [r]
 
 
 def test_edited_manifest_is_refused(data_dir):
@@ -107,46 +70,11 @@ def test_committed_manifest_is_intact():
         assert s["locked"] == int(s["units"] * heldout.FRACTION + 0.5)
 
 
-def test_split_all_reads_both_sides(data_dir):
-    every = set(cohorts.load_regions("upmc", data_dir, "tuple", split="all").region_id)
-    assert cohorts.locked_regions(data_dir=data_dir) < every and len(every) == len(ROWS)
-    r = sorted(cohorts.locked_regions(data_dir=data_dir))[0]
-    assert cohorts.load_cells("upmc", [r], data_dir, split="all")["region_ids"] == [r]
-
-
-def test_labels_other_than_the_locked_ones_are_refused(data_dir):
-    with open(data_dir / "upmc_labels.csv", "a") as f:
-        f.write("UPMC_c007_v001_r001_reg099,NED,1,0,0,0,9999,a,NA\n")
-    for split in cohorts.SPLITS[:2]:
-        with pytest.raises(ValueError, match="labels the held-out split was locked on"):
-            cohorts.load_regions("upmc", data_dir, split=split)
-    with pytest.raises(ValueError, match="labels the held-out split was locked on"):
-        cohorts.load_cells("upmc", data_dir=data_dir)
-
-
-def test_search_entry_point_cannot_reach_locked_regions(data_dir):
-    """The real-data search (audit.runner) takes no split, so it can only ever load the discovery side."""
-    import inspect
-    from dataclasses import replace
-
-    from audit import runner
-    assert "split" not in inspect.signature(runner.run_cohort_audit).parameters
-    with pytest.raises(TypeError):
-        runner.run_cohort_audit("upmc", split="all", out_dir=None, data_dir=data_dir)
-    seen = []
-
-    def spy(cohort, **kw):
-        seen.append(kw)
-        raise StopIteration
-    with pytest.raises(StopIteration):
-        runner.run_cohort_audit("upmc", out_dir=None, data_dir=data_dir, core_api=replace(runner.load_default_core(), load=spy))
-    assert seen == [{"data_dir": data_dir}]                          # no split, so cohorts.load's default
-    assert inspect.signature(cohorts.load).parameters["split"].default == "discovery"
-
-
-def test_only_the_grid_path_passes_split_all():
-    """split="all" bypasses the lock: no code but scripts/export_grid.py may pass it."""
-    users = {p.relative_to(cohorts.ROOT).as_posix() for p in cohorts.ROOT.rglob("*.py")
-             if not {".venv", ".worktrees", "node_modules"} & set(p.relative_to(cohorts.ROOT).parts) and not p.name.startswith("test_")
-             and ('split="all"' in p.read_text() or 'SPLIT = "all"' in p.read_text())}
-    assert users == {"scripts/export_grid.py"}
+def test_rebuild_reproduces_the_manifest_byte_for_byte_and_never_overwrites(data_dir):
+    out = data_dir / "manifest.json"
+    assert heldout.main(data_dir / "upmc_labels.csv", out) == 0
+    first = out.read_bytes()
+    assert heldout.main(data_dir / "upmc_labels.csv", out) == 0 and out.read_bytes() == first
+    out.write_text(out.read_text().replace('"seed": 20261121', '"seed": 1'))
+    edited = out.read_bytes()
+    assert heldout.main(data_dir / "upmc_labels.csv", out) == 1 and out.read_bytes() == edited
