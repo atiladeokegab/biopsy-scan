@@ -1,0 +1,63 @@
+/* Preflight Demo Design Tokens (authoritative for demo/; defined in docs/design.md). */
+:root {
+  /* Palette: dark slate lab ground, one emerald accent reserved for primary CTA / found / our cohort */
+  --bg: #0B1018;
+  --bg-canvas: #070B11;
+  --surface: #121A25;
+  --surface-elevated: #182230;
+  --border: #22303F;
+
+  --text-head: #F4F7FA;
+  --text-body: #B9C6D4;
+  --text-muted: #8898AA;
+
+  /* Single UI accent: primary action, found study tiles, "our cohort" mark */
+  --accent: #2BD4A4;
+  --accent-ink: #071310;
+
+  /* Domain spatial cell-class & status hues */
+  --tumour: #FF7A59;
+  --immune: #F5C451;
+  --stroma: #56687A;
+  --tile-miss: #243040;
+  --state-warn: #F5C451;
+  --state-error: #FF7A59;
+
+  /* Typography: Inter with system sans fallback, 6-step scale (minimum 12px everywhere) */
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --text-xs: 0.75rem;   /* 12px: captions, axis ticks, provenance tags */
+  --text-sm: 0.875rem;  /* 14px: secondary metadata, chart labels */
+  --text-base: 1rem;    /* 16px: body copy, slider labels, mobile minimum */
+  --text-lg: 1.25rem;   /* 20px: section headings, tagline */
+  --text-xl: 2rem;      /* 32px: page title (390) / sub-hero */
+  --text-2xl: 3rem;     /* 48px: page title (1280) & headline power % */
+
+  --leading-tight: 1.08;
+  --leading-display-sm: 1.12;
+  --leading-snug: 1.25;
+  --leading-caption: 1.4;
+  --leading-meta: 1.45;
+  --leading-normal: 1.5;
+
+  /* Spacing: 8-step 4px scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
+
+  /* Geometry & focus */
+  --radius-control: 6px;
+  --radius-surface: 10px;
+  --focus-ring: 2px solid #F4F7FA;
+  --focus-offset: 3px;
+
+  /* Layout */
+  --container-max: 1232px;
+  --target-min: 44px;
+  --tissue-height-desktop: 314px;
+  --tissue-height-mobile: 220px;
+}
