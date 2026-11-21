@@ -6,6 +6,8 @@ refit) are q-sized and stay on the host. Runs under NUMBA_ENABLE_CUDASIM=1 in CI
 raises when neither a CUDA device nor the simulator is present.
 """
 
+import math
+
 import numpy as np
 from numba import cuda, float64
 
@@ -104,7 +106,7 @@ def _study_moments(X, codes, t, e, U, Ixx):
         hi[g] = -np.inf
     for l in range(n):
         x = X[s, l, j]
-        if x == x:
+        if not math.isnan(x):
             g = codes[s, l]
             tot[g] += x
             cnt[g] += 1.0
@@ -116,7 +118,7 @@ def _study_moments(X, codes, t, e, U, Ixx):
     ixx = 0.0
     for i in range(n):
         xi = X[s, i, j]
-        if e[s, i] == 0 or xi != xi:
+        if e[s, i] == 0 or math.isnan(xi):
             continue
         gi = codes[s, i]
         s0 = 0.0
@@ -124,7 +126,7 @@ def _study_moments(X, codes, t, e, U, Ixx):
         s2 = 0.0
         for l in range(n):
             xl = X[s, l, j]
-            if codes[s, l] == gi and t[s, l] >= t[s, i] and xl == xl:
+            if codes[s, l] == gi and t[s, l] >= t[s, i] and not math.isnan(xl):
                 xc = xl - tot[gi] if hi[gi] > lo[gi] else 0.0
                 s0 += 1.0
                 s1 += xc
@@ -139,7 +141,7 @@ def _study_moments(X, codes, t, e, U, Ixx):
 def study_moments(X, codes, t, e):
     """U[S,J], I_jj[S,J] for host X[S,P,J] (NaN = missing), stratum codes[S,P] in 0..SMAX-1, t, e [S,P]."""
     require_cuda()
-    S, n, J = X.shape
+    S, _, J = X.shape
     if codes.size and codes.max() >= SMAX:
         raise ValueError(f"backend='gpu' supports at most {SMAX} strata per study")
     U = cuda.device_array((S, J))
