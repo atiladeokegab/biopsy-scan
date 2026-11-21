@@ -44,68 +44,80 @@ def test_committed_result_is_a_labelled_estimate_with_its_own_answer():
         assert p["power_n"] == base["simulated"]["budget"]["alternative"]
         if p["patients"] > 300:
             assert p["backend"] == "gpu" and p["hardware"] and p["wall_s"] > 0 and p["source"].startswith("bench/results/modal-power-")
-    assert res["answer"] == answer(res["points"])  # the headline is recomputed from the points, never typed in
+    assert res["complete"] == (not res["answer"]["missing_patients"])
+    assert res["answer"] == answer(res["points"], res["answer"]["missing_patients"])  # recomputed, never typed in
 
 
-def _run(outer, inner):
-    base = json.loads((RESULT.parent / "vs-schoenfeld-300.json").read_text())["simulated"]
-    s = {"patients": inner, "regions_per_patient": 2, "fov_um": 400.0, "eps": 0.1, "hr_per_source_sd": 2.0,
-         "power": 0.9, "power_lo": 0.86, "power_hi": 0.93, "power_n": 300, "fwer": 0.05, "fwer_lo": 0.02,
-         "fwer_hi": 0.1, "alternative_mean_events": 100.0, "resample_ratio": inner / 159, "backend": "gpu",
-         "runtime_s": 1.0}
-    s.update(cohort="charville", alpha=0.05, power_count=round(0.9 * 300), power_n=300, fwer_n=100)
-    m = {k: base[k] for k in ("seed", "source_hash", "grammar_hash", "budget")}
-    return {"_file": "modal-power-x.json", "schema": "preflight-modal-power/1", "status": "MEASURED",
-            "pin": "1f1bc7457eaf98e5cff600c0e17001d7e2fc44bf",
-            "points": [{"patients": outer, "summary": s, "metadata": m, "gpu": {"model": "A100"}, "in_function_s": 1.0}]}
+REAL = RESULT.parent / "modal-power-a100-40gb-20261121T175238Z.json"  # a real producer run: P=40 on the A100
 
 
-def test_merger_refuses_a_summary_for_another_patient_count():
+def real(patients=40, **summary):
+    run = json.loads(REAL.read_text())
+    run["_file"] = REAL.name
+    point = run["points"][0]
+    point["patients"] = point["summary"]["patients"] = patients
+    point["summary"]["resample_ratio"] = patients / 159
+    point["summary"].update(summary)
+    return run
+
+
+def test_a_real_replicate_of_53_merges_and_is_recorded():
     from bench.power_at_scale import build
 
-    assert [p["patients"] for p in build([_run(400, 400)])["points"]][-1] == 400
+    p40 = next(p for p in build([real()])["points"] if p["patients"] == 40)
+    assert p40["source"] == "bench/results/vs-schoenfeld-300.json" and p40["replicated_by"] == [f"bench/results/{REAL.name}"]
+    p400 = next(p for p in build([real(400)])["points"] if p["patients"] == 400)
+    assert p400["hardware"] == "NVIDIA A100-SXM4-40GB" and p400["backend"] == "gpu"
+
+
+@pytest.mark.parametrize("change, match", [
+    ({"alpha": 0.5}, "different design"), ({"cohort": "upmc"}, "different design"),
+    ({"backend": "cpu"}, "backend"), ({"calibration_n": 1}, "study counts"), ({"power_n": 1}, "study counts"),
+    ({"seed": 1}, "seed"), ({"fwer": 2.0}, "rates"), ({"power_lo": 0.5}, "rates"), ({"power": 0.5}, "rates"),
+    ({"power_hi": 0.2}, "rates"), ({"runtime_s": 0.0}, "timing"), ({"runtime_s": float("nan")}, "timing"),
+    ({"resample_ratio": 1.0}, "resampl"), ({"source_n": 160}, "resampl"), ({"source_hash": "0" * 64}, "source"),
+])
+def test_merger_validates_the_summary_itself(change, match):
+    from bench.power_at_scale import build
+
+    with pytest.raises(ValueError, match=match):
+        build([real(400, **change)])
+
+
+def test_merger_refuses_wrong_pin_status_and_mismatched_p():
+    from bench.power_at_scale import build
+
+    for key, value in (("pin", "0" * 40), ("status", "ESTIMATE"), ("backend", "cpu")):
+        bad = real(400)
+        bad[key] = value
+        with pytest.raises(ValueError):
+            build([bad])
+    bad = real(400)
+    bad["points"][0]["summary"]["patients"] = 40
     with pytest.raises(ValueError, match="summary is for P=40"):
-        build([_run(400, 40)])
+        build([bad])
 
 
-def test_ci_crossings_are_called_pointwise_never_a_band():
-    a = answer([pt(300, 0.4, 0.35, 0.47), pt(600, 0.82, 0.77, 0.86), pt(800, 0.9, 0.86, 0.93)])
-    assert "band" not in a["statement"] and "pointwise" in a["statement"]
-    lo, hi = a["n_80_pointwise_ci_crossings"]
-    assert "n_80_lo" not in a and lo <= a["n_80"] <= hi
-    assert a["smallest_patients_pointwise_lower_bound_clears_80"] == 800
-
-
-def test_merger_refuses_a_replicate_that_disagrees_and_keeps_one_that_agrees():
+def test_conflicting_duplicates_are_refused_in_either_order():
     from bench.power_at_scale import build
 
-    again = _run(400, 400)
-    assert len(build([_run(400, 400), again])["points"]) == 8
-    worse = _run(400, 400)
-    worse["points"][0]["summary"].update(power=0.5, power_count=150)
-    with pytest.raises(ValueError, match="P=400 twice with different results"):
-        build([_run(400, 400), worse])
-    base40 = _run(40, 40)
+    from bench.power_at_scale import clopper_pearson
+
+    lo, hi = clopper_pearson(30, 300)
+    other = real(400, power=0.1, power_count=30, power_lo=lo, power_hi=hi)
+    for order in ([real(400), other], [other, real(400)]):
+        with pytest.raises(ValueError, match="P=400 twice with different results"):
+            build(order)
     with pytest.raises(ValueError, match="P=40 twice with different results"):
-        build([base40])  # #53 has P=40 at 19/300, not 270/300
+        build([real(40, power=0.1, power_count=30, power_lo=lo, power_hi=hi)])
 
 
-def test_merger_refuses_failed_points_wrong_pin_and_wrong_counts():
+def test_failed_points_are_kept_and_mark_the_curve_partial():
     from bench.power_at_scale import build
 
-    failed = _run(400, 400)
-    failed["points"] = [{"patients": 400, "error": "boom"}]
-    with pytest.raises(ValueError, match="P=400 failed"):
-        build([failed])
-    pin = _run(400, 400)
-    pin["pin"] = "0" * 40
-    with pytest.raises(ValueError, match="pinned code"):
-        build([pin])
-    short = _run(400, 400)
-    short["points"][0]["summary"]["power_n"] = 299
-    with pytest.raises(ValueError, match="study counts"):
-        build([short])
-    cohort = _run(400, 400)
-    cohort["points"][0]["summary"]["cohort"] = "upmc"
-    with pytest.raises(ValueError, match="different design"):
-        build([cohort])
+    failed = real(500)
+    failed["points"] = [{"patients": 500, "error": "boom"}]
+    res = build([real(400), failed])
+    assert res["complete"] is False and res["failed_points"] == [{"patients": 500, "error": "boom", "source": f"bench/results/{REAL.name}"}]
+    assert res["answer"]["statement"].startswith("PARTIAL") and "never reached" not in res["answer"]["statement"]
+    assert build([real(400)])["complete"] is True

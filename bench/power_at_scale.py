@@ -11,6 +11,7 @@ per-point 95% Clopper-Pearson bounds is reported as pointwise only: it is not a 
 from __future__ import annotations
 
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -32,7 +33,7 @@ def crossing(ns: list[int], ys: list[float], target: float = TARGET) -> float | 
     return None
 
 
-def answer(points: list[dict]) -> dict:
+def answer(points: list[dict], missing: list[int] = ()) -> dict:
     ns = [p["patients"] for p in points]
     n80, lo, hi = (crossing(ns, [p[k] for p in points]) for k in ("power", "power_hi", "power_lo"))
     top = max(points, key=lambda p: p["patients"])
@@ -45,15 +46,67 @@ def answer(points: list[dict]) -> dict:
                      f"95% CI bounds cross 80% at {lo:.0f} (upper) and "
                      + (f"{hi:.0f} (lower)" if hi is not None else f"not by {top['patients']} (lower)")
                      + "; these are pointwise intervals, not a confidence interval for n.")
+    if missing:
+        statement = (f"PARTIAL: P={', '.join(map(str, missing))} failed and has no result; among the points that "
+                     "finished: " + statement.replace("Simulated power never reached", "simulated power did not reach"))
     statement += (f" Smallest simulated count whose pointwise lower 95% bound is at least 80%: {min(cleared)}."
                   if cleared else f" No simulated count up to {top['patients']} has its pointwise lower 95% bound "
                                   f"at 80% or above: beyond {top['patients']}.")
-    return {"target_power": TARGET, "n_80": n80, "n_80_pointwise_ci_crossings": [lo, hi],
+    return {"target_power": TARGET, "missing_patients": list(missing), "n_80": n80, "n_80_pointwise_ci_crossings": [lo, hi],
             "smallest_patients_pointwise_lower_bound_clears_80": min(cleared) if cleared else None,
             "max_patients_simulated": top["patients"], "statement": statement,
             "method": "n_80: first crossing of 80% by the simulated power, linear in patients between the bracketing "
                       "points, no extrapolation. n_80_pointwise_ci_crossings: the same crossing of the per-point 95% "
                       "Clopper-Pearson upper and lower bounds; pointwise, so not a confidence interval for n_80"}
+
+
+def clopper_pearson(k: int, n: int) -> tuple[float, float]:
+    """Two-sided 95% Clopper-Pearson, as the atlas computes it (atlas.runner.interval)."""
+    from scipy.stats import beta
+
+    return (0.0 if k == 0 else float(beta.ppf(0.025, k, n - k + 1)),
+            1.0 if k == n else float(beta.ppf(0.975, k + 1, n - k)))
+
+
+def check_point(r: dict, base: dict, source: str) -> dict:
+    """Validate one producer point's own summary against the #53 design; return the curve row."""
+    s, m, sim, budget = r["summary"], r["metadata"], base["simulated"], base["simulated"]["budget"]
+    P = r["patients"]
+    if s["patients"] != P:
+        raise ValueError(f"point P={P}: its summary is for P={s['patients']}")
+    if not isinstance(P, int) or P < 2:
+        raise ValueError(f"P={P} is not a patient count")
+    if s["seed"] != sim["seed"] or m["seed"] != sim["seed"]:
+        raise ValueError(f"P={P}: seed {s['seed']}/{m['seed']} is not the 300 run's {sim['seed']}")
+    if (s["source_hash"], m["source_hash"], s["grammar_hash"], m["grammar_hash"]) != (
+            sim["source_hash"], sim["source_hash"], sim["grammar_hash"], sim["grammar_hash"]):
+        raise ValueError(f"P={P} was not run on the 300 run's source and grammar")
+    if {k: m["budget"][k] for k in budget} != budget:
+        raise ValueError(f"P={P}: budget {m['budget']} is not the 300 run's")
+    if (s["cohort"], s["alpha"], s["regions_per_patient"], s["fov_um"], s["eps"], s["hr_per_source_sd"]) != (
+            base["cohort"], base["alpha"], base["design"]["regions_per_patient"], base["design"]["fov_um"],
+            base["design"]["eps"], base["hr_per_sd"]):
+        raise ValueError(f"P={P} is a different design")
+    if (s["backend"], m["backend"]) != ("gpu", "gpu"):
+        raise ValueError(f"P={P}: backend {s['backend']}/{m['backend']}, not gpu, so the GPU model is not its hardware")
+    if (s["calibration_n"], s["fwer_n"], s["power_n"]) != (budget["calibration"], budget["null"], budget["alternative"]):
+        raise ValueError(f"P={P}: study counts {s['calibration_n']}/{s['fwer_n']}/{s['power_n']} are not the budget's")
+    for rate in ("power", "fwer"):
+        k, n, v, lo, hi = (s[rate + x] for x in ("_count", "_n", "", "_lo", "_hi"))
+        want_lo, want_hi = clopper_pearson(k, n)
+        if not (0 <= k <= n and math.isclose(v, k / n, abs_tol=1e-12) and math.isclose(lo, want_lo, abs_tol=1e-9)
+                and math.isclose(hi, want_hi, abs_tol=1e-9) and 0 <= lo <= v <= hi <= 1):
+            raise ValueError(f"P={P}: {rate} rates are not {k}/{n} with their 95% Clopper-Pearson interval")
+    for t in (s["runtime_s"], r["in_function_s"]):
+        if not (isinstance(t, (int, float)) and math.isfinite(t) and t > 0):
+            raise ValueError(f"P={P}: timing {t} is not a positive finite number of seconds")
+    if s["source_n"] != base["patients_source"] or not math.isclose(s["resample_ratio"], P / base["patients_source"]):
+        raise ValueError(f"P={P}: resampling {s['resample_ratio']} of {s['source_n']} is not P / {base['patients_source']}")
+    return {"patients": P, "power": s["power"], "power_count": s["power_count"], "power_lo": s["power_lo"],
+            "power_hi": s["power_hi"], "power_n": s["power_n"], "fwer": s["fwer"], "fwer_lo": s["fwer_lo"],
+            "fwer_hi": s["fwer_hi"], "mean_events": s["alternative_mean_events"], "resample_ratio": s["resample_ratio"],
+            "backend": s["backend"], "hardware": r["gpu"]["model"], "wall_s": s["runtime_s"],
+            "in_container_s": r["in_function_s"], "source": source}
 
 
 def build(runs: list[dict]) -> dict:
@@ -65,32 +118,16 @@ def build(runs: list[dict]) -> dict:
     for p in points:
         p["power_count"] = round(p["power"] * p["power_n"])
     by_p = {p["patients"]: p for p in points}
-    budget = base["simulated"]["budget"]
+    failed = []
     for run in runs:
-        if (run.get("schema"), run.get("status"), run.get("pin")) != ("preflight-modal-power/1", "MEASURED", PIN):
-            raise ValueError(f"{run['_file']} is not a MEASURED preflight-modal-power/1 run of the pinned code {PIN[:12]}")
+        if (run.get("schema"), run.get("status"), run.get("pin"), run.get("backend")) != (
+                "preflight-modal-power/1", "MEASURED", PIN, "gpu"):
+            raise ValueError(f"{run['_file']} is not a MEASURED preflight-modal-power/1 GPU run of the pinned code {PIN[:12]}")
         for r in run["points"]:
             if "error" in r:
-                raise ValueError(f"P={r['patients']} failed in {run['_file']}: {r['error']}; rerun it or leave the file out")
-            s, m = r["summary"], r["metadata"]
-            if s["patients"] != r["patients"]:
-                raise ValueError(f"point P={r['patients']}: its summary is for P={s['patients']}")
-            if (m["seed"] != base["simulated"]["seed"] or m["source_hash"] != base["simulated"]["source_hash"]
-                    or m["grammar_hash"] != base["simulated"]["grammar_hash"]
-                    or {k: m["budget"][k] for k in budget} != budget):
-                raise ValueError(f"P={r['patients']} was not run on the 300 run's seed, source, grammar and budget")
-            if (s["cohort"], s["alpha"], s["regions_per_patient"], s["fov_um"], s["eps"], s["hr_per_source_sd"]) != (
-                    base["cohort"], base["alpha"], base["design"]["regions_per_patient"], base["design"]["fov_um"],
-                    base["design"]["eps"], base["hr_per_sd"]):
-                raise ValueError(f"P={r['patients']} is a different design")
-            if (s["power_n"], s["fwer_n"]) != (budget["alternative"], budget["null"]):
-                raise ValueError(f"P={r['patients']}: study counts {s['power_n']}/{s['fwer_n']} are not the budget's")
-            point = {"patients": r["patients"], "power": s["power"], "power_count": s["power_count"],
-                     "power_lo": s["power_lo"], "power_hi": s["power_hi"], "power_n": s["power_n"], "fwer": s["fwer"],
-                     "fwer_lo": s["fwer_lo"], "fwer_hi": s["fwer_hi"], "mean_events": s["alternative_mean_events"],
-                     "resample_ratio": s["resample_ratio"], "backend": s["backend"], "hardware": r["gpu"]["model"],
-                     "wall_s": s["runtime_s"], "in_container_s": r["in_function_s"],
-                     "source": f"bench/results/{run['_file']}"}
+                failed.append({"patients": r["patients"], "error": r["error"], "source": f"bench/results/{run['_file']}"})
+                continue
+            point = check_point(r, base, f"bench/results/{run['_file']}")
             if r["patients"] in by_p:  # a replicate: same seeds, so it must give the same studies' answer
                 kept = by_p[r["patients"]]
                 if (kept["power_count"], kept["power_n"], kept["fwer"]) != (point["power_count"], point["power_n"], point["fwer"]):
@@ -100,11 +137,13 @@ def build(runs: list[dict]) -> dict:
             by_p[r["patients"]] = point
     points = list(by_p.values())
     points.sort(key=lambda p: p["patients"])
+    missing = sorted({f["patients"] for f in failed} - set(by_p))
     if len({p["hardware"] for p in points if p["backend"] == "gpu"}) > 1:
         raise ValueError("the GPU points ran on more than one GPU model; pin one for the whole curve")
     return {"schema": "preflight-power-at-scale/1", "status": "ESTIMATE", "label": LABEL,
             "question": "How many patients does this design need for 80% power?",
-            "answer": answer(points),
+            "complete": not missing, "failed_points": failed,
+            "answer": answer(points, missing),
             "cohort": base["cohort"], "hr_per_sd": base["hr_per_sd"], "alpha": base["alpha"],
             "design": {k: v for k, v in base["design"].items() if k != "backend"},
             "patients_source": base["patients_source"], "events_source": base["events"],

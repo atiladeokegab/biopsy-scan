@@ -34,3 +34,11 @@ def test_snapshot_upload_is_the_committed_seven_files_only(tmp_path):
     (staged / "runner.py").write_text("tampered\n")
     with pytest.raises(RuntimeError, match="snapshot"):
         pas.verify_snapshot(staged)
+
+
+def test_launcher_refuses_bad_counts_and_non_gpu_backends_before_dispatch():
+    assert pas.preflight("400,500", "gpu") == [400, 500]
+    for patients, backend, match in (("1,400", "gpu", "at least 2"), ("400,400", "gpu", "twice"),
+                                     ("400", "cpu", "backend"), ("x", "gpu", "integers")):
+        with pytest.raises(SystemExit, match=match):
+            pas.preflight(patients, backend)

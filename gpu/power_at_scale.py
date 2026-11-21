@@ -144,10 +144,25 @@ def _jsonable(x):
     raise TypeError(f"not JSON serialisable: {type(x).__name__}")
 
 
+def preflight(patients: str, backend: str) -> list[int]:
+    """Refuse, before any paid dispatch, what would fail or repeat a seeded job, and CPU work billed as GPU."""
+    if backend != "gpu":
+        raise SystemExit(f"backend {backend!r}: this launcher records the GPU as each point's hardware, so gpu only")
+    try:
+        counts = [int(p) for p in patients.split(",")]
+    except ValueError:
+        raise SystemExit(f"--patients must be comma-separated integers, got {patients!r}") from None
+    if min(counts) < 2:
+        raise SystemExit("each patient count must be at least 2")
+    if len(set(counts)) != len(counts):
+        raise SystemExit("a patient count appears twice: the same seeds would run twice")
+    return counts
+
+
 @app.local_entrypoint()
 def run(patients: str, gpu: str = "A100-40GB", backend: str = "gpu"):
     record = snapshot_sha256()
-    counts = [int(p) for p in patients.split(",")]
+    counts = preflight(patients, backend)
     git = lambda *a: subprocess.run(["git", "-C", str(REPO), *a], capture_output=True, text=True).stdout.strip()  # noqa: E731
     launched = {"commit": git("rev-parse", "HEAD"), "pin": PIN,
                 "launched_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
