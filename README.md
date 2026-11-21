@@ -14,7 +14,7 @@ Every number in this README carries one label: **MEASURED**, **ESTIMATE**, **SYN
 
 ## The problem
 
-After surgery for head and neck cancer, about half of patients relapse. The choice of radiotherapy, chemotherapy or watching still rests mostly on stage and margins. The Helsinki study behind MultivisionDx (Punovuori et al., *Cell* 2024; [code](https://github.com/WickstromLab/Punovuori-et-al.-Cell-2024)) showed the tissue knows more. Partial-EMT tumour cells surrounded by immune-rich stroma meant about 90% five-year survival. The same cells surrounded by fibroblasts meant about 21%. Stage cannot see that. The arrangement of cells can.
+About half of patients with locally advanced head and neck cancer relapse ([PMC7902285](https://pmc.ncbi.nlm.nih.gov/articles/PMC7902285/)). After surgery, the choice of radiotherapy, chemotherapy or watching still rests mostly on stage and margins. The Helsinki study behind MultivisionDx (Punovuori et al., *Cell* 2024; [code](https://github.com/WickstromLab/Punovuori-et-al.-Cell-2024)) showed the tissue knows more. Partial-EMT tumour cells surrounded by immune-rich stroma meant about 90% five-year survival. The same cells surrounded by fibroblasts meant about 21%. Stage cannot see that. The arrangement of cells can.
 
 Finding a pattern like that takes enough patients. Real cohorts are small:
 
@@ -25,7 +25,7 @@ A lab that trusts the formula images 200 patients and most likely finds nothing.
 
 ## The plan
 
-The plan has two halves. **Decode** finds the biomarker in 40-marker fluorescence. **Translate** turns it into one or two stains a hospital lab can run. The full plan is the founder's "Rebuilding the MultivisionDx Pipeline on GPUs". The parts buildable by code freeze are proposed as spec change C-003 (PR #60), which is **not yet approved**.
+The plan has two halves. **Decode** finds the biomarker in multiplex fluorescence (22 markers on UPMC). **Translate** turns it into one or two stains a hospital lab can run. The full plan is the founder's "Rebuilding the MultivisionDx Pipeline on GPUs". The parts buildable by code freeze are spec change C-003, approved and applied (spec v4): R-13 to R-18 are in build.
 
 The Helsinki team examined 18 compound signatures. Preflight searches 3,780 patterns: 630 neighbourhood patterns in grammar v1, plus protein, size and stroma channels in v2.
 
@@ -48,7 +48,7 @@ Speed-ups count only at equal output. Re-imaging ratios are against rung 0. A GP
 2. **R2. Every candidate is a column.** A candidate is a cell state, a neighbourhood and a threshold. Each becomes one column of a patients-by-candidates matrix: 3,780 columns today. So choosing a cut-off is covered by the same correction.
 3. **R3. Fit once, score everything.** Fit the clinical-only survival model once. Each candidate's score is then one matrix-vector product.
 4. **R4. 10,000 shuffles as one matrix product.** Westfall–Young maxT asks how often the best shuffled candidate beats the real one. All shuffles become one product, streamed in blocks.
-5. **R5. The smallest panel.** Try every one- and two-marker panel (820 with UPMC's 40 markers) and score each on held-out folds.
+5. **R5. The smallest panel.** Try every one- and two-marker panel (253 with UPMC's 22 markers) and score each on held-out folds.
 6. **R6. Learned features as more columns.** Foundation-model embeddings and graph features join the same screen.
 
 **Translate, in plain words:**
@@ -60,7 +60,7 @@ Speed-ups count only at equal output. Re-imaging ratios are against rung 0. A GP
 
 ## Status
 
-Each row has one status. **BUILT**: merged on `integration`. **IN REVIEW**: open PR. **PLANNED**: in C-003, not built. **NOT CLAIMED**: not in this build.
+Each row has one status. **BUILT**: merged on `integration`. **IN REVIEW**: open PR. **IN PROGRESS**: being built on a branch, no PR yet. **PLANNED**: in C-003, not built. **NOT CLAIMED**: not in this build.
 
 | Item | Status | Where |
 |---|---|---|
@@ -71,7 +71,7 @@ Each row has one status. **BUILT**: merged on `integration`. **IN REVIEW**: open
 | R3 and R4 on CPU: score statistic U = X'r in float64 (no clinical covariates), maxT and omnibus over shuffles | BUILT | #19 |
 | Real-data audit: Charville best feature p = 0.13 after maxT; UPMC descriptive | BUILT | #17, #29, #35 |
 | R2 widened: protein, size and stroma channels, 3,780 features tested as one family | BUILT | #47 |
-| Charville v2 result: strongest feature is PD1 on macrophages within 100 µm of tumour, z = 3.96, maxT-adjusted p = 0.098 (MEASURED). Not significant after correction: exploratory | BUILT | #47 |
+| Charville v2 result: strongest feature is PD1 on macrophages within 100 µm of "Tumor 5" cells (one tumour cell type), z = 3.96, maxT-adjusted p = 0.098 (MEASURED). Not significant after correction: exploratory | BUILT | #47 |
 | Rung 0: what a lab runs today, timed on real Charville | BUILT | #43 |
 | Textbook formula versus simulated power, 60 studies per point | BUILT | #44 |
 | The same comparison at 300 studies per point | IN REVIEW | #53 |
@@ -79,10 +79,10 @@ Each row has one status. **BUILT**: merged on `integration`. **IN REVIEW**: open
 | Demo race plays only on "Run the studies" | BUILT | #48 |
 | Pitch scenes: two real UPMC patients and the wall of 3,780 features | BUILT | #55 |
 | Submission check: 5-minute pitch, live demo, video as backup | BUILT | #54 |
-| Spec change C-003 (R-13 to R-18) | IN REVIEW | #60 |
+| PRD render of C-003 (spec v4; the change itself is approved and applied, R-13 to R-18 in build) | IN REVIEW | #60 |
 | UPMC patient-level loader and locked held-out split (R-13) | IN REVIEW | #62 |
-| Helsinki candidate defined before the search (R-16 pre-registration) | IN REVIEW | #61 |
-| Implementation A analysis baseline: per-candidate PHReg on all cores (R-14) | PLANNED | C-003 |
+| Helsinki candidate defined before the search (R-16 pre-registration) | BUILT | #61 |
+| Implementation A analysis baseline: per-candidate PHReg on all cores (R-14) | IN PROGRESS | branch `r14-cpu-baseline` |
 | R2–R4 on GPU as the per-study kernel: clinical-adjusted score screen, 10,000-shuffle maxT as one product, a valid adjusted null (R-15) | PLANNED | C-003 |
 | Rediscovery of the Helsinki pattern on the locked UPMC patients, with Preflight's power for that set first; exploratory, no survival claim (R-16) | PLANNED | C-003 |
 | R5 and Translate 1–2: minimal panels and IHC format simulation on UPMC (R-17) | PLANNED | C-003 |
