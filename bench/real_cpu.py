@@ -1,6 +1,7 @@
 """Real Charville feature-engine timings: uv run python -m bench.real_cpu.
 
 Paired, alternating backend order; shared topology and seeds; cumulative warm prefixes.
+Use --checkpoints 10 100 1000 for the deferred longer run; default stops at 100.
 No outcomes, survival statistics, null calibration or GPU timing are measured here.
 """
 
@@ -74,7 +75,7 @@ def main(checkpoints=CHECKPOINTS):
     assert np.array_equal(outputs["numpy_reference"], outputs["numba_cpu"], equal_nan=True), "cold parity failed"
 
     report = {
-        "schema_version": 1, "status": "MEASURED-CPU", "complete": False,
+        "schema_version": 1, "status": "MEASURED-CPU", "complete": False, "baseline": "lab_today",
         "scope": "Patient sampling, region sampling, crop, mis-call, recount and patient feature aggregation",
         "excludes": "Source loading, adjacency/preparation and first-call costs (reported separately); outcomes, survival statistics, null calibration and GPU",
         "sampling": "Patients with replacement; up to two regions without replacement per drawn patient",
@@ -93,7 +94,7 @@ def main(checkpoints=CHECKPOINTS):
     assert report["numba_threads"] == 8, "this run requires the assigned eight CPU threads"
     totals = {name: 0.0 for name in functions}
     save(report)
-    print("Studies | NumPy seconds | Numba seconds | NumPy/Numba | parity", flush=True)
+    print("Studies | NumPy seconds | Numba seconds | parity", flush=True)
     for seed in range(checkpoints[-1]):
         order = list(functions) if seed % 2 == 0 else list(reversed(functions))
         for name in order:
@@ -105,11 +106,10 @@ def main(checkpoints=CHECKPOINTS):
         if count in checkpoints:
             row = {"studies": count, "seed_range": [0, seed],
                    "numpy_s": totals["numpy_reference"], "numba_s": totals["numba_cpu"],
-                   "numpy_over_numba": totals["numpy_reference"] / totals["numba_cpu"],
                    "parity": "exact, including NaN placement"}
             report["rows"].append(row)
-            print(f"{count} | {row['numpy_s']:.3f} | {row['numba_s']:.3f} | {row['numpy_over_numba']:.2f} | exact", flush=True)
-        if count % 10 == 0:
+            print(f"{count} | {row['numpy_s']:.3f} | {row['numba_s']:.3f} | exact", flush=True)
+        if count % 10 == 0 or count in checkpoints:
             report["completed_studies"] = count
             report["load_average_latest"] = list(os.getloadavg())
             report["complete"] = count == checkpoints[-1]

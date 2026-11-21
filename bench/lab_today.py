@@ -14,6 +14,7 @@ import numpy as np
 
 from bench.real_cpu import DESIGN, OUTPUT, save
 from core.cohorts import load
+from core.grammar import grammar, grammar_hash
 from core.reimage_ref import crop_mask, draw, miscall, reimage
 from core.truth import truth_region
 from stats import permutation_test
@@ -26,10 +27,15 @@ def tree_region(_nbr, xy, types, focal, K, crop=None, M=None, u=None):
 
 
 def main():
+    report = json.loads(OUTPUT.read_text())
+    if report.get("design") != DESIGN or report.get("cohort", {}).get("name") != "charville":
+        raise ValueError("CPU result must contain the same Charville design")
     affinity = sorted(os.sched_getaffinity(0))
     os.sched_setaffinity(0, {affinity[-1]})
     cells = load("charville")
     assert len(cells["time"]) == 159
+    if report["cohort"]["grammar_hash"] != grammar_hash(grammar(cells["type_names"])):
+        raise ValueError("CPU result and legacy baseline have different feature grammars")
     # The tree callback builds its own cropped-region tree; do not build a CSR too.
     cells["_nbr"] = {r: None for r in range(len(cells["patient_of_region"]))}
     reference_cells = {key: value for key, value in cells.items() if key != "_nbr"}
@@ -52,9 +58,8 @@ def main():
                          full_s=full_s, parity="exact, including NaN placement"))
         print(json.dumps(rows[-1]), flush=True)
     mean_s = statistics.mean(row["full_s"] for row in rows)
-    report = json.loads(OUTPUT.read_text())
     report["lab_today"] = {
-        "status": "MEASURED-CPU", "source_commit": subprocess.check_output(
+        "rung": 0, "status": "MEASURED-CPU", "source_commit": subprocess.check_output(
             ["git", "rev-parse", "HEAD"], text=True).strip(),
         "scope": "Fresh cKDTree counts per cropped/relabelled region, patient feature aggregation, 1000 conditional permutations per study",
         "single_core_affinity": sorted(os.sched_getaffinity(0)),
