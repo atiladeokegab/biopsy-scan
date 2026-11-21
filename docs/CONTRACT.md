@@ -1,7 +1,8 @@
 # Contract
 
-Written by the lead's agent at the start of the build. Every area builds against it; only the lead
-changes it (anything else is a change-request, AGENTS.md §6). Owner of everything here: `core/`.
+Preflight's shared shapes. Written by the lead's agent; every area builds against it; only the lead
+changes it (anything else is a change-request, AGENTS.md §6). `core/` owns the data and grammar,
+`reimage/` the kernels, `stats/` the statistic.
 
 ## Assignment
 
@@ -9,70 +10,67 @@ Re-image thousands of simulated spatial-biomarker studies cell by cell from real
 Charville), so a lab can see, before imaging a slide, which study designs (patients, regions per
 patient, field of view, mis-call rate) can find a survival-linked spatial pattern.
 
-There is no backend service, app factory, store or gateway: the product is a Python library plus
-saved runs. `core/` is the shared core; `reimage/`, `stats/`, `atlas/`, `bench/`, `audit/` import it
-and never re-implement it.
+There is no backend service, app factory, store or gateway: Preflight is a Python library plus saved
+runs. `core/` is the shared core; other areas import it and never re-implement it.
 
 ## Data
 
-- Source: Zenodo record 13179600 (CC-BY-4.0; cite Wu et al., Nat. Biomed. Eng. 2022).
-  `make data` (`scripts/fetch_data.sh`) puts the two label CSVs and two raw zips in `data/`, which
-  is never committed (`data/.gitignore` is `*`). `LOCAL_SRC=<dir>` links local copies instead.
-- Everything in `data/` is untrusted: parsed as CSV only. Scripts that read it run with `python -I`.
-- Units: cell coordinates are pixels in the files; `core.cohorts.PIXEL_UM = 0.377` converts them to
-  µm. Every distance in this contract is µm.
+- Zenodo record 13179600 (CC-BY-4.0; cite Wu et al., Nat. Biomed. Eng. 2022). `make data`
+  (`scripts/fetch_data.sh`) puts the label CSVs and raw zips in `data/`, never committed
+  (`data/.gitignore` is `*`). `LOCAL_SRC=<dir>` links local copies instead.
+- Everything in `data/` is untrusted: parsed as CSV only; scripts that read it run with `python -I`.
+- Coordinates are pixels in the files; `core.cohorts.PIXEL_UM = 0.377` converts to µm. Every distance
+  here is µm.
 
-## Cohort tables (`core.cohorts`)
+## Cohort (`core.cohorts.load(cohort) -> dict`)
 
-`load_regions(cohort, identity="tuple") -> DataFrame`, one row per region, label-file order:
-
-| Column | Type | Meaning |
-|---|---|---|
-| `region_id` | str | e.g. `UPMC_c001_v001_r001_reg001` |
-| `coverslip` | str | `c001`…, from the region id |
-| `case` | str | case number from the sample label (`""` when UPMC has `NA`) |
-| `patient_id` | str | patient identity (below) |
-| `time_days` | float64 | follow-up in days; NaN when unknown |
-| `event` | float64 | 1 death, 0 censored, NaN when unknown |
-
-`load_patients(regions) -> DataFrame`, one row per patient sorted by `patient_id`; **the row number is
-the patient index** used by every array below. Columns: `patient_id`, `time_days`, `event`,
-`stratum` (modal coverslip: most regions, ties to the lowest), `n_coverslips`, `n_regions`.
-
-Patient identity and endpoints, as measured on the data:
-
-| | UPMC | Charville |
-|---|---|---|
-| Identity | one patient per clinical tuple (status, primary_outcome, recurred, hpvstatus, survival_status, survival_day) | case number = sample label before `_` |
-| Patients | **79** (sensitivity `identity="tuple+case"`: **81**, splitting the 2 tuples that hold two case numbers) | **162** |
-| Endpoint | any-cause death (`survival_status`), `survival_day` | death (`alive_or_deceased`), last contact − surgery in days |
-| Events | **27** | **38**; 2 patients (24135, 24136) have no dates, so no endpoint |
-| Coverslips | 7; **74 of 79 patients span >1 coverslip**, so coverslip is not patient-level | 4; 1 patient spans 2 |
-| Cells | 2,165,215 in 308 regions | 632,280 in 292 regions |
-
-## Cells (`core.cohorts.load_cells(cohort, region_ids=None)`)
-
-Cells concatenated region by region (in `region_ids` order; default all, label order):
+Patient index p in `0..P-1`, region index r in `0..R-1`, cell index in `0..n-1`.
 
 | Key | dtype, shape | Meaning |
 |---|---|---|
-| `xy_um` | float64 (N, 2) | position in µm |
-| `cell_type` | int16 (N,) | index into `type_names` (true type) |
-| `region_ptr` | int64 (R+1,) | region r's cells are `[region_ptr[r], region_ptr[r+1])` |
-| `region_ids` | list[str] (R,) | |
-| `type_names` | list[str] (K,) | every type in the cohort, sorted; codes are stable across calls |
+| `cell_type` | int8 [n] | index into `type_names` (true type) |
+| `x`, `y` | float32 [n] | position in µm |
+| `region_id` | int32 [n] | region index of each cell; cells are grouped by region, in region order |
+| `patient_of_region` | int32 [R] | patient index of each region |
+| `time` | float64 [P] | follow-up, days |
+| `event` | bool [P] | death |
+| `strata` | int32 [P] | coverslip group (below) |
+| `type_names` | list[str] [K] | every type in the cohort, sorted |
+| `region_names` | list[str] [R] | e.g. `UPMC_c001_v001_r001_reg004` |
+| `patient_names` | list[str] [P] | case numbers |
 
-Cached as `data/<cohort>_cells.npz` after the first read.
+`cells` (the reimage input) is this dict; only `cell_type, x, y, region_id, patient_of_region` are
+required. Only patients with a verified identity, an endpoint and an unambiguous stratum are in it
+(one aligned patient mask; their regions and cells go with them).
+
+| | UPMC | Charville |
+|---|---|---|
+| Verified identity | case number from the sample label; regions labelled `NA` are dropped | case number (sample label before `_`) |
+| P / regions / events | **50 / 188 / 10** | **159** / 286 / **38** |
+| Endpoint | any-cause death, `survival_day` | death, last contact − surgery, in days |
+| `strata` | coverslip group: 0 = c001–c003, 1 = c004–c007 (7 / 43 patients; no case crosses) | coverslip c001–c004 → 0–3 |
+| Excluded | 120 `NA` regions | 24135, 24136 (no dates); 24180 (on c002 and c003) |
+
+**Charville is the patient-level cohort.** UPMC tuple-matched patients (one patient per clinical
+tuple: 79 patients, 27 deaths; 81 when the 2 tuples holding two case numbers are split) are
+**provisional and descriptive only**: `core.cohorts.load_regions("upmc", identity="tuple")`. They are
+never used for patient-level inference or the regions-per-patient axis (one all-`NA` tuple spans both
+coverslip groups).
 
 ## Feature grammar (`core.grammar`), frozen
 
-- Focal types T: the cohort's tumour types (name starts with "Tumor"). Neighbour types: all K types.
-- Radii `RADII_UM = (25, 50, 100)`; statistics `("fraction", "enrichment")`.
-- Feature index `c = ((t*K + j)*3 + r)*2 + s`; `C = T*K*3*2`; names from `feature_names(g)`.
-- Per focal cell: `fraction = n_j(r) / n(r)` (0 when `n(r) = 0`, self excluded, distance `<= r`);
-  `enrichment = fraction / p_j`, `p_j` = share of type j among the region's visible cells (0 when 0).
-- Patient feature = mean over all the patient's focal cells of type t, regions pooled (focal-cell
-  weighted). A patient with no focal cell of type t gets NaN for that t.
+- Focal types: the cohort's tumour types (name starts with `Tumor`), T of them. Neighbour types: all K.
+- Radii **25, 50, 100 µm**; statistics `fraction`, `enrichment`.
+- Feature c = `((t*K + j)*3 + r)*2 + s`; C = T·K·3·2. The ordered list is `feature_names(grammar(type_names))`,
+  each `"<focal type>|<neighbour type>|<radius>um|<stat>"`.
+- Per visible focal cell i of (observed) type t: `n(r)` = visible cells at distance `<= r`, self
+  excluded; `n_j(r)` = those of observed type j; `fraction = n_j(r)/n(r)` (0 when `n(r) = 0`);
+  `enrichment = fraction / p_j`, `p_j` = share of type j among the region's visible cells (0 when `p_j = 0`).
+- Patient feature = mean over all the patient's sampled focal cells of type t, sampled regions pooled
+  (focal-cell weighted).
+- **Missing focal type: X stays NaN** where a patient has no focal cell of type t in the sampled
+  regions. Never filled with zeros. `stats/` handles it per feature as complete case (patients with a
+  finite value for that feature).
 - `grammar_hash(g)` = SHA-256 of the canonical JSON of `grammar(type_names)` (includes `PIXEL_UM`).
 
 | Cohort | K | T | C | grammar sha256 |
@@ -80,50 +78,60 @@ Cached as `data/<cohort>_cells.npz` after the first read.
 | UPMC | 17 | 6 | **612** | `adc93e69df4280df4ebc40432d4b3ca84ffb4d8e83513ae1ce883feff981915a` |
 | Charville | 15 | 7 | **630** | `772f6a845266470456af96f92d0573cc1bec72432ad74d789439baff066c2156` |
 
-`make summary` prints these; a change to the grammar changes the hash, and every saved run records it.
+`make summary` prints these; every saved run records the hash.
 
-## Neighbour lists (`core.truth.neighbours(xy_um)`), per region, local indices
+## Design and the random stream
 
-| Key | dtype, shape | Meaning |
-|---|---|---|
-| `idx` | int32 (E,) | neighbour's local index; each row sorted by (distance, index), self excluded |
-| `dist` | float64 (E,) | distance in µm, `<= 100` |
-| `ptr` | int64 (n+1,) | row i is `[ptr[i], ptr[i+1])` |
-| `rad_end` | int64 (n, 3) | row i's neighbours within radius r are `[ptr[i], rad_end[i, r])` |
+`design = dict(patients, regions_per_patient, fov_um, eps, seed)`:
 
-A kernel walks one row once and reads all three radii from `rad_end`.
+- `patients`: `None` = every patient once, in index order; an int n = n patients drawn with
+  replacement; or an int array of patient indices.
+- `regions_per_patient`: `None` = all of a patient's regions; int k = k drawn without replacement
+  (all when the patient has fewer than k).
+- `fov_um`: `None` = **full field**; float s = a square field of view of side s µm per sampled region.
+- `eps`: mis-call rate; the confusion matrix is `confusion_matrix(K, eps)` (keep the type with 1 − eps,
+  else a uniform other type).
+- `seed`: the design point's seed; callers derive study seeds from it.
 
-## Region output: what `reimage/` produces and `stats/` consumes
+One study with seed `seed` uses `rng = np.random.default_rng(seed)` in exactly this order:
+1. if `patients` is an int: `idx = rng.integers(0, P, patients)`;
+2. for each drawn patient in order: if k is set and below its region count,
+   `rng.choice(its_regions_sorted, k, replace=False)`;
+3. for each (drawn patient, sampled region) in order: if `fov_um` is set, `random_crop` draws
+   `rng.random(2)`; then `u = rng.random(n_cells_of_region)` drives the mis-call.
 
-One look at one region returns `(S, m)`:
+`core.reimage_ref.draw(cells, design, seed)` returns these draws, so kernels can share them.
 
-- `S` float64 (T, K, 3, 2): over visible focal cells of observed type t, the sum of fraction (`s=0`)
-  and enrichment (`s=1`) of observed neighbour type j within radius r.
-- `m` int64 (T,): number of visible focal cells of observed type t.
+## Reference re-imager (`core.reimage_ref`), the oracle
 
-`core.truth.region_sums(counts, types, visible, focal, K)` turns per-cell counts `(n, 3, K)` into
-`(S, m)`; every re-imager uses it, so equal counts give bit-equal outputs.
+`reimage(cells, design, seed) -> X float64 [P, C]`: one study. Rows follow the drawn patients
+(`patients=None`: patient index order). With `patients=None, regions_per_patient=None, fov_um=None,
+eps=0` it equals the truth layer `core.truth.truth(cells)` exactly (`np.array_equal`, NaN in the same places).
 
-Patient features: sum `S` and `m` over a patient's sampled regions to `S_p (P, T, K, 3, 2)` and
-`m_p (P, T)`, then `core.grammar.features(S_p, m_p)` gives **X̂ float64 (P, C)**, rows in patient index
-order (a study's resampled patients: its own row order, with the patient index kept alongside).
-The truth layer is the same with full regions and true types: `core.truth.truth_region`.
+Per region it calls `reimage_region(nbr, xy, types, focal, K, crop, eps, u=u) -> (S float64 [T,K,3,2],
+m int64 [T])`: sums of fraction (s=0) and enrichment (s=1) over visible focal cells, and the focal
+count. A patient's row is `features(sum of S over its sampled regions, sum of m)`. Crop
+`(x0, y0, s)`: visible iff `x0 <= x < x0+s` and `y0 <= y < y0+s`. Mis-call: observed type = first k
+with `cumsum(M[true])[k] > u`. Focal cells and neighbours both use observed types; neighbours outside
+the crop are skipped.
 
-## Reference re-imager (`core.reimage_ref.reimage_region`), the oracle
+Neighbour lists (`core.truth.neighbours(xy)`, per region, local indices): `idx int32 [E]` sorted by
+(distance, index) per row, self excluded; `dist float64 [E]` (`<= 100`); `ptr int64 [n+1]`;
+`rad_end int64 [n, 3]` (row i within radius r is `[ptr[i], rad_end[i, r])`). A kernel walks a row once.
 
-`reimage_region(nbr, xy_um, types, focal, K, crop=None, eps=0.0, M=None, u=None, rng=None) -> (S, m)`
+## Kernels (`reimage/`)
 
-- `crop = (x0, y0, s)` in µm: visible iff `x0 <= x < x0+s` and `y0 <= y < y0+s`; `None` = full region.
-  `random_crop(xy, s, rng)` places one uniformly inside the region's bounding box.
-- Mis-call: `M` (K, K) row-stochastic, default `confusion_matrix(K, eps)` (keep with 1−eps, else a
-  uniform other type). `u` float64 (n,) uniform draws, one per cell: observed type = first k with
-  `cumsum(M[true])[k] > u`. Kernels take the same `u` so they can match cell for cell.
-- Focal cells and neighbours both use observed types; neighbours outside the crop are skipped.
-- Guarantee (tested on the fixture and on one real region per cohort): `crop=None, eps=0` reproduces
-  `truth_region` exactly (`np.array_equal`).
+`reimage.run(design, seeds) -> X float64 [S, P, C]`: study s is `core.reimage_ref.reimage(cells,
+design, seeds[s])`, same dtype, same NaN policy, matched cell for cell (same draws).
+
+## Statistics (`stats/`)
+
+- `stats.score(X, time, event, strata) -> {"U", "V", "z"}`: X float64 [P, C] (or [S, P, C]), stratified
+  log-rank score per feature at β = 0, complete case per feature; U, V, z float64 [C] (or [S, C]).
+- `stats.maxT(z) -> float` (or [S]): max over features of |z|.
+- `stats.threshold(design, null_studies) -> float`: the design point's maxT threshold from null studies.
 
 ## Check
 
-`make smoke` = `uv sync --dev` + `uv run pytest -q` on tiny invented fixtures, offline, no real data.
-`core/test_spine.py` pins: truth reproduction at no crop and eps=0, crop = truth of the visible cells,
-neighbour-list order and radius offsets, mis-call rate, grammar count and hash, both loaders.
+`make smoke` = `uv sync --dev` + `uv run pytest -q` over `core/ stats/ tests/ bench/`, tiny invented
+fixtures, offline, no real data.
