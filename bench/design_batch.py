@@ -311,13 +311,17 @@ def complete(st: dict, load_s, warm_s, warm_score_s) -> dict:
 
 
 def prior_parity(records: list, prior_arms: dict) -> dict:
-    """A new arm against a committed result's arms: X sha256 per shared study; batched maxT within Z_TOL."""
+    """A new arm against a committed result's arms: X sha256 per shared study; batched maxT within Z_TOL.
+
+    Full coverage: every study of the arm that ran fewer (the lab's 2,000; 3,000 otherwise) must be shared,
+    or x_bitwise is False. maxT is compared over the same shared studies, so its coverage is X's."""
     new = {(r["stream"], r["i"]): r for r in records}
     out, ok = {}, True
     for a, o in prior_arms.items():
         old = {(s["stream"], s["i"]): s for s in o["studies"]}
         common = [k for k in new if k in old]
-        e = {"x_bitwise": bool(common) and all(new[k]["x_sha"] == old[k]["x_sha"] for k in common),
+        full = bool(common) and len(common) == min(len(new), len(old))
+        e = {"x_bitwise": full and all(new[k]["x_sha"] == old[k]["x_sha"] for k in common),
              "x_compared": len(common)}
         if a != "lab" and common:  # the lab's maxT is its permutation statistic, not compared
             d = max(abs(float(np.abs(new[k]["z"]).max()) - old[k]["maxT"]) / max(1.0, old[k]["maxT"]) for k in common)

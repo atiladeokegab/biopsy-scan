@@ -268,7 +268,7 @@ def _four(**over):
     stages = {"compute_wall_s": 372.0, "end_to_end_in_container_s": 592.0, "evaluated_studies": 3000}
     arm = lambda a, w: {"container_class": "Modal A100 + 8 cores + 64 GiB", "workers": w, "split": {"reimage_share": 0.98},
                         "host": {"gpu": "NVIDIA A100-SXM4-40GB, 40960 MiB, 610"},
-                        "stages": stages}
+                        "stages": {**stages, "evaluated_studies": 2000 if a == "lab" else 3000}}
     d = {"status": "MEASURED", "design": {"studies_per_stream": 1000}, "parity": {"all": True},
          "labels": {"compute": "MEASURED", "outcomes": "SYNTHETIC (atlas/simulation.py at 79a7792)", "rates": "ESTIMATE (x)"},
          "arms": {a: arm(a, 1 if a == "gpu" else 8) for a in ("lab", "numba", "gpu", "hybrid")}}
@@ -365,7 +365,6 @@ def test_the_fused_lane_needs_complete_maxT_parity_on_every_batched_arm():
 def test_the_fused_lane_needs_full_coverage_not_one_compared_study():
     """Lead ruling on #120 (escalation): x_compared must be every shared study (2,000 lab, 3,000 batched), per arm."""
     five = _four()
-    five["arms"]["lab"]["stages"] = {**five["arms"]["lab"]["stages"], "evaluated_studies": 2000}
     five["arms"]["fused"] = {**five["arms"]["numba"], "source": "this run"}
     five["parity"] = _fused_parity()
     assert "fused-cpu" in dict(cr.rows_from(Path("modal-design.json"), five))

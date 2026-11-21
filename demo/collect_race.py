@@ -78,11 +78,14 @@ def four_arms(name, d):
 
 def fused_parity(d):
     """Full parity for the fused arm: X sha256 equal to every other arm on every shared study, and maxT within
-    Z_TOL (1e-9) of every batched arm's (the lab's maxT is its permutation statistic: X only, as prior_parity)."""
+    Z_TOL (1e-9) of every batched arm's (the lab's maxT is its permutation statistic: X only, as prior_parity).
+    Full coverage: x_compared is every shared study, the smaller arm's evaluated_studies (2,000 lab, 3,000
+    batched); prior_parity compares maxT over those same studies, so maxT coverage is X's."""
     prior = d["parity"].get("against_prior", {}).get("fused", {})
+    n = {a: v["stages"].get("evaluated_studies") for a, v in d["arms"].items()}
     def ok(a):
-        e = prior.get(a, {})
-        if e.get("x_bitwise") is not True or not e.get("x_compared", 0) > 0:
+        e, shared = prior.get(a, {}), min(n[a] or 0, n["fused"] or 0)
+        if e.get("x_bitwise") is not True or not shared > 0 or e.get("x_compared") != shared:
             return False
         rel = e.get("maxT_max_rel_diff")
         return a == "lab" or (e.get("maxT_within_tol") is True and isinstance(rel, (int, float)) and 0 <= rel <= 1e-9)
