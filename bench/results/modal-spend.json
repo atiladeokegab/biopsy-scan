@@ -68,6 +68,41 @@
       "est_usd": 4.28,
       "basis": "0.93 GPU-h x $4.58/h",
       "running_total_usd": 12.18
+    },
+    {
+      "utc": "2026-11-21T18:00Z",
+      "run": "fleet N=1 x A100, 1000 studies",
+      "est_usd": 0.68,
+      "basis": "0.25 GPU-h x $2.73/h",
+      "running_total_usd": 12.86
+    },
+    {
+      "utc": "2026-11-21T18:16Z",
+      "run": "fleet N=2 x A100, 1000 studies",
+      "est_usd": 0.8,
+      "basis": "0.29 GPU-h x $2.73/h",
+      "running_total_usd": 13.66
+    },
+    {
+      "utc": "2026-11-21T18:23Z",
+      "run": "fleet N=4 x A100, 1000 studies",
+      "est_usd": 1.02,
+      "basis": "0.38 GPU-h x $2.73/h",
+      "running_total_usd": 14.68
+    },
+    {
+      "utc": "2026-11-21T18:28Z",
+      "run": "fleet N=8 x A100, 1000 studies",
+      "est_usd": 1.48,
+      "basis": "0.54 GPU-h x $2.73/h",
+      "running_total_usd": 16.16
+    },
+    {
+      "utc": "2026-11-21T18:31Z",
+      "run": "fleet N=16 x A100, 1000 studies",
+      "est_usd": 2.39,
+      "basis": "0.88 GPU-h x $2.73/h",
+      "running_total_usd": 18.55
     }
   ],
   "container_usd_per_hour_H100": 4.58

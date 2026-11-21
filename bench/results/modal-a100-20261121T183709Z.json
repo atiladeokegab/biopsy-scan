@@ -1,0 +1,313 @@
+{
+  "schema_version": 1,
+  "runner": "modal",
+  "gpu_requested": "A100",
+  "commit": "25fcaca75491fc82649ab0e004166655ca211493",
+  "dirty": false,
+  "launched_utc": "2026-11-21T17:59:03Z",
+  "utc": "20261121T183709Z",
+  "status": "MEASURED",
+  "kind": "ladder",
+  "kernel": {
+    "design": {
+      "patients": 159,
+      "regions_per_patient": 2,
+      "fov_um": 400.0,
+      "eps": 0.1,
+      "seed": 0,
+      "cohort": "charville",
+      "regions": 286,
+      "cells": 619645
+    },
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "unit": "one study: patient and region sampling, crop, mis-call, recount, features",
+    "parity": "exact, including NaN placement, on every seed and the warm-up",
+    "parity_exact": true,
+    "rows": {
+      "numpy_reference": {
+        "median_s": 2.235254685000001,
+        "min_s": 2.1450043839999893,
+        "max_s": 2.352548139999996,
+        "samples_s": [
+          2.235254685000001,
+          2.352548139999996,
+          2.3106080109999994,
+          2.174320313999999,
+          2.1450043839999893
+        ]
+      },
+      "gpu": {
+        "median_s": 0.7015170769999912,
+        "min_s": 0.6854675210000067,
+        "max_s": 0.7194940260000067,
+        "samples_s": [
+          0.7015170769999912,
+          0.7176338619999996,
+          0.7194940260000067,
+          0.6943130779999933,
+          0.6854675210000067
+        ]
+      }
+    },
+    "speedup_median": 3.1863154273577705,
+    "first_call_s": {
+      "numpy_reference": 2.245481469000005,
+      "gpu": 1.1420403119999918
+    },
+    "preparation_s": {
+      "load": 0.08232660700000016,
+      "adjacency": 60.283358037999996,
+      "gpu_upload": 0.6718612860000022
+    },
+    "in_function_s": 79.163475123,
+    "host": {
+      "cpu": "unknown",
+      "logical_cpus": 24,
+      "python": "3.11.5",
+      "numpy": "2.4.6",
+      "gpu": "NVIDIA A100-SXM4-40GB, 40960 MiB, 610.57.04",
+      "cores_per_socket": 24,
+      "sockets": 1
+    },
+    "gpu": {
+      "model": "NVIDIA A100-SXM4-40GB",
+      "memory": "40960 MiB",
+      "driver": "610.57.04",
+      "count": 1,
+      "cuda_driver_api": null,
+      "cuda_runtime": "12.4",
+      "all": [
+        "NVIDIA A100-SXM4-40GB, 40960 MiB, 610.57.04"
+      ],
+      "modal_task_id": "ta-01M7ZM652BP4JASQQDZ73GBXDR"
+    },
+    "modal_wall_s": 84.11297755595297,
+    "startup_and_transfer_s": 4.949502432952968
+  },
+  "fleet": {
+    "studies": 1000,
+    "seeds": [
+      0,
+      999
+    ],
+    "design": "bench/real_cpu.py DESIGN on Charville",
+    "runs": {
+      "1": {
+        "containers_requested": 1,
+        "containers_seen": 1,
+        "gpus": [
+          "NVIDIA A100-SXM4-40GB"
+        ],
+        "studies_per_container": [
+          1000
+        ],
+        "modal_wall_s": 947.0853058770299,
+        "compute_s_max": 843.723013159,
+        "in_function_s_max": 912.381647551,
+        "startup_and_transfer_s": 34.70365832602988,
+        "preparation_s_slowest": {
+          "load": 0.0864826139999999,
+          "adjacency": 66.29476666,
+          "gpu_upload": 0.7684326199999987,
+          "warm_up": 1.5089264819999926
+        },
+        "compute_span_s": 843.7230155467987,
+        "common_overlap_s": 843.7230155467987,
+        "all_overlapped": true,
+        "seed_coverage_exact": true,
+        "distinct_task_ids": true,
+        "studies_per_s_compute_span": 1.1852230904853551,
+        "studies_per_s_ideal_overlap_ESTIMATE": 1.1852230938396244,
+        "studies_per_s_wall": 1.0558710960824902,
+        "bit_identical_to_1": true
+      },
+      "2": {
+        "containers_requested": 2,
+        "containers_seen": 2,
+        "gpus": [
+          "NVIDIA A100-SXM4-40GB"
+        ],
+        "studies_per_container": [
+          500,
+          500
+        ],
+        "modal_wall_s": 451.6664479919709,
+        "compute_s_max": 368.91303560200004,
+        "in_function_s_max": 431.229144166,
+        "startup_and_transfer_s": 20.4373038259709,
+        "preparation_s_slowest": {
+          "load": 0.0837903149999999,
+          "adjacency": 60.583491561,
+          "gpu_upload": 0.5674084790000009,
+          "warm_up": 1.0813968980000013
+        },
+        "compute_span_s": 370.1647353172302,
+        "common_overlap_s": 365.6735796928406,
+        "all_overlapped": true,
+        "seed_coverage_exact": true,
+        "distinct_task_ids": true,
+        "studies_per_s_compute_span": 2.7014999123106707,
+        "studies_per_s_ideal_overlap_ESTIMATE": 2.7106659388388894,
+        "studies_per_s_wall": 2.2140232121421084,
+        "bit_identical_to_1": true
+      },
+      "4": {
+        "containers_requested": 4,
+        "containers_seen": 4,
+        "gpus": [
+          "NVIDIA A100-SXM4-40GB"
+        ],
+        "studies_per_container": [
+          250,
+          250,
+          250,
+          250
+        ],
+        "modal_wall_s": 261.2365010031499,
+        "compute_s_max": 192.30905918500002,
+        "in_function_s_max": 252.29986913300002,
+        "startup_and_transfer_s": 8.936631870149881,
+        "preparation_s_slowest": {
+          "load": 0.080114613000001,
+          "adjacency": 58.090770303,
+          "gpu_upload": 0.7591685280000036,
+          "warm_up": 1.0607347440000012
+        },
+        "compute_span_s": 192.30906319618225,
+        "common_overlap_s": 178.01939916610718,
+        "all_overlapped": true,
+        "seed_coverage_exact": true,
+        "distinct_task_ids": true,
+        "studies_per_s_compute_span": 5.1999629314394795,
+        "studies_per_s_ideal_overlap_ESTIMATE": 5.199963039900303,
+        "studies_per_s_wall": 3.8279489893640184,
+        "bit_identical_to_1": true
+      },
+      "8": {
+        "containers_requested": 8,
+        "containers_seen": 8,
+        "gpus": [
+          "NVIDIA A100-SXM4-40GB"
+        ],
+        "studies_per_container": [
+          125,
+          125,
+          125,
+          125,
+          125,
+          125,
+          125,
+          125
+        ],
+        "modal_wall_s": 198.82609639223665,
+        "compute_s_max": 118.954417791,
+        "in_function_s_max": 191.84244249399998,
+        "startup_and_transfer_s": 6.983653898236668,
+        "preparation_s_slowest": {
+          "load": 0.08941479699999988,
+          "adjacency": 70.489906029,
+          "gpu_upload": 0.9528265950000048,
+          "warm_up": 1.355849469000006
+        },
+        "compute_span_s": 128.19890642166138,
+        "common_overlap_s": 79.13735866546631,
+        "all_overlapped": true,
+        "seed_coverage_exact": true,
+        "distinct_task_ids": true,
+        "studies_per_s_compute_span": 7.800378551677201,
+        "studies_per_s_ideal_overlap_ESTIMATE": 8.406581433208942,
+        "studies_per_s_wall": 5.029520863434534,
+        "bit_identical_to_1": true
+      },
+      "16": {
+        "containers_requested": 16,
+        "containers_seen": 16,
+        "gpus": [
+          "NVIDIA A100-SXM4-40GB",
+          "NVIDIA A100-SXM4-80GB"
+        ],
+        "studies_per_container": [
+          63,
+          63,
+          63,
+          63,
+          63,
+          63,
+          63,
+          63,
+          62,
+          62,
+          62,
+          62,
+          62,
+          62,
+          62,
+          62
+        ],
+        "modal_wall_s": 268.7386592561379,
+        "compute_s_max": 59.087328308999986,
+        "in_function_s_max": 126.85732938599999,
+        "startup_and_transfer_s": 141.8813298701379,
+        "preparation_s_slowest": {
+          "load": 0.08711389800000013,
+          "adjacency": 65.153450645,
+          "gpu_upload": 1.1819613039999979,
+          "warm_up": 1.3474500250000006
+        },
+        "compute_span_s": 202.8938708305359,
+        "common_overlap_s": 0.0,
+        "all_overlapped": false,
+        "seed_coverage_exact": true,
+        "distinct_task_ids": true,
+        "studies_per_s_compute_span": 4.928685109641559,
+        "studies_per_s_ideal_overlap_ESTIMATE": 16.92410248726178,
+        "studies_per_s_wall": 3.721087255432381,
+        "bit_identical_to_1": true
+      }
+    },
+    "note": "compute_s excludes start-up, data load, adjacency and warm-up; those are reported per run. Scaling uses the measured compute span (first start to last end across containers); studies / max(shard compute) assumes perfect overlap and is labelled ESTIMATE"
+  },
+  "screen": {
+    "status": "MEASURED",
+    "shape": [
+      159,
+      630
+    ],
+    "n_perm": 999,
+    "data": "synthetic null",
+    "backends": {
+      "numpy": {
+        "s": 0.7855894559999999,
+        "maxT": 3.0589389780934853,
+        "p": 0.789,
+        "backend": "numpy"
+      },
+      "gpu": "unavailable: backend must be 'auto', 'numpy' or 'cupy'",
+      "cupy": {
+        "s": 4.8330963250000005,
+        "maxT": 3.058938978093487,
+        "p": 0.789,
+        "backend": "cupy"
+      }
+    },
+    "gpu": {
+      "model": "NVIDIA A100-SXM4-80GB",
+      "memory": "81920 MiB",
+      "driver": "610.57.04",
+      "count": 1,
+      "cuda_driver_api": null,
+      "cuda_runtime": "12.4",
+      "all": [
+        "NVIDIA A100-SXM4-80GB, 81920 MiB, 610.57.04"
+      ],
+      "modal_task_id": "ta-01M7ZPBBM6EF0X92R042YERDRR"
+    }
+  },
+  "baseline_note": "numpy_reference runs in the same container as the GPU row; the EPYC rungs are in bench/results/cpu-ladder.json (same DESIGN, other host)"
+}
