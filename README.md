@@ -2,21 +2,25 @@
 
 # Preflight
 
-**Preflight tells a lab, before it images a single slide, whether its study can find the pattern that decides a patient's treatment.**
+**Find the tissue patterns that decide a cancer patient's treatment, prove they are not luck, and check they still work as a test a hospital can run.**
+
+Decode searches every spatial pattern in multiplex tissue (3,780 today) with an honest correction for multiple testing. Translate asks whether a pattern survives one or two routine stains and real-world imaging error, by re-imaging thousands of simulated studies cell by cell from real tissue (CODEX). That simulation is what runs on the GPU.
 
 | Judging criterion | Result | Label | Source |
 |---|---|---|---|
 | **Correctness** | The Numba kernel equals the NumPy reference cell for cell, including where NaNs fall, on 100 real Charville studies. The CUDA kernel matches it too | MEASURED (CPU); TESTED (CUDA simulator) | `bench/results/cpu-ladder.json`, `reimage/test_backends.py` |
+| | The score statistic equals statsmodels PHReg (Breslow ties), and its variance equals exhaustive permutations | TESTED | `stats/test_reference.py`, `tests/test_score_contract.py` |
+| | 39 of 39 GPU tests pass on a real NVIDIA A100-SXM4-40GB: kernels, expression channels and the fleet | MEASURED | `bench/results/modal-a100-20261121T164808Z.json` (#75) |
 | | When nothing is there, the search raises a false alarm in 28 of 700 null studies: 4.0% (95% CI 2.7–5.7%), inside the promised 5% | ESTIMATE | `bench/results/vs-schoenfeld-300.json` |
 | **Reshaping for parallelism** | Every study is independent: the kernel re-images a batch of studies with one GPU warp per cell, and the fleet shards studies across GPUs with results bit-identical to one device | TESTED (CUDA simulator) | `reimage/test_backends.py`, `reimage/test_fleet.py` |
-| | Testing all 3,780 patterns is one matrix product per study, U = X'r | TESTED (CPU) | `stats/test_reference.py` |
+| | Testing all 3,780 patterns is one matrix product per study, U = X'r. One screen with 10,000 shuffles is about 38 million tests | TESTED (CPU) | `stats/test_reference.py` |
 | **Speed vs the statsmodels baseline** | Baseline: one statsmodels PHReg Cox fit for each of the 3,780 Charville patterns takes 63.84 s on 8 workers and 298.30 s on 1 | MEASURED | `bench/results/impl-a-charville-amd-epyc-7b13.json` (#64) |
 | | The GPU score screen on the same 3,780 patterns on an A100 (a workflow comparison, since the baseline fits full models), and studies per second at 1, 2, 4 and 8 GPUs | PENDING | Modal runs on an A100 |
 | **Scientific value** | At 200 patients the textbook formula promises 80% power. Simulated on real tissue, the same design finds the pattern 27% of the time (95% CI 22–32%) | ANALYTIC vs ESTIMATE | `bench/results/vs-schoenfeld-300.json` |
 | | After 3,780 tests on Charville, the strongest pattern (PD1 on macrophages within 100 µm of "Tumor 5" cells, z = 3.96) is not significant: maxT-adjusted p = 0.098 | MEASURED | `results/charville-v2.json` |
 | | Numba on 8 threads was no faster than NumPy on a loaded shared VM: 3.26 vs 2.98 s per study | MEASURED | `bench/results/cpu-ladder.json` |
 
-**Live demo:** https://atiladeokegab.github.io/sota-parallelism-nov21/ · **Deck:** [`docs/assets/preflight-deck.pdf`](docs/assets/preflight-deck.pdf) (exported at freeze)
+**Live demo:** https://atiladeokegab.github.io/sota-parallelism-nov21/ · **Deck:** https://claude.ai/artifact/HsYFYZZygbAzNALjz2bm5Q
 
 ![The Preflight demo page, with real Charville tissue cores side by side in 3D](docs/assets/demo-1280.png)
 
@@ -39,7 +43,7 @@ flowchart LR
 ```
 
 1. **Draw the studies.** A design is a number of patients, regions per patient, a field of view and a mis-call rate. Preflight draws thousands of studies at that design from real CODEX tissue, and plants a known effect. Studies are independent, so the fleet shards them across GPUs by seed (`reimage/fleet.py`).
-2. **Re-image each study cell by cell.** Each region's neighbour list is built once at the largest radius and sorted by distance, so 25, 50 and 100 µm are running totals of one list. Crops hide cells and mis-calls relabel them; the kernel recounts every cell's neighbours (`reimage/cpu.py`, `reimage/gpu.py`).
+2. **Re-image each study cell by cell.** Each region's neighbour list is found once, by a CPU cKDTree at the largest radius, and sorted by distance, so 25, 50 and 100 µm are running totals of one list. Crops hide cells and mis-calls relabel them; the kernel recounts every cell's neighbours (`reimage/cpu.py`, `reimage/gpu.py`).
 3. **Make every pattern a column.** A pattern is a cell type, a neighbour type, a radius and a measure: 630 neighbourhood patterns, plus 3,150 that add protein, size and stroma channels. Each study becomes a patients-by-3,780 matrix X (`core/grammar.py`).
 4. **Screen all patterns at once.** Fit the survival null once and keep its residuals r. Every pattern's score is then one matrix product, U = X'r, batched across studies (`stats/reference.py`; the GPU screen is R-15).
 5. **Correct honestly with maxT.** Shuffle outcomes within strata and ask how often the best of all 3,780 shuffled patterns beats the real one (Westfall–Young maxT). A study "finds" the effect only if the planted pattern survives that correction. Power is the share of studies that do.
