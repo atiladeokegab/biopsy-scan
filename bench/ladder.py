@@ -16,6 +16,7 @@ import statistics
 import subprocess
 import sys
 import time
+from importlib import import_module
 from pathlib import Path
 
 import numpy as np
@@ -60,28 +61,37 @@ def synthetic_pool(n_regions: int, cells: int, side: float, seed: int) -> list[d
     return pool
 
 
-def numpy_ref_trial(pool: list[dict], design: dict, seed: int):
-    """One trial with the float64 NumPy oracle: k region looks, each a random crop and mis-call."""
-    rng = np.random.default_rng(seed)
-    out, reads = [], 0
-    for r in rng.integers(0, len(pool), design["k"]):
-        reg = pool[r]
-        crop = random_crop(reg["xy"], design["fov_um"], rng)
-        out.append(reimage_region(reg["nbr"], reg["xy"], reg["types"], FOCAL, K,
-                                  crop=crop, eps=design["eps"], rng=rng))
-        reads += len(reg["nbr"]["idx"])
-    return out, reads
+def make_trial(region_fn):
+    """One trial: k region looks, each a random crop and mis-call, through one backend's reimage_region."""
+    def trial(pool: list[dict], design: dict, seed: int):
+        rng = np.random.default_rng(seed)
+        out, reads = [], 0
+        for r in rng.integers(0, len(pool), design["k"]):
+            reg = pool[r]
+            crop = random_crop(reg["xy"], design["fov_um"], rng)
+            out.append(region_fn(reg["nbr"], reg["xy"], reg["types"], FOCAL, K,
+                                 crop=crop, eps=design["eps"], rng=rng))
+            reads += len(reg["nbr"]["idx"])
+        return out, reads
+    return trial
 
 
 def rungs() -> dict:
-    """name -> study function, or a string saying why the rung is pending."""
-    found = {"numpy_reference": numpy_ref_trial}
-    try:
-        import reimage  # noqa: F401  # #2 provides reimage.run(design, seeds)
-        found["numba_all_core"] = found["gpu"] = "pending: wire reimage.run into bench/ladder.py"
-    except ImportError:
-        found["numba_all_core"] = found["gpu"] = "pending: reimage/ (#2) not merged"
+    """name -> trial function, or a string saying why the rung is pending."""
+    found = {"numpy_reference": make_trial(reimage_region)}
+    for name, mod in (("numba_all_core", "reimage.cpu"), ("gpu", "reimage.gpu")):
+        try:
+            found[name] = make_trial(import_module(mod).reimage_region)  # #2: drop-in for the core signature
+        except Exception as e:  # noqa: BLE001  # no numba, no CUDA device, or #2 not merged
+            found[name] = f"pending: {mod} unavailable ({type(e).__name__}: {e})"[:200]
     return found
+
+
+def matches_reference(fn, pool, design) -> bool:
+    """Correctness gate: the same seed must give the reference's region sums and counts."""
+    ref, _ = make_trial(reimage_region)(pool, design, seed=0)
+    got, _ = fn(pool, design, seed=0)
+    return all(np.allclose(a[0], b[0], rtol=0, atol=1e-9) and np.array_equal(a[1], b[1]) for a, b in zip(ref, got))
 
 
 def time_rung(fn, pool, design, studies: int) -> dict:
@@ -115,7 +125,18 @@ def run(studies=20, cells=6000, side=750.0, n_regions=8, design=None, seed=0) ->
                        "excludes": "patient sampling and aggregation, features, outcomes, statistics; prep_s (neighbour lists) is reported separately"},
               "baseline": "numpy_reference"}
     for name, fn in rungs().items():
-        result["rungs"][name] = fn if isinstance(fn, str) else time_rung(fn, pool, design, studies)
+        if isinstance(fn, str):
+            result["rungs"][name] = fn
+            continue
+        try:
+            ok = matches_reference(fn, pool, design)
+        except Exception as e:  # noqa: BLE001  # e.g. CUDA unavailable on this box
+            result["rungs"][name] = f"pending: {type(e).__name__}: {e}"[:200]
+            continue
+        if not ok:
+            result["rungs"][name] = "excluded: output differs from numpy_reference on seed 0"  # never time a wrong kernel
+        else:
+            result["rungs"][name] = time_rung(fn, pool, design, studies)
     return result
 
 
