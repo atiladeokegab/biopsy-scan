@@ -191,13 +191,16 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--cohort", nargs="+", default=["charville", "upmc"])
     ap.add_argument("--cores", type=int, default=len(os.sched_getaffinity(0)))
-    ap.add_argument("--output", required=True)
+    ap.add_argument("--output", required=True, help="one file per cohort, e.g. bench/results/impl-a-{cohort}-<cpu>.json")
     a = ap.parse_args(argv)
-    rep = report([run_cohort(c, a.cores) for c in a.cohort], a.cores)
-    Path(a.output).write_text(json.dumps(rep, indent=1, allow_nan=False) + "\n")
-    for c in rep["cohorts"]:
-        print(f"{c['cohort']}: {c['patients']} patients, {c['candidates']} candidates ({c['fitted']} fitted), "
-              + ", ".join(f"{t['workers']} workers {t['wall_s']:.2f} s" for t in c["timings"]))
+    paths = {c: Path(a.output.format(cohort=c)) for c in a.cohort}
+    if len(set(paths.values())) != len(paths) or any(p.exists() for p in paths.values()):
+        raise SystemExit("--output needs {cohort} and must not name an existing file: give a rerun a new name")
+    for coh, path in paths.items():  # each cohort's file is written the moment its fits finish
+        c = run_cohort(coh, a.cores)
+        path.write_text(json.dumps(report([c], a.cores), indent=1, allow_nan=False) + "\n")
+        print(f"{path}: {c['patients']} patients, {c['candidates']} candidates ({c['fitted']} fitted), "
+              + ", ".join(f"{t['workers']} workers {t['wall_s']:.2f} s" for t in c["timings"]), flush=True)
 
 
 if __name__ == "__main__":
