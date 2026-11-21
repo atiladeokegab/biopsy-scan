@@ -35,14 +35,20 @@ def answer(points: list[dict]) -> dict:
     ns = [p["patients"] for p in points]
     n80, lo, hi = (crossing(ns, [p[k] for p in points]) for k in ("power", "power_hi", "power_lo"))
     top = max(points, key=lambda p: p["patients"])
+    cleared = [p["patients"] for p in points if p["power_lo"] >= TARGET]
+    clear = f" Smallest simulated count whose lower 95% bound clears 80%: {min(cleared)}." if cleared else (
+        f" No simulated count up to {top['patients']} has its lower 95% bound above 80% (beyond {top['patients']}).")
     if n80 is None:
         statement = (f"Simulated power never reached 80% up to {top['patients']} patients: "
                      f"{top['power']:.0%} [{top['power_lo']:.0%}, {top['power_hi']:.0%}] there.")
     else:
         band = f"{lo:.0f} to {hi:.0f}" if hi is not None else f"{lo:.0f} to more than {top['patients']}"
         statement = f"About {n80:.0f} patients for 80% simulated power (95% band {band})."
+    statement += clear
     return {"target_power": TARGET, "n_80": n80, "n_80_lo": lo, "n_80_hi": hi,
-            "n_80_hi_beyond_range": hi is None, "max_patients_simulated": top["patients"], "statement": statement,
+            "n_80_hi_beyond_range": hi is None,
+            "smallest_patients_lower_bound_clears_80": min(cleared) if cleared else None,
+            "max_patients_simulated": top["patients"], "statement": statement,
             "method": "first crossing of 80%, linear in patients between bracketing points; band: the same crossing "
                       "of the per-point 95% Clopper-Pearson upper bound (lo) and lower bound (hi)"}
 

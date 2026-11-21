@@ -21,8 +21,11 @@ def test_crossing_interpolates_the_first_bracket():
 def test_answer_says_plainly_when_80_is_never_reached():
     a = answer([pt(300, 0.4, 0.35, 0.47), pt(1000, 0.7, 0.64, 0.75)])
     assert a["n_80"] is None and a["statement"].startswith("Simulated power never reached 80% up to 1000 patients")
+    assert a["smallest_patients_lower_bound_clears_80"] is None and "(beyond 1000)" in a["statement"]
     b = answer([pt(300, 0.4, 0.35, 0.47), pt(600, 0.82, 0.77, 0.86)])
     assert b["n_80"] is not None and b["n_80_lo"] <= b["n_80"] and b["n_80_hi_beyond_range"]
+    c = answer([pt(300, 0.4, 0.35, 0.47), pt(600, 0.82, 0.77, 0.86), pt(800, 0.9, 0.86, 0.93), pt(1000, 0.95, 0.92, 0.97)])
+    assert c["smallest_patients_lower_bound_clears_80"] == 800 and c["n_80_hi"] is not None
 
 
 @pytest.mark.skipif(not RESULT.exists(), reason="power-at-scale.json not built yet")
