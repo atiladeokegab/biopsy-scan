@@ -1394,7 +1394,8 @@
      "file": "README.md",
      "text": "| **Matched end to end** (lab vs Preflight, same container, design and seeds, #123) | Matched workflow comparison through scoring (re-imaging plus each study's test or screen; excludes data load, threshold and calls): lab `{lab} s` per study (`{lab_n}` studies) vs Preflight `{pf} s` per decided study (`{pf_n}` decided, its `{calib}` calibration nulls paid for): `{ratio}×`; `{ratio_setup}×` including setup (outcome simulation, adjacency, warm-up). `{lab_w}` lab core vs `{pf_w}` Preflight workers; different procedures (per-study permutation vs one calibrated threshold). Features bitwise on `{x_n}` shared studies; decisions agree `{agree}/{compared}` (**{label}**, outcomes SYNTHETIC) | [`bench/results/matched-e2e-20261121T201925Z.json`](bench/results/matched-e2e-20261121T201925Z.json) |"
     }
-   ]
+   ],
+   "note": "26.7× uses the stored wall.with_setup per-study totals; not cross-checked against the setup stage timers."
   }
  ],
  "stale": [
