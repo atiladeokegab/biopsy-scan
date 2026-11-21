@@ -153,6 +153,8 @@ def _fake_stats_api() -> StatsAPI:
         time = np.asarray(time, dtype=np.float64)
         event = np.asarray(event, dtype=np.float64)
         strata = np.asarray(strata)
+        if strata.dtype.kind not in "biufUS":
+            raise ValueError("strata must contain finite numeric or string labels")
         if not np.isfinite(X).all() or not np.isfinite(time).all():
             raise ValueError("non-finite")
         r = np.zeros_like(time)
@@ -318,3 +320,4 @@ def test_run_cohort_audit_handles_missing_endpoints_nan_features_and_writes_json
     assert saved["cohort"] == "charville"
     assert saved["already_seen"] is True
     assert saved["clinical_claims"] is False
+    assert all("grammar_index" in h for h in saved["maxT"]["top_hits"])

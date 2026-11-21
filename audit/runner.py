@@ -6,9 +6,13 @@ from collections.abc import Callable
 from dataclasses import dataclass
 import json
 from pathlib import Path
+import sys
 from typing import Any
 
 import numpy as np
+
+if __name__ == "__main__" and str(Path(__file__).resolve().parents[1]) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from audit.leakage import compute_leakage_audit
 from audit.schema import (
@@ -72,6 +76,7 @@ def _aggregate_patient_features(
     cells: dict[str, Any],
     g: dict[str, Any],
     core_api: CoreAPI,
+    region_cache: dict[str, tuple[np.ndarray, np.ndarray]] | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Pool truth_region sums per patient in sorted patient_id index order."""
     region_index = {rid: idx for idx, rid in enumerate(cells["region_ids"])}
@@ -88,10 +93,16 @@ def _aggregate_patient_features(
     m_pat = np.zeros((p_count, *first_m.shape), dtype=np.int64)
 
     for row in regions.itertuples(index=False):
-        ri = region_index[row.region_id]
+        rid = str(row.region_id)
+        cached = region_cache.get(rid) if region_cache is not None else None
+        if cached is None:
+            ri = region_index[row.region_id]
+            sl = slice(int(ptr[ri]), int(ptr[ri + 1]))
+            cached = core_api.truth_region(xy_all[sl], ty_all[sl], focal, k_types)
+            if region_cache is not None:
+                region_cache[rid] = cached
+        s_reg, m_reg = cached
         pi = patient_index[row.patient_id]
-        sl = slice(int(ptr[ri]), int(ptr[ri + 1]))
-        s_reg, m_reg = core_api.truth_region(xy_all[sl], ty_all[sl], focal, k_types)
         s_pat[pi] += s_reg
         m_pat[pi] += m_reg
 
@@ -154,20 +165,23 @@ def _run_permutation_audit(
     data_dir: Path | None,
     core_api: CoreAPI,
     stats_api: StatsAPI,
+    region_cache: dict[str, tuple[np.ndarray, np.ndarray]] | None = None,
+    cells: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     kwargs = {"data_dir": data_dir} if data_dir is not None else {}
     regions = core_api.load_regions(cohort, identity=identity, **kwargs) if cohort == "upmc" else core_api.load_regions(cohort, **kwargs)
     patients = core_api.load_patients(regions)
-    cells = core_api.load_cells(cohort, **kwargs)
+    if cells is None:
+        cells = core_api.load_cells(cohort, **kwargs)
     g = core_api.grammar(cells["type_names"])
     fnames = core_api.feature_names(g)
     x_all, m_pat = _aggregate_patient_features(
-        regions=regions, patients=patients, cells=cells, g=g, core_api=core_api
+        regions=regions, patients=patients, cells=cells, g=g, core_api=core_api, region_cache=region_cache
     )
 
     time_all = patients["time_days"].to_numpy(dtype=np.float64)
     event_all = patients["event"].to_numpy(dtype=np.float64)
-    strata_all = patients["stratum"].to_numpy()
+    strata_all = np.asarray(patients["stratum"].astype(str), dtype=str)
     pids_all = [str(p) for p in patients["patient_id"]]
 
     valid_mask = np.isfinite(time_all) & (time_all >= 0) & np.isin(event_all, [0.0, 1.0])
@@ -183,6 +197,7 @@ def _run_permutation_audit(
     finite_cols = np.isfinite(x_eval).all(axis=0)
     x_tested = x_eval[:, finite_cols]
     tested_names = [name for name, ok in zip(fnames, finite_cols) if ok]
+    grammar_indices = [int(i) for i, ok in enumerate(finite_cols) if ok]
 
     dropped_focal = []
     for ti, ft in enumerate(g["focal_types"]):
@@ -216,6 +231,7 @@ def _run_permutation_audit(
             "rank": rank,
             "feature": tested_names[idx],
             "index": int(idx),
+            "grammar_index": grammar_indices[idx],
             "z": float(z_obs[idx]),
             "adjusted_p": float(adj_p[idx]),
             "lopo": lopo[idx],
@@ -299,6 +315,9 @@ def run_cohort_audit(
     """Run the already-seen real-data audit for one cohort and optionally save JSON."""
     core = core_api or load_default_core()
     stats = stats_api or load_default_stats()
+    kwargs = {"data_dir": data_dir} if data_dir is not None else {}
+    cells = core.load_cells(cohort, **kwargs)
+    region_cache: dict[str, tuple[np.ndarray, np.ndarray]] = {}
     result = _run_permutation_audit(
         cohort=cohort,
         identity="tuple",
@@ -308,6 +327,8 @@ def run_cohort_audit(
         data_dir=data_dir,
         core_api=core,
         stats_api=stats,
+        region_cache=region_cache,
+        cells=cells,
     )
     if cohort == "upmc":
         tc = _run_permutation_audit(
@@ -319,6 +340,8 @@ def run_cohort_audit(
             data_dir=data_dir,
             core_api=core,
             stats_api=stats,
+            region_cache=region_cache,
+            cells=cells,
         )
         result["sensitivity"] = {
             "kind": "tuple+case",
