@@ -66,6 +66,7 @@
     {
       "title": "One study, re-imaged and scored",
       "unit": "one study: patient and region sampling, crop, mis-call, recount, features",
+      "same_scope": true,
       "rows": [
         {
           "id": "kernel-numpy",
@@ -96,6 +97,7 @@
     {
       "title": "16 studies on a fleet, compute only",
       "unit": "compute_s excludes start-up, data load, adjacency and warm-up; those are reported per run",
+      "same_scope": true,
       "rows": [
         {
           "id": "fleet-1",

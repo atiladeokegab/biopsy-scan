@@ -126,6 +126,7 @@ def check_baseline(b, w):
         check_timing(r, w, f"rows[{i}]")
     for g, grp in enumerate(b.get("interim") or []):  # measured pairs shown until the design point is timed
         need(text(grp.get("title")) and text(grp.get("unit")), w, f"interim[{g}]: title, unit")
+        need(grp.get("same_scope") in (None, True, False), w, f"interim[{g}].same_scope: boolean")
         need(isinstance(grp.get("rows"), list) and grp["rows"], w, f"interim[{g}].rows: non-empty list")
         for i, r in enumerate(grp["rows"]):
             check_timing(r, w, f"interim[{g}].rows[{i}]")

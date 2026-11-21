@@ -58,14 +58,14 @@ def interim(name, d):
                       "label": lab, "seconds": round(r["compute_s_max"], 2), "startup_s": round(r["startup_and_transfer_s"], 1),
                       "hardware": "Modal", "gpu": f"{r['containers_seen']}x {' / '.join(g)}", "cores": None, "source": name})
     return [
-        {"title": "One study, re-imaged and scored", "unit": k["unit"], "rows": [
+        {"title": "One study, re-imaged and scored", "unit": k["unit"], "same_scope": True, "rows": [
             {"id": "kernel-numpy", "method": "NumPy reference, same container", "role": "baseline", "label": lab,
              "seconds": round(rows["numpy_reference"]["median_s"], 3), "hardware": "Modal GPU container, on its CPU",
              "cores": None, "gpu": None, "note": f"median of {len(rows['numpy_reference']['samples_s'])}", "source": name},
             {"id": "kernel-gpu", "method": "Preflight on 1 GPU", "role": "screen", "label": lab,
              "seconds": round(rows["gpu"]["median_s"], 3), "hardware": "Modal", "cores": None, "gpu": k["gpu"]["model"],
              "note": f"median of {len(rows['gpu']['samples_s'])}, exact parity", "source": name}]},
-        {"title": f"{f['studies']} studies on a fleet, compute only", "unit": f["note"], "rows": fleet}]
+        {"title": f"{f['studies']} studies on a fleet, compute only", "unit": f["note"], "same_scope": True, "rows": fleet}]
 
 
 def main(extra):

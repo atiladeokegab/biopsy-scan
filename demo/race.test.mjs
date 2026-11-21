@@ -68,7 +68,7 @@ assert.ok(raceState(rows, 1e9).every((r, i) => (rows[i].seconds == null ? r.frac
 bl.rows.forEach((r) => assert.ok(r.seconds == null || (r.label && r.source), `${r.id}: a time needs a label and a source`));
 // #79 review (Atlas): no ratio anywhere in the race or its workflow footnote, every string escaped,
 // and a row whose seconds are not a positive finite number is drawn as untimed.
-const { speedRaceHTML, workflowHTML } = await import("./race.js");
+const { speedRaceHTML, workflowHTML, pairRatio } = await import("./race.js");
 const row = (o) => ({ id: "x", method: "m", role: "screen", label: "MEASURED", hardware: "h", cores: 8, gpu: null, source: "s", ...o });
 const both = speedRaceHTML({ rows: [row({ role: "baseline", seconds: 2 }), row({ seconds: 1 }), row({ seconds: 2 })] });
 assert.doesNotMatch(both, /×|faster|slower|speed-?up/i, "two MEASURED rows never print a ratio, slower or equal");
@@ -86,4 +86,25 @@ assert.ok(raceState([row({ seconds: "5" }), row({ seconds: 4 })], 1e9)[0].clock 
 assert.match(speedRaceHTML({ rows: [row({ seconds: 4, startup_s: 90 })] }), /\+ 90\.0 s start-up, not counted/);
 assert.equal(bl.rows.length, 4, "the race is the four rows of one design point");
 assert.ok(!bl.rows.some((r) => /3,780|Cox/.test(r.method)), "the Cox screen is the workflow footnote, never a bar");
+// The lead's bug: bars must be proportional. Final width = seconds / slowest, on one shared scale per pair.
+const pair = [row({ seconds: 2.88 }), row({ seconds: 0.873 })];
+const end = raceState(pair, 1e9);
+assert.equal(end[0].frac, 1);
+assert.ok(Math.abs(end[1].frac - 0.873 / 2.88) < 1e-12, "the faster run's bar is ~30% of the slower one's");
+assert.ok(end.every((s, i) => s.done && s.clock === pair[i].seconds), "each prints its real seconds at its finish");
+const early = raceState(pair, RACE_MS * 0.2);
+assert.ok(!early[0].done && !early[1].done && early[0].frac === early[1].frac, "both grow at one pace");
+const half = raceState(pair, RACE_MS / 2);
+assert.ok(half[1].done && !half[0].done && half[1].frac < half[0].frac, "the faster stops first, shorter");
+// A ratio only for a same-scope MEASURED pair, faster row named, direction-aware.
+const g = (rows, same_scope = true) => ({ same_scope, rows });
+assert.equal(pairRatio(g([row({ method: "NumPy", seconds: 2.88 }), row({ method: "GPU", seconds: 0.873 })])), "GPU: ×3.3 faster");
+assert.equal(pairRatio(g([row({ method: "1", seconds: 3.8 }), row({ method: "4", seconds: 11.44 })])), "1: ×3.0 faster");
+assert.equal(pairRatio(g([row({ seconds: 2 }), row({ seconds: 2 })])), null, "equal: no ratio");
+assert.equal(pairRatio(g([row({ seconds: 2 }), row({ seconds: 1 })], false)), null, "not same-scope: no ratio");
+assert.equal(pairRatio(g([row({ seconds: 2 }), row({ seconds: 1, label: "ESTIMATE" })])), null, "both MEASURED or no ratio");
+assert.equal(pairRatio(g([row({ seconds: 2 }), row({ seconds: null, label: "PENDING" })])), null);
+assert.equal(pairRatio(bl), null, "the design-point race never prints a ratio");
+assert.equal(pairRatio(g([row({ seconds: 3 }), row({ seconds: 2 }), row({ seconds: 1 })])), null);
+for (const grp of bl.interim ?? []) assert.match(pairRatio(grp), /×\d\.\d faster$/, grp.title);
 console.log("race.test.mjs: ok");
