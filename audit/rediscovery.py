@@ -186,6 +186,43 @@ def score_locked(cells: dict, rule: dict, sha: str, n_events: int) -> dict:
     return {**head, **res}
 
 
+def discovery_rank(z, names: list[str], rule: dict) -> dict:
+    """The rule's rank by |z| among every candidate (1 = strongest; ties share the better rank).
+    The rule's direction needs z > 0: a top rank with HR < 1 is not a rediscovery (RULE["direction"])."""
+    z = np.asarray(z, float)
+    j = names.index(rule["feature"])
+    return {"rank": int(1 + np.sum(np.abs(z) > abs(z[j]))), "of": len(names), "z": float(z[j]),
+            "direction_ok": bool(z[j] > 0), "label": f"MEASURED on discovery patients only; {LABEL}"}
+
+
+def rank_on_discovery(cells: dict, rule: dict, clinical=None) -> dict:
+    """Run the R-15 screen (stats.screen, no resampling) over every v1 grammar column and rank the rule's."""
+    from core.grammar import feature_names, grammar
+    from core.truth import truth
+
+    try:
+        from stats.screen import screen  # R-15; never reimplemented here
+    except ImportError:
+        return {"status": "UNMEASURED", "reason": "the R-15 screen (stats.screen) is not on this branch"}
+    names = feature_names(grammar(cells["type_names"]))
+    s = screen(truth(cells), cells["time"], np.asarray(cells["event"], float), clinical, cells["strata"],
+               n_perm=0, names=names)
+    return {"status": "MEASURED", "screen": s["metadata"]["statistic"], "clinical": s["metadata"]["clinical"]["mode"],
+            "patients": s["metadata"]["patients"], **discovery_rank(s["z"], names, rule)}
+
+
+def _hpv(cells: dict, data_dir) -> np.ndarray:
+    """Clinical C [P, 1] for UPMC: hpvstatus per patient from the labels (R-15), NaN when 'NA'."""
+    import pandas as pd
+
+    lab = pd.read_csv(Path(data_dir) / "upmc_labels.csv", dtype=str, keep_default_na=False)
+    by_region = dict(zip(lab.region_id, lab.hpvstatus))
+    C = np.full((len(cells["time"]), 1), np.nan)
+    for r, p in zip(cells["region_names"], cells["patient_of_region"]):
+        C[p, 0] = np.nan if by_region[r] == "NA" else float(by_region[r])
+    return C
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=SCORER_DOC.splitlines()[0])
     ap.add_argument("--open-locked", action="store_true", help="open the locked outcomes (once, on the lead's word)")
@@ -201,14 +238,17 @@ def main(argv=None) -> int:
     if a.out.exists():
         print(f"refusing: {a.out} exists; the locked set has already been opened", file=sys.stderr)
         return 2
-    from core.cohorts import load
+    from core.cohorts import DATA_DIR, load
 
     if RULE_SHA256 != PREREG_SHA256:
         print("refusing: audit/rediscovery.py RULE differs from the pre-registration", file=sys.stderr)
         return 1
-    result = score_locked(load("upmc", split="locked"), RULE, RULE_SHA256, a.events)
+    disc = load("upmc")  # the discovery side (the loader's default); the search is frozen before the locked set opens
+    result = {"cohort": "upmc", "rule_sha256": RULE_SHA256, "label": LABEL,
+              "discovery": rank_on_discovery(disc, RULE, _hpv(disc, DATA_DIR)),
+              "locked": score_locked(load("upmc", split="locked"), RULE, RULE_SHA256, a.events)}
     a.out.parent.mkdir(parents=True, exist_ok=True)
-    a.out.write_text(json.dumps({"cohort": "upmc", "split": "locked", **result}, indent=1) + "\n")
+    a.out.write_text(json.dumps(result, indent=1) + "\n")
     print(json.dumps(result, indent=1))
     return 0
 
