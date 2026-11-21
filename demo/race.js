@@ -117,7 +117,7 @@ export function createRace(cpuCanvas, gpuCanvas, out) {
 // THE SPEED RACE (data/baseline.json, filled from bench/results by collect_race.py): every row times the same unit,
 // one design point of 1,000 simulated studies. Each bar fills at its measured compute rate, scaled so the slowest
 // timed row takes RACE_MS on screen; its real seconds print at its finish, start-up shown apart and never counted.
-// A row without a time is PENDING: no bar, no motion, no number. A ratio is printed only by pairRatio, for a
+// A row without a time is PENDING: no bar, no motion, no number. The page computes no ratio: a measured pair's
 // same-scope MEASURED pair; the workflow footnote (different work: the R-14 Cox screen) is seconds only.
 export const RACE_MS = 10000;
 const timed = (r) => Number.isFinite(r.seconds) && r.seconds > 0 && !["PENDING", "UNMEASURED"].includes(r.label);
@@ -133,7 +133,7 @@ export function raceState(rows, t, total = RACE_MS) {
 }
 
 const esc = (v) => String(v).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
-const secs = (s) => (s < 600 ? `${s < 10 ? s.toFixed(2) : s.toFixed(1)} s` : duration(s));
+export const secs = (s) => (s < 3600 ? `${s < 10 ? s.toFixed(2) : s.toFixed(1)} s` : duration(s));
 
 const where = (r) => [r.hardware, r.gpu || (r.cores ? `${r.cores} core${r.cores > 1 ? "s" : ""}` : null)]
   .filter(Boolean).map(esc).join(", ");
@@ -152,16 +152,6 @@ export function speedRaceHTML(data) {
     return `<li class="${r.role === "baseline" ? "baseline" : "screen"}"><span class="sr-name">${esc(r.method)}<small>${where(r)}</small></span>` +
       `<span class="sr-time">${tag}<b></b></span><span class="sr-track"><i></i></span><small class="sr-src">${src}</small></li>`;
   }).join("")}</ol>`;
-}
-
-// A ratio only inside a same-scope pair: two MEASURED rows of one group, same unit, same container or fleet run
-// (collect_race.py sets same_scope). The design-point race and the workflow footnote never get one.
-export function pairRatio(g) {
-  const rows = g?.rows ?? [];
-  if (g?.same_scope !== true || rows.length !== 2 || !rows.every((r) => timed(r) && r.label === "MEASURED")) return null;
-  const [slow, fast] = [...rows].sort((a, b) => b.seconds - a.seconds);
-  if (slow.seconds === fast.seconds) return null;
-  return `${fast.method}: ×${(slow.seconds / fast.seconds).toFixed(1)} faster`;
 }
 
 // Different work from the race, so seconds only: never a bar, never a ratio against a race row.

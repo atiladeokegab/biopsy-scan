@@ -99,12 +99,13 @@ assert.ok(half[1].done && !half[0].done && half[1].frac < half[0].frac, "the fas
 // The lead (19:00Z): the page prints Atlas's cleared scope line beside each measured pair, never a ratio of its own.
 assert.doesNotMatch(String(Object.keys(await import("./race.js"))), /pairRatio/, "no computed ratio to contradict the cleared one");
 const [kern, fleet] = bl.interim ?? [];
-assert.match(kern.scope, /^MEASURED, 3\.19× faster: feature step only, NumPy vs GPU/);
+assert.match(kern.scope_line, /^MEASURED, 3\.19× faster: feature step only, NumPy vs GPU/);
 assert.deepEqual(fleet.rows.map((r) => r.id), ["fleet-1", "fleet-8"], "1 A100 against 8: no 16-GPU bar");
-assert.match(fleet.scope, /^MEASURED, observed 6\.6× compute-span reduction 843\.7→128\.2 s for 1,000 Charville/);
+assert.match(fleet.scope_line, /^MEASURED, observed 6\.6× compute-span reduction 843\.7→128\.2 s for 1,000 Charville/);
 assert.doesNotMatch(JSON.stringify(bl.interim), /% of ideal|efficiency|longest-shard|80GB/);
 assert.equal(secs(fleet.rows[0].seconds), "843.7 s", "the bar's seconds match the scope line's");
 assert.equal(secs(fleet.rows[1].seconds), "128.2 s");
+for (const grp of bl.interim) assert.doesNotMatch(speedRaceHTML(grp), /undefined/, "a group never reuses the design point's scope object");
 // (5) a PENDING row with a number is still PENDING; a non-numeric startup_s is never formatted.
 assert.match(speedRaceHTML({ rows: [row({ label: "PENDING", seconds: 5 })] }), /class="pending"/);
 assert.equal(raceState([row({ label: "UNMEASURED", seconds: 5 }), row({ seconds: 1 })], 1e9)[0].clock, null);

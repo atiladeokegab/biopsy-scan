@@ -108,7 +108,7 @@ def test_ladder_feeds_interim_compute_only_with_startup_apart():
     b = json.loads((ROOT / "demo" / "data" / "baseline.json").read_text())
     assert _check(b | {"interim": groups}) is None
     assert _check(b | {"interim": [groups[0] | {"rows": [k["kernel-gpu"] | {"label": "PENDING"}]}]}), "PENDING with a number"
-    assert _check(b | {"interim": [groups[1] | {"scope": ""}]}), "a group's scope line, if any, is text"
+    assert _check(b | {"interim": [groups[1] | {"scope_line": ""}]}), "a group's scope line, if any, is text"
     assert list(cr.rows_from(Path(CLEARED), LADDER | {"status": "FAILED"})) == []
 
 
@@ -167,15 +167,15 @@ def test_design_point_fills_the_four_rows_only_when_measured_at_1000_studies():
 def test_interim_titles_say_exactly_what_ran():
     """The lead (19:00Z): Atlas's cleared scope lines, word for word, each beside its bars; numbers from the file."""
     [(_, groups)] = cr.rows_from(Path(CLEARED), LADDER)
-    assert groups[0]["scope"] == ("MEASURED, 3.19× faster: feature step only, NumPy vs GPU, "
+    assert groups[0]["scope_line"] == ("MEASURED, 3.19× faster: feature step only, NumPy vs GPU, "
                                   "same container, median of 5, exact parity")
-    assert groups[1]["scope"] == ("MEASURED, observed 6.6× compute-span reduction 843.7→128.2 s for 1,000 Charville "
+    assert groups[1]["scope_line"] == ("MEASURED, observed 6.6× compute-span reduction 843.7→128.2 s for 1,000 Charville "
                                   "re-imaging/feature-generation studies, 8 A100-SXM4-40GB vs 1, one sweep; "
                                   "outputs bit-identical; inference outside timing")
     b = json.loads((ROOT / "demo" / "data" / "baseline.json").read_text())
-    shown = " ".join(g["title"] + " " + g.get("scope", "") for g in b.get("interim", []))
+    shown = " ".join(g["title"] + " " + g.get("scope_line", "") for g in b.get("interim", []))
     assert "scored" not in shown and "% of ideal" not in shown and "efficiency" not in shown
-    assert [g.get("scope") for g in b["interim"]] == [g["scope"] for g in groups], "rerun python3 -I demo/collect_race.py"
+    assert [g.get("scope_line") for g in b["interim"]] == [g["scope_line"] for g in groups], "rerun python3 -I demo/collect_race.py"
 
 
 def test_claims_are_traced_to_their_files():

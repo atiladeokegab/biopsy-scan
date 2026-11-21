@@ -111,7 +111,7 @@ def interim(name, d):
               "gpu": f"{n}x {r['gpus'][0]}", "cores": None, "source": name} for n, r in ((1, one), (8, eight))]
     return [
         {"title": "One study", "unit": k["unit"], "same_scope": True,
-         "scope": f"{lab}, {k['speedup_median']:.2f}× faster: feature step only, NumPy vs GPU, same container, "
+         "scope_line": f"{lab}, {k['speedup_median']:.2f}× faster: feature step only, NumPy vs GPU, same container, "
                   f"median of {len(rows['gpu']['samples_s'])}, exact parity", "rows": [
             {"id": "kernel-numpy", "method": "NumPy reference, same container", "role": "baseline", "label": lab,
              "seconds": round(rows["numpy_reference"]["median_s"], 3), "hardware": "Modal GPU container, on its CPU",
@@ -120,7 +120,7 @@ def interim(name, d):
              "seconds": round(rows["gpu"]["median_s"], 3), "hardware": "Modal", "cores": None, "gpu": k["gpu"]["model"],
              "note": f"median of {len(rows['gpu']['samples_s'])}, exact parity", "source": name}]},
         {"title": "1,000 studies: 1 A100 against 8", "unit": f["note"], "same_scope": True,
-         "scope": f"{lab}, observed {one['compute_span_s'] / eight['compute_span_s']:.1f}× compute-span reduction "
+         "scope_line": f"{lab}, observed {one['compute_span_s'] / eight['compute_span_s']:.1f}× compute-span reduction "
                   f"{one['compute_span_s']:.1f}→{eight['compute_span_s']:.1f} s for {f['studies']:,} Charville "
                   f"re-imaging/feature-generation studies, 8 {gpu} vs 1, one sweep; outputs bit-identical; "
                   "inference outside timing", "rows": fleet}]
