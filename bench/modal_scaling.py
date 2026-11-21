@@ -26,9 +26,7 @@ APP_DIR, DATA_DIR = "/root/preflight", "/data"
 LOCAL_DATA = Path(os.environ.get("DATA_DIR", REPO / "data"))
 SPEND = REPO / "bench" / "results" / "modal-spend.json"
 BUILD9 = "origin/modal-design-b9:bench/results/modal-design-20261121T185537Z.json"  # its 8-core numba arm
-# design_batch's pool forks after the parent's JIT warm-up; GNU OpenMP aborts a fork, workqueue does not
-SINGLE = {"OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1", "MKL_NUM_THREADS": "1", "NUMBA_NUM_THREADS": "1",
-          "NUMBA_THREADING_LAYER": "workqueue"}
+SINGLE = scaling.SINGLE
 BASE_IMAGE = "modal.Image.debian_slim(python_version='3.11') + uv_sync of this repo"
 
 
@@ -80,7 +78,8 @@ def _point(cores: int, studies: int) -> dict:
     out = db.run_arm("numba", cells, {"null": studies}, workers=cores)
     host["load_average_end"] = list(os.getloadavg())
     recs = [{"i": r["i"], "x_sha": r["x_sha"], "z_sha": scaling.z_sha(r["z"]), "maxT": float(np.abs(r["z"]).max()),
-             "reimage_s": r["reimage_s"], "score_s": r["score_s"]} for r in out["records"]]
+             "reimage_s": r["reimage_s"], "score_s": r["score_s"], "z": np.asarray(r["z"], np.float64)}
+            for r in out["records"]]  # z comes home for the tolerance check, then only its sha256 is written
     return {"cores": cores, "workers": out["workers"], "studies_wall_s": out["studies_wall_s"], "warm_s": out["warm_s"],
             "load_s": load_s, "prep_s": out["setup"]["prep_s"], "adjacency_s": out["setup"]["adjacency_s"],
             "reimage_cpu_s": sum(r["reimage_s"] for r in recs), "scoring_cpu_s": sum(r["score_s"] for r in recs),
@@ -163,8 +162,8 @@ def main(studies: int = 1000, cores: str = ",".join(map(str, scaling.CORES))):
         "points": {c: {k: v for k, v in p.items() if k != "records"} | {"container_class": class_name(c)}
                    for c, p in points.items()} if res["status"] == "MEASURED" else
                   {c: {"host": p["host"]} for c, p in points.items()},
-        "studies": [{"i": r["i"], "x_sha": r["x_sha"], "z_sha": r["z_sha"], "maxT": r["maxT"]}
-                    for r in points[scaling.REFERENCE_CORES]["records"]] if scaling.REFERENCE_CORES in points else [],
+        "studies_by_cores": {c: [{k: r[k] for k in ("i", "x_sha", "z_sha", "maxT")} for r in p["records"]]
+                             for c, p in points.items()},
         "errors": {c: e for c, e in errors.items()},
         "modal": {"app": "preflight-modal-scaling", "started_utc": start.isoformat(), "finished_utc": end.isoformat(),
                   "wall_s": (end - start).total_seconds(), "build9_reference": BUILD9 if prior else None},

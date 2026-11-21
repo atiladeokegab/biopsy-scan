@@ -16,6 +16,10 @@ REFERENCE_CORES = 8  # build-9's numba arm ran 8 workers
 # modal.com/pricing read 2026-11-21T17:36Z (gpu/modal_app.py PRICING): preemptible Function list price, USD/s.
 CPU_CORE_USD_S, MEMORY_GIB_USD_S = 0.0000131, 0.00000222
 CAP_USD = 5.0
+Z_TOL = 1e-9  # bench/design_batch.Z_TOL
+# design_batch's pool forks after the parent's JIT warm-up; GNU OpenMP aborts a fork, workqueue does not
+SINGLE = {"OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1", "MKL_NUM_THREADS": "1", "NUMBA_NUM_THREADS": "1",
+          "NUMBA_THREADING_LAYER": "workqueue"}
 
 
 def parse_cores(text: str) -> tuple[int, ...]:
@@ -61,16 +65,21 @@ def z_sha(z) -> str:
 
 
 def parity(points: dict) -> dict:
-    """Each core count's per-study X sha256 and z sha256 against the 8-core point's."""
+    """Each core count's per-study X sha256 (bit for bit) and z (bit for bit, else within Z_TOL relative, the
+    numba-vs-gpu tolerance of design_batch) against the 8-core point's."""
     ref = {r["i"]: r for r in points[REFERENCE_CORES]["records"]}
-    out = {"reference_cores": REFERENCE_CORES, "basis": "sha256 of X and of z per study, bit for bit", "by_cores": {}}
+    out = {"reference_cores": REFERENCE_CORES, "z_tol": Z_TOL, "by_cores": {},
+           "basis": "X: sha256 per study; z: sha256 per study, and max |z - z_8| / max(1, |z_8|) over every study"}
     for c, p in points.items():
         recs = {r["i"]: r for r in p["records"]}
-        same_set = set(recs) == set(ref)
-        out["by_cores"][c] = {"studies": len(recs), "same_studies": same_set,
-                              "x_identical": same_set and all(recs[i]["x_sha"] == ref[i]["x_sha"] for i in ref),
-                              "z_identical": same_set and all(recs[i]["z_sha"] == ref[i]["z_sha"] for i in ref)}
-    out["all"] = all(v["same_studies"] and v["x_identical"] and v["z_identical"] for v in out["by_cores"].values())
+        same = set(recs) == set(ref)
+        dz = max(float(np.max(np.abs(np.asarray(recs[i]["z"]) - ref[i]["z"]) / np.maximum(1.0, np.abs(ref[i]["z"]))))
+                 for i in ref) if same else None
+        out["by_cores"][c] = {"studies": len(recs), "same_studies": same,
+                              "x_identical": same and all(recs[i]["x_sha"] == ref[i]["x_sha"] for i in ref),
+                              "z_identical": same and all(recs[i]["z_sha"] == ref[i]["z_sha"] for i in ref),
+                              "z_max_rel_diff": dz, "z_within_tol": same and dz <= Z_TOL}
+    out["all"] = all(v["x_identical"] and v["z_within_tol"] for v in out["by_cores"].values())
     return out
 
 
@@ -97,10 +106,10 @@ def result(points: dict, cores: tuple[int, ...], errors: dict, prior: dict | Non
     failures += [f"cores {c}: missing" for c in cores if c not in points and c not in errors]
     failures += [f"cores {c}: workers {p['workers']}" for c, p in points.items() if p["workers"] != c]
     failures += [f"cores {c}: threads {p['host']['thread_environment']}" for c, p in points.items()
-                 if set(p["host"]["thread_environment"].values()) != {"1"}]  # one BLAS/Numba thread per worker
+                 if {v for k, v in p["host"]["thread_environment"].items() if k.endswith("_THREADS")} != {"1"}]  # one BLAS/Numba thread per worker
     par = parity(points) if not failures else {"all": False}
     if not failures and not par["all"]:
-        failures.append("parity: X or z differs from the 8-core point")
+        failures.append("parity: X differs, or z differs past Z_TOL, from the 8-core point")
     if prior is not None and REFERENCE_CORES in points:
         par["against_build9_8core"] = prior_parity(points[REFERENCE_CORES]["records"], prior)
     out = {"status": "FAILED" if failures else "MEASURED", "failures": failures, "parity": par}

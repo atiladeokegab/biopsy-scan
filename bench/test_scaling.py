@@ -1,14 +1,15 @@
 """The scaling harness (bench/scaling.py) offline: launch guards, fail-closed parity and the reported ratios."""
+import numpy as np
 import pytest
 
 from bench import scaling
 
 
 def _points(cores=scaling.CORES, n=3, wall=lambda c: 100.0 / c):
-    rec = [{"i": i, "x_sha": f"x{i}", "z_sha": f"z{i}", "maxT": 1.0 + i} for i in range(n)]
-    single = {"OMP_NUM_THREADS": "1", "NUMBA_NUM_THREADS": "1"}
-    return {c: {"workers": c, "studies_wall_s": wall(c), "records": [dict(r) for r in rec],
-                "host": {"thread_environment": dict(single)}} for c in cores}
+    rec = [{"i": i, "x_sha": f"x{i}", "z_sha": f"z{i}", "maxT": 1.0 + i, "z": np.array([1.0 + i, -0.5])}
+           for i in range(n)]
+    return {c: {"workers": c, "studies_wall_s": wall(c), "records": [dict(r, z=r["z"].copy()) for r in rec],
+                "host": {"thread_environment": dict(scaling.SINGLE)}} for c in cores}
 
 
 @pytest.mark.parametrize("bad", ["0,1,8", "1,8,8", "1,2,4", "2,8", "1,8,65", "1,8,x"])
@@ -27,13 +28,24 @@ def test_default_sweep_fits_the_five_dollar_cap_and_a_bigger_one_is_refused():
         scaling.check_cap(scaling.CORES, 1000, spent_usd=scaling.CAP_USD)
 
 
-@pytest.mark.parametrize("field", ["x_sha", "z_sha"])
-def test_one_study_differing_at_one_core_count_fails_with_no_timings(field):
+def test_one_study_with_different_x_at_one_core_count_fails_with_no_timings():
     pts = _points()
-    pts[32]["records"][1][field] = "different"
+    pts[32]["records"][1]["x_sha"] = "different"
     out = scaling.result(pts, scaling.CORES, {}, None)
     assert out["status"] == "FAILED" and "curve" not in out
-    assert out["parity"]["by_cores"][32][f"{field[0]}_identical"] is False
+    assert out["parity"]["by_cores"][32]["x_identical"] is False
+
+
+def test_z_past_tolerance_fails_and_a_last_bit_difference_is_reported_not_hidden():
+    pts = _points()
+    pts[32]["records"][1]["z"][0] += 1e-6
+    assert scaling.result(pts, scaling.CORES, {}, None)["status"] == "FAILED"
+    pts = _points()
+    pts[2]["records"][0]["z"][0] = np.nextafter(1.0, 2.0)
+    pts[2]["records"][0]["z_sha"] = "last bit"
+    out = scaling.result(pts, scaling.CORES, {}, None)
+    row = out["parity"]["by_cores"][2]
+    assert out["status"] == "MEASURED" and row["z_identical"] is False and 0 < row["z_max_rel_diff"] <= scaling.Z_TOL
 
 
 def test_a_failed_or_missing_container_or_wrong_worker_count_fails():
