@@ -1,6 +1,6 @@
 """How many patients for 80% power? Merge vs-schoenfeld-300 with the Modal GPU points into one answer.
 
-    uv run python -I bench/power_at_scale.py bench/results/modal-power-a100-*.json
+    uv run python -I bench/power_at_scale.py --planned 400,500,600 bench/results/modal-power-a100-*.json
 
 Writes bench/results/power-at-scale.json, status ESTIMATE. The points up to 300 patients come from
 bench/results/vs-schoenfeld-300.json (same design, seed and budget, run on the CPU backend); the larger ones from
@@ -93,6 +93,9 @@ def check_point(r: dict, base: dict, source: str) -> dict:
         raise ValueError(f"P={P}: study counts {s['calibration_n']}/{s['fwer_n']}/{s['power_n']} are not the budget's")
     for rate in ("power", "fwer"):
         k, n, v, lo, hi = (s[rate + x] for x in ("_count", "_n", "", "_lo", "_hi"))
+        if not all(isinstance(c, int) or (isinstance(c, float) and c.is_integer()) for c in (k, n)):
+            raise ValueError(f"P={P}: {rate} counts {k}/{n} are not integer binomial counts")
+        k, n = int(k), int(n)
         want_lo, want_hi = clopper_pearson(k, n)
         if not (0 <= k <= n and math.isclose(v, k / n, abs_tol=1e-12) and math.isclose(lo, want_lo, abs_tol=1e-9)
                 and math.isclose(hi, want_hi, abs_tol=1e-9) and 0 <= lo <= v <= hi <= 1):
@@ -100,6 +103,8 @@ def check_point(r: dict, base: dict, source: str) -> dict:
     for t in (s["runtime_s"], r["in_function_s"]):
         if not (isinstance(t, (int, float)) and math.isfinite(t) and t > 0):
             raise ValueError(f"P={P}: timing {t} is not a positive finite number of seconds")
+    if not (math.isfinite(s["alternative_mean_events"]) and 0 <= s["alternative_mean_events"] <= P):
+        raise ValueError(f"P={P}: mean events {s['alternative_mean_events']} is not a finite number in [0, P]")
     if s["source_n"] != base["patients_source"] or not math.isclose(s["resample_ratio"], P / base["patients_source"]):
         raise ValueError(f"P={P}: resampling {s['resample_ratio']} of {s['source_n']} is not P / {base['patients_source']}")
     return {"patients": P, "power": s["power"], "power_count": s["power_count"], "power_lo": s["power_lo"],
@@ -109,7 +114,7 @@ def check_point(r: dict, base: dict, source: str) -> dict:
             "in_container_s": r["in_function_s"], "source": source}
 
 
-def build(runs: list[dict]) -> dict:
+def build(runs: list[dict], planned: list[int] | None = None) -> dict:
     base = json.loads((RESULTS / "vs-schoenfeld-300.json").read_text())
     points = [{"patients": p["patients"], "power": p["sim_power"], "power_lo": p["sim_lo"], "power_hi": p["sim_hi"],
                "power_n": p["sim_n"], "fwer": p["sim_fwer"], "fwer_lo": p["sim_fwer_lo"], "fwer_hi": p["sim_fwer_hi"],
@@ -119,7 +124,7 @@ def build(runs: list[dict]) -> dict:
         p["power_count"] = round(p["power"] * p["power_n"])
     by_p = {p["patients"]: p for p in points}
     failed = []
-    for run in runs:
+    for run in sorted(runs, key=lambda r: r["_file"]):  # deterministic provenance whatever the argument order
         if (run.get("schema"), run.get("status"), run.get("pin"), run.get("backend")) != (
                 "preflight-modal-power/1", "MEASURED", PIN, "gpu"):
             raise ValueError(f"{run['_file']} is not a MEASURED preflight-modal-power/1 GPU run of the pinned code {PIN[:12]}")
@@ -130,19 +135,26 @@ def build(runs: list[dict]) -> dict:
             point = check_point(r, base, f"bench/results/{run['_file']}")
             if r["patients"] in by_p:  # a replicate: same seeds, so it must give the same studies' answer
                 kept = by_p[r["patients"]]
-                if (kept["power_count"], kept["power_n"], kept["fwer"]) != (point["power_count"], point["power_n"], point["fwer"]):
+                science = ("power_count", "power_n", "fwer")
+                same = (all(kept[k] == point[k] for k in science)
+                        and math.isclose(kept["mean_events"], point["mean_events"], rel_tol=1e-12)
+                        # #53's CPU points are compared on the science only; GPU replicates on the GPU model too
+                        and (kept["backend"] == "cpu" or (kept["hardware"], kept["backend"]) == (point["hardware"], point["backend"])))
+                if not same:
                     raise ValueError(f"P={r['patients']} twice with different results: {kept['source']} and {point['source']}")
                 kept.setdefault("replicated_by", []).append(point["source"])
                 continue
             by_p[r["patients"]] = point
     points = list(by_p.values())
     points.sort(key=lambda p: p["patients"])
-    missing = sorted({f["patients"] for f in failed} - set(by_p))
+    missing = sorted(({f["patients"] for f in failed} | set(planned or ())) - set(by_p))
     if len({p["hardware"] for p in points if p["backend"] == "gpu"}) > 1:
         raise ValueError("the GPU points ran on more than one GPU model; pin one for the whole curve")
     return {"schema": "preflight-power-at-scale/1", "status": "ESTIMATE", "label": LABEL,
             "question": "How many patients does this design need for 80% power?",
-            "complete": not missing, "failed_points": failed,
+            "planned_patients": planned, "complete": not missing, "failed_points": failed,
+            "complete_scope": "complete means every planned and every attempted count has a result; with no planned "
+                              "list it covers only the counts in the supplied run files",
             "answer": answer(points, missing),
             "cohort": base["cohort"], "hr_per_sd": base["hr_per_sd"], "alpha": base["alpha"],
             "design": {k: v for k, v in base["design"].items() if k != "backend"},
@@ -163,12 +175,15 @@ def build(runs: list[dict]) -> dict:
 
 
 def main(argv: list[str]) -> int:
+    planned = None
+    if argv[:1] == ["--planned"]:
+        planned, argv = [int(p) for p in argv[1].split(",")], argv[2:]
     runs = []
     for name in argv:
         run = json.loads(Path(name).read_text())
         run["_file"] = Path(name).name
         runs.append(run)
-    result = build(runs)
+    result = build(runs, planned)
     out = RESULTS / "power-at-scale.json"
     out.write_text(json.dumps(result, indent=1) + "\n")
     print(out, result["answer"]["statement"])

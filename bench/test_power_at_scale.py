@@ -121,3 +121,39 @@ def test_failed_points_are_kept_and_mark_the_curve_partial():
     assert res["complete"] is False and res["failed_points"] == [{"patients": 500, "error": "boom", "source": f"bench/results/{REAL.name}"}]
     assert res["answer"]["statement"].startswith("PARTIAL") and "never reached" not in res["answer"]["statement"]
     assert build([real(400)])["complete"] is True
+
+
+def test_success_counts_must_be_integers_and_mean_events_bounded():
+    from bench.power_at_scale import build, clopper_pearson
+
+    lo, hi = clopper_pearson(19.5, 300)
+    with pytest.raises(ValueError, match="integer"):
+        build([real(400, power_count=19.5, power=19.5 / 300, power_lo=lo, power_hi=hi)])
+    for bad in (float("nan"), -1.0, 401.0):
+        with pytest.raises(ValueError, match="mean events"):
+            build([real(400, alternative_mean_events=bad)])
+
+
+def test_replicates_must_agree_on_hardware_and_science_in_either_order():
+    from bench.power_at_scale import build
+
+    h100 = real(400)
+    h100["points"][0]["gpu"]["model"] = "NVIDIA H100"
+    h100["_file"] = "modal-power-h100.json"
+    events = real(400, alternative_mean_events=10.6567)
+    events["_file"] = "modal-power-z.json"
+    for other in (h100, events):
+        for order in ([real(400), other], [other, real(400)]):
+            with pytest.raises(ValueError, match="P=400 twice with different results"):
+                build(order)
+    a, b = real(400), real(400)
+    b["_file"] = "modal-power-b.json"
+    assert build([a, b])["points"] == build([b, a])["points"]  # provenance does not depend on argument order
+
+
+def test_planned_counts_that_never_ran_make_the_curve_partial():
+    from bench.power_at_scale import build
+
+    res = build([real(400)], planned=[400, 500])
+    assert res["complete"] is False and res["answer"]["missing_patients"] == [500]
+    assert res["planned_patients"] == [400, 500] and build([real(400)], planned=[400])["complete"] is True
