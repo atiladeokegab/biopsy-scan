@@ -1,6 +1,7 @@
 """The claim ledger (results/claims.json): every headline number still matches its source file, and no doc carries a stale one."""
 import importlib.util
 import json
+import re
 import shutil
 from pathlib import Path
 
@@ -120,6 +121,25 @@ MUTANTS = [  # (kind, file, published text, mutant): each must make the check fa
     ("prose", "README.md", "exact parity", "close parity"),
     ("prose", "README.md", "inference outside timing", "inference inside timing"),
     ("prose", "docs/JUDGING.md", "consistent with chance", "a real effect"),
+    ("value", "README.md", "`0.0301 s` on 64 cores", "`0.0401 s` on 64 cores"),
+    ("value", "README.md", "64 cores: `38.2×`", "64 cores: `48.2×`"),
+    ("label", "README.md", "of the 8-core z (**MEASURED**)", "of the 8-core z (**ESTIMATE**)"),
+    ("value", "README.md", "per decided study (`2,000` decided", "per decided study (`3,000` decided"),
+    ("value", "README.md", "`1` lab core vs `8` Preflight workers", "`1` lab core vs `4` Preflight workers"),
+    ("prose", "README.md", "different procedures (per-study permutation", "the same procedure (per-study permutation"),
+    ("prose", "README.md", "not a guaranteed speed-up", "a guaranteed speed-up"),
+    ("value", "README.md", "the same `1,000` null studies", "the same `10,000` null studies"),
+    ("value", "README.md", "`1,000` null studies at", "`1,000` alternative studies at"),
+    ("value", "README.md", "at `1–64` Modal cores", "at `1–128` Modal cores"),
+    ("prose", "README.md", "not separated from host variance", "caused by host variance"),
+    ("prose", "README.md", "host, cache and scheduling effects not isolated", "host effects ruled out"),
+    ("link", "README.md", "([caveats](bench/results/modal-scaling-20261121T201008Z.caveats.json))", "([caveats](missing.json))"),
+    ("link", "README.md", "(bench/results/matched-e2e-20261121T201925Z.json) |", "(missing.json) |"),
+    ("prose", "README.md", "| **Matched end to end** (lab vs Preflight, same container, design and seeds, #123)",
+     "| **Matched end to end** (lab vs Preflight, #123)"),
+    ("value", "README.md", "paid for): `42.1×`", "paid for): `24.1×`"),
+    ("value", "README.md", "decisions agree `89/100`", "decisions agree `98/100`"),
+    ("label", "README.md", "(**MEASURED**, outcomes SYNTHETIC)", "(**ESTIMATE**, outcomes SYNTHETIC)"),
 ]
 
 
@@ -137,3 +157,38 @@ def test_list_selector_needs_exactly_one_match():
     with pytest.raises(KeyError):
         check_claims.lookup({"points": [{"n": 1}, {"n": 1}]}, "points[n=1].x")
     assert check_claims.lookup({"points": [{"n": 1, "x": 5}, {"n": 2, "x": 6}]}, "points[n=2].x") == 6
+
+
+SOURCE_MUTANTS = [  # (source, path, new value, claim, value name): a timing or workload input that moves must drift
+    ("bench/results/modal-scaling-20261121T201008Z.json", ["points", "4", "studies_wall_s"], 400.0, "cpu-scaling-38.2x", "speedup_4"),
+    ("bench/results/modal-scaling-20261121T201008Z.json", ["points", "1", "studies_wall_s"], 1300.0, "cpu-scaling-38.2x", "wall_1"),
+    ("bench/results/modal-scaling-20261121T201008Z.json", ["points", "64", "studies_wall_s"], 40.0, "cpu-scaling-38.2x", "speedup_64"),
+    ("bench/results/modal-scaling-20261121T201008Z.json", ["workload", "studies"], 10000, "cpu-scaling-38.2x", "studies"),
+    ("bench/results/modal-scaling-20261121T201008Z.json", ["workload", "stream"], "alternative", "cpu-scaling-38.2x", "stream"),
+    ("bench/results/matched-e2e-20261121T201925Z.json", ["wall", "with_setup", "lab_s_per_study"], 6.0, "matched-e2e-42.1x", "ratio_setup"),
+    ("bench/results/matched-e2e-20261121T201925Z.json", ["arms", "lab", "stages", "studies_wall_s"], 600.0, "matched-e2e-42.1x", "lab"),
+    ("bench/results/matched-e2e-20261121T201925Z.json", ["arms", "preflight", "stages", "studies_wall_s"], 600.0, "matched-e2e-42.1x", "pf"),
+    ("bench/results/matched-e2e-20261121T201925Z.json", ["wall", "lab_s_per_study"], 6.0, "matched-e2e-42.1x", "ratio"),
+    ("bench/results/matched-e2e-20261121T201925Z.json", ["wall", "studies", "lab"], 200, "matched-e2e-42.1x", "lab_n"),
+]
+
+
+@pytest.mark.parametrize("src,keys,value,cid,name", SOURCE_MUTANTS, ids=[f"{m[3]}-{m[4]}" for m in SOURCE_MUTANTS])
+def test_a_moved_timing_or_workload_input_fails(copy, src, keys, value, cid, name):
+    path = copy / src
+    data = json.loads(path.read_text())
+    node = data
+    for k in keys[:-1]:
+        node = node[k]
+    assert keys[-1] in node
+    node[keys[-1]] = value
+    path.write_text(json.dumps(data))
+    assert any(b[:2] == (cid, name) for b in check_claims.drift(copy))
+    assert check_claims.main(["check_claims", str(copy)]) == 1
+
+
+def test_every_local_link_in_a_bound_quote_exists():
+    ledger = json.loads((ROOT / check_claims.LEDGER).read_text())
+    links = [m for c in ledger["claims"] for q in c["quotes"] if "text" in q
+             for m in re.findall(r"\]\(([^)#]+)\)", q["text"]) if "://" not in m]
+    assert links and [x for x in links if not (ROOT / x).is_file()] == []

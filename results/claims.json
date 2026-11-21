@@ -1198,6 +1198,204 @@
      "text": "same `{n}` alternative studies, #117) | Power `{two}%` two-bin vs `{pooled}%` pooled: paired gain `{gain}` pp `[{lo}, {hi}]` (paired bootstrap 95%), no clear recovery of the power gap (**{label}**)"
     }
    ]
+  },
+  {
+   "id": "cpu-scaling-38.2x",
+   "claim": "Numba arm strong scaling on Modal CPU, same 1,000 null studies: 1.151 s/study on 1 core vs 0.0301 s on 64, 38.2x; one sweep, the 4- and 8-core points beat linear, not separated from host variance",
+   "source": "bench/results/modal-scaling-20261121T201008Z.json",
+   "pr": 115,
+   "label": "MEASURED",
+   "label_path": "status",
+   "values": [
+    {
+     "name": "studies",
+     "path": "workload.studies",
+     "rule": "comma",
+     "expect": "1,000"
+    },
+    {
+     "name": "stream",
+     "path": "workload.stream",
+     "rule": "eq",
+     "expect": "null"
+    },
+    {
+     "name": "cores_lo",
+     "path": "curve[0].cores",
+     "rule": "eq",
+     "expect": "1"
+    },
+    {
+     "name": "cores_hi",
+     "path": "curve[-1].cores",
+     "rule": "eq",
+     "expect": "64"
+    },
+    {
+     "name": "wall_1",
+     "ratio": [
+      "points.1.studies_wall_s",
+      "workload.studies"
+     ],
+     "rule": "fixed:3",
+     "expect": "1.151"
+    },
+    {
+     "name": "wall_64",
+     "ratio": [
+      "points.64.studies_wall_s",
+      "workload.studies"
+     ],
+     "rule": "fixed:4",
+     "expect": "0.0301"
+    },
+    {
+     "name": "speedup_64",
+     "ratio": [
+      "points.1.studies_wall_s",
+      "points.64.studies_wall_s"
+     ],
+     "rule": "fixed:1",
+     "expect": "38.2"
+    },
+    {
+     "name": "speedup_4",
+     "ratio": [
+      "points.1.studies_wall_s",
+      "points.4.studies_wall_s"
+     ],
+     "rule": "fixed:2",
+     "expect": "5.07"
+    },
+    {
+     "name": "speedup_8",
+     "ratio": [
+      "points.1.studies_wall_s",
+      "points.8.studies_wall_s"
+     ],
+     "rule": "fixed:2",
+     "expect": "12.71"
+    },
+    {
+     "name": "parity",
+     "path": "parity.all",
+     "rule": "eq",
+     "expect": "True"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "| **CPU strong scaling** (Numba arm, Charville, the same `{studies}` {stream} studies at `{cores_lo}–{cores_hi}` Modal cores, one concurrent sweep, #115) | One sweep. Studies wall per study `{wall_1} s` on 1 core vs `{wall_64} s` on 64 cores: `{speedup_64}×`. The 4- and 8-core points beat linear (`{speedup_4}×`, `{speedup_8}×`); one sweep, not separated from host variance (each core count on its own host, CPU models unknown, RAM grows with cores; host, cache and scheduling effects not isolated): observed ratios, not a guaranteed speed-up. X sha256 bit-equal at every core count; z within `1e-9` relative of the 8-core z (**{label}**) | [`bench/results/modal-scaling-20261121T201008Z.json`](bench/results/modal-scaling-20261121T201008Z.json) ([caveats](bench/results/modal-scaling-20261121T201008Z.caveats.json)) |"
+    }
+   ]
+  },
+  {
+   "id": "matched-e2e-42.1x",
+   "claim": "Matched workflow comparison through scoring (excludes data load, threshold and calls): lab 8.818 s per study vs Preflight 0.2096 s per decided study, 42.1x; 26.7x including setup; 1 lab core vs 8 Preflight workers; different procedures; features bitwise on 100 shared studies, decisions agree 89/100",
+   "source": "bench/results/matched-e2e-20261121T201925Z.json",
+   "pr": 123,
+   "label": "MEASURED",
+   "label_path": "status",
+   "values": [
+    {
+     "name": "lab",
+     "ratio": [
+      "arms.lab.stages.studies_wall_s",
+      "wall.studies.lab"
+     ],
+     "rule": "fixed:3",
+     "expect": "8.818"
+    },
+    {
+     "name": "lab_n",
+     "path": "wall.studies.lab",
+     "rule": "comma",
+     "expect": "100"
+    },
+    {
+     "name": "lab_w",
+     "path": "arms.lab.workers",
+     "rule": "eq",
+     "expect": "1"
+    },
+    {
+     "name": "pf_w",
+     "path": "arms.preflight.workers",
+     "rule": "eq",
+     "expect": "8"
+    },
+    {
+     "name": "pf",
+     "ratio": [
+      "arms.preflight.stages.studies_wall_s",
+      "wall.studies.preflight_decided"
+     ],
+     "rule": "fixed:4",
+     "expect": "0.2096"
+    },
+    {
+     "name": "pf_n",
+     "path": "wall.studies.preflight_decided",
+     "rule": "comma",
+     "expect": "2,000"
+    },
+    {
+     "name": "calib",
+     "path": "wall.studies.preflight_calibration",
+     "rule": "comma",
+     "expect": "1,000"
+    },
+    {
+     "name": "ratio",
+     "ratio": [
+      "wall.lab_s_per_study",
+      "wall.preflight_s_per_decided_study"
+     ],
+     "rule": "fixed:1",
+     "expect": "42.1"
+    },
+    {
+     "name": "ratio_setup",
+     "ratio": [
+      "wall.with_setup.lab_s_per_study",
+      "wall.with_setup.preflight_s_per_decided_study"
+     ],
+     "rule": "fixed:1",
+     "expect": "26.7"
+    },
+    {
+     "name": "x_bitwise",
+     "path": "parity.x_bitwise",
+     "rule": "eq",
+     "expect": "True"
+    },
+    {
+     "name": "x_n",
+     "path": "parity.x_compared",
+     "rule": "eq",
+     "expect": "100"
+    },
+    {
+     "name": "agree",
+     "path": "decisions.agree",
+     "rule": "eq",
+     "expect": "89"
+    },
+    {
+     "name": "compared",
+     "path": "decisions.compared",
+     "rule": "eq",
+     "expect": "100"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "| **Matched end to end** (lab vs Preflight, same container, design and seeds, #123) | Matched workflow comparison through scoring (re-imaging plus each study's test or screen; excludes data load, threshold and calls): lab `{lab} s` per study (`{lab_n}` studies) vs Preflight `{pf} s` per decided study (`{pf_n}` decided, its `{calib}` calibration nulls paid for): `{ratio}×`; `{ratio_setup}×` including setup (outcome simulation, adjacency, warm-up). `{lab_w}` lab core vs `{pf_w}` Preflight workers; different procedures (per-study permutation vs one calibrated threshold). Features bitwise on `{x_n}` shared studies; decisions agree `{agree}/{compared}` (**{label}**, outcomes SYNTHETIC) | [`bench/results/matched-e2e-20261121T201925Z.json`](bench/results/matched-e2e-20261121T201925Z.json) |"
+    }
+   ],
+   "note": "26.7× uses the stored wall.with_setup per-study totals; not cross-checked against the setup stage timers."
   }
  ],
  "stale": [
