@@ -151,6 +151,11 @@ def test_changing_locked_patients_leaves_discovery_outputs_byte_identical(tmp_pa
     def run(d):
         monkeypatch.setattr(cohorts, "LOCK_FILE", d / "lock.json")
         return _discovery_outputs(d)
-    assert run(a) == run(b)                                   # candidates, statistics, ranks: byte for byte
+    out_a = run(a)
+    audit, pts = json.loads(out_a[1]), cohorts.load_patients(cohorts.load_regions("upmc", a))
+    events, (n0, n1) = int(pts.event.sum()), ((pts.stratum == g).sum() for g in (0, 1))
+    assert audit["split"] == "discovery" and audit["n_events"] == events and audit["n_patients"] == len(pts)
+    assert f"({n0} / {n1} patients;" in audit["strata_note"] and f"has {events} events" in audit["strata_note"]
+    assert out_a == run(b)                                    # candidates, statistics, ranks: byte for byte
     monkeypatch.setattr(cohorts, "LOCK_FILE", None)           # red case: without the lock the change shows
     assert _discovery_outputs(tmp_path / "a_open") != _discovery_outputs(tmp_path / "b_open")
