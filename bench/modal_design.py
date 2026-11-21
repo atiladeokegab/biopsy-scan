@@ -6,8 +6,8 @@
 skips calibration). Each arm runs in its own A100 container with 8 cores and 64 GiB, in parallel.
 Commit first: the run refuses a dirty tracked tree, so source_commit is the code that ran. A run whose
 ceiling (3 containers x timeout x rate) is over --cap-usd (default 20) is refused before it starts.
-Writes bench/results/modal-design-<utc>.json, MEASURED only with full parity and a clean tree,
-else FAILED; logs the spend in bench/results/modal-spend-design.json before and after the run.
+Writes bench/results/modal-design-<utc>.json, MEASURED only with full parity, a clean tree and one
+container class (SMOKE when --cpu-arms-on-cpu put the CPU arms in GPU-less containers), else FAILED; logs the spend in bench/results/modal-spend-design.json before and after the run.
 """
 from __future__ import annotations
 
@@ -67,8 +67,8 @@ def _read(path: str) -> str | None:
         return None
 
 
-@app.function(image=image, gpu=GPU, cpu=CORES, memory=MEMORY_MIB, timeout=6 * 3600, env=SINGLE)
-def arm(name: str, plan: dict) -> dict:
+def _arm(name: str, plan: dict) -> dict:
+    import shutil
     import sys
     import time
 
@@ -76,10 +76,11 @@ def arm(name: str, plan: dict) -> dict:
     from bench import design_batch as db
     from core.cohorts import load
 
+    smi = shutil.which("nvidia-smi")
     host = {"cpu_count": os.cpu_count(), "affinity_size": len(os.sched_getaffinity(0)),
             "load_average_start": list(os.getloadavg()), "modal_task_id": os.environ.get("MODAL_TASK_ID"),
-            "gpu": subprocess.run(["nvidia-smi", "--query-gpu=name,memory.total,driver_version", "--format=csv,noheader"],
-                                  capture_output=True, text=True, timeout=30, check=False).stdout.strip(),
+            "gpu": smi and subprocess.run([smi, "--query-gpu=name,memory.total,driver_version", "--format=csv,noheader"],
+                                          capture_output=True, text=True, timeout=30, check=False).stdout.strip(),
             "thread_environment": {k: os.environ.get(k) for k in SINGLE}}
     t = time.perf_counter()
     cells = load("charville")
@@ -91,6 +92,17 @@ def arm(name: str, plan: dict) -> dict:
         if "z" in r:
             r["z"] = r["z"].tolist()
     return out
+
+
+@app.function(image=image, gpu=GPU, cpu=CORES, memory=MEMORY_MIB, timeout=6 * 3600, env=SINGLE)
+def arm(name: str, plan: dict) -> dict:
+    return _arm(name, plan)
+
+
+@app.function(image=image, cpu=CORES, memory=MEMORY_MIB, timeout=6 * 3600, env=SINGLE)
+def arm_cpu(name: str, plan: dict) -> dict:
+    """The same container without a GPU: only for a cheap smoke (--cpu-arms-on-cpu), never a headline."""
+    return _arm(name, plan)
 
 
 def _git(*a):
@@ -106,7 +118,7 @@ def _log_spend(entry: dict) -> None:
 
 
 @app.local_entrypoint()
-def main(studies: int = 20, cap_usd: float = 20.0):
+def main(studies: int = 20, cap_usd: float = 20.0, cpu_arms_on_cpu: bool = False):
     import numpy as np
 
     from bench import design_batch as db
@@ -120,16 +132,20 @@ def main(studies: int = 20, cap_usd: float = 20.0):
         raise SystemExit("commit tracked changes first: source_commit must be the code that runs")
     commit = _git("rev-parse", "HEAD")
     timeout = _timeout_s(studies)
-    ceiling = round(len(ARMS) * timeout / 3600 * USD_PER_HOUR, 2)
+    cpu_rate = USD_PER_HOUR - RATES["A100"]
+    rates = {a: cpu_rate if cpu_arms_on_cpu and a != "gpu" else USD_PER_HOUR for a in ARMS}
+    ceiling = round(timeout / 3600 * sum(rates.values()), 2)
     if ceiling > cap_usd:
         raise SystemExit(f"ceiling ${ceiling} > cap ${cap_usd}: ask the lead first")
     plan = {s: studies for s in db.STREAMS}
     start = datetime.now(timezone.utc)
     entry = {"utc": start.strftime("%Y-%m-%dT%H:%MZ"), "run": f"modal-design {studies}/stream, arms {list(ARMS)}",
              "containers": len(ARMS), "gpu": GPU, "cores": CORES, "memory_gib": MEMORY_MIB / 1024, "cap_usd": cap_usd,
-             "est_usd": ceiling, "basis": f"{len(ARMS)} x {timeout} s ceiling x ${USD_PER_HOUR:.3f}/h", "source_commit": commit}
+             "est_usd": ceiling, "basis": f"{timeout} s ceiling x per-arm $/h {rates}", "source_commit": commit,
+             "container_class": "lab and numba without a GPU (smoke only)" if cpu_arms_on_cpu else "all arms identical"}
     _log_spend(entry)
-    calls = {a: arm.with_options(timeout=timeout).spawn(a, plan) for a in ARMS}
+    fn = {a: arm_cpu if cpu_arms_on_cpu and a != "gpu" else arm for a in ARMS}
+    calls = {a: fn[a].with_options(timeout=timeout).spawn(a, plan) for a in ARMS}
     arms, errors = {}, {}
     for a, call in calls.items():
         try:
@@ -144,10 +160,13 @@ def main(studies: int = 20, cap_usd: float = 20.0):
                 r["z"] = np.asarray(r["z"])
     plant = next(iter(arms.values()))["setup"]["plant_feature"] if arms else None
     par = db.parity(arms) if len(arms) == len(ARMS) else {"all": False, "reason": "an arm failed"}
-    clean = not _git("status", "--porcelain", "--untracked-files=no")
-    status = "MEASURED" if par["all"] and clean and not errors else "FAILED"
+    # the code that ran is unchanged since start (the spend log is the only tracked file this run writes)
+    clean = not [f for f in _git("diff", "--name-only", commit).splitlines() if f != str(SPEND.relative_to(REPO))]
+    same_class = not cpu_arms_on_cpu
+    status = ("MEASURED" if same_class else "SMOKE") if par["all"] and clean and not errors else "FAILED"
     result = {
         "status": status, "source_commit": commit, "clean_tree": clean, "errors": errors,
+        "same_container_class": same_class,
         "design": {**db.design(), "cohort": "charville", "alpha": db.ALPHA, "hr_per_source_sd": db.HR,
                    "plant_feature": plant, "studies_per_stream": studies, "streams": db.STREAMS, "root_seed": db.ROOT,
                    "outcome_model": f"atlas/simulation.py at {db.ATLAS_PIN[0]}"},
@@ -164,8 +183,8 @@ def main(studies: int = 20, cap_usd: float = 20.0):
     }
     path = REPO / "bench" / "results" / f"modal-design-{start:%Y%m%dT%H%M%SZ}.json"
     path.write_text(json.dumps(result, indent=2, allow_nan=False) + "\n")
-    entry["actual"] = {"modal_wall_s": round(wall, 1), "est_usd": round(len(ARMS) * wall / 3600 * USD_PER_HOUR, 3),
-                       "basis": "3 containers x local wall (an upper bound: includes queueing)", "result": str(path.relative_to(REPO))}
+    entry["actual"] = {"modal_wall_s": round(wall, 1), "est_usd": round(wall / 3600 * sum(rates.values()), 3),
+                       "basis": "each container x local wall (an upper bound: includes queueing)", "result": str(path.relative_to(REPO))}
     _log_spend(entry)
     print(status, json.dumps(par), json.dumps({a: v["summary"] for a, v in result["arms"].items()}, default=str))
     print(f"Saved {path}")
