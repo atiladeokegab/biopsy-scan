@@ -150,6 +150,21 @@ def cli(monkeypatch, tmp_path):
     return {"reads": reads, "dir": tmp_path, "run": lambda *args: rs.main(["--open-locked", *args])}
 
 
+def test_a_feature_whose_marker_upmc_lacks_is_not_testable_not_scored():
+    pd1 = {**RULE, "feature": rs.CHARVILLE_TOP_HIT}
+    out = rs.score_locked(fixture_cells([0, 1, 2]), pd1, rs.rule_sha256(pd1), 4)
+    assert out["status"] == "NOT TESTABLE" and "marker absent" in out["reason"] and "p_one_sided" not in out
+
+
+def test_charvilles_top_hit_is_not_testable_on_upmc_never_a_failed_replication(cli):
+    assert not {"PD1", "PDL1", "GranzymeB"} & set(rs.UPMC_MARKERS)
+    r = rs.upmc_marker_check(rs.CHARVILLE_TOP_HIT)
+    assert (r["status"], r["reason"]) == ("NOT TESTABLE", "not testable on UPMC: marker absent (PD1)")
+    assert rs.upmc_marker_check(RULE["feature"]) is None and rs.upmc_marker_check("Tumor|Macrophage|50um|CD68") is None
+    assert cli["run"]("--events", "4", "--out", str(cli["dir"] / "r.json")) == 0
+    assert json.loads((cli["dir"] / "r.json").read_text())["charville_top_hit"] == r
+
+
 def test_the_cli_refuses_without_the_flag_or_the_approved_events(cli):
     assert rs.main(["--events", "4", "--out", str(cli["dir"] / "r.json")]) == 2
     for ev in ([], ["--events", "-7"], ["--events", "8"], ["--events", "0"]):

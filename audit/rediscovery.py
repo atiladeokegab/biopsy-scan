@@ -81,6 +81,19 @@ EFFECT_HR_PER_SD = 2.0  # the effect the power atlas plants (scripts/export_grid
 MIN_POWER = 0.5
 POWER_SIMS, POWER_SEED = 400, 20261121
 LABEL = "exploratory: outcomes already seen (Punovuori et al., Cell 2024); internal held-out split"
+# Charville's strongest v2 feature (#47: z 3.96, maxT-adjusted p 0.098, MEASURED, exploratory). Its last field is a marker.
+CHARVILLE_TOP_HIT = "Tumor 5|Macrophage|100um|PD1"
+GRAMMAR_STATS = ("fraction", "enrichment")  # core.grammar.STATS: v1 columns end in a statistic, v2 columns in a marker
+
+
+def upmc_marker_check(feature: str) -> dict | None:
+    """None when UPMC's panel has the feature's marker (or it needs none); otherwise NOT TESTABLE, which is not a
+    failed replication. UPMC_MARKERS is every marker on disk (build-8 checked all 308 tables: no PD1, PDL1, GranzymeB)."""
+    marker = feature.split("|")[-1]
+    if marker in GRAMMAR_STATS or marker in UPMC_MARKERS:
+        return None
+    return {"feature": feature, "status": "NOT TESTABLE", "reason": f"not testable on UPMC: marker absent ({marker})",
+            "note": "the UPMC panel cannot measure this feature; this is not a failed replication"}
 
 
 def rule_sha256(rule: dict) -> str:
@@ -209,6 +222,9 @@ def score_locked(cells: dict, rule: dict, sha: str, n_events: int) -> dict:
 
     if rule_sha256(rule) != sha:
         raise ValueError("rule does not match its recorded sha256: the pre-registration was edited")
+    absent = upmc_marker_check(rule["feature"])
+    if absent:
+        return {"rule_sha256": sha, **absent}
     names = feature_names(grammar(cells["type_names"]))
     if rule["feature"] not in names:
         return {"rule_sha256": sha, "feature": rule["feature"], "status": "UNMEASURED",
@@ -239,6 +255,7 @@ def discovery_rank(z, names: list[str], rule: dict, V=None, n=None) -> dict:
         return {**base, "status": "UNMEASURED",
                 "reason": f"the rule's column is uninformative on discovery (z {z[j]}, V {V[j]})"}
     return {**base, "status": "MEASURED", "rank": int(1 + np.sum(np.abs(z[ok]) > abs(z[j]))), "of": int(ok.sum()),
+            "candidates": "v1 grammar columns of UPMC's own cell types, informative on discovery: all measurable on UPMC",
             "z": float(z[j]), "direction_ok": bool(z[j] > 0),
             "label": f"MEASURED on discovery patients only; {LABEL}"}
 
@@ -357,7 +374,8 @@ def main(argv=None) -> int:
         f.write(json.dumps(record, indent=1, allow_nan=False) + "\n")
     locked = score_locked(load("upmc", split="locked"), RULE, RULE_SHA256, a.events)
     result = {"cohort": "upmc", "code_sha": sha, "rule_sha256": RULE_SHA256, "manifest_sha256": manifest_sha,
-              "opening_record": marker.name, "label": LABEL, "discovery": discovery, "locked": locked}
+              "opening_record": marker.name, "label": LABEL, "discovery": discovery, "locked": locked,
+              "charville_top_hit": upmc_marker_check(CHARVILLE_TOP_HIT)}
     text = json.dumps(result, indent=1, allow_nan=False) + "\n"
     with open(a.out, "x") as f:
         f.write(text)
