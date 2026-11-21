@@ -244,7 +244,10 @@ def _null_draws(time, event, C, codes, base, B, seed, block):
     t, e, Cb, cb = time[ix], event[ix], C[ix], codes[ix]
     Cb = Cb[:, np.ptp(Cb, axis=0) > 0]
     Cb = Cb - Cb.mean(0)
-    w, wc = np.exp(Cb @ _phreg(Cb, t, e, cb)), np.exp(Cb @ _phreg(Cb, t, 1 - e, cb))
+    same = cb[:, None] == cb[None]
+    # Generating fits use the batched Newton, which equals PHReg (test_vs_statsmodels).
+    w, wc = (np.exp(Cb @ _newton(np, Cb, t[None], d[None], same)[0]) if Cb.shape[1] and d.any()
+             else np.ones(len(t)) for d in (e, 1 - e))
     death, censor = _breslow_steps(t, e, w, cb), _breslow_steps(t, 1 - e, wc, cb)
     end = np.array([t[cb == s].max() for s in range(cb.max() + 1)])[cb]
     rng = np.random.default_rng(seed)
