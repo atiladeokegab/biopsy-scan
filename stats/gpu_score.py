@@ -110,8 +110,10 @@ def _study_moments(X, codes, t, e, U, Ixx):
             g = codes[s, l]
             tot[g] += x
             cnt[g] += 1.0
-            lo[g] = min(lo[g], x)
-            hi[g] = max(hi[g], x)
+            if x < lo[g]:  # no min/max: this numba-cuda resolves them to the one-argument overload
+                lo[g] = x
+            if x > hi[g]:
+                hi[g] = x
     for g in range(SMAX):
         tot[g] = tot[g] / cnt[g] if cnt[g] > 0 else 0.0
     u = 0.0
