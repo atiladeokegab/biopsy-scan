@@ -16,7 +16,7 @@ All real-data results are exploratory: the outcomes have already been seen.
 | The CPU and GPU (CUDA simulator) backends count the same neighbours as direct geometry, on unseen irregular regions | `reimage/` | `tests/test_reimage_contract.py`, `reimage/test_backends.py::test_region_matches_reference` | TESTED |
 | The score equals statsmodels PHReg (Breslow ties); its variance equals exhaustive permutation enumeration | `stats/reference.py` | `stats/test_reference.py::test_score_matches_phreg_breslow_with_ties`, `tests/test_score_contract.py::test_variance_is_exhaustive_permutation_variance` | TESTED |
 | A planted signal is found; batch confounding gives no evidence (hard negative) | `stats/reference.py` | `tests/test_score_contract.py::test_planted_ordered_signal_is_found`, `::test_batch_confounding_is_a_hard_negative` | TESTED |
-| When nothing is there, the false-alarm rate stays near 5%: simulated FWER is 0.0 to 0.1 at all 7 patient counts, and every 95% interval contains 0.05 (20 null studies per point) | `bench/results/vs-schoenfeld.json` | `bench/test_vs_schoenfeld.py` | MEASURED |
+| When nothing is there, the false-alarm rate holds at the promised 5%: 28 of 700 null studies, 4.0% (95% CI 2.7 to 5.7%). This pools the 7 patient counts at 100 null studies each; the CI is Clopper-Pearson | `bench/results/vs-schoenfeld-300.json` (#53) | `bench/test_vs_schoenfeld.py` | MEASURED |
 | Two GPU shards give bit-identical results to one device | `reimage/fleet.py` (#34) | `reimage/test_fleet.py::test_two_fake_shards_on_cuda_simulator_are_bit_identical` | TESTED on the CUDA simulator; real GPU PENDING |
 
 **Assumptions and why they hold**
@@ -52,8 +52,10 @@ The rung-0 row and the reshaped row cover different scopes, so their ratio is no
 
 | Result | Source | Label |
 |---|---|---|
-| The textbook formula overstates power at 5 of 7 patient counts. At 200 patients it says 80%; simulation on real tissue gives 32% (95% CI 20 to 45%) | `bench/results/vs-schoenfeld.json` | MEASURED (60 studies per point) |
+| The textbook formula overstates power at 6 of 7 patient counts and understates it at 1. At 200 patients it says 80%; simulation on real tissue gives 27% (95% CI 22 to 32%)[^60] | `bench/results/vs-schoenfeld-300.json` (#53) | ESTIMATE (300 studies per point) |
 | Charville, 630 cell-mix patterns: the best pattern has maxT p = 0.13 (9,999 resamples) and omnibus p = 0.14. Chance explains it | `audit/results/charville.json` | MEASURED, negative |
 | Charville, 3,780 patterns with protein channels: the top candidate moves to PD1 on macrophages within 100 µm of tumour, z = 3.96. Adjusted p = 0.098 and omnibus p = 0.17, so it is not significant. It stays rank 1 in 158 of 159 leave-one-patient-out drops | `results/charville-v2.json` (#47) | MEASURED, negative |
 | On a loaded shared 8-core VM, Numba all-core was no faster than NumPy (3.26 vs 2.98 s per study) | `bench/results/cpu-ladder.json` | MEASURED, negative |
 | The R-16 rediscovery candidate is fixed before any search | #61 | TESTED (`audit/test_rediscovery_definition.py`) |
+
+[^60]: The earlier 60-study run (`bench/results/vs-schoenfeld.json`) gave 32% (95% CI 20 to 45%) at 200 patients.
