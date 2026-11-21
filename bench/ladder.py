@@ -76,10 +76,21 @@ def make_trial(region_fn):
     return trial
 
 
+def cuda_simulator() -> bool:
+    """numba.cuda.is_available() is True under the simulator, so check the switch itself."""
+    if os.environ.get("NUMBA_ENABLE_CUDASIM", "0") not in ("", "0"):
+        return True
+    numba = sys.modules.get("numba")
+    return bool(getattr(getattr(numba, "config", None), "ENABLE_CUDASIM", 0))
+
+
 def rungs() -> dict:
     """name -> trial function, or a string saying why the rung is pending."""
     found = {"numpy_reference": make_trial(reimage_region)}
     for name, mod in (("numba_all_core", "reimage.cpu"), ("gpu", "reimage.gpu")):
+        if name == "gpu" and cuda_simulator():
+            found[name] = "pending: CUDA simulator (NUMBA_ENABLE_CUDASIM) is on; its timings are not GPU numbers"
+            continue
         try:
             found[name] = make_trial(import_module(mod).reimage_region)  # #2: drop-in for the core signature
         except Exception as e:  # noqa: BLE001  # no numba, no CUDA device, or #2 not merged
