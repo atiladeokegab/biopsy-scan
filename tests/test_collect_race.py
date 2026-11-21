@@ -98,7 +98,7 @@ def test_ladder_feeds_interim_compute_only_with_startup_apart():
     [(rid, groups)] = cr.rows_from(Path(CLEARED), LADDER)
     assert rid == "interim"
     k, f = ({r["id"]: r for r in g["rows"]} for g in groups)
-    assert (k["kernel-numpy"]["seconds"], k["kernel-gpu"]["seconds"]) == (2.235, 0.702)
+    assert (k["kernel-numpy"]["seconds"], k["kernel-gpu"]["seconds"]) == (2.2353, 0.7015)
     assert [r["id"] for r in groups[1]["rows"]] == ["fleet-1", "fleet-8"], "no 16-GPU bar, no mixed 40/80 GB"
     assert (f["fleet-1"]["seconds"], f["fleet-1"]["startup_s"]) == (843.72, 34.7), "start-up is apart, never in seconds"
     assert (f["fleet-8"]["seconds"], f["fleet-8"]["gpu"]) == (128.2, "8x NVIDIA A100-SXM4-40GB")
@@ -282,3 +282,19 @@ def test_the_four_arm_file_fills_exactly_the_four_declared_lanes():
     del three["arms"]["hybrid"]
     for bad in (three, _four(status="FAILED"), _four(parity={"all": False}), _four(design={"studies_per_stream": 20})):
         assert list(cr.rows_from(Path("modal-design.json"), bad)) == []
+
+
+def test_interim_seconds_display_as_the_raw_file_rounds():
+    """Prometheus (21 Nov): the NumPy median 2.2353 s shows as 2.24 s, never 2.23 s from rounding twice.
+
+    race.js `secs` shows two decimals under 10 s and one above; the stored value must give the same text
+    as the file's raw value would.
+    """
+    show = lambda s: f"{s:.2f}" if s < 10 else f"{s:.1f}"
+    [(_, groups)] = cr.rows_from(Path(CLEARED), LADDER)
+    rows = {r["id"]: r["seconds"] for g in groups for r in g["rows"]}
+    raw = {"kernel-numpy": LADDER["kernel"]["rows"]["numpy_reference"]["median_s"],
+           "kernel-gpu": LADDER["kernel"]["rows"]["gpu"]["median_s"],
+           "fleet-1": LADDER["fleet"]["runs"]["1"]["compute_span_s"], "fleet-8": LADDER["fleet"]["runs"]["8"]["compute_span_s"]}
+    assert {i: show(rows[i]) for i in raw} == {i: show(v) for i, v in raw.items()}
+    assert show(rows["kernel-numpy"]) == "2.24"

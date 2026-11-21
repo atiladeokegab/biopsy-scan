@@ -40,6 +40,11 @@ MODEL = ("alpha", "plant_feature", "plant_mean", "plant_sd", "shape", "target_ev
 NEED = ["cohort", "patients", "regions_per_patient", "fov_um", "eps", "hr_per_source_sd", "alpha", "plant_feature",
         "power", "power_n", "power_lo", "power_hi", "identification_rate",
         "fwer", "wrong_identification_rate", *SOURCE]
+# A measured grid shows each rate as its supplied count over its studies (check_data checks power_count).
+COUNTED = ("power", "fwer", "identification_rate", "wrong_identification_rate")
+MEASURED_SCOPE = (" Compute MEASURED; every rate is a simulation ESTIMATE under SYNTHETIC Weibull outcomes, not "
+                  "observed clinical rates. The test is the atlas's legacy R4 Cox U with permutation variance "
+                  "(stats.reference); this is not an R15 score-screen power result.")
 # Finite-bank provenance (#45): one of each per curve when the table has it; a bank curve needs all of them,
 # and each point keeps its imaging design's bank ids (one bank per (regions, FOV, eps), the same at every P).
 CURVE = ("source_hash", "grammar_hash", "measurement_model", "bank_draws")
@@ -122,6 +127,25 @@ def _point(r, where):
     if not p["power_lo"] <= p["power"] <= p["power_hi"]:
         raise ValueError(f"{where}: power {p['power']} outside its interval [{p['power_lo']}, {p['power_hi']}]")
     return p
+
+
+def _counts(r, p, where):
+    """The supplied binomial counts, kept as given and checked against their rate; never derived from a rate.
+    power_count is required (power_n is); the other rates' counts are kept when the table has them."""
+    out = {}
+    for rate in COUNTED:
+        k_col, n_col = f"{rate}_count", f"{rate}_n"
+        if rate != "power" and not (hasattr(r, k_col) or hasattr(r, n_col)):
+            continue
+        for c in (k_col, n_col):
+            if not hasattr(r, c):
+                raise ValueError(f"{where}: no {c}; a measured grid keeps {rate} as its count over its studies")
+        n = _int(getattr(r, n_col), f"{where}: {n_col}")
+        k = _int(getattr(r, k_col), f"{where}: {k_col}", 0)
+        if k > n or not math.isclose(k / n, p[rate], rel_tol=0, abs_tol=1e-12):
+            raise ValueError(f"{where}: {k_col}={k} over {n_col}={n} is not {rate}={p[rate]}")
+        out |= {k_col: k, n_col: n}
+    return out
 
 
 def _bank_ids(r, where):
@@ -213,6 +237,8 @@ def build_grid(df: pd.DataFrame, cohort: dict, max_regions: int, *, cohort_key: 
     points, all_regions, off_lines = [], [], []
     for i, r in enumerate(df.itertuples()):
         p = _point(r, f"row {i}")
+        if measured:
+            p |= _counts(r, p, f"row {i}")
         if bank:
             p |= _bank_ids(r, f"row {i}")
         if p["regions"] == "all":
@@ -232,6 +258,8 @@ def build_grid(df: pd.DataFrame, cohort: dict, max_regions: int, *, cohort_key: 
             f"from {source_name}.")
     if not measured:
         note += " Marked SYNTHETIC until the full atlas run on the real cohort."
+    else:
+        note += MEASURED_SCOPE
     method = METHOD
     if bank:
         approx = (f" Measurement model: {FINITE}, A={prov['bank_draws']} acquisitions per source patient and imaging "
