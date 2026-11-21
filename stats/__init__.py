@@ -8,5 +8,6 @@ model-based calibration, never exact per-study error control.
 """
 
 from .reference import maxT, omnibus, permutation_test, score, threshold
+from .screen import permutation_maxT, screen
 
-__all__ = ["maxT", "omnibus", "permutation_test", "score", "threshold"]
+__all__ = ["maxT", "omnibus", "permutation_maxT", "permutation_test", "score", "screen", "threshold"]
