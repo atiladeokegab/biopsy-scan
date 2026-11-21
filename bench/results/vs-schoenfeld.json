@@ -21,7 +21,7 @@
  },
  "simulated": {
   "label": "MEASURED (sim)",
-  "method": "model-based Monte Carlo under the empirical verified source; no clinical claim",
+  "method": "model-based Monte Carlo (model-based Monte Carlo under the empirical verified source; no clinical claim)",
   "budget": {
    "calibration": 100,
    "null": 20,
@@ -36,7 +36,7 @@
   "atlas_code": {
    "branch": "5-study-atlas",
    "base_commit": "ab0ae72",
-   "note": "Atlas's working tree as of 2026-11-21T12:56:20Z (runner/artifacts not yet pushed)",
+   "note": "frozen snapshot of Atlas's working tree taken 2026-11-21T12:56:20Z (runner/artifacts not yet pushed)",
    "sha256_12": {
     "atlas/__init__.py": "fc5b891418e4",
     "atlas/__main__.py": "f4ad4e3ecb9b",

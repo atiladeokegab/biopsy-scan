@@ -92,7 +92,7 @@ def compare(summary: list[dict], meta: dict, m: int, *, cohort: str, control: li
                                "D = patients x event fraction, two-sided, Bonferroni over m features; "
                                "assumes the feature is measured exactly on the whole tissue"},
         "simulated": {"label": "MEASURED (sim)",
-                      "method": meta.get("inference", "model-based Monte Carlo"),
+                      "method": "model-based Monte Carlo (" + meta.get("inference", "atlas") + ")",
                       "budget": meta.get("budget"), "seed": meta.get("seed"), "source_hash": meta.get("source_hash"),
                       "grammar_hash": meta.get("grammar_hash"), "atlas_code": meta.get("atlas_code")},
         "points": points, **extra,
@@ -155,8 +155,10 @@ def svg(res: dict) -> str:
         floor = y + 16 * len(lines) + 6
     fw = [p["sim_fwer"] for p in pts]
     n = pts[0]["sim_n"]
-    foot = [f"MEASURED (sim) = model-based Monte Carlo: {n:,} planted-effect studies per point, re-imaged cell by cell",
-            f"from real tissue, maxT at one calibrated threshold per design; null-study FWER {min(fw):.3f} to {max(fw):.3f}.",
+    code = res["simulated"].get("atlas_code")
+    snap = f' (frozen snapshot of the atlas code, {code["base_commit"]} + working tree)' if isinstance(code, dict) else ""
+    foot = [f"MEASURED (sim) = model-based Monte Carlo{snap}: {n:,} planted-effect studies per point, re-imaged cell",
+            f"by cell from real tissue, maxT at one calibrated threshold per design; null-study FWER {min(fw):.3f} to {max(fw):.3f}.",
             "ANALYTIC = Schoenfeld (1983) events formula for a per-SD covariate (Hsieh and Lavori 2000),",
             "D = patients x event fraction, Bonferroni; it assumes exact, whole-tissue measurement."]
     out += [f'<text x="12" y="{H - 94}" font-weight="bold">{escape(res["verdict"])}</text>']
