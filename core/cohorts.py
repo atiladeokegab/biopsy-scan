@@ -26,27 +26,40 @@ def _coverslip(region_id: pd.Series) -> pd.Series:
     return region_id.str.split("_").str[1]  # UPMC_c001_v001_r001_reg001 -> c001
 
 
-def load_regions(cohort: str, data_dir: Path = DATA_DIR, identity: str = "tuple") -> pd.DataFrame:
-    """One row per region: region_id, coverslip, case, patient_id, time_days, event.
+def _group(cohort: str, coverslip: pd.Series) -> pd.Series:
+    """Coverslip group used as the stratum: UPMC 0 = c001-c003, 1 = c004-c007; Charville c001-c004 -> 0-3."""
+    n = coverslip.str[1:].astype(int)
+    return (n >= 4).astype(int) if cohort == "upmc" else n - 1
 
-    identity (UPMC only): "tuple" = one patient per clinical tuple (79 patients);
-    "tuple+case" = also split a tuple that holds two different case numbers (sensitivity).
+
+def load_regions(cohort: str, data_dir: Path = DATA_DIR, identity: str = "case") -> pd.DataFrame:
+    """One row per region: region_id, coverslip, group, case, patient_id, time_days, event.
+
+    identity "case" (default): verified identity = the case number in the sample label; UPMC regions
+    labelled NA are dropped. Only this identity is used for patient-level inference and the
+    regions-per-patient axis; Charville is the patient-level cohort.
+    UPMC only, provisional and descriptive only: "tuple" = one patient per clinical tuple (79);
+    "tuple+case" = also split the tuples holding two case numbers (81). One all-NA tuple spans
+    both coverslip groups.
     """
     if cohort not in COHORTS:
         raise ValueError(f"unknown cohort {cohort!r}")
+    if identity not in ("case", "tuple", "tuple+case") or (cohort != "upmc" and identity != "case"):
+        raise ValueError(f"unknown identity {identity!r} for {cohort}")
     lab = pd.read_csv(Path(data_dir) / f"{cohort}_labels.csv", dtype=str, keep_default_na=False)
     out = pd.DataFrame({"region_id": lab.region_id, "coverslip": _coverslip(lab.region_id)})
+    out["group"] = _group(cohort, out.coverslip)
     if cohort == "upmc":
-        if identity not in ("tuple", "tuple+case"):
-            raise ValueError(f"unknown identity {identity!r}")
         out["case"] = lab.sample_label_visualizer.where(lab.sample_label_visualizer != "NA", "").str.split(" ").str[0]
         key = lab[UPMC_TUPLE].agg("|".join, axis=1)
         if identity == "tuple+case":
             n_cases = out.case.where(out.case != "").groupby(key).transform("nunique")
             key = key + np.where(n_cases > 1, "|" + out.case, "")
-        out["patient_id"] = key
+        out["patient_id"] = out.case if identity == "case" else key
         out["time_days"] = lab.survival_day.astype(float)
         out["event"] = lab.survival_status.astype(float)  # any-cause death
+        if identity == "case":
+            out = out[out.case != ""].reset_index(drop=True)
     else:
         out["case"] = lab.sample_label_visualizer.str.split("_").str[0]
         out["patient_id"] = out.case
@@ -58,21 +71,37 @@ def load_regions(cohort: str, data_dir: Path = DATA_DIR, identity: str = "tuple"
 
 
 def load_patients(regions: pd.DataFrame) -> pd.DataFrame:
-    """One row per patient, in sorted patient_id order; patient index = row number.
+    """One row per patient, in sorted patient_id order.
 
-    stratum: the patient's modal coverslip (most regions, ties to the lowest), because UPMC
-    patients span coverslips; n_coverslips says how many they span.
+    stratum: the patient's coverslip group, or -1 when its regions span groups (ambiguous);
+    usable: has an endpoint and an unambiguous stratum.
     """
     g = regions.groupby("patient_id", sort=True)
-    ends = g[["time_days", "event"]].agg(lambda s: s.dropna().iloc[0] if s.notna().any() else np.nan)
     if (g[["time_days", "event"]].nunique() > 1).any().any():
         raise ValueError("a patient has conflicting endpoints across regions")
-    modal = regions.groupby(["patient_id", "coverslip"]).size().reset_index(name="n")
-    modal = modal.sort_values(["patient_id", "n", "coverslip"], ascending=[True, False, True]).drop_duplicates("patient_id")
-    pts = ends.join(modal.set_index("patient_id").coverslip.rename("stratum"))
+    pts = g[["time_days", "event"]].first()  # first non-null per column
+    pts["stratum"] = g.group.first().where(g.group.nunique() == 1, -1).astype(int)
     pts["n_coverslips"] = g.coverslip.nunique()
     pts["n_regions"] = g.size()
+    pts["usable"] = pts.time_days.notna() & pts.event.notna() & (pts.stratum >= 0)
     return pts.reset_index()
+
+
+def load(cohort: str, data_dir: Path = DATA_DIR) -> dict:
+    """The patient-level cohort (docs/CONTRACT.md): usable patients with a verified identity only."""
+    reg = load_regions(cohort, data_dir)
+    pts = load_patients(reg)
+    pts = pts[pts.usable].reset_index(drop=True)
+    pidx = {p: i for i, p in enumerate(pts.patient_id)}
+    reg = reg[reg.patient_id.isin(pidx)].reset_index(drop=True)
+    c = load_cells(cohort, list(reg.region_id), data_dir)
+    rid = np.repeat(np.arange(len(reg), dtype=np.int32), np.diff(c["region_ptr"]))
+    return {"cell_type": c["cell_type"].astype(np.int8), "x": c["xy_um"][:, 0].astype(np.float32),
+            "y": c["xy_um"][:, 1].astype(np.float32), "region_id": rid,
+            "patient_of_region": reg.patient_id.map(pidx).to_numpy(np.int32),
+            "time": pts.time_days.to_numpy(np.float64), "event": pts.event.to_numpy(bool),
+            "strata": pts.stratum.to_numpy(np.int32), "type_names": c["type_names"],
+            "region_names": list(reg.region_id), "patient_names": list(pts.patient_id)}
 
 
 def load_cells(cohort: str, region_ids: list[str] | None = None, data_dir: Path = DATA_DIR) -> dict:
@@ -82,7 +111,7 @@ def load_cells(cohort: str, region_ids: list[str] | None = None, data_dir: Path 
     type_names is the sorted list of every type in the cohort, so codes are stable across calls.
     """
     data_dir = Path(data_dir)
-    all_regions = list(load_regions(cohort, data_dir).region_id)
+    all_regions = list(pd.read_csv(data_dir / f"{cohort}_labels.csv", usecols=["region_id"], dtype=str).region_id)
     region_ids = all_regions if region_ids is None else list(region_ids)
     cache = data_dir / f"{cohort}_cells.npz"
     if cache.exists():
