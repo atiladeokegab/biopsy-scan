@@ -1,67 +1,64 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" font-family="sans-serif" font-size="13">
 <rect width="900" height="560" fill="#fff"/>
-<text x="12" y="28" font-size="18" font-weight="bold">Chance explains the best pattern in real Charville</text>
-<text x="12" y="52" fill="#444">MEASURED · 159 patients, 38 events, 630 spatial features · exploratory, already-seen data, no clinical claim</text>
+<text x="12" y="28" font-size="18" font-weight="bold">Real Charville's best pattern is not significant after correction</text>
+<text x="12" y="52" fill="#444">MEASURED · 159 patients, 38 events, 3,780 patterns (v1 + v2, joint screen) · exploratory, already-seen data, no clinical claim</text>
 <text x="12" y="72" fill="#444">Grey: the best score in each of 9,999 studies with the outcomes shuffled within coverslip (no real signal)</text>
-<rect x="90.2" y="449.6" width="18.8" height="0.4" fill="#b9b9b9"/>
-<rect x="110.0" y="448.0" width="18.8" height="2.0" fill="#b9b9b9"/>
-<rect x="129.8" y="444.5" width="18.7" height="5.5" fill="#b9b9b9"/>
-<rect x="149.5" y="435.5" width="18.8" height="14.5" fill="#b9b9b9"/>
-<rect x="169.2" y="403.4" width="18.8" height="46.6" fill="#b9b9b9"/>
-<rect x="189.0" y="374.1" width="18.7" height="75.9" fill="#b9b9b9"/>
-<rect x="208.7" y="325.2" width="18.8" height="124.8" fill="#b9b9b9"/>
-<rect x="228.5" y="242.6" width="18.8" height="207.4" fill="#b9b9b9"/>
-<rect x="248.3" y="213.3" width="18.7" height="236.7" fill="#b9b9b9"/>
-<rect x="268.0" y="150.7" width="18.8" height="299.3" fill="#b9b9b9"/>
-<rect x="287.8" y="107.3" width="18.8" height="342.7" fill="#b9b9b9"/>
-<rect x="307.5" y="113.1" width="18.8" height="336.9" fill="#b9b9b9"/>
-<rect x="327.3" y="92.0" width="18.7" height="358.0" fill="#b9b9b9"/>
-<rect x="347.0" y="112.7" width="18.8" height="337.3" fill="#b9b9b9"/>
-<rect x="366.8" y="143.3" width="18.8" height="306.7" fill="#b9b9b9"/>
-<rect x="386.5" y="196.5" width="18.7" height="253.5" fill="#b9b9b9"/>
-<rect x="406.2" y="228.9" width="18.8" height="221.1" fill="#b9b9b9"/>
-<rect x="426.0" y="272.8" width="18.7" height="177.2" fill="#b9b9b9"/>
-<rect x="445.7" y="315.0" width="18.8" height="135.0" fill="#b9b9b9"/>
-<rect x="465.5" y="333.8" width="18.8" height="116.2" fill="#b9b9b9"/>
-<rect x="485.2" y="366.7" width="18.7" height="83.3" fill="#b9b9b9"/>
-<rect x="505.0" y="384.3" width="18.8" height="65.7" fill="#b9b9b9"/>
-<rect x="524.8" y="401.5" width="18.8" height="48.5" fill="#b9b9b9"/>
-<rect x="544.5" y="414.8" width="18.8" height="35.2" fill="#b9b9b9"/>
-<rect x="564.2" y="423.4" width="18.8" height="26.6" fill="#b9b9b9"/>
-<rect x="584.0" y="432.0" width="18.7" height="18.0" fill="#b9b9b9"/>
-<rect x="603.7" y="439.4" width="18.8" height="10.6" fill="#b9b9b9"/>
-<rect x="623.5" y="440.2" width="18.8" height="9.8" fill="#b9b9b9"/>
-<rect x="643.2" y="443.7" width="18.8" height="6.3" fill="#b9b9b9"/>
-<rect x="663.0" y="447.7" width="18.8" height="2.3" fill="#b9b9b9"/>
-<rect x="682.8" y="447.3" width="18.7" height="2.7" fill="#b9b9b9"/>
-<rect x="702.5" y="448.8" width="18.7" height="1.2" fill="#b9b9b9"/>
-<rect x="722.2" y="448.4" width="18.8" height="1.6" fill="#b9b9b9"/>
-<rect x="742.0" y="448.8" width="18.8" height="1.2" fill="#b9b9b9"/>
-<rect x="761.8" y="449.6" width="18.8" height="0.4" fill="#b9b9b9"/>
-<rect x="781.5" y="449.6" width="18.7" height="0.4" fill="#b9b9b9"/>
-<rect x="821.0" y="449.2" width="18.8" height="0.8" fill="#b9b9b9"/>
+<rect x="110.0" y="449.3" width="18.8" height="0.7" fill="#b9b9b9"/>
+<rect x="129.8" y="447.3" width="18.8" height="2.7" fill="#b9b9b9"/>
+<rect x="149.5" y="441.0" width="18.8" height="9.0" fill="#b9b9b9"/>
+<rect x="169.2" y="423.7" width="18.8" height="26.3" fill="#b9b9b9"/>
+<rect x="189.0" y="386.1" width="18.8" height="63.9" fill="#b9b9b9"/>
+<rect x="208.8" y="331.6" width="18.8" height="118.4" fill="#b9b9b9"/>
+<rect x="228.5" y="246.4" width="18.8" height="203.6" fill="#b9b9b9"/>
+<rect x="248.2" y="184.8" width="18.8" height="265.2" fill="#b9b9b9"/>
+<rect x="268.0" y="112.3" width="18.8" height="337.7" fill="#b9b9b9"/>
+<rect x="287.8" y="92.7" width="18.8" height="357.3" fill="#b9b9b9"/>
+<rect x="307.5" y="92.0" width="18.8" height="358.0" fill="#b9b9b9"/>
+<rect x="327.2" y="102.3" width="18.8" height="347.7" fill="#b9b9b9"/>
+<rect x="347.0" y="147.2" width="18.8" height="302.8" fill="#b9b9b9"/>
+<rect x="366.8" y="209.1" width="18.8" height="240.9" fill="#b9b9b9"/>
+<rect x="386.5" y="254.0" width="18.8" height="196.0" fill="#b9b9b9"/>
+<rect x="406.2" y="300.9" width="18.8" height="149.1" fill="#b9b9b9"/>
+<rect x="426.0" y="341.9" width="18.8" height="108.1" fill="#b9b9b9"/>
+<rect x="445.8" y="371.5" width="18.8" height="78.5" fill="#b9b9b9"/>
+<rect x="465.5" y="398.1" width="18.8" height="51.9" fill="#b9b9b9"/>
+<rect x="485.2" y="411.7" width="18.8" height="38.3" fill="#b9b9b9"/>
+<rect x="505.0" y="421.7" width="18.8" height="28.3" fill="#b9b9b9"/>
+<rect x="524.8" y="436.0" width="18.8" height="14.0" fill="#b9b9b9"/>
+<rect x="544.5" y="440.7" width="18.8" height="9.3" fill="#b9b9b9"/>
+<rect x="564.2" y="440.4" width="18.8" height="9.6" fill="#b9b9b9"/>
+<rect x="584.0" y="446.0" width="18.8" height="4.0" fill="#b9b9b9"/>
+<rect x="603.8" y="447.3" width="18.8" height="2.7" fill="#b9b9b9"/>
+<rect x="623.5" y="449.0" width="18.8" height="1.0" fill="#b9b9b9"/>
+<rect x="663.0" y="449.7" width="18.8" height="0.3" fill="#b9b9b9"/>
+<rect x="682.8" y="449.3" width="18.8" height="0.7" fill="#b9b9b9"/>
+<rect x="702.5" y="449.7" width="18.8" height="0.3" fill="#b9b9b9"/>
+<rect x="742.0" y="449.7" width="18.8" height="0.3" fill="#b9b9b9"/>
+<rect x="821.0" y="449.7" width="18.8" height="0.3" fill="#b9b9b9"/>
 <line x1="70" x2="860" y1="450" y2="450" stroke="#555"/>
-<line x1="126.4" x2="126.4" y1="450" y2="455" stroke="#555"/>
-<text x="126.4" y="470" text-anchor="middle" fill="#555">2</text>
-<line x1="239.3" x2="239.3" y1="450" y2="455" stroke="#555"/>
-<text x="239.3" y="470" text-anchor="middle" fill="#555">2.5</text>
-<line x1="352.1" x2="352.1" y1="450" y2="455" stroke="#555"/>
-<text x="352.1" y="470" text-anchor="middle" fill="#555">3</text>
-<line x1="465.0" x2="465.0" y1="450" y2="455" stroke="#555"/>
-<text x="465.0" y="470" text-anchor="middle" fill="#555">3.5</text>
-<line x1="577.9" x2="577.9" y1="450" y2="455" stroke="#555"/>
-<text x="577.9" y="470" text-anchor="middle" fill="#555">4</text>
-<line x1="690.7" x2="690.7" y1="450" y2="455" stroke="#555"/>
-<text x="690.7" y="470" text-anchor="middle" fill="#555">4.5</text>
-<line x1="803.6" x2="803.6" y1="450" y2="455" stroke="#555"/>
-<text x="803.6" y="470" text-anchor="middle" fill="#555">5</text>
+<line x1="122.7" x2="122.7" y1="450" y2="455" stroke="#555"/>
+<text x="122.7" y="470" text-anchor="middle" fill="#555">2.5</text>
+<line x1="228.0" x2="228.0" y1="450" y2="455" stroke="#555"/>
+<text x="228.0" y="470" text-anchor="middle" fill="#555">3</text>
+<line x1="333.3" x2="333.3" y1="450" y2="455" stroke="#555"/>
+<text x="333.3" y="470" text-anchor="middle" fill="#555">3.5</text>
+<line x1="438.7" x2="438.7" y1="450" y2="455" stroke="#555"/>
+<text x="438.7" y="470" text-anchor="middle" fill="#555">4</text>
+<line x1="544.0" x2="544.0" y1="450" y2="455" stroke="#555"/>
+<text x="544.0" y="470" text-anchor="middle" fill="#555">4.5</text>
+<line x1="649.3" x2="649.3" y1="450" y2="455" stroke="#555"/>
+<text x="649.3" y="470" text-anchor="middle" fill="#555">5</text>
+<line x1="754.7" x2="754.7" y1="450" y2="455" stroke="#555"/>
+<text x="754.7" y="470" text-anchor="middle" fill="#555">5.5</text>
+<line x1="860.0" x2="860.0" y1="450" y2="455" stroke="#555"/>
+<text x="860.0" y="470" text-anchor="middle" fill="#555">6</text>
 <text x="465" y="492" text-anchor="middle">best score across all features in one study (maxT)</text>
-<line x1="514.0" x2="514.0" y1="92" y2="450" stroke="#777" stroke-dasharray="5 4"/>
-<text x="520.0" y="104" fill="#555" font-size="12">3.72: needed for p &lt; 0.05</text>
-<line x1="455.3" x2="455.3" y1="140" y2="450" stroke="#222" stroke-width="1.5"/>
-<circle cx="455.3" cy="450" r="6" fill="#222"/>
-<text x="461.3" y="152" font-weight="bold" stroke="#fff" stroke-width="4" paint-order="stroke">Real Charville: 3.46</text>
-<text x="461.3" y="170" fill="#333" stroke="#fff" stroke-width="4" paint-order="stroke">p = 0.13: 1 in 8 shuffles score this high</text>
-<text x="12" y="522" fill="#555" font-size="12">Best feature: Tumor 3|Blood vessel|100um|enrichment. 1,274 of 9,999 shuffled studies scored at least as high.</text>
-<text x="12" y="540" fill="#555" font-size="12">Single-step maxT permutation test, seed 0; the same run as audit/results/charville.json.</text>
+<line x1="463.1" x2="463.1" y1="92" y2="450" stroke="#777" stroke-dasharray="5 4"/>
+<text x="469.1" y="104" fill="#555" font-size="12">4.12: needed for p &lt; 0.05</text>
+<line x1="429.6" x2="429.6" y1="140" y2="450" stroke="#222" stroke-width="1.5"/>
+<circle cx="429.6" cy="450" r="6" fill="#222"/>
+<text x="435.6" y="152" font-weight="bold" stroke="#fff" stroke-width="4" paint-order="stroke">Real Charville: 3.96</text>
+<text x="435.6" y="170" fill="#333" stroke="#fff" stroke-width="4" paint-order="stroke">p = 0.098: 1 in 10 shuffles score this high</text>
+<text x="12" y="522" fill="#555" font-size="12">Best feature: Tumor 5|Macrophage|100um|PD1. 980 of 9,999 shuffled studies scored at least as high.</text>
+<text x="12" y="540" fill="#555" font-size="12">Single-step maxT permutation test, seed 0; the same run as results/charville-v2.json.</text>
 </svg>
