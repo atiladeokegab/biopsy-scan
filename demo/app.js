@@ -1,7 +1,7 @@
 // The Preflight demo: three linked views (tissue, race, answer) driven by four sliders.
 // Data: data/grid.json, data/tissue.json, optional data/bench.json (schemas in README.md).
 import { createTissue } from "./tissue.js";
-import { createRace } from "./race.js";
+import { createRace, raceAction } from "./race.js";
 import { drawChart, pct, fovLabel } from "./chart.js";
 
 const $ = (id) => document.getElementById(id);
@@ -9,7 +9,7 @@ const FOV_STEP = 100;
 let FULL_SLIDER; // the fov slider's last stop means "full core"; set from tissue.region_um
 const AXES = ["patients", "regions", "fov_um", "miscall"];
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
-let grid, tissue, bench = null, view3d = null, race, shown = null, raceTimer = 0;
+let grid, tissue, bench = null, view3d = null, race, shown = null;
 
 // Position of value v along an axis list, in steps (fractional between neighbours); "full" sits at its own index.
 function axisPos(list, v) {
@@ -63,8 +63,8 @@ const cohortRegions = (c) =>
 const describe = (p) =>
   `${p.patients} patients, ${p.regions} region${p.regions > 1 ? "s" : ""}, ${fovLabel(p.fov_um)}, ${pct(p.miscall)} mis-called`;
 
-// Every slider move: tissue and answer at once; the race restarts once the slider settles.
-function update({ restartRace }) {
+// Every slider move: tissue and answer at once; the race plays only on "Run the studies".
+function update({ pressed = false }) {
   const want = readSliders();
   $("patients-out").value = want.patients;
   $("regions-out").value = want.regions;
@@ -89,14 +89,9 @@ function update({ restartRace }) {
   $("snap").textContent = AXES.every((k) => want[k] === p[k]) ? "" : `Nearest grid point: ${describe(p)}.`;
   $("chart-title").textContent = drawChart($("chart"), grid, p);
 
-  if (restartRace || changed) {
-    clearTimeout(raceTimer);
-    raceTimer = setTimeout(runRace, restartRace ? 0 : 350);
-  }
-}
-
-function runRace() {
-  race.run({ studies: grid.studies_per_point, power: shown.power, bench, reducedMotion });
+  const action = raceAction({ pressed, changed });
+  if (action === "run") race.run({ studies: grid.studies_per_point, power: p.power, bench, reducedMotion });
+  else if (action === "clear") race.clear(grid.studies_per_point);
 }
 
 async function getJSON(path) {
@@ -145,16 +140,16 @@ async function main() {
   race = createRace($("cpu"), $("gpu"), { cpu: $("cpu-count"), gpu: $("gpu-count"), speed: $("race-speed") });
 
   for (const id of ["patients", "regions", "fov", "miscall"]) $(id).addEventListener("input", () => update({}));
-  $("design").addEventListener("submit", (e) => { e.preventDefault(); update({ restartRace: true }); });
+  $("design").addEventListener("submit", (e) => { e.preventDefault(); update({ pressed: true }); });
   let t;
-  addEventListener("resize", () => { clearTimeout(t); t = setTimeout(() => update({ restartRace: true }), 200); });
+  addEventListener("resize", () => { clearTimeout(t); t = setTimeout(() => race.redraw(), 200); });
 
   // Open on a typical imaging design (two 400 µm fields, 10% mis-called) so the fields of view and the noise show at once.
   // Field of view: 200 µm up to the core's width in 100 µm steps, then one more stop for "full core".
   FULL_SLIDER = Math.floor(tissue.region_um / FOV_STEP) * FOV_STEP + FOV_STEP;
   Object.assign($("fov"), { min: 200, step: FOV_STEP, max: FULL_SLIDER });
   setSliders({ ...grid.cohort, fov_um: 400, miscall: 0.1 });
-  update({ restartRace: true });
+  update({});
 }
 
 main();

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import multiprocessing as mp
 import os
 import platform
 import shutil
@@ -127,7 +128,103 @@ def time_rung(fn, pool, design, studies: int) -> dict:
             "reads_per_s": reads / sum(times), "trials_per_s": 1.0 / amort}, first
 
 
-def run(studies=20, cells=6000, side=750.0, n_regions=8, design=None, seed=0) -> dict:
+def _gpu_shard_worker(payload: tuple[int, int, list[dict], dict, list[int]]) -> dict:
+    """Run one contiguous seed shard on one bound CUDA device with per-worker prepared snapshots."""
+    shard_id, device_id, pool, design, seed_list = payload
+    from numba import cuda
+    from reimage import gpu
+    from reimage.fleet import _selected_device_name
+
+    cuda.select_device(device_id)
+    device_name = _selected_device_name(device_id)
+    prepared = {id(reg["nbr"]): gpu.prepare(reg["nbr"], K) for reg in pool}
+    times, reads, outs = [], 0, []
+    for seed in seed_list:
+        t0 = time.perf_counter()
+        rng = np.random.default_rng(seed)
+        reg_outs = []
+        for r in rng.integers(0, len(pool), design["k"]):
+            reg = pool[r]
+            crop = random_crop(reg["xy"], design["fov_um"], rng)
+            reg_outs.append(
+                gpu.reimage_region(
+                    reg["nbr"], reg["xy"], reg["types"], FOCAL, K,
+                    crop=crop, eps=design["eps"], rng=rng, prepared=prepared[id(reg["nbr"])],
+                )
+            )
+            reads += len(reg["nbr"]["idx"])
+        times.append(time.perf_counter() - t0)
+        outs.append(reg_outs)
+    return {"shard_id": shard_id, "device_name": device_name, "times": times, "reads": reads, "outputs": outs}
+
+
+def time_gpu_sharded(
+    pool: list[dict],
+    design: dict,
+    studies: int,
+    *,
+    devices: int | None = None,
+    fake_shards: bool = False,
+) -> tuple[dict, list, list]:
+    """Run seeded GPU trials across N contiguous device shards and merge deterministically."""
+    from numba import cuda
+    from reimage.fleet import shard_bounds, visible_gpus
+
+    if fake_shards:
+        if not cuda_simulator():
+            raise RuntimeError("fake_shards requires NUMBA_ENABLE_CUDASIM=1")
+        n_sim = len(cuda.gpus)
+        target = 2 if devices is None else int(devices)
+        bounds = shard_bounds(studies, target)
+        dev_for = lambda sid: sid % n_sim  # noqa: E731
+    else:
+        avail = visible_gpus()
+        if avail < 1:
+            raise RuntimeError("CUDA is unavailable; no GPU devices visible")
+        target = avail if devices is None else int(devices)
+        if target > avail:
+            raise RuntimeError(f"requested {target} GPU(s) but only {avail} visible")
+        bounds = shard_bounds(studies, target)
+        dev_for = lambda sid: sid  # noqa: E731
+
+    seeds = list(range(studies))
+    payloads = [(sid, dev_for(sid), pool, design, seeds[s:e]) for sid, s, e in bounds]
+    t0 = time.perf_counter()
+    if len(payloads) == 1 and not fake_shards:
+        results = [_gpu_shard_worker(payloads[0])]
+    else:
+        ctx = mp.get_context("spawn")
+        with ctx.Pool(len(payloads)) as proc_pool:
+            results = sorted(proc_pool.map(_gpu_shard_worker, payloads), key=lambda item: item["shard_id"])
+    wall_s = time.perf_counter() - t0
+
+    all_outputs = [o for r in results for o in r["outputs"]]
+    total_reads = sum(r["reads"] for r in results)
+    # Discard each shard's first (cold) sample individually before computing warm median.
+    warm_times = [t for r in results for t in r["times"][1:]]
+    if not warm_times:
+        warm_times = [r["times"][0] for r in results]
+    amort = statistics.median(warm_times)
+    timing = {
+        "trials": studies,
+        "devices": len(payloads),
+        "device_names": [r["device_name"] for r in results],
+        "cold_s": max(r["times"][0] for r in results),
+        "amortised_s_per_trial": amort,
+        "total_s": wall_s,
+        "neighbour_reads": total_reads,
+        "reads_per_s": total_reads / wall_s if wall_s > 0 else 0.0,
+        "trials_per_s": 1.0 / amort if amort > 0 else 0.0,
+        "wall_trials_per_s": studies / wall_s if wall_s > 0 else 0.0,
+    }
+    return timing, all_outputs[0], all_outputs
+
+
+def run(studies=20, cells=6000, side=750.0, n_regions=8, design=None, seed=0, devices: int | None = None) -> dict:
+    from reimage.fleet import visible_gpus
+
+    if devices is not None and (isinstance(devices, bool) or not isinstance(devices, int) or devices < 1):
+        raise ValueError("devices must be a positive integer")
     design = design or {"k": 4, "fov_um": 500.0, "eps": 0.1}
     t0 = time.perf_counter()
     pool = synthetic_pool(n_regions, cells, side, seed)
@@ -135,6 +232,7 @@ def run(studies=20, cells=6000, side=750.0, n_regions=8, design=None, seed=0) ->
         reg["nbr"] = neighbours(reg["xy"])
     prep = time.perf_counter() - t0
     result = {"hardware": hardware(), "data": "synthetic", "design": design,
+              "devices_requested": devices, "devices_visible": visible_gpus(),
               "pool": {"regions": n_regions, "cells_per_region": cells, "side_um": side,
                        "mean_neighbours_100um": float(np.mean([len(r["nbr"]["idx"]) / cells for r in pool]))},
               "prep_s": prep, "seed": seed, "rungs": {},
@@ -148,7 +246,12 @@ def run(studies=20, cells=6000, side=750.0, n_regions=8, design=None, seed=0) ->
             result["rungs"][name] = fn
             continue
         try:
-            timing, first = time_rung(fn, pool, design, studies)  # the first timed call is the cold one
+            if name == "gpu" and (visible_gpus() > 1 or (devices is not None and devices > 1)):
+                timing, first, _ = time_gpu_sharded(pool, design, studies, devices=devices)
+            else:
+                timing, first = time_rung(fn, pool, design, studies)  # the first timed call is the cold one
+                if name == "gpu":
+                    timing["devices"] = 1
         except Exception as e:  # noqa: BLE001  # e.g. CUDA unavailable on this box
             result["rungs"][name] = f"pending: {type(e).__name__}: {e}"[:200]
             continue
@@ -164,9 +267,10 @@ def main(argv=None) -> Path:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--trials", type=int, default=20)
     ap.add_argument("--cells", type=int, default=6000)
+    ap.add_argument("--devices", type=int, default=None, help="GPUs to shard GPU trials across (default: all visible)")
     ap.add_argument("--out", type=Path, default=Path(__file__).parent / "results")
     a = ap.parse_args(argv)
-    res = run(studies=a.trials, cells=a.cells)
+    res = run(studies=a.trials, cells=a.cells, devices=a.devices)
     a.out.mkdir(parents=True, exist_ok=True)
     slug = "".join(c if c.isalnum() else "-" for c in res["hardware"]["cpu"].lower()).strip("-")
     path = a.out / f"ladder-{slug}.json"  # named by hardware, not hostname: the repo is public
