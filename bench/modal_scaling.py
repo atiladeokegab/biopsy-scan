@@ -166,8 +166,7 @@ def main(studies: int = 1000, cores: str = ",".join(map(str, scaling.CORES))):
         "points": {c: {k: v for k, v in p.items() if k != "records"} | {"container_class": class_name(c)}
                    for c, p in points.items()} if res["status"] == "MEASURED" else
                   {c: {"host": p["host"]} for c, p in points.items()},
-        "studies_by_cores": {c: [{k: r[k] for k in ("i", "x_sha", "z_sha", "maxT")} for r in p["records"]]
-                             for c, p in points.items()},
+        "studies_by_cores": scaling.study_rows(points),
         "errors": {c: e for c, e in errors.items()},
         "modal": {"app": "preflight-modal-scaling", "started_utc": start.isoformat(), "finished_utc": end.isoformat(),
                   "wall_s": (end - start).total_seconds(), "build9_reference": BUILD9 if prior else None},
@@ -179,7 +178,7 @@ def main(studies: int = 1000, cores: str = ",".join(map(str, scaling.CORES))):
     wall = (end - start).total_seconds()
     _ledger(update={"modal_wall_s": round(wall, 1), "result": str(path.relative_to(REPO)),
                     "est_usd": round(sum(wall * scaling.usd_per_s(c) for c in counts), 3),
-                    "basis": "single-attempt estimate: each container x local wall at list price; a preemption restart is "
-                             "billed again and is not separated; invoice not verified"})
+                    "basis": "single-attempt estimate at list price: each container x local wall (includes image build "
+                             "and queueing); invoice not verified"})
     print(res["status"], json.dumps(res["failures"]), json.dumps(res.get("curve")), json.dumps(res["parity"], default=str))
     print(f"Saved {path}")

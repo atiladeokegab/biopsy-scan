@@ -114,15 +114,31 @@ def validate(points: dict, studies: int) -> list:
         if p.get("host", {}).get("thread_environment") != SINGLE:
             out.append(f"cores {c}: threads {p.get('host', {}).get('thread_environment')} are not {SINGLE}")
         for r in p["records"]:
-            z = np.asarray(r.get("z"), dtype=np.float64)
+            try:
+                z = np.asarray(r.get("z"), dtype=np.float64)
+            except (TypeError, ValueError):
+                out.append(f"cores {c}: study {r['i']} z is not numeric")
+                continue
             shape = z.shape if shape is None else shape
-            if z.ndim != 1 or z.shape != shape or not np.isfinite(z).all():
-                out.append(f"cores {c}: study {r['i']} z has shape {z.shape} or non-finite values (want {shape})")
-            elif z_sha(z) != r.get("z_sha"):
+            if z.ndim != 1 or z.size == 0 or z.shape != shape or not np.isfinite(z).all():
+                out.append(f"cores {c}: study {r['i']} z has shape {z.shape} or non-finite values (want {shape}, non-empty)")
+                continue
+            if z_sha(z) != r.get("z_sha"):
                 out.append(f"cores {c}: study {r['i']} z_sha does not match its z")
+            m = r.get("maxT")
+            if not (type(m) is float and math.isfinite(m) and m == float(np.abs(z).max())):
+                out.append(f"cores {c}: study {r['i']} maxT {m!r} is not the finite max |z|")
             if not re.fullmatch(r"[0-9a-f]{64}", str(r.get("x_sha"))):
                 out.append(f"cores {c}: study {r['i']} x_sha is not a sha256")
     return out
+
+
+def study_rows(points: dict) -> dict:
+    """Per-study digests for the result file, strict-JSON safe whatever a failed point held (bad maxT -> None)."""
+    def finite(m):
+        return m if type(m) is float and math.isfinite(m) else None
+    return {c: [{"i": r.get("i"), "x_sha": str(r.get("x_sha")), "z_sha": str(r.get("z_sha")), "maxT": finite(r.get("maxT"))}
+                for r in p.get("records", [])] for c, p in points.items()}
 
 
 def parity(points: dict) -> dict:

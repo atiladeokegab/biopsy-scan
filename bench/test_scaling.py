@@ -17,11 +17,13 @@ def _hex(tag):
 
 def _rehash(r):
     r["z_sha"] = scaling.z_sha(r["z"])
+    if np.size(r["z"]):
+        r["maxT"] = float(np.abs(r["z"]).max())
     return r
 
 
 def _points(cores=scaling.CORES, n=N, wall=lambda c: 100.0 / c):
-    rec = [{"i": i, "x_sha": _hex(i), "maxT": 1.0 + i, "z": np.array([1.0 + i, -0.5])} for i in range(n)]
+    rec = [{"i": i, "x_sha": _hex(i), "maxT": 1.0 + i, "z": np.array([1.0 + i, -0.5])} for i in range(n)]  # maxT = max|z|
     return {c: {"workers": c, "studies_wall_s": wall(c), "records": [_rehash(dict(r, z=r["z"].copy())) for r in rec],
                 "host": {"thread_environment": dict(scaling.SINGLE)}} for c in cores}
 
@@ -114,6 +116,40 @@ def _stale_hash(p):
     p["records"][0]["z_sha"] = _hex("stale")  # z unchanged: only the recomputed hash can catch a wrong exactness report
 
 
+def _empty_z(p):
+    for r in p["records"]:
+        r["z"] = np.array([])
+        _rehash(r)
+
+
+def _text_z(p):
+    p["records"][1]["z"] = ["a", "b"]
+
+
+def _nan_maxT(p):
+    p["records"][0]["maxT"] = float("nan")
+
+
+def _wrong_maxT(p):
+    p["records"][0]["maxT"] += 0.25
+
+
+@pytest.mark.parametrize("mutate", [
+    _empty_z, _text_z, _nan_maxT, _wrong_maxT, lambda p: p["records"][0].pop("maxT"),
+], ids=["all-empty-z", "non-numeric-z", "nan-maxT", "maxT-not-max-abs-z", "no-maxT"])
+@pytest.mark.parametrize("cores", [1, 8, 64])
+def test_round_two_malformed_vectors_and_maxT_fail_and_stay_strict_json(mutate, cores):
+    pts = _points()
+    if mutate is _empty_z:
+        for p in pts.values():
+            mutate(p)
+    else:
+        mutate(pts[cores])
+    out = _result(pts)
+    assert _failed(out)
+    json.dumps({**out, "studies_by_cores": scaling.study_rows(pts)}, allow_nan=False)
+
+
 @pytest.mark.parametrize("mutate", [
     _dup, _drop_everywhere_but_keep_count, _nan_late, _one_component, _stale_hash,
     lambda p: p.update(studies_wall_s=float("nan")), lambda p: p.update(studies_wall_s=-3.0),
@@ -199,3 +235,12 @@ def test_committed_sweep_carries_its_limits_in_a_sidecar():
     side = json.loads(COMMITTED.with_name(COMMITTED.stem + ".caveats.json").read_text())
     assert side["result"] == "bench/results/" + COMMITTED.name and side["caveats"] == scaling.CAVEATS
     assert "not CPU time" in side["fields"]["reimage_cpu_s"] and "not a billing ceiling" in side["spend_in_ledger"]
+
+
+def test_scaling_ledger_entries_are_single_attempt_estimates_not_upper_bounds():
+    ledger = json.loads((COMMITTED.parent / "modal-spend.json").read_text())
+    mine = [e for e in ledger["entries"] if e["run"].startswith("modal-scaling")]
+    assert mine and all("upper bound" not in e["actual"]["basis"] and "single-attempt estimate" in e["actual"]["basis"]
+                        for e in mine)
+    text = json.dumps(mine) + COMMITTED.with_name(COMMITTED.stem + ".caveats.json").read_text()
+    assert "billed again" not in text
