@@ -8,7 +8,9 @@ test:
 
 # The event smoke: offline, tiny invented fixture, no real data. Plus the demo's race regression (Node).
 smoke: install test
+	python3 -I demo/check_data.py demo/data
 	node demo/race.test.mjs
+	node demo/copy.test.mjs
 
 data:
 	./scripts/fetch_data.sh
@@ -23,6 +25,7 @@ heldout: data
 # The demo page: validate its data files, then serve it (static; open http://localhost:8000, or `make demo PORT=8001` if 8000 is taken).
 PORT ?= 8000
 demo:
+	python3 -I demo/collect_race.py
 	python3 -I demo/check_data.py
 	python3 -m http.server $(PORT) -d demo
 
