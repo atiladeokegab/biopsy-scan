@@ -103,7 +103,50 @@
       "est_usd": 2.39,
       "basis": "0.88 GPU-h x $2.73/h",
       "running_total_usd": 18.55
+    },
+    {
+      "utc": "2026-11-21T18:45Z",
+      "run": "OTHER AGENT, logged for the lead: Hermes R-18: 3 CPU runs (ap-bLiCKX1j5e61cW3RZF9VlH, ap-kTbapBDPSdWZExWaMZNMie, one failed)",
+      "est_usd": 0.15,
+      "basis": "Hermes's estimate, CPU only",
+      "running_total_usd": 18.7
+    },
+    {
+      "utc": "2026-11-21T18:45Z",
+      "run": "OTHER AGENT, logged for the lead: build-8 biomarker export proof: 2 runs",
+      "est_usd": 0.02,
+      "basis": "build-8's estimate",
+      "running_total_usd": 18.72
+    },
+    {
+      "utc": "2026-11-21T18:45Z",
+      "run": "OTHER AGENT, logged for the lead: Atlas T-1219 CPU resume",
+      "est_usd": 3.03,
+      "basis": "upper bound from Atlas's own ledger",
+      "running_total_usd": 21.75
+    },
+    {
+      "utc": "2026-11-21T18:45Z",
+      "run": "OTHER AGENT, logged for the lead: build-11 power-at-scale (app preflight-power)",
+      "est_usd": 13.0,
+      "basis": "estimate; detail in bench/results/modal-spend-power.json",
+      "running_total_usd": 34.75
+    },
+    {
+      "utc": "2026-11-21T18:45Z",
+      "run": "OTHER AGENT, logged for the lead: build-10 smoke bisect",
+      "est_usd": 0.5,
+      "basis": "build-10's estimate",
+      "running_total_usd": 35.25
+    },
+    {
+      "utc": "2026-11-21T18:45Z",
+      "run": "OTHER AGENT, logged for the lead: disk-cleaner quiet CPU (ap-XEwtGfiGVY39U04T7w2CPi, 2026-11-21T18:03Z)",
+      "est_usd": 0.05,
+      "basis": "CPU only, 8 cores + 16 GiB, 332 s container time, ~$0.047 at sourced rates, $3 cap; result bench/results/modal-quiet-cpu-20261121T180327Z.json; ledger bench/results/modal-spend-numba.json (PR #94)",
+      "running_total_usd": 35.3
     }
   ],
-  "container_usd_per_hour_H100": 4.58
+  "container_usd_per_hour_H100": 4.58,
+  "note": "One workspace total across agents. Entries before 2026-11-21T17:36Z used pre-sourced rates; later ones use modal.com/pricing read at 17:36Z. Other agents' entries are their own estimates, logged here by build-modal."
 }
