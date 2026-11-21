@@ -120,7 +120,7 @@ export function createRace(cpuCanvas, gpuCanvas, out) {
 // A row without a time is PENDING: no bar, no motion, no number. A ratio is printed only by pairRatio, for a
 // same-scope MEASURED pair; the workflow footnote (different work: the R-14 Cox screen) is seconds only.
 export const RACE_MS = 10000;
-const timed = (r) => Number.isFinite(r.seconds) && r.seconds > 0;
+const timed = (r) => Number.isFinite(r.seconds) && r.seconds > 0 && !["PENDING", "UNMEASURED"].includes(r.label);
 export function raceState(rows, t, total = RACE_MS) {
   const max = Math.max(...rows.filter(timed).map((r) => r.seconds));
   // One shared clock: every bar grows at the same pace and stops at its own time, so its final width is
@@ -142,7 +142,7 @@ const where = (r) => [r.hardware, r.gpu || (r.cores ? `${r.cores} core${r.cores 
 export function speedRaceHTML(data) {
   return `<ol class="sr">${data.rows.map((r) => {
     const tag = `<span class="tag${r.label === "MEASURED" ? " ok" : ""}">${esc(r.label)}</span>`;
-    const src = [r.source, r.note, r.startup_s > 0 ? `+ ${secs(r.startup_s)} start-up, not counted` : null]
+    const src = [r.source, r.note, Number.isFinite(r.startup_s) && r.startup_s > 0 ? `+ ${secs(r.startup_s)} start-up, not counted` : null]
       .filter(Boolean).map(esc).join(" · ");
     if (!timed(r)) // no bar, no number: the track only says where the time will come from
       return `<li class="pending"><span class="sr-name">${esc(r.method)}</span><span class="sr-time">${tag}</span>` +

@@ -102,7 +102,7 @@ def test_ladder_feeds_interim_compute_only_with_startup_apart():
     assert list(cr.rows_from(Path("x.json"), LADDER | {"status": "FAILED"})) == []
 
 
-DP = {"kind": "design_point", "status": "MEASURED", "studies": 1000, "slots": {
+DP = {"kind": "design_point", "status": "MEASURED", "studies": 1000, "e_gpu_parity": {"exact_all_containers": True}, "slots": {
     "a_lab_all_cores": {"label": "MEASURED", "seconds": 1043.2, "workers": 48},
     "b_ours_cpu_all_cores": {"label": "MEASURED", "seconds": 673.1, "workers": 48},
     "c_ours_1_gpu": {"label": "MEASURED", "seconds": 865.4, "gpu": ["NVIDIA H100"]},
@@ -126,9 +126,10 @@ def test_design_point_fills_the_four_rows_only_when_measured_at_1000_studies():
 def test_interim_titles_say_exactly_what_ran():
     """Atlas #79 re-check (a): the kernel step is feature generation only, never 're-imaged and scored'."""
     [(_, groups)] = cr.rows_from(Path("m.json"), LADDER)
-    assert groups[0]["title"] == "One study, feature generation only (sampling, crop, recount, features)"
+    assert groups[0]["title"] == "One study: re-imaging and feature extraction only (scoring not timed)"
+    assert groups[1]["same_scope"] is False and "longest-shard compute" in groups[1]["title"]
     b = json.loads((ROOT / "demo" / "data" / "baseline.json").read_text())
-    assert not any("scor" in g["title"] or "re-imag" in g["title"] for g in b.get("interim", []))
+    assert not any("scored" in g["title"] for g in b.get("interim", []))
 
 
 def test_claims_are_traced_to_their_files():
@@ -144,3 +145,21 @@ def test_claims_are_traced_to_their_files():
     for k, f, v in (("power", "source", "bench/results/nope.json"), ("power", "sim", float("nan")), ("maxT", "p", None),
                     ("false_alarms", "label", None), ("power", "hi", 0.1), ("maxT", "tests", "3780")):
         assert bad(committed | {k: committed[k] | {f: v}}), (k, f, v)
+
+
+def test_gpu_rows_need_exact_parity_and_failed_one_study_lists_stay_pending():
+    """Atlas #79 re-check (4): Root's repro, a FAILED one-study report, never becomes a MEASURED 1,000 lane;
+    GPU rows also need the file's exact-parity check."""
+    failed = {"status": "FAILED", "studies": 1, "race": [{"id": "lab-cpu", "seconds": 2.0, "label": "MEASURED",
+                                                          "hardware": "h", "cores": 8}]}
+    assert list(cr.rows_from(Path("f.json"), failed)) == []
+    rows = dict(cr.rows_from(Path("dp.json"), DP | {"e_gpu_parity": {"exact_all_containers": False}}))
+    assert sorted(rows) == ["lab-cpu", "preflight-cpu"], "no GPU lane without exact parity"
+    assert sorted(dict(cr.rows_from(Path("dp.json"), {k: v for k, v in DP.items() if k != "e_gpu_parity"}))) == ["lab-cpu", "preflight-cpu"]
+
+
+def test_power_and_false_alarms_say_which_model_they_are():
+    """Atlas #79 re-check (1): 27% is the v1 planted-HR model's power, not PD1's; 28/700 is pooled over designs."""
+    c = cr.claims(write=False)
+    assert "HR 2" in c["power"]["model"] and "not the PD1 pattern's power" in c["power"]["model"]
+    assert c["false_alarms"]["designs"] == 7

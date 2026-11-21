@@ -45,15 +45,18 @@ def refused(d):
 def design_point(name, d):
     """build-modal's "kind": "design_point" file: slots a-d become the four race rows."""
     s = d["slots"]
+    parity = d.get("e_gpu_parity", {}).get("exact_all_containers") is True
     for rid, key in SLOTS.items():
         r = s.get(key, {})
         if r.get("label") not in TIMED or not r.get("seconds"):
             continue
         gpu = r.get("gpu")
+        if gpu and not parity:  # a GPU lane must give the CPU's answer exactly
+            continue
         yield rid, {"seconds": round(r["seconds"], 2), "label": r["label"], "hardware": "Modal",
                     "cores": None if gpu else r.get("workers"), "gpu": f"1x {gpu[0]}" if gpu else None, "source": name}
     run = s.get("d_ours_n_gpu", {}).get("runs", {}).get("16")
-    if s.get("d_ours_n_gpu", {}).get("label") in TIMED and run:
+    if s.get("d_ours_n_gpu", {}).get("label") in TIMED and run and parity:
         yield "gpu-16", {"seconds": round(run["compute_s"], 2), "startup_s": round(run["startup_and_transfer_s"], 1),
                          "label": s["d_ours_n_gpu"]["label"], "hardware": "Modal", "cores": None,
                          "gpu": f"{run['containers_seen']}x {' / '.join(sorted(set(run['gpus'])))}", "source": name}
@@ -96,9 +99,9 @@ def interim(name, d):
                       + (f"{each} studies each" if int(n) > 1 else f"all {each} studies"),
                       "role": "baseline" if n == "1" else "screen",
                       "label": lab, "seconds": round(r["compute_s_max"], 2), "startup_s": round(r["startup_and_transfer_s"], 1),
-                      "hardware": "Modal", "gpu": f"{r['containers_seen']}x {' / '.join(g)}", "cores": None, "source": name})
+                      "note": "longest shard's compute", "hardware": "Modal", "gpu": f"{r['containers_seen']}x {' / '.join(g)}", "cores": None, "source": name})
     return [
-        {"title": "One study, feature generation only (" + k["unit"].split(": ", 1)[-1] + ")", "unit": k["unit"],
+        {"title": "One study: re-imaging and feature extraction only (scoring not timed)", "unit": k["unit"],
          "same_scope": True, "rows": [
             {"id": "kernel-numpy", "method": "NumPy reference, same container", "role": "baseline", "label": lab,
              "seconds": round(rows["numpy_reference"]["median_s"], 3), "hardware": "Modal GPU container, on its CPU",
@@ -106,8 +109,10 @@ def interim(name, d):
             {"id": "kernel-gpu", "method": "The same step on 1 GPU", "role": "screen", "label": lab,
              "seconds": round(rows["gpu"]["median_s"], 3), "hardware": "Modal", "cores": None, "gpu": k["gpu"]["model"],
              "note": f"median of {len(rows['gpu']['samples_s'])}, exact parity", "source": name}]},
-        {"title": f"{f['studies']} studies ({f['design']}) on a fleet, compute only", "unit": f["note"],
-         "same_scope": True, "rows": fleet}]
+        # shortcut: this file times each shard, not the overlap, so no ratio; use the compute span once the
+        # corrected harness's file lands.
+        {"title": f"{f['studies']} studies on a fleet: longest-shard compute only, overlap not verified",
+         "unit": f["note"], "same_scope": False, "rows": fleet}]
 
 
 def main(extra):
@@ -147,8 +152,12 @@ def claims(write=True):
         "schema": "preflight-claims/1",
         "power": {"patients": PLANNED_PATIENTS, "sim": p["sim_power"], "lo": p["sim_lo"], "hi": p["sim_hi"],
                   "n": p["sim_n"], "label": vs["status"], "formula": p["analytic_power"], "formula_label": "ANALYTIC",
+                  "model": f"a planted effect of HR {vs['hr_per_sd']:g} per SD among {vs['features_m']} candidate features "
+                           f"(Bonferroni), {vs['design']['regions_per_patient']} fields of {vs['design']['fov_um']:g} µm "
+                           f"per patient, {vs['design']['eps']:.0%} cells mis-called; not the PD1 pattern's power",
                   "source": vs_path},
-        "false_alarms": {"hits": hits, "n": n_null * len(vs["points"]), "target": vs["alpha"], "label": vs["status"],
+        "false_alarms": {"hits": hits, "n": n_null * len(vs["points"]), "designs": len(vs["points"]),
+                         "target": vs["alpha"], "label": vs["status"],
                          "source": vs_path},
         "maxT": {"feature": top["feature"], "z": top["z"], "p": mt["maxT"]["p"], "tests": mt["n_features_tested"],
                  "label": mt["labels"]["maxT"], "verdict": "exploratory, not a discovery", "source": mt_path},

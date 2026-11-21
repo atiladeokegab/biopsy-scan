@@ -64,7 +64,7 @@
   },
   "interim": [
     {
-      "title": "One study, feature generation only (patient and region sampling, crop, mis-call, recount, features)",
+      "title": "One study: re-imaging and feature extraction only (scoring not timed)",
       "unit": "one study: patient and region sampling, crop, mis-call, recount, features",
       "same_scope": true,
       "rows": [
@@ -95,9 +95,9 @@
       ]
     },
     {
-      "title": "16 studies (bench/real_cpu.py DESIGN on Charville) on a fleet, compute only",
+      "title": "16 studies on a fleet: longest-shard compute only, overlap not verified",
       "unit": "compute_s excludes start-up, data load, adjacency and warm-up; those are reported per run",
-      "same_scope": true,
+      "same_scope": false,
       "rows": [
         {
           "id": "fleet-1",
@@ -106,6 +106,7 @@
           "label": "MEASURED",
           "seconds": 11.44,
           "startup_s": 90.3,
+          "note": "longest shard's compute",
           "hardware": "Modal",
           "gpu": "1x NVIDIA A100-SXM4-40GB",
           "cores": null,
@@ -118,6 +119,7 @@
           "label": "MEASURED",
           "seconds": 3.8,
           "startup_s": 5.1,
+          "note": "longest shard's compute",
           "hardware": "Modal",
           "gpu": "4x NVIDIA A100-SXM4-40GB / NVIDIA A100-SXM4-80GB",
           "cores": null,

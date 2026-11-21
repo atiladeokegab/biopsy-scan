@@ -160,9 +160,13 @@ unit, so it is only the workflow footnote, in seconds.
 
 ## `data/claims.json` (`preflight-claims/1`): written by `collect_race.py`
 
-The power result at the demo's 200 patients (simulated, its 95% interval, and the Schoenfeld formula), the
-false-alarm rate pooled over every null study, and the maxT result, each with its `label` and `source`
-(`bench/results/vs-schoenfeld-300.json`, `results/charville-v2.json`).
+The power result at the demo's 200 patients (simulated, its 95% interval, and the Schoenfeld formula) with
+`power.model`, which names its simulated design (a planted HR 2 per SD among 630 features) and says it is not
+the PD1 pattern's power; the false-alarm count pooled over `false_alarms.designs` null designs (a pooled
+summary, not per-design error control); and the maxT result, each with its `label` and `source`
+(`bench/results/vs-schoenfeld-300.json`, `results/charville-v2.json`). `claims.js` checks every number it
+renders and throws on a bad file; `app.js` draws each panel on its own, so one bad file leaves only its panel
+on the placeholder.
 
 ## `data/biomarker.json` (`preflight-biomarker/1`): build-8's file from #82, copied verbatim
 

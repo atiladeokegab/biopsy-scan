@@ -27,7 +27,7 @@
 
     <figure class="card bio" aria-labelledby="bio-title">
       <figcaption class="card-head">
-        <span id="bio-title"><strong>The pattern</strong> PD1+ macrophages within 100 µm of Tumor 5 cells</span>
+        <span id="bio-title"><strong>The pattern</strong> PD1 on macrophages within 100 µm of Tumor 5 cells</span>
         <span class="tag ok" id="bio-tag">MEASURED</span>
       </figcaption>
       <div class="bio-body">
@@ -44,9 +44,10 @@
       </div>
       <p class="legend bio-legend">
         <span><i class="ring"></i>100 µm of Tumor 5</span> <span><i class="t5"></i>Tumor 5</span>
-        <span><i class="pd1"></i>PD1+ macrophage</span> <span><i class="mac"></i>macrophage</span>
+        <span><i class="pd1"></i>PD1+ macrophage (display rule below)</span> <span><i class="mac"></i>macrophage</span>
         <span><i class="o"></i>other cells</span>
       </p>
+      <p class="bio-cap" id="bio-def"></p>
       <p class="bio-cap" id="bio-cap"></p>
     </figure>
 
@@ -65,11 +66,12 @@
 
   <section class="results" aria-label="What the studies show">
     <article class="card power-card">
-      <h2>They plan <span id="pw-n">200</span> patients. Will the study find it?</h2>
+      <h2>They plan <span id="pw-n">200</span> patients. Would a study like theirs find a real effect?</h2>
       <div class="vs">
         <p><span class="big" id="pw-sim">—</span><small>simulated on real tissue <span class="tag" id="pw-sim-tag"></span></small><span class="ci" id="pw-ci"></span></p>
         <p class="formula"><span class="big" id="pw-formula">—</span><small>the textbook formula <span class="tag">ANALYTIC</span></small><span class="ci">Schoenfeld events formula</span></p>
       </div>
+      <p class="ci" id="pw-model"></p>
       <p class="src" id="pw-src"></p>
     </article>
     <article class="card honest">

@@ -106,5 +106,34 @@ assert.equal(pairRatio(g([row({ seconds: 2 }), row({ seconds: 1, label: "ESTIMAT
 assert.equal(pairRatio(g([row({ seconds: 2 }), row({ seconds: null, label: "PENDING" })])), null);
 assert.equal(pairRatio(bl), null, "the design-point race never prints a ratio");
 assert.equal(pairRatio(g([row({ seconds: 3 }), row({ seconds: 2 }), row({ seconds: 1 })])), null);
-for (const grp of bl.interim ?? []) assert.match(pairRatio(grp), /×\d\.\d faster$/, grp.title);
+for (const grp of (bl.interim ?? []).filter((x) => x.same_scope)) assert.match(pairRatio(grp), /×\d\.\d faster$/, grp.title);
+// Atlas #79 re-check at 9355de6, each written red first.
+// (2) the old fleet file times the longest shard, overlap unverified: no ratio for it; the kernel pair says what ran.
+for (const grp of bl.interim ?? []) {
+  if (/fleet/.test(grp.title)) {
+    assert.equal(pairRatio(grp), null, "no fleet ratio from longest-shard compute");
+    assert.match(grp.title, /longest-shard compute/);
+  } else assert.match(grp.title, /re-imaging and feature extraction only \(scoring not timed\)/);
+}
+// (5) a PENDING row with a number is still PENDING; a non-numeric startup_s is never formatted.
+assert.match(speedRaceHTML({ rows: [row({ label: "PENDING", seconds: 5 })] }), /class="pending"/);
+assert.equal(raceState([row({ label: "UNMEASURED", seconds: 5 }), row({ seconds: 1 })], 1e9)[0].clock, null);
+assert.doesNotMatch(speedRaceHTML({ rows: [row({ seconds: 4, startup_s: "5" })] }), /start-up/);
+// (1) (3) (5) every rendered claim number is checked before it is shown; the panels' words are exact.
+const { claimTexts, bioTexts } = await import("./claims.js");
+const cl = JSON.parse(readFileSync(new URL("./data/claims.json", import.meta.url), "utf8"));
+const ct = claimTexts(cl);
+assert.match(ct["pw-model"], /HR 2(\.0)? per SD .* not the PD1 pattern's power/, "power says which model it is");
+assert.match(ct["fa-detail"], /^28 of 700 null studies, pooled over 7 designs.*not per-design error control$/);
+for (const [k, f, v] of [["maxT", "p", undefined], ["maxT", "p", "0.1"], ["power", "hi", 0.1], ["power", "sim", NaN],
+  ["false_alarms", "hits", 701], ["false_alarms", "designs", undefined], ["power", "model", undefined], ["maxT", "tests", 1.5]])
+  assert.throws(() => claimTexts({ ...cl, [k]: { ...cl[k], [f]: v } }), /bad data/, `${k}.${f} = ${v}`);
+const bm = JSON.parse(readFileSync(new URL("./data/biomarker.json", import.meta.url), "utf8"));
+const bt = bioTexts(bm);
+assert.ok(bt["bio-def"].includes(bm.feature.definition) && bt["bio-def"].includes(bm.pd1_positive_rule), "definition and display rule shown");
+assert.match(bt["bio-def"], /continuous score with no threshold/);
+assert.match(bt["reg-high-cap"], /0 of them within 100 µm/); assert.match(bt["reg-low-cap"], /0 of them within 100 µm/);
+assert.match(bt["bio-cap"], /Can't be tested in our second cohort: it has no PD1 stain\.$/);
+assert.doesNotMatch(Object.values(bt).join(" "), /not replicated|discovery/i);
+assert.throws(() => bioTexts({ ...bm, feature: { ...bm.feature, z: "3.96" } }), /bad data/);
 console.log("race.test.mjs: ok");

@@ -163,7 +163,7 @@ def check_biomarker(b, w):
     return f"{len(regions)} regions, km {arms}"
 
 
-CLAIM_NUMBERS = {"power": ("patients", "sim", "lo", "hi", "n", "formula"), "false_alarms": ("hits", "n", "target"),
+CLAIM_NUMBERS = {"power": ("patients", "sim", "lo", "hi", "n", "formula"), "false_alarms": ("hits", "n", "designs", "target"),
                  "maxT": ("z", "p", "tests")}
 
 
@@ -179,6 +179,7 @@ def check_claims(c, w):
         for f in fields:
             need(num(b.get(f)) and math.isfinite(b[f]), w, f"{k}.{f}: finite number")
     need(c["power"].get("formula_label") == "ANALYTIC", w, "power.formula_label: ANALYTIC")
+    need(text(c["power"].get("model")) and "not the PD1" in c["power"]["model"], w, "power.model: says it is not PD1's power")
     need(0 <= c["power"]["lo"] <= c["power"]["sim"] <= c["power"]["hi"] <= 1, w, "power: lo <= sim <= hi in [0, 1]")
     need(0 < c["maxT"]["p"] <= 1 and c["false_alarms"]["hits"] <= c["false_alarms"]["n"], w, "maxT.p, false_alarms")
     return "power, false_alarms, maxT"

@@ -4,6 +4,7 @@
 import { createTissue } from "./tissue.js";
 import { createSpeedRace, workflowHTML, pairRatio } from "./race.js";
 import { drawRegion, drawKM } from "./bio.js";
+import { claimTexts, bioTexts } from "./claims.js";
 import { drawChart, pct, fovLabel } from "./chart.js";
 
 const $ = (id) => document.getElementById(id);
@@ -98,19 +99,23 @@ async function getJSON(path) {
   return r.json();
 }
 
-const pct1 = (v) => `${(v * 100).toFixed(v < 0.1 ? 1 : 0)}%`;
 const tagOf = (el, label) => { el.textContent = label; el.classList.toggle("ok", label === "MEASURED"); };
 
 const drawRegions = () => biomarker?.regions.forEach((r) => drawRegion($(`reg-${r.arm}`), r));
+
+// One panel's bad file never stops the others: it stays on its placeholder and the reason goes to the console.
+function panel(name, draw) {
+  try { draw(); return true; } catch (e) { console.warn(`${name} panel not drawn:`, e.message); return false; }
+}
 
 // The hero and the results: each file on its own, so one missing file never blanks the others.
 async function hero() {
   const [bl, cl, bm] = await Promise.allSettled(
     ["data/baseline.json", "data/claims.json", "data/biomarker.json"].map(getJSON));
-  if (bl.status === "fulfilled") {
+  if (bl.status === "fulfilled") panel("race", () => {
     const d = bl.value, races = [];
     // Until the design point is timed, the measured pairs (#75's ladder file) race, each on its own scale.
-    if (!d.rows.some((r) => r.seconds > 0) && d.interim?.length) {
+    if (!d.rows.some((r) => r.seconds > 0 && !["PENDING", "UNMEASURED"].includes(r.label)) && d.interim?.length) {
       $("speed-title").textContent = "How fast, measured so far";
       $("speed-dp").hidden = false;
       for (const g of d.interim) {
@@ -125,42 +130,28 @@ async function hero() {
     races.push(createSpeedRace($("speed-race"), d, { reducedMotion }));
     $("workflow").innerHTML = workflowHTML(d.workflow);
     $("run").addEventListener("click", () => races.forEach((r) => r.run()));
-  } else $("run").disabled = true;
+  }) || ($("run").disabled = true);
+  else $("run").disabled = true;
 
-  if (bm.status === "fulfilled") {
-    biomarker = bm.value;
-    const arm = (n) => biomarker.km.arms.find((a) => a.name === n);
+  if (bm.status === "fulfilled") panel("biomarker", () => {
+    const b = bm.value, texts = bioTexts(b);
+    const arm = (n) => b.km.arms.find((a) => a.name === n);
     drawKM($("km"), { high: { steps: arm("high").curve }, low: { steps: arm("low").curve } });
-    $("km-note").textContent = biomarker.km.label.replace(/^exploratory,\s*/, "");
+    $("km-note").textContent = b.km.label.replace(/^exploratory,\s*/, "");
     for (const n of ["high", "low"]) $(`km-${n.slice(0, 2)}`).textContent = `${arm(n).events} of ${arm(n).n} died`;
+    for (const [id, v] of Object.entries(texts)) $(id).textContent = v;
+    tagOf($("bio-tag"), b.source);
+    biomarker = b;
     drawRegions();
-    for (const r of biomarker.regions) {
-      const c = r.counts, s = (k) => (c[k] === 1 ? "" : "s");
-      $(`reg-${r.arm}-cap`).textContent = `${r.arm === "high" ? "High" : "Low"} arm, median patient: ` +
-        `${c.tumour} Tumor 5 cell${s("tumour")}, ${c.macrophages} macrophages, ${c.pd1_pos_macrophages} PD1+, ` +
-        `${c.pd1_pos_near_tumour} PD1+ within 100 µm`;
-    }
-    tagOf($("bio-tag"), biomarker.source);
-    $("bio-cap").textContent = `The top-ranked pattern, z = ${biomarker.feature.z.toFixed(2)}. ${biomarker.note} ` +
-      "Can't be tested in our second cohort: it has no PD1 stain.";
-  }
+  });
 
-  if (cl.status === "fulfilled") {
+
+  if (cl.status === "fulfilled") panel("claims", () => {
     const { power: pw, false_alarms: fa, maxT: mt } = cl.value;
-    $("pw-n").textContent = pw.patients;
-    $("pw-sim").textContent = pct(pw.sim);
-    tagOf($("pw-sim-tag"), pw.label);
-    $("pw-ci").textContent = `95% interval ${Math.round(pw.lo * 100)}–${Math.round(pw.hi * 100)}%, ${pw.n} simulated studies`;
-    $("pw-formula").textContent = pct(pw.formula);
-    $("pw-src").textContent = pw.source;
-    $("fa-rate").textContent = pct1(fa.hits / fa.n);
-    tagOf($("fa-tag"), fa.label);
-    $("fa-detail").textContent = `${fa.hits} of ${fa.n} null studies, against a ${pct(fa.target)} target`;
-    $("mt-p").textContent = `p = ${mt.p.toFixed(3)}`;
-    $("mt-detail").textContent = `for the pattern after ${mt.tests.toLocaleString("en-GB")} tests (maxT): ${mt.verdict}.`;
-    tagOf($("mt-tag"), mt.label);
-    $("fa-src").textContent = `${fa.source} · ${mt.source}`;
-  }
+    for (const [id, v] of Object.entries(claimTexts(cl.value))) $(id).textContent = v;
+    tagOf($("pw-sim-tag"), pw.label); tagOf($("fa-tag"), fa.label); tagOf($("mt-tag"), mt.label);
+  });
+
 }
 
 async function main() {
