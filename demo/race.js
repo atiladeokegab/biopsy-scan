@@ -1,4 +1,4 @@
-// THE RACE: the same N studies on the CPU (one at a time) and the GPU (all at once).
+// THE RACE: the same N studies on the CPU (all cores, Numba) and the GPU (batched studies).
 // Each tile is one simulated study: green when it found the pattern, grey when it missed.
 // Timing comes only from bench.json. Without a MEASURED bench both lanes still play, but at a fixed
 // on-screen pace that is not to scale: no seconds and no ratio are shown, and both say UNMEASURED.
@@ -7,6 +7,13 @@ import { tok } from "./chart.js";
 const GPU_SHOW_MS = 1400; // on-screen time for the GPU lane; the CPU lane runs on the same scale
 const CPU_SHOW_MS = 7000; // how long we let the CPU lane crawl before stopping the clock
 const UNMEASURED_CPU_MS = 140; // on-screen ms per CPU study when unmeasured: a display pace, not a measurement
+
+// Which way the measured comparison points: a slower GPU must never read as "1× faster".
+export function speedWord(cpuSeconds, gpuSeconds) {
+  const r = cpuSeconds / gpuSeconds;
+  const x = (v) => `${v < 10 ? v.toFixed(1) : fmt(Math.round(v))}×`;
+  return r > 1.05 ? `GPU ${x(r)} faster` : r < 0.95 ? `GPU ${x(1 / r)} slower` : "about the same";
+}
 
 const fmt = (n) => n.toLocaleString("en-GB");
 export const duration = (s) =>
@@ -57,7 +64,7 @@ export function createRace(cpuCanvas, gpuCanvas, out) {
 
     out.speed.textContent = measured
       ? `Measured on one design point · GPU: ${bench.gpu}, ${duration(bench.gpu_seconds)} · ` +
-        `CPU: all cores of ${bench.cpu}, ${duration(bench.cpu_seconds)} · ${fmt(Math.round(ratio))}× faster`
+        `CPU: all cores of ${bench.cpu}, ${duration(bench.cpu_seconds)} · ${speedWord(bench.cpu_seconds, bench.gpu_seconds)}`
       : bench && bench.error ? "Bench timing unavailable; grid power estimates still active."
       : "Measured CPU/GPU timing pending bench run. Speeds on screen are not to scale.";
 
