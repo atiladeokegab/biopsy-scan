@@ -11,6 +11,6 @@ model-based calibration, never exact per-study error control.
 """
 
 from .reference import maxT, omnibus, permutation_test, score, threshold
-from .screen import permutation_maxT, screen
+from .screen import permutation_maxT, screen, screen_batch
 
-__all__ = ["maxT", "omnibus", "permutation_maxT", "permutation_test", "score", "screen", "threshold"]
+__all__ = ["maxT", "omnibus", "permutation_maxT", "permutation_test", "score", "screen", "screen_batch", "threshold"]

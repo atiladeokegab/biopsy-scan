@@ -198,6 +198,25 @@ def _fingerprint(a):
     return hashlib.sha256(np.ascontiguousarray(a, dtype=np.float64).tobytes()).hexdigest()
 
 
+def _groups(xp, X, C, codes, keep_all, events):
+    """Candidates grouped by analysis mask: (columns, rows, device X, device C, device same) per mask."""
+    masks, inverse = np.unique(keep_all.T, axis=0, return_inverse=True)
+    groups = []
+    for g, keep in enumerate(masks):
+        cols = np.flatnonzero(inverse.ravel() == g)
+        rows = np.flatnonzero(keep)
+        if len(rows) < 2 or not events[:, rows].any():
+            continue  # no information: U = V = z = 0
+        Xg = X[np.ix_(rows, cols)]
+        Xg = Xg - Xg.mean(0)  # U and I are shift-invariant; centring keeps roundoff small
+        Cg = C[rows]
+        Cg = Cg[:, np.ptp(Cg, axis=0) > 0] if len(Cg) else Cg  # a constant covariate has no effect
+        Cg = Cg - Cg.mean(0)
+        groups.append((cols, rows, xp.asarray(Xg), xp.asarray(Cg),
+                       xp.asarray(codes[rows][:, None] == codes[rows][None])))
+    return masks, groups
+
+
 def screen(X, time, event, clinical=None, strata=None, n_perm=999, backend="auto", *,
            seed=0, names=None, clinical_names=None, block=64):
     """Score every candidate column of X against survival, adjusted for clinical C.
@@ -215,21 +234,8 @@ def screen(X, time, event, clinical=None, strata=None, n_perm=999, backend="auto
     if not isinstance(n_perm, (int, np.integer)) or n_perm < 0:
         raise ValueError("n_perm must be a nonnegative integer")
     keep_all = np.isfinite(X) & base[:, None]
-    masks, inverse = np.unique(keep_all.T, axis=0, return_inverse=True)
-    groups = []  # (columns, rows, device X, device C, device same, observed beta)
-    for g, keep in enumerate(masks):
-        cols = np.flatnonzero(inverse.ravel() == g)
-        rows = np.flatnonzero(keep)
-        if len(rows) < 2 or not event[rows].any():
-            continue  # no information: U = V = z = 0
-        Xg = X[np.ix_(rows, cols)]
-        Xg = Xg - Xg.mean(0)  # U and I are shift-invariant; centring keeps roundoff small
-        Cg = C[rows]
-        Cg = Cg[:, np.ptp(Cg, axis=0) > 0] if len(Cg) else Cg  # a constant covariate has no effect
-        Cg = Cg - Cg.mean(0)
-        beta = _phreg(Cg, time[rows], event[rows], codes[rows])
-        groups.append((cols, rows, xp.asarray(Xg), xp.asarray(Cg),
-                       xp.asarray(codes[rows][:, None] == codes[rows][None]), beta))
+    masks, groups = _groups(xp, X, C, codes, keep_all, event[None])
+    groups = [(*g, _phreg(_host(g[3]), time[g[1]], event[g[1]], codes[g[1]])) for g in groups]
     U, V, z = np.zeros(J), np.zeros(J), np.zeros(J)
     n = keep_all.sum(0)
     for cols, rows, Xg, Cg, same, beta in groups:
@@ -266,6 +272,36 @@ def screen(X, time, event, clinical=None, strata=None, n_perm=999, backend="auto
     }
 
 
+def screen_batch(X, time, event, clinical=None, strata=None, backend="auto", *, block=64):
+    """The observed screen for S simulated studies on one cohort in one call.
+
+    time[S, P] and event[S, P] are the studies' outcomes (finite, event 0 or 1);
+    X, clinical and strata are shared, as in ``screen``. Each study gets its own
+    null fit (batched Newton, equal to PHReg) per mask group. Returns float64
+    U, V, z [S, J], maxT [S], n [J] and metadata; no resampling (n_perm = 0).
+    """
+    xp, gpu = get_backend(backend), backend == "gpu"
+    time, event = np.atleast_2d(np.asarray(time, dtype=np.float64)), np.atleast_2d(np.asarray(event, dtype=np.float64))
+    if time.shape != event.shape or not np.isfinite(time).all() or not np.isin(event, [0, 1]).all():
+        raise ValueError("time and event must be finite [S, P] arrays with event 0 or 1")
+    X, _, _, C, codes, base = _inputs(X, time[0], event[0], clinical, strata)
+    if (time < 0).any():
+        raise ValueError("time must be nonnegative")
+    keep_all = np.isfinite(X) & base[:, None]
+    masks, groups = _groups(xp, X, C, codes, keep_all, event)
+    J = X.shape[1]
+    U, V, z = (np.zeros((len(time), J)) for _ in range(3))
+    for start in range(0, len(time), block):
+        part = slice(start, start + block)
+        if groups:
+            for out, value in zip((U, V, z), _refit_scores(xp, gpu, groups, time[part], event[part],
+                                                           np.arange(len(base)), J)):
+                out[part] = value
+    return {"U": U, "V": V, "z": z, "maxT": np.abs(z).max(1) if J else np.zeros(len(time)), "n": keep_all.sum(0),
+            "metadata": {"studies": len(time), "masks": len(masks), "clinical": {"shape": list(C.shape)},
+                         "backend": "gpu (numba.cuda)" if gpu else xp.__name__}}
+
+
 def _null_draws(time, event, C, codes, base, B, seed, block):
     """Yield clinical-null resamples (time, event), each [block, n_base], over base rows."""
     ix = np.flatnonzero(base)
@@ -294,14 +330,20 @@ def _bootstrap(xp, gpu, groups, time, event, C, codes, base, B, seed, block):
     position[base] = np.arange(base.sum())
     maxima = []
     for tb, eb in _null_draws(time, event, C, codes, base, B, seed, block):
-        zmax = np.zeros(len(tb))
-        for cols, rows, Xg, Cg, same, _ in groups:
-            tg, eg = xp.asarray(tb[:, position[rows]]), xp.asarray(eb[:, position[rows]])
-            fitted = _newton(xp, Cg, tg, eg, same) if Cg.shape[1] else xp.zeros((len(tb), 0))
-            z = _scores(xp, gpu, Xg, Cg, same, tg, eg, xp.exp(fitted @ Cg.T))[2]
-            zmax = np.maximum(zmax, _host(xp.abs(z).max(1)))
-        maxima.append(zmax)
+        maxima.append(np.abs(_refit_scores(xp, gpu, groups, tb, eb, position)[2]).max(1))
     return np.concatenate(maxima)
+
+
+def _refit_scores(xp, gpu, groups, tb, eb, position, J=None):
+    """U, V, z [S,J] for S outcome sets [S, *], refitting the null per set and per mask group."""
+    J = max(int(g[0].max()) + 1 for g in groups) if J is None else J
+    U, V, z = (np.zeros((len(tb), J)) for _ in range(3))
+    for cols, rows, Xg, Cg, same, *_ in groups:
+        tg, eg = xp.asarray(tb[:, position[rows]]), xp.asarray(eb[:, position[rows]])
+        fitted = _newton(xp, Cg, tg, eg, same) if Cg.shape[1] else xp.zeros((len(tb), 0))
+        for out, value in zip((U, V, z), _scores(xp, gpu, Xg, Cg, same, tg, eg, xp.exp(fitted @ Cg.T))):
+            out[:, cols] = _host(value)
+    return U, V, z
 
 
 def permutation_maxT(X, time, event, strata, n_perm=9999, *, seed=0, backend="auto", block=1024):
