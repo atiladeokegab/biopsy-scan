@@ -87,26 +87,33 @@ def rungs() -> dict:
     return found
 
 
-def matches_reference(fn, pool, design) -> bool:
-    """Correctness gate: the same seed must give the reference's region sums and counts."""
-    ref, _ = make_trial(reimage_region)(pool, design, seed=0)
-    got, _ = fn(pool, design, seed=0)
-    return all(np.allclose(a[0], b[0], rtol=0, atol=1e-9) and np.array_equal(a[1], b[1]) for a, b in zip(ref, got))
+def same_output(ref: list, got: list) -> bool:
+    """Correctness gate: same number of looks, same shapes, equal region sums and counts."""
+    if len(got) != len(ref):
+        return False
+    for (S0, m0), (S, m) in zip(ref, got):
+        S, m = np.asarray(S), np.asarray(m)
+        if S.shape != S0.shape or m.shape != m0.shape:
+            return False
+        if not (np.allclose(S, S0, rtol=0, atol=1e-9) and np.array_equal(m, m0)):
+            return False
+    return True
 
 
 def time_rung(fn, pool, design, studies: int) -> dict:
     """Cold = the first trial (JIT, upload); amortised = the median of the rest. Seeds are fixed per trial."""
-    times, reads = [], 0
+    times, reads, first = [], 0, None
     for s in range(studies):
         t0 = time.perf_counter()
-        _, n = fn(pool, design, seed=s)
+        out, n = fn(pool, design, seed=s)
         times.append(time.perf_counter() - t0)
         reads += n
+        first = out if first is None else first
     warm = times[1:] or times
     amort = statistics.median(warm)
     return {"trials": studies, "cold_s": times[0], "amortised_s_per_trial": amort,
             "total_s": sum(times), "neighbour_reads": reads,
-            "reads_per_s": reads / sum(times), "trials_per_s": 1.0 / amort}
+            "reads_per_s": reads / sum(times), "trials_per_s": 1.0 / amort}, first
 
 
 def run(studies=20, cells=6000, side=750.0, n_regions=8, design=None, seed=0) -> dict:
@@ -124,19 +131,21 @@ def run(studies=20, cells=6000, side=750.0, n_regions=8, design=None, seed=0) ->
               "unit": {"trial": f"{design['k']} region looks: crop + mis-call + neighbour recount + region sums",
                        "excludes": "patient sampling and aggregation, features, outcomes, statistics; prep_s (neighbour lists) is reported separately"},
               "baseline": "numpy_reference"}
-    for name, fn in rungs().items():
+    ref_first = None
+    for name, fn in rungs().items():  # numpy_reference first: it is the oracle the others are checked against
         if isinstance(fn, str):
             result["rungs"][name] = fn
             continue
         try:
-            ok = matches_reference(fn, pool, design)
+            timing, first = time_rung(fn, pool, design, studies)  # the first timed call is the cold one
         except Exception as e:  # noqa: BLE001  # e.g. CUDA unavailable on this box
             result["rungs"][name] = f"pending: {type(e).__name__}: {e}"[:200]
             continue
-        if not ok:
-            result["rungs"][name] = "excluded: output differs from numpy_reference on seed 0"  # never time a wrong kernel
+        if name != "numpy_reference" and not same_output(ref_first, first):
+            result["rungs"][name] = "excluded: output differs from numpy_reference on seed 0"  # never report a wrong kernel
         else:
-            result["rungs"][name] = time_rung(fn, pool, design, studies)
+            result["rungs"][name] = timing
+            ref_first = first if name == "numpy_reference" else ref_first
     return result
 
 
