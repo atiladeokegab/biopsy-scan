@@ -34,7 +34,7 @@ make summary   # per-cohort patients, regions, events and the frozen feature gra
 
 | What you see | Status | Where it comes from |
 |---|---|---|
-| Tissue in the 3D view | **MEASURED**: real cells | Charville CODEX cells, 12 patients, subsampled for display (`scripts/export_tissue.py`, #20) |
+| Tissue in the 3D view | **MEASURED**: real cells | Charville CODEX cells, 12 patients, subsampled for display (`scripts/export_tissue.py`, #20; until #20 merges, the page shows a SYNTHETIC placeholder) |
 | Power grid and chart | **SYNTHETIC** until #5 | `demo/data/grid.json` is a placeholder. The design atlas (#5) replaces it with simulated studies on the real cohorts |
 | GPU speed-up | **UNMEASURED** until the event GPU | No timing is shown until `bench.json` holds a run on the event GPU (#3). The page says UNMEASURED and shows no ratio |
 
