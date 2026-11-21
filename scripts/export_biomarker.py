@@ -44,6 +44,18 @@ def km(time: np.ndarray, event: np.ndarray) -> list[list[float]]:
     return curve
 
 
+def near_tumour(xy: np.ndarray, tum: np.ndarray, mac: np.ndarray) -> np.ndarray:
+    """Macrophages with a Tumor 5 cell within RADIUS µm, by the feature's own rule (core.truth: d <= rad, inclusive)."""
+    near = np.zeros(len(xy), bool)
+    if not tum.any():
+        return near
+    t_xy = xy[tum]
+    # the ball is widened one ulp so candidates at exactly RADIUS reach the d <= RADIUS test below
+    for i, cand in zip(np.flatnonzero(mac), cKDTree(t_xy).query_ball_point(xy[mac], np.nextafter(RADIUS, np.inf))):
+        near[i] = bool(cand) and bool((np.sqrt(((t_xy[cand] - xy[i]) ** 2).sum(1)) <= RADIUS).any())
+    return near
+
+
 def _region(cells, p, xp, patient, t, j, r, ch, ptr, K, focal, names) -> dict:
     """The patient's region closest to its value, as drawable columns (µm from the region's corner)."""
     best = None
@@ -58,10 +70,7 @@ def _region(cells, p, xp, patient, t, j, r, ch, ptr, K, focal, names) -> dict:
     sl = slice(ptr[reg], ptr[reg + 1])
     xs, ys, ty = cells["x"][sl].astype(np.float64), cells["y"][sl].astype(np.float64), cells["cell_type"][sl]
     tum, mac = ty == names.index(FOCAL), ty == names.index(NEIGHBOUR)
-    near = np.zeros(len(ty), bool)
-    if tum.any():
-        d, _ = cKDTree(np.stack([xs[tum], ys[tum]], 1)).query(np.stack([xs, ys], 1), distance_upper_bound=RADIUS)
-        near = mac & (d <= RADIUS)
+    near = near_tumour(np.stack([xs, ys], 1), tum, mac)
     pos = mac & (cells["channels"][sl, ch] > PD1_POSITIVE_Z)
     x0, y0 = xs.min(), ys.min()
     return {

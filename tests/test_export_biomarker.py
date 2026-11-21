@@ -28,3 +28,13 @@ def test_committed_panel_data_is_consistent():
         assert len({len(v) for v in c.values()}) == 1 and len(c["x"]) == r["counts"]["cells"]
         assert sum(t == 0 for t in c["type"]) == r["counts"]["tumour"]
         assert all(m <= (t == 1) for m, t in zip(c["near_tumour"], c["type"]))  # only macrophages are flagged
+
+
+def test_near_tumour_uses_the_features_inclusive_100um_rule():
+    # core.truth keeps a pair when d <= 100 (inclusive), so a macrophage at exactly 100 µm counts.
+    xy = np.array([[0, 0], [100, 0], [60, 80], [100.0001, 0], [0, 50]], np.float64)
+    tum = np.array([1, 0, 0, 0, 0], bool)
+    mac = np.array([0, 1, 1, 1, 0], bool)
+    assert eb.near_tumour(xy, tum, mac).tolist() == [False, True, True, False, False]
+    assert not eb.near_tumour(xy, np.zeros(5, bool), mac).any()
+
