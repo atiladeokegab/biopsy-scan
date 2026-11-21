@@ -28,7 +28,9 @@ RATES = {"A100": 2.0988, "cpu_core": 0.04716, "memory_gib": 0.007992,
          "source": "bench/results/modal-spend.json on modal-gpu (modal.com/pricing read 2026-11-21T17:36Z)"}
 USD_PER_HOUR = RATES["A100"] + CORES * RATES["cpu_core"] + MEMORY_MIB / 1024 * RATES["memory_gib"]
 SPEND = REPO / "bench" / "results" / "modal-spend-design.json"
-SINGLE = {"OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1", "MKL_NUM_THREADS": "1", "NUMBA_NUM_THREADS": "1"}
+# workqueue: the CPU arms fork workers after the parent's JIT warm-up, and GNU OpenMP aborts a fork
+SINGLE = {"OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1", "MKL_NUM_THREADS": "1", "NUMBA_NUM_THREADS": "1",
+          "NUMBA_THREADING_LAYER": "workqueue"}
 RAW = "https://raw.githubusercontent.com/atiladeokegab/sota-parallelism-nov21"
 ATLAS_SHA = "79a77926aa0c07fc2c85574736f0f1396767ded0"  # must equal design_batch.ATLAS_PIN[0]; main() checks
 

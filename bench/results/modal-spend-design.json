@@ -1,0 +1,32 @@
+{
+  "workspace_profile": "fhl-08",
+  "rates_usd_per_hour": {
+    "A100": 2.0988,
+    "cpu_core": 0.04716,
+    "memory_gib": 0.007992,
+    "source": "bench/results/modal-spend.json on modal-gpu (modal.com/pricing read 2026-11-21T17:36Z)"
+  },
+  "entries": [
+    {
+      "utc": "2026-11-21T18:38Z",
+      "run": "modal-design 20/stream, arms ['lab', 'numba', 'gpu']",
+      "containers": 3,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 20.0,
+      "est_usd": 2.46,
+      "basis": "1860 s ceiling x per-arm $/h {'lab': 0.8887679999999998, 'numba': 0.8887679999999998, 'gpu': 2.987568}",
+      "source_commit": "2882116d205ac2faba3c4a36c3b6d987cbf82c81",
+      "container_class": "lab and numba without a GPU (smoke only)",
+      "actual": {
+        "modal_wall_s": 780,
+        "est_usd": 1.03,
+        "result": null,
+        "basis": "upper bound: 3 containers x 13 min; the gpu arm died at kernel compile in ~2 min",
+        "note": "FAILED smoke: _study_moments used min/max (fixed in the next commit); the numba arm's forked workers aborted (GNU OpenMP after the parent's JIT warm-up) and looped until the app was stopped at 18:51Z"
+      }
+    }
+  ],
+  "running_total_usd": 1.03
+}
