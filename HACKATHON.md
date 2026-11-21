@@ -1,6 +1,6 @@
 # SoTA Scientific Parallelism Hackathon (King's Cross, 21-22 Nov 2026)
 
-A GPU engine that re-images thousands of simulated spatial-biomarker studies cell by cell from real head and neck cancer tissue (UPMC CODEX, Charville), so a lab can see, before it images a single slide, which study designs (patients, regions per patient, panel, imaging error) can actually find a survival-linked spatial pattern like Helsinki's stroma finding. The reshaping (nesting, region pools, one shared null threshold per design point) and a speedup ladder that separates algorithm from hardware against the best adequate CPU method.
+A GPU engine that re-images thousands of simulated spatial-biomarker studies cell by cell from real tumour tissue (UPMC CODEX head and neck; Charville, the Stanford colorectal cohort), so a lab can see, before it images a single slide, which study designs (patients, regions per patient, panel, imaging error) can actually find a survival-linked spatial pattern like Helsinki's stroma finding. The reshaping (nesting, region pools, one shared null threshold per design point) and a speedup ladder that separates algorithm from hardware against the best adequate CPU method.
 
 Official rules: the event brief
 

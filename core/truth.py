@@ -4,7 +4,7 @@ from __future__ import annotations
 import numpy as np
 from scipy.spatial import cKDTree
 
-from core.grammar import RADII_UM
+from core.grammar import RADII_UM, features, grammar
 
 R = len(RADII_UM)
 
@@ -80,3 +80,35 @@ def region_sums(counts: np.ndarray, types: np.ndarray, visible: np.ndarray, foca
 def truth_region(xy: np.ndarray, types: np.ndarray, focal: list[int], K: int):
     """True region output: full region, true types."""
     return region_sums(truth_counts(xy, types, K), types, np.ones(len(xy), bool), focal, K)
+
+
+def layout(cells: dict) -> dict:
+    """Index helpers for a contract cells dict (cells grouped by region, in region order)."""
+    rid = np.asarray(cells["region_id"])
+    por = np.asarray(cells["patient_of_region"])
+    if np.any(np.diff(rid) < 0):
+        raise ValueError("cells must be grouped by region, in region order")
+    ptr = np.searchsorted(rid, np.arange(len(por) + 1))
+    # shortcut: without type_names every type is focal and K = max type + 1; real cohorts carry type_names.
+    names = cells.get("type_names") or [f"type {i}" for i in range(int(np.max(cells["cell_type"])) + 1)]
+    focal = grammar(names)["focal_types"] if "type_names" in cells else list(range(len(names)))
+    P = len(cells["time"]) if "time" in cells else int(por.max()) + 1
+    x, y, ty = cells["x"], cells["y"], np.asarray(cells["cell_type"])
+    return {"P": P, "K": len(names), "focal": focal,
+            "regions_of": [np.flatnonzero(por == p) for p in range(P)],
+            "xy": lambda r: np.stack([x[ptr[r]:ptr[r + 1]], y[ptr[r]:ptr[r + 1]]], 1).astype(np.float64),
+            "types": lambda r: ty[ptr[r]:ptr[r + 1]]}
+
+
+def truth(cells: dict) -> np.ndarray:
+    """The truth layer X float64 [P, C]: every region, full field, true types, patient index order."""
+    L = layout(cells)
+    T, K = len(L["focal"]), L["K"]
+    S = np.zeros((L["P"], T, K, R, 2))
+    m = np.zeros((L["P"], T), np.int64)
+    for p, rs in enumerate(L["regions_of"]):
+        for r in rs:
+            s_, m_ = truth_region(L["xy"](r), L["types"](r), L["focal"], K)
+            S[p] += s_
+            m[p] += m_
+    return features(S, m)
