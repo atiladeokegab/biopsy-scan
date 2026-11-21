@@ -1,0 +1,71 @@
+{
+ "label": "SYNTHETIC",
+ "fixture": "n=120, 2 strata, C=[binary, normal], 20 candidates correlated with C, Weibull hazard on C, censoring on C, no candidate effect given C",
+ "alpha": 0.05,
+ "B": 99,
+ "n_datasets": 1000,
+ "seed": 2026,
+ "rates": {
+  "bootstrap": {
+   "rejections": 51,
+   "rate": 0.051,
+   "clopper_pearson_95": [
+    0.03820523677468616,
+    0.06651346159493482
+   ]
+  },
+  "raw_residual_shuffle": {
+   "rejections": 1,
+   "rate": 0.001,
+   "clopper_pearson_95": [
+    2.5317487491294065e-05,
+    0.005558924279826672
+   ]
+  },
+  "unadjusted": {
+   "rejections": 997,
+   "rate": 0.997,
+   "clopper_pearson_95": [
+    0.9912579767615217,
+    0.9993809000683505
+   ]
+  }
+ },
+ "draws": "continuous: Breslow cumulative hazard interpolated linearly between event times (stats.screen._draw, commit f4e1a55)",
+ "matched_superseded_run": {
+  "draws": "on the Breslow step times (before f4e1a55); same N, B, seed and outer rng",
+  "rates": {
+   "bootstrap": {
+    "rejections": 74,
+    "rate": 0.074,
+    "clopper_pearson_95": [
+     0.05854944426065262,
+     0.09201173601424908
+    ]
+   },
+   "raw_residual_shuffle": {
+    "rejections": 1,
+    "rate": 0.001,
+    "clopper_pearson_95": [
+     2.5317487491294065e-05,
+     0.005558924279826672
+    ]
+   },
+   "unadjusted": {
+    "rejections": 998,
+    "rate": 0.998,
+    "clopper_pearson_95": [
+     0.9927941610885425,
+     0.9997576988831227
+    ]
+   }
+  },
+  "reading": "observed on this fixture: 74/1000 (CP95 excludes 0.05) against 51/1000 with interpolated draws (CP95 contains 0.05). Mechanism (HYPOTHESIS, not tested): tied resampled times from the step draws shrink the null z."
+ },
+ "provenance": {
+  "command": "uv run python -m stats.hard_negative 1000",
+  "current_run_code": "r15-gpu-score-screen at f4e1a55..d9276a7 (interpolated draws); committed in 974c8e2",
+  "superseded_run_code": "before f4e1a55 (Breslow step draws), same command and outer seed",
+  "rng_stream": "both runs used the old single interleaved bootstrap stream (default_rng(seed) shared across resamples). 7660440 gave each resample its own stream (SeedSequence(seed).spawn(B)), and ff18408 changed the information floor and centring, so this head does not reproduce these counts bit for bit; a rerun at this head is needed for exact reproduction"
+ }
+}
