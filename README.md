@@ -6,7 +6,7 @@
 Preflight re-images simulated spatial-biology studies cell by cell from real head and neck and colorectal cancer tissue (CODEX), and does it at scale on a GPU.
 A lab sees which study designs (patients, regions per patient, field of view, mis-call rate) can actually detect a survival-linked spatial pattern, before it spends a slide.
 
-![The demo page, "Can my study find it?", with real Charville tissue cores stacked in 3D](docs/assets/demo-1280.png)
+![The Preflight demo page, with six real Charville tissue cores side by side in 3D](docs/assets/demo-1280.png)
 
 *The demo at 1280 px, showing 12 real Charville colorectal cores (24,033 cells, subsampled for display). The power figure on the right still comes from the synthetic grid, as its banner says.*
 
@@ -44,7 +44,7 @@ The demo labels every data file SYNTHETIC unless the file itself says `"source":
 
 - `core/`: cohort loaders, patient identity, the frozen feature grammar, and the NumPy reference re-imager. The binding interfaces are in [docs/CONTRACT.md](docs/CONTRACT.md).
 - `stats/`: float64 stratified Cox score statistics, maxT, omnibus and the null threshold for a design.
-- `demo/`: the "Can my study find it?" page.
+- `demo/`: the Preflight demo page.
 
 The architecture and the plan are in [IDEA.md](IDEA.md).
 
