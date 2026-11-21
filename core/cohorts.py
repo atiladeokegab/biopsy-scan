@@ -25,7 +25,8 @@ UPMC_TUPLE = ["status", "primary_outcome", "recurred", "hpvstatus", "survival_st
 
 # The locked held-out UPMC patients (core/heldout.py). None only for invented test fixtures.
 LOCK_FILE: Path | None = ROOT / "core" / "upmc_locked.json"
-SPLITS = ("discovery", "locked")
+# "all" reads both sides: only the power/design-grid path (scripts/export_grid.py) may pass it.
+SPLITS = ("discovery", "locked", "all")
 
 
 class LockedPatientError(PermissionError):
@@ -38,18 +39,22 @@ def manifest_hash(m: dict) -> str:
     return hashlib.sha256(body.encode()).hexdigest()
 
 
-def locked_regions(cohort: str = "upmc") -> set[str]:
-    """Region IDs of the locked held-out patients; raises if the manifest is missing or edited by hand."""
+def locked_regions(cohort: str = "upmc", data_dir: Path = DATA_DIR) -> set[str]:
+    """Region IDs of the locked held-out patients. Raises if the manifest is missing or edited by hand,
+    or if data_dir's labels file is not the one the split was locked on."""
     if cohort != "upmc" or LOCK_FILE is None:
         return set()
     m = json.loads(Path(LOCK_FILE).read_text())
     if m.get("sha256") != manifest_hash(m):
         raise ValueError(f"{LOCK_FILE}: sha256 does not match its content")
+    labels = Path(data_dir) / "upmc_labels.csv"
+    if hashlib.sha256(labels.read_bytes()).hexdigest() != m["labels_sha256"]:
+        raise ValueError(f"{labels}: sha256 differs from the labels the held-out split was locked on")
     return set(m["locked_regions"])
 
 
 def _check_split(cohort: str, split: str) -> None:
-    if split not in SPLITS or (cohort != "upmc" and split != "discovery"):
+    if split not in SPLITS or (cohort != "upmc" and split == "locked"):
         raise ValueError(f"unknown split {split!r} for {cohort}")
 
 
@@ -102,7 +107,8 @@ def load_regions(cohort: str, data_dir: Path = DATA_DIR, identity: str = "case",
     "tuple+case" = also split the tuples holding two case numbers (81). One all-NA tuple spans
     both coverslip groups. "patient" = upmc_patient_ids: the case number, else the clinical tuple of
     NA regions; unmapped regions are dropped.
-    split (UPMC): "discovery" (default) never returns a locked held-out region; "locked" returns only those.
+    split (UPMC): "discovery" (default) never returns a locked held-out region; "locked" returns only those;
+    "all" returns both, for the power/design grid only.
     """
     if cohort not in COHORTS:
         raise ValueError(f"unknown cohort {cohort!r}")
@@ -123,8 +129,9 @@ def load_regions(cohort: str, data_dir: Path = DATA_DIR, identity: str = "case",
         out["event"] = lab.survival_status.astype(float)  # any-cause death
         if identity in ("case", "patient"):
             out = out[out.patient_id != ""]
-        locked = out.region_id.isin(locked_regions())
-        out = out[locked if split == "locked" else ~locked].reset_index(drop=True)
+        if split != "all":
+            locked = out.region_id.isin(locked_regions(cohort, data_dir))
+            out = out[locked if split == "locked" else ~locked].reset_index(drop=True)
     else:
         out["case"] = lab.sample_label_visualizer.str.split("_").str[0]
         out["patient_id"] = out.case
@@ -182,8 +189,8 @@ def load_cells(cohort: str, region_ids: list[str] | None = None, data_dir: Path 
     data_dir = Path(data_dir)
     all_regions = list(pd.read_csv(data_dir / f"{cohort}_labels.csv", usecols=["region_id"], dtype=str).region_id)
     _check_split(cohort, split)
-    locked = locked_regions(cohort)
-    on_side = lambda r: (r in locked) == (split == "locked")  # noqa: E731
+    locked = locked_regions(cohort, data_dir)
+    on_side = lambda r: split == "all" or (r in locked) == (split == "locked")  # noqa: E731
     region_ids = [r for r in all_regions if on_side(r)] if region_ids is None else list(region_ids)
     wrong = [r for r in region_ids if not on_side(r)]
     if wrong:
