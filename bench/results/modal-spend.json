@@ -39,6 +39,27 @@
         "gpu_container_s": 630.0,
         "est_usd": 0.55
       }
+    },
+    {
+      "utc": "2026-11-21T17:17Z",
+      "run": "design-point CPU slots (a, b), 32 studies",
+      "est_usd": 2.02,
+      "basis": "2 x (32 cores + 64 GiB) x 0.5 h",
+      "running_total_usd": 7.35
+    },
+    {
+      "utc": "2026-11-21T17:17Z",
+      "run": "design-point fleet N=1 x A100, 32 studies",
+      "est_usd": 0.2,
+      "basis": "0.06 GPU-h x $3.13/h",
+      "running_total_usd": 7.55
+    },
+    {
+      "utc": "2026-11-21T17:19Z",
+      "run": "design-point fleet N=2 x A100, 32 studies",
+      "est_usd": 0.35,
+      "basis": "0.11 GPU-h x $3.13/h",
+      "running_total_usd": 7.9
     }
   ]
 }
