@@ -133,7 +133,7 @@ export function raceState(rows, t, total = RACE_MS) {
 }
 
 const esc = (v) => String(v).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
-const secs = (s) => (s < 600 ? `${s < 10 ? s.toFixed(2) : s.toFixed(1)} s` : duration(s));
+export const secs = (s) => (s < 3600 ? `${s < 10 ? s.toFixed(2) : s.toFixed(1)} s` : duration(s));
 
 const where = (r) => [r.hardware, r.gpu || (r.cores ? `${r.cores} core${r.cores > 1 ? "s" : ""}` : null)]
   .filter(Boolean).map(esc).join(", ");
