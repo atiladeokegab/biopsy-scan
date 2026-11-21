@@ -106,31 +106,51 @@ The checker enforces these rules:
 }
 ```
 
-## `data/baseline.json` (`preflight-baseline/1`): the baseline-vs-screen panel, hand-filled
+## `data/baseline.json` (`preflight-baseline/1`): the speed race, filled by `collect_race.py`
 
-One row per method and machine, all timing the same `task`. To fill a PENDING row, set its
-`label`, `seconds`, `hardware` and `cores` or `gpu`, and keep `source` pointing at the PR or run.
+One row per method, all timing the same `task` (the 3,780 Charville v2 candidates). Never edit a time by
+hand: `python3 -I demo/collect_race.py` (run by `make demo` and by Pages before every deploy) fills rows
+from `bench/results/*.json`. A bench file feeds a row either with a top-level `race` list, e.g.
+`"race": [{"id": "preflight-a100", "seconds": 0.8, "label": "MEASURED", "hardware": "Modal", "gpu": "1x NVIDIA A100"}]`
+(ids: `preflight-cpu`, `preflight-a100`, `preflight-fleet`), or, for `standard`, R-14's impl-a shape
+(`cpu_model`, `cohorts[].timings[]`). A row no file feeds keeps its committed value.
 
 ```jsonc
 {
   "schema": "preflight-baseline/1",
   "task": "Screen all 3,780 Charville v2 candidate patterns for a survival link",
   "rows": [{
+    "id": "standard",            // unique; bench files address rows by id
     "method": "Standard: one Cox fit per candidate (statsmodels PHReg)",
-    "role": "baseline",          // "baseline" (the standard method) or "screen" (Preflight)
+    "role": "baseline",          // "baseline" (grey bar) or "screen" (Preflight, accent bar)
     "label": "MEASURED",         // MEASURED, ESTIMATE, SYNTHETIC, UNMEASURED or PENDING
-    "seconds": 67.1,             // null when PENDING or UNMEASURED; required otherwise
+    "seconds": 63.84,            // null when PENDING or UNMEASURED; required otherwise
     "hardware": "AMD EPYC 7B13", // required when timed
-    "cores": 8,                  // cores, or "gpu": "NVIDIA L4"; one is required when timed
+    "cores": 8,                  // cores, or "gpu": "1x NVIDIA A100"; one is required when timed
     "gpu": null,
-    "source": "PR #64 (build-10)" // always required: where the number came from
+    "source": "bench/results/impl-a-charville-amd-epyc-7b13.json", // always required
+    "note": "298.3 s on 1 core"  // optional
   }]
 }
 ```
 
-The checker rejects a number without a label or source, and a PENDING or UNMEASURED row with a
-number. The page draws bars only for timed rows; a screen row gets "N× faster than the standard"
-only when it and the fastest baseline row are both MEASURED.
+The checker rejects a number without a label or source, and a PENDING or UNMEASURED row with a number.
+On screen each timed bar fills at its rate (the slowest timed row takes 10 s) and prints its real seconds
+at the finish; a PENDING row has no bar and never moves. No ratio is printed: #64's file forbids quoting
+R-14 against R-15 as an equal-work speed-up.
+
+## `data/claims.json` (`preflight-claims/1`): written by `collect_race.py`
+
+The power result at the demo's 200 patients (simulated, its 95% interval, and the Schoenfeld formula), the
+false-alarm rate pooled over every null study, and the maxT result, each with its `label` and `source`
+(`bench/results/vs-schoenfeld-300.json`, `results/charville-v2.json`).
+
+## `data/biomarker.json` (`preflight-biomarker/1`): written by `scripts/export_biomarker.py`
+
+One real Charville 500 µm patch (`cells`: `x`, `y` in µm, `k` one of `t5`, `tumour`, `mac`, `mac_pd1`,
+`immune`, `other`), the 100 µm `radius_um`, how a macrophage is drawn PD1+ (`pd1_rule`), and `km`: the
+cohort's Kaplan-Meier steps split at the median of the per-patient feature value (or null). Needs the raw
+data: `DATA_DIR=... uv run python -I scripts/export_biomarker.py`.
 
 ## How the page picks a grid point
 
