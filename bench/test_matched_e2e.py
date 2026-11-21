@@ -75,3 +75,18 @@ def test_the_sweep_projection_is_analytic_and_lab_skips_calibration():
 def test_build9s_harness_is_an_unedited_copy():
     got = hashlib.sha256((Path(__file__).parent / "b9_design_batch.py").read_bytes()).hexdigest()
     assert got == m.B9["sha256"]
+
+
+def test_the_committed_result_is_matched_and_its_numbers_follow_from_its_fields():
+    import json
+    found = sorted((Path(__file__).parent / "results").glob("matched-e2e-*.json"))
+    if not found:
+        pytest.skip("no committed matched result yet")
+    r = json.loads(found[-1].read_text())
+    w = r["wall"]
+    assert r["status"] == "MEASURED" and r["parity"]["x_bitwise"] and r["parity"]["x_compared"] == w["studies"]["lab"]
+    assert r["arms"]["lab"]["workers"] == 1 and len(r["arms"]["lab"]["affinity"]) == 1
+    assert w["ratio"] == pytest.approx(w["lab_s_per_study"] / w["preflight_s_per_decided_study"])
+    assert sum(x["agree"] for x in r["per_study"]) == r["decisions"]["agree"]
+    assert r["projection"]["status"] == "ANALYTIC"
+    assert r["projection"]["lab_s"] == pytest.approx(m.project(w)["lab_s"])
