@@ -315,7 +315,9 @@ def test_the_five_arm_file_fills_only_the_fused_lane_and_only_with_full_x_parity
     assert sorted(rows) == ["fused-cpu", "scope"]
     f = rows["fused-cpu"]
     assert (f["seconds"], f["cores"], f["gpu"]) == (372.0, 8, None)
-    assert f["note"].endswith("of summed worker wall time; same features, same top score")
+    assert f["note"].endswith("of summed worker wall time; same features, same top score; run on a different host "
+                              "of the same container class, about 2 h after the lab, Numba and A100 lanes and 70 min after "
+                              "the hybrid; one sweep")
     assert "fused lane: same features, same top score" in rows["scope"]["comparison"]
     five["parity"]["against_prior"]["fused"]["gpu"]["x_bitwise"] = False
     assert list(cr.rows_from(Path("modal-design.json"), five)) == []

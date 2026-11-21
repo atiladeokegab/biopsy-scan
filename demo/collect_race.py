@@ -74,7 +74,8 @@ def four_arms(name, d):
                     "startup_s": round(st["end_to_end_in_container_s"] - st["compute_wall_s"], 1),
                     "note": f"{st['evaluated_studies']:,} studies; re-imaging {100 * v['split']['reimage_share']:.1f}% "
                             + ("of elapsed stage wall time" if gpu else "of summed worker wall time")
-                            + ("; same features, same top score" if a == "fused" else "")}
+                            + ("; same features, same top score; run on a different host of the same container class, about 2 h "
+                               "after the lab, Numba and A100 lanes and 70 min after the hybrid; one sweep" if a == "fused" else "")}
 
 
 def fused_x_parity(d):

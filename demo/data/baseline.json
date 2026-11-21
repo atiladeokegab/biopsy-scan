@@ -65,7 +65,7 @@
       "gpu": null,
       "source": "bench/results/modal-design-20261121T205536Z.json",
       "startup_s": 224.7,
-      "note": "3,000 studies; re-imaging 93.8% of summed worker wall time; same features, same top score"
+      "note": "3,000 studies; re-imaging 93.8% of summed worker wall time; same features, same top score; run on a different host of the same container class, about 2 h after the lab, Numba and A100 lanes and 70 min after the hybrid; one sweep"
     }
   ],
   "workflow": {
