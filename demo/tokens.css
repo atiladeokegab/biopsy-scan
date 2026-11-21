@@ -4,7 +4,7 @@
   --bg: #0B1018;
   --bg-canvas: #070B11;
   --surface: #121A25;
-  --surface-elevated: #182230;
+  --surface-elevated: #131B26;
   --border: #22303F;
 
   --text-head: #F4F7FA;
@@ -19,7 +19,7 @@
   --tumour: #FF7A59;
   --immune: #F5C451;
   --stroma: #56687A;
-  --tile-miss: #243040;
+  --tile-miss: #56687A;
   --state-warn: #F5C451;
   --state-error: #FF7A59;
 

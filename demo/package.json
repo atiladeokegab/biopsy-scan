@@ -1,0 +1,5 @@
+{
+  "//": "Marks the demo scripts as ES modules for Node (make smoke runs demo/race.test.mjs); browsers ignore it.",
+  "type": "module",
+  "private": true
+}

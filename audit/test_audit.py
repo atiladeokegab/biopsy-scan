@@ -56,7 +56,8 @@ def _sample_record(
         "maxT": {
             "statistic": 3.1,
             "p": maxt_p,
-            "threshold_alpha_05": 3.65,
+            "conditional_cutoff_alpha_05": 3.65,
+            "cutoff_scope": "conditional_within_stratum_permutation_not_reusable_design_calibration",
             "n_resamples": 999,
             "top_hits": [
                 {
@@ -128,6 +129,14 @@ def test_schema_validation_accepts_valid_record_and_rejects_missing_or_clinical_
 
     with pytest.raises(ValueError, match="exploratory"):
         validate_audit_result({**rec, "exploratory": False})
+
+    with pytest.raises(ValueError, match="threshold_alpha_05"):
+        validate_audit_result({**rec, "maxT": {**rec["maxT"], "threshold_alpha_05": 3.5}})
+
+    with pytest.raises(ValueError, match="conditional_cutoff_alpha_05"):
+        bad_maxt = dict(rec["maxT"])
+        bad_maxt.pop("conditional_cutoff_alpha_05")
+        validate_audit_result({**rec, "maxT": bad_maxt})
 
 
 def test_leakage_audit_detects_cross_coverslip_patient_overlap_and_works_on_contract_cells() -> None:

@@ -9,7 +9,7 @@ Binding token file: `demo/tokens.css`. Only `docs/design.md` and `demo/tokens.cs
 
 - **Product:** Preflight — Rehearse a spatial-biology study before imaging a single slide.
 - **Audience:** Spatial-biology study leads and hackathon judges watching a 3-minute demonstration.
-- **One job of the page:** Let a user dial study design parameters (`Patients`, `Regions per patient`, `Field of view`, `Mis-call rate`), see how region count, crop size, and cell-type mis-calls affect observed tissue, compare CPU-vs-GPU runtime, and answer **"Can my study find it?"** for the fixed planted-effect scenario in `grid.json` as `Power %` and `Identification %` on their cohort's atlas (conditional on that planted scenario, never a universal adequacy guarantee).
+- **One job of the page:** Let a user dial study design parameters (`Patients`, `Regions per patient`, `Field of view`, `Mis-call rate`), see how region count, crop size, and cell-type mis-calls affect observed tissue, compare CPU-vs-GPU runtime, and answer whether the study can find the pattern for the fixed planted-effect scenario in `grid.json` as `Power %` and `Identification %` on their cohort's atlas (conditional on that planted scenario, never a universal adequacy guarantee).
 - **Brand posture:** Precision scientific instrument on a deep slate ground (`#0B1018`). Calm, legible typography in `Inter`, domain-authentic tissue colors (`#FF7A59` tumour, `#F5C451` immune, `#56687A` stroma), and **no dot mark** next to the `Preflight` wordmark.
 
 ---
@@ -18,8 +18,8 @@ Binding token file: `demo/tokens.css`. Only `docs/design.md` and `demo/tokens.cs
 
 | Window | Visual Proof | What the Judge Sees |
 |---|---|---|
-| 0:00–0:25 | First fold (`1280×633` & `390×757`) | Page title (`Can my study find it?`), 1-line subtitle, dominant **3D Tissue Slabs** canvas, interactive design sliders, primary button, and immediate **Power %** + **Identification %** answer. |
-| 0:25–1:45 | Tissue distortion & CPU-vs-GPU race | Dragging `Regions per patient` draws up to `k` regions per patient without replacement (capped at each patient's available regions) and places one `Field of view` square crop per sampled region (FOV capped at the cohort's region size — Charville ~650 µm, UPMC ~1000 µm — plus full core), dimming excluded cells outside the crop; raising `Mis-call rate` recolors cells across tumour/immune/stroma. Clicking **"Can my study find it?"** compares **CPU (all cores, Numba) vs. GPU (batched studies)** (both sharing identical per-region `region_kernel` sampling; neutral measured timing with `UNMEASURED` placeholder when `bench` has not run, distinct from the illustrative tile reveal), lighting found (`#2BD4A4`) vs missed (`#243040`) tiles. |
+| 0:00–0:25 | First fold (`1280×633` & `390×757`) | Page title (the tagline), 1-line subtitle, dominant **3D Tissue Slabs** canvas, interactive design sliders, primary button, and immediate **Power %** + **Identification %** answer. |
+| 0:25–1:45 | Tissue distortion & CPU-vs-GPU race | Dragging `Regions per patient` draws up to `k` regions per patient without replacement (capped at each patient's available regions) and places one `Field of view` square crop per sampled region (FOV capped at the cohort's region size — Charville ~650 µm, UPMC ~1000 µm — plus full core), dimming excluded cells outside the crop; raising `Mis-call rate` recolors cells across tumour/immune/stroma. Clicking **"Run the studies"** compares **CPU (all cores, Numba) vs. GPU (batched studies)** (both sharing identical per-region `region_kernel` sampling; neutral measured timing with `UNMEASURED` placeholder when `bench` has not run, distinct from the illustrative tile reveal), lighting found (`#2BD4A4`) vs missed (`#243040`) tiles. |
 | 1:45–3:00 | Design Atlas curve | **One chart**: `Power against patients`, plotting one curve per `Regions per patient` setting present in the saved `grid.json` at the active `Field of view`, `Mis-call rate`, and fixed planted-effect scenario, with `"our cohort"` (Charville, `P = 159`, `38` events) marked in `#2BD4A4`. |
 
 ### Hierarchy, Motion, and What Is Cut
@@ -42,14 +42,14 @@ Binding token file: `demo/tokens.css`. Only `docs/design.md` and `demo/tokens.cs
 ```mermaid
 flowchart LR
     A["Open demo (default Charville point)"] --> B["Adjust Patients, Regions, FOV, Mis-call"]
-    B --> C["Click 'Can my study find it?'"]
+    B --> C["Click 'Run the studies'"]
     C --> D["3D Tissue Slabs + CPU vs GPU Race + Power % + Cohort Chart update"]
 ```
 
 | Section | Shows | User Can |
 |---|---|---|
 | Top bar (`48px`) | Plain text wordmark `Preflight` (left), `Team Dry Lab` + data provenance tag (`SYNTHETIC` / `MEASURED`) (right) | Inspect provenance cleanly |
-| Hero & Stage (First Fold) | Page `h1` (`Can my study find it?`), 1-line subtitle, dominant 3D tissue canvas (`#tissue`), legend (`Tumour`, `Stroma`, `Immune`, `Field of view`), design controls (`Patients`, `Regions per patient`, `Field of view`, `Mis-call rate`), primary CTA (`Can my study find it?`), answer (`Power %` + `Identification %`) | Drag/rotate 3D slabs, pause spin, tune 4 sliders, trigger replay |
+| Hero & Stage (First Fold) | Page `h1` (the tagline), 1-line subtitle, dominant 3D tissue canvas (`#tissue`), legend (`Tumour`, `Stroma`, `Immune`, `Field of view`), design controls (`Patients`, `Regions per patient`, `Field of view`, `Mis-call rate`), primary CTA (`Run the studies`), answer (`Power %` + `Identification %`) | Drag/rotate 3D slabs, pause spin, tune 4 sliders, trigger replay |
 | Study Race | Side-by-side 2D study-tile grids: `CPU (all cores, Numba)` vs `GPU (batched studies)`, tile counts, neutral measured seconds (or `UNMEASURED` placeholder) | Compare fair all-core CPU vs batched GPU runtime |
 | Design Atlas Chart | Single SVG chart: `Power vs. Patients` (curves for the `Regions per patient` settings saved in `grid.json`), vertical/dot markers for current design, planted scenario caption, and `"our cohort"` | See whether adding regions beats adding patients |
 
@@ -69,7 +69,7 @@ flowchart LR
 | `--text-head` | `#F4F7FA` | Headings, active metric values, keyboard focus ring (`>= 15:1` on `--bg`) |
 | `--text-body` | `#B9C6D4` | Body text, control labels (`>= 9.8:1` on `--bg`) |
 | `--text-muted` | `#8898AA` | Axis ticks, legend secondary text (`>= 5.6:1` on `--surface`) |
-| `--accent` | `#2BD4A4` | **ONLY** spent on primary CTA button (`Can my study find it?`), `found` study tiles, and `"our cohort"` mark on the chart |
+| `--accent` | `#2BD4A4` | **ONLY** spent on primary CTA button (`Run the studies`), `found` study tiles, and `"our cohort"` mark on the chart |
 | `--accent-ink` | `#071310` | Button label ink on `--accent` (`>= 10:1` contrast) |
 | `--tumour` | `#FF7A59` | Tumour focal cells (`3D tissue` & legend) + error border |
 | `--immune` | `#F5C451` | Immune cells (`3D tissue` & legend) + `SYNTHETIC`/`UNMEASURED` notice border |
@@ -110,7 +110,7 @@ flowchart LR
 | Concept | Exact Term Used Everywhere |
 |---|---|
 | Product mark | `Preflight` (wordmark only, no dot mark) |
-| Primary CTA | `Can my study find it?` |
+| Primary CTA | `Run the studies` |
 | Axis 1 / 2 / 3 / 4 | `Patients`, `Regions per patient`, `Field of view`, `Mis-call rate` |
 | Cell classes | `Tumour`, `Stroma`, `Immune` |
 | Outcome metrics | `Power` (`share of all studies at the active design & fixed planted scenario where maxT rejects at the unconditional threshold`), `Identification rate` (`share of all studies where the top-ranked feature matches the planted motif`, stating `"of all studies"` explicitly as denominator) |
