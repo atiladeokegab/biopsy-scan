@@ -213,7 +213,8 @@
         "result": "bench/results/modal-scaling-20261121T201008Z.json",
         "est_usd": 3.008,
         "basis": "each container x local wall (an upper bound: includes image build and queueing)"
-      }
+      },
+      "note": "single-attempt estimates at list price, not billing ceilings (est_usd: each container once to its timeout; actual: containers x local wall); one container was preempted and restarted by Modal; invoice not verified"
     }
   ],
   "container_usd_per_hour_H100": 4.58,
