@@ -6,7 +6,7 @@
 Preflight re-images simulated spatial-biology studies cell by cell from real head and neck and colorectal cancer tissue (CODEX), and does it at scale on a GPU.
 A lab sees which study designs (patients, regions per patient, field of view, mis-call rate) can actually detect a survival-linked spatial pattern, before it spends a slide.
 
-![The demo page, "Can my study find it?", with real Charville tissue cores stacked in 3D](docs/img/demo-1280.png)
+![The demo page, "Can my study find it?", with real Charville tissue cores stacked in 3D](docs/assets/demo-1280.png)
 
 *The demo at 1280 px, showing 12 real Charville colorectal cores (24,033 cells, subsampled for display). The power figure on the right still comes from the synthetic grid, as its banner says.*
 
