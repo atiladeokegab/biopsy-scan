@@ -92,7 +92,7 @@ Re-image thousands of simulated studies **cell by cell from real tumour tissue**
 
 **Promise:** before you image your next cohort, see what a study like yours can find, and what it would get wrong.
 
-**Spin:** not a faster search. A dress rehearsal of your study on real tissue, a thousand times over.
+**Spin:** not a faster search. Your study, simulated on real tissue a thousand times over, before you image a slide.
 
 ## How it works
 
@@ -243,7 +243,7 @@ Expected 50–200× over 8 cores and 10–30× over a 64-core node. These are es
 | t | On screen |
 |---|---|
 | 0:00–0:15 | Problem and promise |
-| 0:15–0:25 | The number: one study design rehearsed, CPU-hours to seconds |
+| 0:15–0:25 | The number: one study design simulated, CPU-hours to seconds |
 | 0:25–0:50 | Real tissue: a field of view shrinks and cells are mis-called, so the pattern blurs. This is what a study sees |
 | 0:50–1:15 | The ladder: algebra, then best CPU, then GPU, with the roofline |
 | 1:15–1:45 | The judge's button |
@@ -276,12 +276,12 @@ Expected 50–200× over 8 cores and 10–30× over a 64-core node. These are es
 | Area | Directories | Owner | Issues |
 |---|---|---|---|
 | Core contract | `core/` | — | — |
-| Reference statistics | `stats/` | @atiladeokegab | #4 |
-| Re-imaging kernel | `reimage/` | @FHL-08 | #2 |
-| Atlas | `atlas/` | @atiladeokegab | #5 |
-| Benchmarks | `bench/` | @FHL-08 | #3 |
-| Real-data audit | `audit/` | @atiladeokegab | #6 |
-| Demo and deck | `demo/` | @atiladeokegab | #7 |
+| Reference statistics | `stats/` | @atiladeokegab [Atlas] | #4 |
+| Re-imaging kernel | `reimage/` | @atiladeokegab [Prometheus] | #2 |
+| Atlas | `atlas/` | @atiladeokegab [Atlas] | #5 |
+| Benchmarks | `bench/` | @atiladeokegab [Hermes] | #3 |
+| Real-data audit | `audit/` | @atiladeokegab [Hephaestus] | #6 |
+| Demo and deck | `demo/` | @atiladeokegab [Zeus] | #7 |
 | Tests | `tests/` | @atiladeokegab [Prometheus] | #8 |
 | Submission | `docs/film/`, `docs/SUBMISSION.md`, `README.md` | @atiladeokegab | #9, #10, #11 |
 
@@ -320,7 +320,7 @@ Expected 50–200× over 8 cores and 10–30× over a 64-core node. These are es
 | 20 | One big button | Now with study-design knobs a lab actually controls |
 | 43 | Prepare the null | Three outcomes, including omnibus-only |
 | 37 | Judges decide in 20 s | The number by 0:25 |
-| 4 | One before/after number | "One study design rehearsed: X CPU-hours → Y s" |
+| 4 | One before/after number | "One study design simulated: X CPU-hours → Y s" |
 | 8 | Do less | 11 items cut, listed above |
 | S | Play to win | Every reviewer attack has a row in the corrections table |
 | 3 | The user does it today | Labs choose patients, regions and field of view before imaging today |

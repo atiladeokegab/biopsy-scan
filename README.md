@@ -1,12 +1,12 @@
-![Can your study find it?](docs/assets/banner.png)
+![Preflight](docs/assets/banner.png)
 
-# Can your study find it?
+# Preflight
 
-A GPU engine that re-images thousands of simulated spatial-biomarker studies cell by cell from real head and neck cancer tissue (UPMC CODEX, Charville), so a lab can see, before it images a single slide, which study designs (patients, regions per patient, panel, imaging error) can actually find a survival-linked spatial pattern like Helsinki's stroma finding. The reshaping (nesting, region pools, one shared null threshold per design point) and a speedup ladder that separates algorithm from hardware against the best adequate CPU method.
+Thousands of studies, simulated in seconds, before you image a slide. Preflight re-images thousands of simulated spatial-biology studies cell by cell from real head and neck and colorectal cancer tissue on a GPU, so a lab sees in seconds which designs (patients, regions per patient, field of view, mis-call rate) can actually detect a survival-linked spatial pattern. Team Dry Lab, SoTA Scientific Parallelism Hackathon 2026.
 
 ## What it does
 
-A GPU engine that re-images thousands of simulated spatial-biomarker studies cell by cell from real head and neck cancer tissue (UPMC CODEX, Charville), so a lab can see, before it images a single slide, which study designs (patients, regions per patient, panel, imaging error) can actually find a survival-linked spatial pattern like Helsinki's stroma finding. The reshaping (nesting, region pools, one shared null threshold per design point) and a speedup ladder that separates algorithm from hardware against the best adequate CPU method.
+A GPU engine that re-images thousands of simulated spatial-biomarker studies cell by cell from real cancer tissue (head and neck and colorectal: UPMC CODEX, Charville), so a lab can see, before it images a single slide, which study designs (patients, regions per patient, panel, imaging error) can actually find a survival-linked spatial pattern like Helsinki's stroma finding. The reshaping (nesting, region pools, one shared null threshold per design point) and a speedup ladder that separates algorithm from hardware against the best adequate CPU method.
 
 ## Demo
 
