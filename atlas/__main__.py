@@ -6,17 +6,25 @@ import itertools
 import json
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 from core.cohorts import load
 from core.grammar import grammar, grammar_hash
-from core.truth import truth
+from core.truth import layout, neighbours, truth
 
-from .artifacts import charts, comparison_charts, save_tables, source_metadata
+from .artifacts import (
+    charts,
+    comparison_charts,
+    save_point,
+    save_tables,
+    source_metadata,
+)
 from .bank import build_bank
-from .runner import DEFAULT_BUDGET, run_point
+from .runner import DEFAULT_BUDGET, design_id, run_point
 
 
 def reference_matrix(cells, path, metadata):
@@ -45,11 +53,16 @@ def main(argv=None):
     parser.add_argument("--seed", type=int, default=20261121)
     parser.add_argument("--backend", choices=["numpy", "cpu", "gpu"], default="cpu")
     parser.add_argument("--bank-draws", type=int, default=64, help="finite-bank approximation; 0 uses fresh direct imaging")
+    parser.add_argument("--workers", type=int, default=1, help="concurrent imaging groups; NumPy backend only")
     parser.add_argument("--out", type=Path, default=Path("atlas/results"))
     parser.add_argument("--cache", type=Path, default=Path("data/atlas-cache"))
     for name, value in DEFAULT_BUDGET.items():
         parser.add_argument("--" + name, type=int, default=value)
     args = parser.parse_args(argv)
+    if args.workers < 1 or (args.workers > 1 and args.backend != "numpy"):
+        parser.error("workers must be positive; concurrent groups require backend numpy")
+    if args.bank_draws != 0 and args.bank_draws < 2:
+        parser.error("bank-draws must be 0 (direct) or >= 2")
     budget = {key: getattr(args, key) for key in DEFAULT_BUDGET}
     for cohort in args.cohorts:
         cells = load(cohort)
@@ -74,7 +87,10 @@ def main(argv=None):
                     "inference": "model-based Monte Carlo under the empirical verified source; no clinical claim",
                     "planned_fov_um": ([200, 300, 400, 500, 600, None] if cohort == "charville"
                                        else [200, 400, 600, 800, 1000, None]),
-                    "completed_fov_um": fov, "censoring_tail": "administrative horizon at stratum maximum follow-up"}
+                    "requested_fov_um": fov, "censoring_tail": "administrative horizon at stratum maximum follow-up",
+                    "mc_interval_scope": "conditional on source, acquisition bank and realized calibration; excludes source and bank-construction uncertainty",
+                    "method_check_scope": "paired differences with conservative 95% bounds; interval containing zero does not establish equivalence",
+                    "direct_check_scope": "bank and direct imaging use the same bank-derived cutoff"}
         code = hashlib.sha256()
         for path in sorted(Path(__file__).parent.glob("*.py")):
             if not path.name.startswith("test_"):
@@ -83,32 +99,81 @@ def main(argv=None):
         metadata["code_fingerprint"] = code.hexdigest()
         metadata["inference_scope"] = ("descriptive verified-source simulation only" if cohort == "upmc"
                                         else "empirical-source study-design simulation")
-        summaries, records = [], []
-        banks = {}
         out = args.out / cohort
+        out.mkdir(parents=True, exist_ok=True)
+        manifest = {**metadata, "designs": designs, "bank_draws": args.bank_draws,
+                    "checked_design_indices": sorted(nested_points)}
+        run_id = hashlib.sha256(json.dumps(manifest, sort_keys=True).encode()).hexdigest()
+        manifest_path = out / "run.json"
+        if manifest_path.exists():
+            if json.loads(manifest_path.read_text())["run_id"] != run_id:
+                raise ValueError("output directory belongs to a different run; choose a new --out")
+        else:
+            if any(out.iterdir()):
+                raise ValueError("output directory has no run manifest; choose a new --out")
+            temporary = manifest_path.with_suffix(".tmp.json")
+            temporary.write_text(json.dumps({"run_id": run_id, **manifest}, indent=2) + "\n")
+            temporary.replace(manifest_path)
+        metadata["run_id"] = run_id
+        # Warm once before threads share the immutable neighbour arrays. Otherwise
+        # concurrent first acquisitions could build duplicate large source graphs.
+        if args.workers > 1:
+            L = layout(cells)
+            cache = cells.setdefault("_nbr", {})
+            for r in range(len(cells["patient_of_region"])):
+                if r not in cache:
+                    cache[r] = neighbours(L["xy"](r))
+        groups = {}
         for i, design in enumerate(designs):
-            start = time.perf_counter()
-            point_budget = {**budget, "nested": budget["nested"] if i in nested_points else 0}
-            point_budget["direct"] = budget["direct"] if i in nested_points else 0
-            if args.bank_draws:
-                imaging = (design["regions_per_patient"], design["fov_um"], design["eps"])
-                if imaging not in banks:
-                    banks[imaging] = build_bank(cells, design, args.bank_draws, args.seed,
-                                               args.cache, batch_size=budget["batch"], grammar_hash=fingerprint)
-                design = {**design, "acquisition_bank": banks[imaging]}
-            summary, trials, _ = run_point(cells, reference, design, hr=args.hr, budget=point_budget, seed=args.seed)
-            summary.update(grammar_hash=fingerprint, source_extrapolation=design["patients"] > n,
-                           resample_ratio=design["patients"] / n, runtime_s=time.perf_counter() - start)
-            summaries.append(summary)
-            records.extend(trials)
-            metadata["completed_designs"] = len(summaries)
-            metadata["measurement_model"] = summary["measurement_model"]
-            metadata["bank_draws"] = summary["bank_draws"]
-            save_tables(summaries, records, metadata, out)
-            print(json.dumps({"cohort": cohort, "point": i + 1, "of": len(designs),
-                              "power": summary["power"], "fwer": summary["fwer"],
-                              "runtime_s": summary["runtime_s"]}), flush=True)
-        charts(summaries, out, cohort=cohort, fov_um=fov[0], eps=args.eps[0], hr=args.hr)
+            key = (design["regions_per_patient"], design["fov_um"], design["eps"])
+            groups.setdefault(key, []).append((i, design))
+
+        total = len(designs)
+
+        def run_group(group, cells=cells, reference=reference, fingerprint=fingerprint, out=out,
+                      n=n, nested_points=nested_points, cohort=cohort, total=total):
+            # A bank is shared across N within this group and released on return.
+            bank = (build_bank(cells, group[0][1], args.bank_draws, args.seed, args.cache,
+                               batch_size=budget["batch"], grammar_hash=fingerprint) if args.bank_draws else None)
+            completed = []
+            for i, original in group:
+                design = {**original, "acquisition_bank": bank} if bank is not None else original
+                marker = out / "points" / f"{design_id(design)}.parquet"
+                if marker.exists():
+                    summary = pd.read_parquet(marker).iloc[0].to_dict()
+                    completed.append((i, summary))
+                    continue
+                start = time.perf_counter()
+                point_budget = {**budget, "nested": budget["nested"] if i in nested_points else 0,
+                                "direct": budget["direct"] if i in nested_points else 0}
+                summary, trials, _ = run_point(cells, reference, design, hr=args.hr, budget=point_budget, seed=args.seed)
+                summary.update(grammar_hash=fingerprint, source_extrapolation=design["patients"] > n,
+                               resample_ratio=design["patients"] / n, runtime_s=time.perf_counter() - start,
+                               bank_load_or_build_s=0 if bank is None else bank["load_or_build_s"])
+                save_point(summary, trials, out)
+                completed.append((i, summary))
+                print(json.dumps({"cohort": cohort, "point": i + 1, "of": total,
+                                  "power": summary["power"], "fwer": summary["fwer"],
+                                  "runtime_s": summary["runtime_s"]}), flush=True)
+            return completed
+
+        indexed = {}
+        with ThreadPoolExecutor(max_workers=args.workers) as executor:
+            futures = [executor.submit(run_group, group) for group in groups.values()]
+            for future in as_completed(futures):
+                indexed.update(future.result())
+                summaries = [indexed[i] for i in sorted(indexed)]
+                metadata["completed_designs"] = len(summaries)
+                metadata["completed_fov_um"] = [f for f in fov if any(row["fov_um"] == f for row in summaries)]
+                metadata["measurement_model"] = summaries[0]["measurement_model"]
+                metadata["bank_draws"] = args.bank_draws
+                save_tables(summaries, None, metadata, out)
+        summaries = [indexed[i] for i in sorted(indexed)]
+        for f in fov:
+            for e in args.eps:
+                label = "full" if f is None else f"{f:g}"
+                chart_dir = out / f"fov-{label}-eps-{e:g}"
+                charts(summaries, chart_dir, cohort=cohort, fov_um=f, eps=e, hr=args.hr)
         comparison_charts(summaries, out, cohort=cohort)
 
 

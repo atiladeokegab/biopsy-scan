@@ -13,6 +13,22 @@ from .artifacts import source_metadata
 LOG = logging.getLogger(__name__)
 
 
+def imaging_descriptor(design):
+    values = {key: design.get(key, 0.0 if key == "eps" else None)
+              for key in ("cohort", "regions_per_patient", "fov_um", "eps")}
+    return {key: value.item() if isinstance(value, np.generic) else value for key, value in values.items()}
+
+
+def bind_design(design):
+    """Give public calibration and evaluation the same scientific identity."""
+    bank = design.get("acquisition_bank")
+    if bank is not None and bank["imaging"] != imaging_descriptor(design):
+        raise ValueError("acquisition bank does not match the imaging design")
+    return {**design, "alpha": design.get("alpha", 0.05), "eps": design.get("eps", 0.0),
+            "measurement_model": "direct" if bank is None else "finite-bank approximation",
+            "bank_key": None if bank is None else bank["key"]}
+
+
 def build_bank(cells, design, draws, seed, cache_dir, *, batch_size=8, grammar_hash=""):
     """Image each source patient draws times, without generated-outcome selection.
 
@@ -28,7 +44,7 @@ def build_bank(cells, design, draws, seed, cache_dir, *, batch_size=8, grammar_h
     source = source_metadata(cells)
     description = {"source_hash": source["source_hash"], "grammar_hash": grammar_hash,
                    "draws": draws, "seed": seed,
-                   **{k: design.get(k) for k in ("cohort", "regions_per_patient", "fov_um", "eps")}}
+                   **imaging_descriptor(design)}
     description = {k: v.item() if isinstance(v, np.generic) else v for k, v in description.items()}
     key = hashlib.sha256(json.dumps(description, sort_keys=True).encode()).hexdigest()
     path = Path(cache_dir) / f"bank-{key}.npz"
@@ -55,6 +71,7 @@ def build_bank(cells, design, draws, seed, cache_dir, *, batch_size=8, grammar_h
         np.savez(temporary, X=X)
         temporary.replace(path)
     return {"X": X, "key": key, "draws": draws, "seed": seed, "source_hash": source["source_hash"],
+            "imaging": imaging_descriptor(design),
             "hash": hashlib.sha256(np.ascontiguousarray(X).view(np.uint8)).hexdigest(),
             "load_or_build_s": time.perf_counter() - start, "cached": cached}
 

@@ -11,7 +11,7 @@ import stats
 from stats.reference import _components
 
 from .artifacts import source_metadata
-from .bank import bank_batch
+from .bank import bank_batch, bind_design
 from .simulation import fit_model, outcomes
 
 DEFAULT_BUDGET = {"calibration": 10000, "null": 10000, "alternative": 1000,
@@ -69,6 +69,7 @@ def omnibus_p(calibration, z):
 
 
 def design_id(design):
+    design = bind_design(design)
     scientific = {key: design.get(key) for key in
                   ("cohort", "patients", "regions_per_patient", "fov_um", "eps", "alpha", "measurement_model", "bank_key")}
     scientific = {k: v.item() if isinstance(v, np.generic) else v for k, v in scientific.items()}
@@ -118,6 +119,7 @@ def _record(study, point, stage):
 
 
 def calibrate(cells, reference, design, budget, seed):
+    design = bind_design(design)
     model = fit_model(cells, reference, hr=1)
     point, rows, records = design_id(design), [], []
     for study in studies(cells, model, design, budget["calibration"], seed, 101, budget["batch"]):
@@ -165,8 +167,7 @@ def run_point(cells, reference, design, *, hr=2.0, budget=None, seed=0, calibrat
     bank = design.get("acquisition_bank")
     if bank is not None and bank["source_hash"] != source["source_hash"]:
         raise ValueError("acquisition bank belongs to a different source")
-    design = {**design, "measurement_model": "direct" if bank is None else "finite-bank approximation",
-              "bank_key": None if bank is None else bank["key"]}
+    design = bind_design(design)
     point = design_id(design)
     calibration = calibration or calibrate(cells, reference, design, budget, seed)
     if (calibration["design_id"] != point or calibration["n"] != budget["calibration"]
@@ -235,7 +236,7 @@ def run_point(cells, reference, design, *, hr=2.0, budget=None, seed=0, calibrat
             summary[stage + "_nested_difference_se"] = float(delta.std(ddof=1) / np.sqrt(len(delta))) if len(delta) > 1 else None
             lo, hi = paired_interval(delta)
             summary[stage + "_nested_difference_lo"], summary[stage + "_nested_difference_hi"] = lo, hi
-            summary[stage + "_nested_within_mc_error"] = bool(lo <= 0 <= hi)
+            summary[stage + "_nested_difference_interval_contains_zero"] = bool(lo <= 0 <= hi)
         paired = [r for r in stage_records if "direct_maxT" in r]
         if paired:
             delta = np.array([int(r["maxT_reject"]) - int(r["direct_reject_at_bank_cutoff"]) for r in paired])

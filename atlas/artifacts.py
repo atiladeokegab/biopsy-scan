@@ -40,6 +40,8 @@ def save_tables(summaries, records, metadata, out_dir):
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     for name, rows in (("summary", summaries), ("studies", records)):
+        if rows is None:
+            continue
         target = out_dir / f"{name}.parquet"
         temporary = target.with_suffix(".tmp.parquet")
         pd.DataFrame(rows).to_parquet(temporary, index=False)
@@ -48,6 +50,25 @@ def save_tables(summaries, records, metadata, out_dir):
     temporary = target.with_suffix(".tmp.json")
     temporary.write_text(json.dumps(metadata, indent=2, allow_nan=False) + "\n")
     temporary.replace(target)
+
+
+def save_point(summary, records, out_dir):
+    """Write one evidence partition, then its completion marker, atomically."""
+    out_dir = Path(out_dir)
+    point = summary["design_id"]
+    for folder, frame in (("studies", pd.DataFrame(records)), ("points", pd.DataFrame([summary]))):
+        if folder == "studies":
+            for key in ("image_seed", "survival_seed", "censor_seed", "permutation_seed"):
+                frame[key] = np.asarray([row[key] for row in records], dtype=np.uint64)
+            for key in ("conditional_p", "direct_maxT", "omnibus_p"):
+                frame[key] = pd.array(frame.get(key, [None] * len(frame)), dtype="Float64")
+            for key in ("maxT_reject", "conditional_reject", "direct_reject_at_bank_cutoff", "omnibus_reject"):
+                frame[key] = pd.array(frame.get(key, [None] * len(frame)), dtype="boolean")
+        target = out_dir / folder / f"{point}.parquet"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temporary = target.with_name(f".{point}.tmp.parquet")
+        frame.to_parquet(temporary, index=False)
+        temporary.replace(target)
 
 
 def charts(summaries, out_dir, *, cohort, fov_um=None, eps=0.1, hr=2.0):
@@ -99,7 +120,7 @@ def charts(summaries, out_dir, *, cohort, fov_um=None, eps=0.1, hr=2.0):
               for r in df.itertuples()]
     ax.set(xticks=np.arange(len(df)), xticklabels=labels, xlabel="Design: patients / regions per patient",
            ylabel="Held-out global-null rejection rate", ylim=(-0.01, max(0.2, df.omnibus_fwer_hi.max(), df.fwer_hi.max()) + 0.03),
-           title=f"{cohort.title()}: independent null validation (95% binomial intervals)")
+           title=f"{cohort.title()}: null validation; {fov}; mis-call {eps:.0%} (95% intervals)")
     ax.tick_params(axis="x", rotation=60)
     ax.legend(frameon=False, fontsize=8)
     ax.grid(axis="y", alpha=0.2)
@@ -122,6 +143,9 @@ def comparison_charts(summaries, out_dir, *, cohort):
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.5), layout="constrained")
     any_data = False
     for ax, stage in zip(axes, ("null", "alternative")):
+        checked = df[df.get(stage + "_nested_shared_minus_conditional", pd.Series(np.nan, index=df.index)).notna()
+                     | df.get(stage + "_bank_minus_direct_rejection", pd.Series(np.nan, index=df.index)).notna()]
+        positions = {point: i for i, point in enumerate(checked.design_id.unique())}
         for j, (kind, mean, label) in enumerate((
             ("nested", "nested_shared_minus_conditional", "Shared cutoff − conditional permutations"),
             ("bank_direct", "bank_minus_direct_rejection", "Bank − direct imaging, same cutoff"),
@@ -135,9 +159,11 @@ def comparison_charts(summaries, out_dir, *, cohort):
             any_data = True
             y = rows[key].to_numpy()
             lo, hi = (rows[f"{stage}_{kind}_difference_{end}"].to_numpy() for end in ("lo", "hi"))
-            ax.errorbar(np.arange(len(rows)) + j * 0.12, y, yerr=[y - lo, hi - y], fmt="o", capsize=3, label=label)
-            ax.set_xticks(np.arange(len(rows)))
-            ax.set_xticklabels([f"{r.patients}/{r.regions_per_patient}/{r.fov_um}/{r.eps}" for r in rows.itertuples()], rotation=30, ha="right", fontsize=8)
+            x = np.array([positions[point] for point in rows.design_id])
+            ax.errorbar(x + j * 0.12, y, yerr=[y - lo, hi - y], fmt="o", capsize=3, label=label)
+        checked = checked.drop_duplicates("design_id")
+        ax.set_xticks(np.arange(len(checked)))
+        ax.set_xticklabels([f"{r.patients}/{r.regions_per_patient}/{r.fov_um}/{r.eps}" for r in checked.itertuples()], rotation=30, ha="right", fontsize=8)
         ax.axhline(0, color="0.4", linestyle="--")
         ax.set(title=stage.title(), xlabel="Patients / regions / FOV / mis-call", ylabel="Paired rejection-rate difference")
         ax.grid(axis="y", alpha=0.2)

@@ -7,9 +7,16 @@ import pandas as pd
 import pytest
 from numpy.testing import assert_allclose
 
-from atlas.artifacts import charts, comparison_charts, save_tables, source_metadata
+from atlas.artifacts import (
+    charts,
+    comparison_charts,
+    save_point,
+    save_tables,
+    source_metadata,
+)
 from atlas.bank import bank_batch, build_bank
 from atlas.runner import (
+    calibrate,
     fit_omnibus,
     interval,
     omnibus_p,
@@ -161,6 +168,61 @@ def test_cached_bank_preserves_noiseless_law_and_direct_paired_checks(invented, 
             assert row["direct_maxT"] == row["maxT"]
     with pytest.raises(ValueError, match="different source"):
         run_point(cells, reference, {**design, "acquisition_bank": {**bank, "source_hash": "wrong"}}, budget=budget)
+    for changed in ({"eps": 0.25}, {"fov_um": 1}, {"regions_per_patient": 2}, {"cohort": "different"}):
+        with pytest.raises(ValueError, match="imaging design"):
+            run_point(cells, reference, {**design, **changed, "acquisition_bank": bank}, budget=budget)
+
+
+def test_public_calibration_can_be_reused_with_implicit_defaults(invented):
+    cells, reference = invented
+    design = {"cohort": "invented", "patients": 12, "regions_per_patient": 1}
+    budget = {"calibration": 8, "null": 4, "alternative": 4, "nested": 0, "direct": 0, "batch": 2}
+    calibration = calibrate(cells, reference, design, budget, 71)
+    summary, _, reused = run_point(cells, reference, design, budget=budget, seed=71, calibration=calibration)
+    assert reused is calibration and summary["design_id"] == calibration["design_id"]
+
+
+def test_partitioned_evidence_retains_nullable_checks_and_uint64_seeds(invented, tmp_path):
+    cells, reference = invented
+    budget = {"calibration": 8, "null": 4, "alternative": 4, "nested": 0, "direct": 0, "batch": 2}
+    design = {"patients": 12, "regions_per_patient": 1}
+    summary, rows, _ = run_point(cells, reference, design, budget=budget)
+    rows[0]["image_seed"] = 2**64 - 1
+    save_point(summary, rows, tmp_path)
+    second = {**summary, "design_id": "second"}
+    rows[0]["conditional_p"] = 0.01
+    rows[0]["conditional_reject"] = True
+    save_point(second, rows, tmp_path)
+    evidence = pd.read_parquet(tmp_path / "studies")
+    assert len(evidence) == 32
+    assert evidence.image_seed.max() == 2**64 - 1
+    assert evidence.conditional_p.notna().sum() == 1
+    assert evidence.conditional_reject.sum() == 1
+
+
+def test_grouped_cli_checkpoints_and_resumes_without_repeating_studies(invented, tmp_path, monkeypatch):
+    import atlas.__main__ as cli
+
+    cells, reference = invented
+    monkeypatch.setattr(cli, "load", lambda _: cells)
+    monkeypatch.setattr(cli, "reference_matrix", lambda *args: (reference, "toy-grammar"))
+    monkeypatch.setattr(cli, "charts", lambda *args, **kwargs: None)
+    monkeypatch.setattr(cli, "comparison_charts", lambda *args, **kwargs: None)
+    args = ["--cohorts", "charville", "--patients", "12", "16", "--regions", "1",
+            "--fov-um", "1", "full", "--backend", "numpy", "--workers", "2",
+            "--bank-draws", "4", "--calibration", "8", "--null", "4", "--alternative", "4",
+            "--nested", "2", "--direct", "2", "--permutations", "9", "--batch", "2",
+            "--out", str(tmp_path / "out"), "--cache", str(tmp_path / "cache")]
+    cli.main(args)
+    out = tmp_path / "out" / "charville"
+    before = pd.read_parquet(out / "summary.parquet")
+    assert len(before) == 4 and len(list((out / "studies").glob("*.parquet"))) == 4
+    assert len(before[before.null_nested_disagreement_n.notna()]) == 3
+    monkeypatch.setattr(cli, "run_point", lambda *args, **kwargs: pytest.fail("completed point repeated"))
+    cli.main(args)
+    pd.testing.assert_frame_equal(before, pd.read_parquet(out / "summary.parquet"))
+    with pytest.raises(ValueError, match="different run"):
+        cli.main([*args, "--hr", "3"])
 
 
 def test_standalone_scientific_figures_include_all_region_case(invented, tmp_path, monkeypatch):
