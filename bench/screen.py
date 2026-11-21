@@ -1,12 +1,12 @@
 """Equal-work timing of the R-15 score screen: the same statistic and resampling workload on CPU and GPU.
 
-    uv run python -I bench/screen.py [--patients 212] [--candidates 2000] [--B 999] [--studies 1000]
-                                     [--r14 R14.json] [--out PATH]
+    uv run python -I bench/screen.py [--patients 212] [--candidates 2000] [--B 999] [--studies 1000] [--out PATH]
 
 Both backends run stats.screen, then stats.screen_batch over --studies simulated outcome sets (the grid's
 equal-work unit), on identical SYNTHETIC inputs (patient rows, X, C and B fingerprinted).
-A backend that cannot run here is UNMEASURED, never estimated. An R-14 full-fit baseline appears only
-as a separate workflow comparison, and only when its three fingerprints match this run's.
+A backend that cannot run here is UNMEASURED, never estimated. A speed-up is MEASURED only when every
+timed output agrees within PARITY (U, V, z, null_maxT, adjusted and omnibus p); otherwise it is WITHHELD.
+The R-14 workflow comparison is bench/screen_vs_r14.py, run on the real producer's inputs.
 """
 from __future__ import annotations
 
@@ -14,7 +14,6 @@ import argparse
 import hashlib
 import json
 import os
-import platform
 import sys
 import time
 from pathlib import Path
@@ -24,7 +23,12 @@ sys.path.insert(0, str(ROOT))
 
 import numpy as np  # noqa: E402
 
+from bench.impl_a import cpu_model  # noqa: E402
 from stats.screen import get_backend, screen, screen_batch  # noqa: E402
+
+PARITY = {"rtol": 1e-9, "atol": 1e-9}  # float64 on both sides; only summation order may differ
+SCREEN_OUTPUTS = ("U", "V", "z", "null_maxT", "adjusted_p", "p")
+BATCH_OUTPUTS = ("U", "V", "z", "maxT")
 
 
 def _sha(*arrays):
@@ -58,6 +62,48 @@ def gpu_backend():
     return None if get_backend("auto") is np else "cupy"
 
 
+def mismatched(cpu, gpu, keys):
+    """Outputs whose CPU and GPU values differ beyond PARITY; a missing output counts as differing."""
+    return [k for k in keys if k not in cpu or k not in gpu or np.shape(cpu[k]) != np.shape(gpu[k])
+            or not np.allclose(gpu[k], cpu[k], equal_nan=True, **PARITY)]
+
+
+def speedup(cpu, gpu, bad):
+    if gpu["label"] != "MEASURED":
+        return {"label": "UNMEASURED", "reason": gpu.get("reason")}
+    if bad:
+        return {"label": "WITHHELD", "reason": f"CPU and GPU outputs differ beyond {PARITY}: {', '.join(bad)}"}
+    return {"label": "MEASURED", "value": cpu["seconds"] / gpu["seconds"], "parity": PARITY}
+
+
+def blas():
+    """Each OpenBLAS loaded (numpy's, scipy's) and its live thread count, read from the library itself."""
+    import ctypes
+
+    out = {"env": {k: os.environ.get(k) for k in ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS")},
+           "libraries": []}
+    try:
+        paths = sorted({line.split()[-1] for line in open("/proc/self/maps") if "openblas" in line.lower()})
+    except OSError:
+        paths = []  # not Linux: left empty, never assumed
+    for path in paths:
+        lib = ctypes.CDLL(path)
+        names = [p + f for p in ("scipy_openblas_", "openblas_") for f in ("get_config64_", "get_config")]
+        config = next((getattr(lib, n) for n in names if hasattr(lib, n)), None)
+        threads = next((getattr(lib, n.replace("config", "num_threads")) for n in names
+                        if hasattr(lib, n.replace("config", "num_threads"))), None)
+        if config and threads:
+            config.restype = ctypes.c_char_p
+            out["libraries"].append({"path": Path(path).name, "config": config().decode(), "threads": int(threads())})
+    return out
+
+
+def cpu_config():
+    """The timed CPU configuration as it is, not as intended."""
+    return {"model": cpu_model(), "logical_cores": os.cpu_count(), "affinity": len(os.sched_getaffinity(0)),
+            "blas": blas(), "elementwise": "risk-set steps in numpy, one thread"}
+
+
 def studies(t, C, S, seed=1):
     """S simulated outcome sets on the workload's patients (clinical effect only), finite times."""
     rng = np.random.default_rng(seed)
@@ -86,7 +132,6 @@ def main(argv=None):
     parser.add_argument("--candidates", type=int, default=2000)
     parser.add_argument("--B", type=int, default=999)
     parser.add_argument("--studies", type=int, default=1000, help="simulated studies for the batched path")
-    parser.add_argument("--r14", type=Path, help="R-14 full-fit results JSON (workflow comparison)")
     parser.add_argument("--out", type=Path, default=ROOT / "bench" / "results" / "screen.json")
     a = parser.parse_args(argv)
     args = workload(a.patients, a.candidates)
@@ -95,9 +140,7 @@ def main(argv=None):
                     "C": _sha(C), "B": a.B}
     runs = {}
     seconds, cpu = _time(args, a.B, "numpy")
-    runs["cpu"] = {"label": "MEASURED", "seconds": seconds, "backend": "numpy",
-                   "hardware": platform.processor() or platform.machine(), "cores": os.cpu_count(),
-                   "threads": "BLAS matrix products on all cores; elementwise risk-set steps on one",
+    runs["cpu"] = {"label": "MEASURED", "seconds": seconds, "backend": "numpy", "hardware": cpu_config(),
                    "maxT": cpu["maxT"], "p": cpu["p"]}
     T, E = studies(t, C, a.studies)
     seconds, cpu_batch = _time_batch(X, T, E, C, s, "numpy")
@@ -111,23 +154,14 @@ def main(argv=None):
         seconds, gpu = _time(args, a.B, name)
         hardware = (__import__("numba").cuda.get_current_device().name.decode() if name == "gpu" else
                     __import__("cupy").cuda.runtime.getDeviceProperties(0)["name"].decode())
+        bad = mismatched(cpu, gpu, SCREEN_OUTPUTS)
         runs["gpu"] = {"label": "MEASURED", "seconds": seconds, "backend": name, "hardware": hardware,
-                       "maxT": gpu["maxT"], "p": gpu["p"],
-                       "matches_cpu": bool(np.allclose(gpu["z"], cpu["z"], rtol=1e-9, atol=1e-9))}
+                       "maxT": gpu["maxT"], "p": gpu["p"], "matches_cpu": not bad, "mismatched": bad}
         seconds, gpu_batch = _time_batch(X, T, E, C, s, name)
+        batch_bad = mismatched(cpu_batch, gpu_batch, BATCH_OUTPUTS)
         batch["gpu"] = {"label": "MEASURED", "seconds": seconds, "backend": name, "hardware": hardware,
                         "studies_per_hour": 3600 * a.studies / seconds,
-                        "matches_cpu": bool(np.allclose(gpu_batch["z"], cpu_batch["z"], rtol=1e-9, atol=1e-9))}
-    measured = all(r["label"] == "MEASURED" for r in runs.values())
-    workflow = {"label": "UNMEASURED", "reason": "no R-14 full-fit result with matching fingerprints given"}
-    if a.r14:
-        r14 = json.loads(a.r14.read_text())
-        theirs = {k: r14.get("fingerprints", {}).get(k) for k in ("patient_rows", "X", "C")}
-        if theirs == {k: fingerprints[k] for k in theirs}:
-            workflow = {"label": "MEASURED", "kind": "workflow comparison (per-candidate PHReg fits vs score screen)",
-                        "r14_seconds": r14.get("seconds"), "screen_seconds": runs["cpu"]["seconds"]}
-        else:
-            workflow["reason"] = "R-14 fingerprints differ from this workload"
+                        "matches_cpu": not batch_bad, "mismatched": batch_bad}
     result = {
         "schema": "screen-bench/1",
         "data": "SYNTHETIC",
@@ -136,14 +170,11 @@ def main(argv=None):
         "workload": {"patients": a.patients, "candidates": a.candidates, "resamples": a.B,
                      "clinical": cpu["metadata"]["clinical"]["shape"], "fingerprints": fingerprints},
         "runs": runs,
-        "equal_work_speedup": ({"label": "MEASURED", "value": runs["cpu"]["seconds"] / runs["gpu"]["seconds"]}
-                               if measured else {"label": "UNMEASURED", "reason": runs["gpu"].get("reason")}),
+        "equal_work_speedup": speedup(runs["cpu"], runs["gpu"], runs["gpu"].get("mismatched")),
         "batched": {"studies": a.studies, "seed": 1, "what": "screen_batch: observed screen per study, null refit per study",
                     "outcomes_sha256": _sha(T, E), "runs": batch,
-                    "equal_work_speedup": ({"label": "MEASURED", "value": batch["cpu"]["seconds"] / batch["gpu"]["seconds"]}
-                                           if batch["gpu"]["label"] == "MEASURED"
-                                           else {"label": "UNMEASURED", "reason": batch["gpu"]["reason"]})},
-        "workflow_comparison": workflow,
+                    "equal_work_speedup": speedup(batch["cpu"], batch["gpu"], batch["gpu"].get("mismatched"))},
+        "workflow_comparison": "bench/screen_vs_r14.py on the real producer's inputs (CPU workflow A/B, not equal work)",
     }
     a.out.parent.mkdir(parents=True, exist_ok=True)
     a.out.write_text(json.dumps(result, indent=1) + "\n")
