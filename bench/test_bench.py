@@ -35,3 +35,9 @@ def test_gate_rejects_empty_truncated_and_misshapen_outputs():
     assert not ladder.same_output(ref, ref[:1])
     assert not ladder.same_output(ref, [(S[:1], m), (S, m)])
     assert not ladder.same_output(ref, [(S, m + 1), (S, m)])
+
+
+def test_cuda_simulator_never_yields_a_gpu_rung(monkeypatch):
+    monkeypatch.setenv("NUMBA_ENABLE_CUDASIM", "1")
+    gpu = ladder.rungs()["gpu"]
+    assert isinstance(gpu, str) and "simulator" in gpu
