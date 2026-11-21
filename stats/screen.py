@@ -352,6 +352,43 @@ def screen_batch(X, time, event, clinical=None, strata=None, backend="auto", *, 
                          "backend": "gpu (numba.cuda)" if gpu else xp.__name__}}
 
 
+def screen_studies(X, time, event, strata=None, backend="numpy", *, block=128):
+    """The observed screen for S studies that each have their own X[S, P, J] (a design point).
+
+    No clinical covariates. backend "gpu" scores `block` studies per numba.cuda launch;
+    any other backend runs screen_batch once per study, the reference the GPU must match.
+    Returns z [S, J] and maxT [S].
+    """
+    if not isinstance(block, (int, np.integer)) or block < 1:
+        raise ValueError("block must be a positive integer")
+    X = np.asarray(X, dtype=np.float64)
+    time, event = np.asarray(time, dtype=np.float64), np.asarray(event, dtype=np.float64)
+    strata = np.zeros(time.shape) if strata is None else np.asarray(strata)
+    if X.ndim != 3 or not all(X.shape) or time.shape != X.shape[:2] or event.shape != time.shape or strata.shape != time.shape:
+        raise ValueError("X must be [S, P, J] with time, event and strata [S, P]")
+    if np.isinf(X).any() or not np.isfinite(time).all() or (time < 0).any() or not np.isin(event, [0, 1]).all():
+        raise ValueError("X must not contain infinity; time finite and nonnegative; event 0 or 1")
+    if backend != "gpu":
+        z = np.stack([screen_batch(X[s], time[s:s + 1], event[s:s + 1], strata=strata[s], backend=backend)["z"][0]
+                      for s in range(len(X))])
+        return {"z": z, "maxT": np.abs(z).max(1)}
+    from .gpu_score import study_moments
+
+    # as _inputs: a row without a finite stratum is dropped; NaN X takes it out of every risk set
+    base = np.isfinite(strata) if strata.dtype.kind == "f" else np.ones(strata.shape, bool)
+    X = np.where(base[..., None], X, np.nan)
+    codes = np.zeros(strata.shape, np.int64)
+    for s, row in enumerate(strata):
+        codes[s, base[s]] = np.unique(row[base[s]], return_inverse=True)[1].ravel()
+    z = np.empty(X.shape[::2])
+    for start in range(0, len(X), block):
+        part = slice(start, start + block)
+        U, Ixx = study_moments(X[part], codes[part], time[part], event[part])
+        good = Ixx > 0  # V = I_jj without clinical covariates; same floor as _finish
+        z[part] = np.where(good, U / np.sqrt(np.where(good, Ixx, 1.0)), 0.0)
+    return {"z": z, "maxT": np.abs(z).max(1)}
+
+
 def _null_draws(time, event, C, codes, base, B, seed, block):
     """Yield clinical-null resamples (time, event), each [block, n_base], over base rows."""
     ix = np.flatnonzero(base)

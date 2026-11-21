@@ -235,6 +235,9 @@ def test_committed_sweep_carries_its_limits_in_a_sidecar():
     side = json.loads(COMMITTED.with_name(COMMITTED.stem + ".caveats.json").read_text())
     assert side["result"] == "bench/results/" + COMMITTED.name and side["caveats"] == scaling.CAVEATS
     assert "not CPU time" in side["fields"]["reimage_cpu_s"] and "not a billing ceiling" in side["spend_in_ledger"]
+    doc = json.loads(COMMITTED.read_text())
+    assert doc["source_commit"].startswith("2207648") and "093c1ee" in doc["workload"]["arm"]
+    assert "2207648" in side["provenance"] and "not rerun" in side["provenance"]
 
 
 def test_scaling_ledger_entries_are_single_attempt_estimates_not_upper_bounds():

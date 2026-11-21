@@ -27,7 +27,7 @@ REPO = Path(__file__).resolve().parents[1]
 APP_DIR, DATA_DIR = "/root/preflight", "/data"
 LOCAL_DATA = Path(os.environ.get("DATA_DIR", REPO / "data"))
 SPEND = REPO / "bench" / "results" / "modal-spend.json"
-BUILD9 = "origin/modal-design-b9:bench/results/modal-design-20261121T185537Z.json"  # its 8-core numba arm
+BUILD9 = "bench/results/modal-design-20261121T185537Z.json"  # build-9's 8-core numba arm, merged with #113
 SINGLE = scaling.SINGLE
 BASE_IMAGE = "modal.Image.debian_slim(python_version='3.11') + uv_sync of this repo"
 
@@ -144,7 +144,7 @@ def main(studies: int = 1000, cores: str = ",".join(map(str, scaling.CORES))):
             errors[c] = repr(e)[-2000:]
     end = datetime.now(timezone.utc)
     try:
-        prior = json.loads(_git("show", BUILD9))
+        prior = json.loads(_git("show", f"{commit}:{BUILD9}"))
     except subprocess.CalledProcessError:
         prior = None
     clean = not [f for f in _git("diff", "--name-only", commit).splitlines() if f != str(SPEND.relative_to(REPO))]
@@ -156,7 +156,7 @@ def main(studies: int = 1000, cores: str = ",".join(map(str, scaling.CORES))):
         "labels": {"compute": "MEASURED", "sweep": "one sweep, every core count launched at once",
                    "outcomes": "SYNTHETIC (atlas/simulation.py)",
                    "claims": "times and ratios only: speedup_vs_1_core = studies wall at 1 core / at n cores"},
-        "workload": {"arm": "numba (build-9's bench/design_batch.py at 093c1ee, copied unchanged)", "stream": "null",
+        "workload": {"arm": "numba (bench/design_batch.py at source_commit)", "stream": "null",
                      "studies": studies, "root_seed": db.ROOT, "stream_seed": db.STREAMS["null"], "design": db.design(),
                      "timed": "studies_wall_s: the pool's re-imaging and Cox scoring of every study; excludes data "
                               "load, study preparation, adjacency and JIT warm-up (each recorded per point)"},

@@ -17,7 +17,8 @@ Arms:
          in blocks on the GPU (stats.screen.screen_studies).
   hybrid the numba arm's re-imaging on the CPU pool feeding the gpu arm's batched GPU scoring.
 CPU stages run studies in a pool of single-thread workers; the gpu arm is one process.
-Parity: X bit-identical across arms (sha256 per study) and z of gpu and hybrid vs numba within 1e-9.
+Parity: X bit-identical across arms (sha256 per study); z of gpu vs numba within 1e-9 on every z when both run
+together; hybrid (and any --compare-with arm) checked through each study's maxT only.
 """
 from __future__ import annotations
 
@@ -271,21 +272,39 @@ def parity(arms: dict) -> dict:
     return res
 
 
+# Per-study stage times are perf_counter wall seconds inside single-thread pool workers, summed over studies:
+# worker wall, not CPU time. Files before 2026-11-21T20:20Z named them *_cpu_s.
+LEGACY = {"reimage_cpu_s": "reimage_worker_wall_s", "scoring_cpu_s": "scoring_worker_wall_s",
+          "scoring_and_calibration_cpu_s": "scoring_and_calibration_worker_wall_s"}
+COMPUTE_SCOPE = ("compute_wall_s = re-imaging every evaluated study (the pool's wall for CPU-reimaged arms) plus "
+                 "batched scoring; excludes data load, outcome prep, adjacency, warm-up and the local threshold-and-"
+                 "calls summary, which end_to_end_in_container_s adds back (all but the summary)")
+
+
 def stage_times(arm_out: dict) -> dict:
     recs, arm = arm_out["records"], arm_out["arm"]
     st = {"prep_s": arm_out["setup"]["prep_s"], "adjacency_s": arm_out["setup"]["adjacency_s"],
-          "reimage_cpu_s": sum(r["reimage_s"] for r in recs), "studies_wall_s": arm_out["studies_wall_s"]}
+          "reimage_worker_wall_s": sum(r["reimage_s"] for r in recs), "studies_wall_s": arm_out["studies_wall_s"]}
     if arm == "lab":
-        st["scoring_and_calibration_cpu_s"] = sum(r["test_s"] for r in recs)
+        st["scoring_and_calibration_worker_wall_s"] = sum(r["test_s"] for r in recs)
     elif arm == "numba":
-        st["scoring_cpu_s"] = sum(r["score_s"] for r in recs)
+        st["scoring_worker_wall_s"] = sum(r["score_s"] for r in recs)
         st["calibration_s"] = "the calibration stream's studies, inside reimage and scoring"
     else:
         st["scoring_wall_s"] = arm_out["batched_score_wall_s"]
         st["calibration_s"] = "the calibration stream's studies, inside reimage and scoring"
-    n = len(recs)
-    st["evaluated_studies"] = n
-    st["wall_per_study_s"] = (arm_out["studies_wall_s"] + (arm_out["batched_score_wall_s"] or 0)) / n
+    st["evaluated_studies"] = len(recs)
+    return complete(st, arm_out.get("load_s"), arm_out["warm_s"], arm_out.get("warm_score_s"))
+
+
+def complete(st: dict, load_s, warm_s, warm_score_s) -> dict:
+    """Legacy names renamed; the compute scope and the in-container end-to-end time derived from recorded stages."""
+    st = {LEGACY.get(k, k): v for k, v in st.items()}
+    st["compute_wall_s"] = st["studies_wall_s"] + (st.get("scoring_wall_s") or 0)
+    st["wall_per_study_s"] = st["compute_wall_s"] / st["evaluated_studies"]
+    st["end_to_end_in_container_s"] = (st["compute_wall_s"] + st["prep_s"] + st["adjacency_s"]
+                                       + (load_s or 0) + (warm_s or 0) + (warm_score_s or 0))
+    st["scope"] = COMPUTE_SCOPE
     return st
 
 
@@ -308,12 +327,13 @@ def prior_parity(records: list, prior_arms: dict) -> dict:
 
 
 def split(arm: str, stages: dict) -> dict:
-    """Re-imaging vs scoring. GPU-scored arms: wall of each stage. CPU arms: CPU-seconds over the pool's workers."""
+    """Re-imaging vs scoring. GPU-scored arms: wall of each stage. CPU arms: worker wall summed over studies."""
     if arm in GPU_SCORE:
-        r, sc, basis = stages["studies_wall_s"], stages["scoring_wall_s"], "wall seconds"
+        r, sc, basis = stages["studies_wall_s"], stages["scoring_wall_s"], "wall seconds of each stage"
     else:
-        r, basis = stages["reimage_cpu_s"], "CPU-seconds summed over the workers (both stages share each worker)"
-        sc = stages["scoring_cpu_s"] if arm == "numba" else stages["scoring_and_calibration_cpu_s"]
+        r = stages["reimage_worker_wall_s"]
+        basis = "worker wall seconds (perf_counter in single-thread workers) summed over studies; not CPU time"
+        sc = stages["scoring_worker_wall_s"] if arm == "numba" else stages["scoring_and_calibration_worker_wall_s"]
     return {"reimage_s": r, "scoring_s": sc, "basis": basis, "reimage_share": r / (r + sc),
             "dominant": "re-imaging" if r >= sc else "scoring"}
 
@@ -325,4 +345,5 @@ def headline(arms: dict) -> str:
     walls = ", ".join(f"{a} {v['stages']['wall_per_study_s']:.3f} s" for a, v in arms.items())
     stage = dom[next(iter(dom))] if len(set(dom.values())) == 1 else "mixed"
     lead = f"{stage.capitalize()} dominates every arm" if stage != "mixed" else f"Dominant stage differs by arm: {dom}"
-    return f"{lead} (re-imaging share: {shares}). Wall per evaluated study: {walls}."
+    return (f"{lead} (re-imaging share: {shares}). Compute wall per evaluated study (re-imaging and scoring only; "
+            f"load, prep, adjacency, warm-up and the summary excluded): {walls}.")

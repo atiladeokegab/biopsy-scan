@@ -63,9 +63,10 @@ The rung-0 row and the reshaped row cover different scopes, so their ratio is no
 | Result | Source | Label |
 |---|---|---|
 | The textbook formula overstates power at 6 of 7 patient counts and understates it at 1. At 200 patients it says 80%; simulation on real tissue gives 27% (95% CI 22 to 32%)[^60] | `bench/results/vs-schoenfeld-300.json` (#53) | ESTIMATE (300 studies per point) |
-| Charville, 630 cell-mix patterns: the best pattern has maxT p = 0.13 (9,999 resamples) and omnibus p = 0.14. Chance explains it | `audit/results/charville.json` | MEASURED, negative |
+| Charville joint screen (v2): v1's 630 cell-mix patterns plus 3,150 more on the same 159 patients and 38 events. The best pattern has maxT p = 0.098 over 3,780 patterns (9,999 resamples) and omnibus p = 0.17. Not significant after correction (maxT p = 0.098); consistent with chance | `results/charville-v2.json` (#47) | MEASURED, exploratory |
 | Charville, 3,780 patterns with protein channels: the top candidate moves to PD1 on macrophages within 100 µm of Tumor 5 cells (`Tumor 5\|Macrophage\|100um\|PD1`), z = 3.96. Adjusted p = 0.098 and omnibus p = 0.17, so it is not significant. It stays rank 1 in 158 of 159 leave-one-patient-out drops | `results/charville-v2.json` (#47) | MEASURED, negative |
 | On a loaded shared 8-core VM, Numba all-core was no faster than NumPy (3.26 vs 2.98 s per study) | `bench/results/cpu-ladder.json` | MEASURED, negative |
 | The R-16 rediscovery candidate is fixed before any search | #61 | TESTED (`audit/test_rediscovery_definition.py`) |
+| R-16 locked test on UPMC: the frozen rule's feature (`Tumor (Podo+)\|Stromal / Fibroblast\|25um\|fraction`) gives HR per SD 1.82 [0.47, 6.97], one-sided p 0.193, C-index 0.548, so the locked test does not pass. It is inconclusive: underpowered, conditional power 18% < 50% with 4 design events. Discovery rank 366 of 612 (MEASURED, discovery patients only). The Charville top hit is not testable on UPMC (PD1 absent). Exploratory: outcomes already seen (Punovuori et al., Cell 2024); internal held-out split | `results/upmc-rediscovery.json` (#109) | UNMEASURED (underpowered) |
 
 [^60]: The earlier 60-study run (`bench/results/vs-schoenfeld.json`) gave 32% (95% CI 20 to 45%) at 200 patients.

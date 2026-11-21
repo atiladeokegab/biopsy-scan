@@ -18,5 +18,6 @@
     "scoring_cpu_s": "older name in this result for scoring_worker_wall_s: summed perf_counter wall seconds, not CPU time"
   },
   "parity_in_this_result": "X sha256 identical to the 8-core point for all 1,000 studies at every core count; z bit-identical at 4, 32 and 64 cores, within 1.2e-15 relative at 1, 2 and 16; the file keeps z sha256 and maxT per study, not full z vectors, so the full-vector distances cannot be recomputed from it",
-  "spend_in_ledger": "the $3.008 in bench/results/modal-spend.json for this sweep is a single-attempt estimate at list price (containers x local wall), not a billing ceiling; it does not establish what the preemption restart cost; invoice not verified"
+  "spend_in_ledger": "the $3.008 in bench/results/modal-spend.json for this sweep is a single-attempt estimate at list price (containers x local wall), not a billing ceiling; it does not establish what the preemption restart cost; invoice not verified",
+  "provenance": "MEASURED at its source_commit 2207648, which ran build-9's bench/design_batch.py from 093c1ee, copied unchanged (the result's workload.arm says so). #115 later merged integration and took #113's bench/design_batch.py; that version changes only the docstring, stage_times, split and headline, none of which this sweep calls (it calls run_arm's numba path, unchanged), and stats/screen.py only gained screen_studies, which the numba arm does not use. The sweep was not rerun; its source_commit still names the commit that ran it."
 }

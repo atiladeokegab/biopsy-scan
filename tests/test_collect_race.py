@@ -31,7 +31,7 @@ def test_other_bench_files_feed_nothing():
 def test_committed_race_matches_bench_results():
     """Atlas #79 (1): every number shown is the one in the file it cites."""
     b = json.loads((ROOT / "demo" / "data" / "baseline.json").read_text())
-    race = {r["id"]: r for r in b["rows"]} | {"workflow": b["workflow"]}
+    race = {r["id"]: r for r in b["rows"]} | {"workflow": b["workflow"], "scope": b.get("scope")}
     for path in sorted((ROOT / "bench" / "results").glob("*.json")):
         d = json.loads(path.read_text())
         for rid, fields in (cr.rows_from(path, d) if isinstance(d, dict) else []):
@@ -98,7 +98,7 @@ def test_ladder_feeds_interim_compute_only_with_startup_apart():
     [(rid, groups)] = cr.rows_from(Path(CLEARED), LADDER)
     assert rid == "interim"
     k, f = ({r["id"]: r for r in g["rows"]} for g in groups)
-    assert (k["kernel-numpy"]["seconds"], k["kernel-gpu"]["seconds"]) == (2.235, 0.702)
+    assert (k["kernel-numpy"]["seconds"], k["kernel-gpu"]["seconds"]) == (2.2353, 0.7015)
     assert [r["id"] for r in groups[1]["rows"]] == ["fleet-1", "fleet-8"], "no 16-GPU bar, no mixed 40/80 GB"
     assert (f["fleet-1"]["seconds"], f["fleet-1"]["startup_s"]) == (843.72, 34.7), "start-up is apart, never in seconds"
     assert (f["fleet-8"]["seconds"], f["fleet-8"]["gpu"]) == (128.2, "8x NVIDIA A100-SXM4-40GB")
@@ -151,9 +151,8 @@ DP = {"schema_version": 1, "runner": "modal", "status": "MEASURED", "kind": "des
 def test_design_point_fills_the_four_rows_only_when_measured_at_1000_studies():
     """Atlas #79 re-check (b): a FAILED run, or any workload but the declared design point, fills nothing."""
     rows = dict(cr.rows_from(Path("dp.json"), DP))
-    assert sorted(rows) == ["gpu-1", "gpu-16", "lab-cpu", "preflight-cpu", "scope"]
+    assert sorted(rows) == ["gpu-1", "lab-cpu", "preflight-cpu", "scope"], "no 16-GPU lane (lead, 2026-11-21)"
     assert rows["gpu-1"]["gpu"] == "1x NVIDIA H100" and rows["lab-cpu"]["cores"] == 48
-    assert (rows["gpu-16"]["seconds"], rows["gpu-16"]["startup_s"], rows["gpu-16"]["gpu"]) == (54.1, 6.2, "16x NVIDIA H100")
     # Atlas #79 round 3 (1)(2): the measured compute span, the calls timed apart, the scope kept
     assert rows["preflight-cpu"]["calls_s"] == 0.41 and rows["gpu-1"]["calls_s"] == 0.38 and "calls_s" not in rows["lab-cpu"]
     assert rows["scope"] == {k: DP["scope"][k] for k in ("comparison", "calibration")}
@@ -211,7 +210,8 @@ def test_timed_design_point_rows_need_their_scope_on_the_page():
     b = json.loads((ROOT / "demo" / "data" / "baseline.json").read_text())
     rows = dict(cr.rows_from(Path("dp.json"), DP))
     scope = rows.pop("scope")
-    timed = b | {"rows": [r | rows.get(r["id"], {}) for r in b["rows"]]}
+    unscoped = {k: v for k, v in b.items() if k != "scope"}  # the committed race carries its own scope
+    timed = unscoped | {"rows": [r | rows.get(r["id"], {}) for r in b["rows"]]}
     assert _check(timed) and "scope" in _check(timed)
     assert _check(timed | {"scope": scope}) is None
     assert _check(timed | {"scope": scope, "rows": [r | {"calls_s": -1} for r in timed["rows"]]})
@@ -259,3 +259,42 @@ def test_python_and_browser_claims_validators_agree():
             return False
     assert json.loads(out) == [py_ok(c) for c in cases]
     assert json.loads(out) == [True] + [False] * len(BAD_CLAIMS)
+
+
+def _four(**over):
+    stages = {"compute_wall_s": 372.0, "end_to_end_in_container_s": 592.0, "evaluated_studies": 3000}
+    arm = lambda a, w: {"container_class": "Modal A100 + 8 cores + 64 GiB", "workers": w, "split": {"reimage_share": 0.98},
+                        "host": {"gpu": "NVIDIA A100-SXM4-40GB, 40960 MiB, 610"},
+                        "stages": stages}
+    d = {"status": "MEASURED", "design": {"studies_per_stream": 1000}, "parity": {"all": True},
+         "labels": {"compute": "MEASURED", "outcomes": "SYNTHETIC (atlas/simulation.py at 79a7792)", "rates": "ESTIMATE (x)"},
+         "arms": {a: arm(a, 1 if a == "gpu" else 8) for a in ("lab", "numba", "gpu", "hybrid")}}
+    return d | over
+
+
+def test_the_four_arm_file_fills_exactly_the_four_declared_lanes():
+    rows = dict(cr.rows_from(Path("modal-design.json"), _four()))
+    assert sorted(rows) == ["gpu-1", "hybrid", "lab-cpu", "preflight-cpu", "scope"]
+    h = rows["hybrid"]
+    assert (h["seconds"], h["startup_s"], h["cores"], h["gpu"]) == (372.0, 220.0, 8, "1x NVIDIA A100-SXM4-40GB")
+    assert rows["gpu-1"]["cores"] is None and rows["lab-cpu"]["gpu"] is None and rows["lab-cpu"]["seconds"] == 372.0
+    three = _four()
+    del three["arms"]["hybrid"]
+    for bad in (three, _four(status="FAILED"), _four(parity={"all": False}), _four(design={"studies_per_stream": 20})):
+        assert list(cr.rows_from(Path("modal-design.json"), bad)) == []
+
+
+def test_interim_seconds_display_as_the_raw_file_rounds():
+    """Prometheus (21 Nov): the NumPy median 2.2353 s shows as 2.24 s, never 2.23 s from rounding twice.
+
+    race.js `secs` shows two decimals under 10 s and one above; the stored value must give the same text
+    as the file's raw value would.
+    """
+    show = lambda s: f"{s:.2f}" if s < 10 else f"{s:.1f}"
+    [(_, groups)] = cr.rows_from(Path(CLEARED), LADDER)
+    rows = {r["id"]: r["seconds"] for g in groups for r in g["rows"]}
+    raw = {"kernel-numpy": LADDER["kernel"]["rows"]["numpy_reference"]["median_s"],
+           "kernel-gpu": LADDER["kernel"]["rows"]["gpu"]["median_s"],
+           "fleet-1": LADDER["fleet"]["runs"]["1"]["compute_span_s"], "fleet-8": LADDER["fleet"]["runs"]["8"]["compute_span_s"]}
+    assert {i: show(rows[i]) for i in raw} == {i: show(v) for i, v in raw.items()}
+    assert show(rows["kernel-numpy"]) == "2.24"

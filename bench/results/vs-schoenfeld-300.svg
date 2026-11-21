@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" font-family="sans-serif" font-size="13">
-<rect width="900" height="600" fill="#fff"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="634" font-family="sans-serif" font-size="13">
+<rect width="900" height="634" fill="#fff"/>
 <text x="12" y="26" font-size="17" font-weight="bold">ESTIMATE · Textbook power formula vs Preflight, Charville</text>
 <text x="12" y="48" fill="#444">HR 2 per SD planted · alpha 0.05, Bonferroni over 630 features · event fraction 38/159 · design: 2 region(s), 400 µm field, 10% mis-called</text>
 <line x1="80" x2="680" y1="440.0" y2="440.0" stroke="#ddd"/>
@@ -38,12 +38,24 @@
 <circle cx="449.2" cy="340.1" r="3.5" fill="#2f7d4f"/>
 <circle cx="541.5" cy="325.3" r="3.5" fill="#2f7d4f"/>
 <circle cx="680.0" cy="288.3" r="3.5" fill="#2f7d4f"/>
+<polyline points="80.0,411.6 172.3,363.5 264.6,319.1 356.9,325.3 449.2,218.0 541.5,174.8 680.0,121.8" fill="none" stroke="#777" stroke-width="1.5" stroke-dasharray="2 4"/>
+<circle cx="80.0" cy="411.6" r="4.5" fill="#fff" stroke="#555" stroke-width="2"/>
+<circle cx="172.3" cy="363.5" r="4.5" fill="#fff" stroke="#555" stroke-width="2"/>
+<circle cx="264.6" cy="319.1" r="4.5" fill="#fff" stroke="#555" stroke-width="2"/>
+<circle cx="356.9" cy="325.3" r="4.5" fill="#fff" stroke="#555" stroke-width="2"/>
+<circle cx="449.2" cy="218.0" r="4.5" fill="#fff" stroke="#555" stroke-width="2"/>
+<circle cx="541.5" cy="174.8" r="4.5" fill="#fff" stroke="#555" stroke-width="2"/>
+<circle cx="680.0" cy="121.8" r="4.5" fill="#fff" stroke="#555" stroke-width="2"/>
 <text x="690" y="84.1" fill="#b5462f" font-weight="bold">ANALYTIC (formula)</text>
-<text x="690" y="292.3" fill="#2f7d4f" font-weight="bold">MEASURED (sim)</text>
+<text x="690" y="125.8" fill="#666" font-weight="bold">ESTIMATE (sim), control</text>
+<text x="690" y="141.8" fill="#666" font-size="11">full core, 0% mis-called</text>
+<text x="690" y="292.3" fill="#2f7d4f" font-weight="bold">ESTIMATE (sim)</text>
 <text x="690" y="308.3" fill="#2f7d4f" font-size="11">band: 95% interval</text>
 <text x="12" y="506" font-weight="bold">Mixed: the formula overstates at 6 and understates at 1 of 7 patient counts.</text>
-<text x="12" y="530" fill="#555" font-size="12">MEASURED (sim) = model-based Monte Carlo (frozen snapshot of the atlas code, ab0ae72 + working tree): 300 planted-effect studies per point, re-imaged cell</text>
-<text x="12" y="547" fill="#555" font-size="12">by cell from real tissue, maxT at one calibrated threshold per design; null-study FWER 0.020 to 0.070.</text>
-<text x="12" y="564" fill="#555" font-size="12">ANALYTIC = Schoenfeld (1983) events formula for a per-SD covariate (Hsieh and Lavori 2000),</text>
-<text x="12" y="581" fill="#555" font-size="12">D = patients x event fraction, Bonferroni; it assumes exact, whole-tissue measurement.</text>
+<text x="12" y="530" fill="#555" font-size="12">ESTIMATE (sim) = model-based Monte Carlo (frozen snapshot of the atlas code, ab0ae72 + working tree): 300 planted-effect studies per point,</text>
+<text x="12" y="547" fill="#555" font-size="12">re-imaged cell by cell from real tissue, maxT at one calibrated threshold per design.</text>
+<text x="12" y="564" fill="#555" font-size="12">Null-study FWER: main 0.020 to 0.070 (highest at 160 patients, 95% CI 0.029 to 0.139);</text>
+<text x="12" y="581" fill="#555" font-size="12">control 0.020 to 0.110 (highest at 80 patients, 95% CI 0.056 to 0.188).</text>
+<text x="12" y="598" fill="#555" font-size="12">ANALYTIC = Schoenfeld (1983) events formula for a per-SD covariate (Hsieh and Lavori 2000),</text>
+<text x="12" y="615" fill="#555" font-size="12">D = patients x event fraction, Bonferroni; it assumes exact, whole-tissue measurement.</text>
 </svg>

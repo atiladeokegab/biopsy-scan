@@ -4,11 +4,13 @@ Run: python3 -I demo/collect_race.py [extra.json ...]. Pages runs it before ever
 A bench file feeds the race in one of two ways:
   Only a file with "status": "MEASURED" and "studies": 1000 (the declared design point) may fill a race row;
   anything else is refused with a message. Either
-  1. build-modal's "kind": "design_point" file (slots a_lab_all_cores, b_ours_cpu_all_cores, c_ours_1_gpu,
-     d_ours_n_gpu.runs["16"]), or
+  0. bench/modal_design.py's four-arm file (arms lab, numba, gpu, hybrid side by side, one container class): fills
+     the four lanes lab-cpu, preflight-cpu, gpu-1 and hybrid, only when MEASURED at 1,000 studies per stream with
+     its parity gate passed (X sha256 on every shared study; z in full for gpu, via per-study maxT for hybrid). A file without all four arms (the three-arm run) feeds nothing. There is no 16-GPU lane. Or
+  1. build-modal's "kind": "design_point" file (slots a_lab_all_cores, b_ours_cpu_all_cores, c_ours_1_gpu), or
      It must carry its "scope" (WORKFLOW comparison, EXPLORATORY calibration), which the page prints; GPU lanes
-     need e_gpu_parity.exact_all_containers; gpu-16 is the measured compute span; the threshold-and-calls step
-     is kept apart in "calls_s". A generic "race" list feeds nothing. Or
+     need e_gpu_parity.exact_all_containers; the threshold-and-calls step is kept apart in "calls_s".
+     A generic "race" list feeds nothing. Or
   2. R-14's impl-a shape (cpu_model, cohorts[].timings[]): the Charville 3,780-candidate Cox screen fills the
      "workflow" footnote only. It is different work, so it is never a race bar and never part of a ratio.
   3. the Modal runner's "kind": "ladder" file (#75), only the one Atlas cleared (CLEARED_LADDER): fills "interim",
@@ -31,6 +33,38 @@ DESIGN_STUDIES = 1000  # the race's declared unit: one design point, 1,000 simul
 TIMED = ("MEASURED", "ESTIMATE")
 CLEARED_LADDER = "modal-a100-20261121T183709Z.json"  # Atlas cleared this run (lead, 2026-11-21 19:00Z)
 SLOTS = {"lab-cpu": "a_lab_all_cores", "preflight-cpu": "b_ours_cpu_all_cores", "gpu-1": "c_ours_1_gpu"}
+ARMS = {"lab-cpu": "lab", "preflight-cpu": "numba", "gpu-1": "gpu", "hybrid": "hybrid"}  # the four declared lanes
+
+
+def four_arms(name, d):
+    """bench/modal_design.py's file: each arm's compute_wall_s; load, prep, adjacency and warm-up apart in startup_s."""
+    why = ("not MEASURED" if d.get("status") != "MEASURED" else
+           "not 1,000 studies per stream" if d.get("design", {}).get("studies_per_stream") != DESIGN_STUDIES else
+           "parity gate not passed" if d.get("parity", {}).get("all") is not True else
+           "not the four declared arms" if sorted(d["arms"]) != sorted(ARMS.values()) else None)
+    if why:
+        print(f"{name}: refused for the race: {why}", file=sys.stderr)
+        return
+    lab = d["labels"]
+    yield "scope", {"comparison": f"Compute {lab['compute']} on one container class ({d['arms']['lab']['container_class']}); "
+                                  f"outcomes {lab['outcomes']}; FWER and power are {lab['rates'].split(' ')[0]}. "
+                                  "Seconds: in-container study and scoring wall time; load, outcome prep, adjacency "
+                                  "and warm-up apart in start-up; the cutoff and rate summary not timed. The lab and "
+                                  "batched lanes run different test and calibration procedures, not equal statistical "
+                                  "work. Parity: X sha256 on every shared study; z in full for the A100 lane, through "
+                                  "per-study maxT for the hybrid",
+                    "calibration": "Lab: 1,000 within-strata shuffles in every study. Preflight lanes: one threshold "
+                                   "from 1,000 independent calibration nulls; evaluating those studies is timed inside "
+                                   "each lane, computing the cutoff from them is not"}
+    for rid, a in ARMS.items():
+        v = d["arms"][a]
+        st, gpu = v["stages"], a in ("gpu", "hybrid")
+        yield rid, {"seconds": round(st["compute_wall_s"], 2), "label": lab["compute"],
+                    "hardware": v["container_class"], "cores": None if a == "gpu" else v["workers"],
+                    "gpu": f"1x {v['host']['gpu'].split(',')[0]}" if gpu else None, "source": name,
+                    "startup_s": round(st["end_to_end_in_container_s"] - st["compute_wall_s"], 1),
+                    "note": f"{st['evaluated_studies']:,} studies; re-imaging {100 * v['split']['reimage_share']:.1f}% "
+                            + ("of elapsed stage wall time" if gpu else "of summed worker wall time")}
 
 
 def refused(d):
@@ -61,15 +95,12 @@ def design_point(name, d):
                     "cores": None if gpu else r.get("workers"), "gpu": f"1x {gpu[0]}" if gpu else None, "source": name,
                     **({"calls_s": round(r["plus_threshold_and_calls_s"], 2)} if "plus_threshold_and_calls_s" in r else {}),
                     **({"note": r["basis"]} if r.get("basis") not in (None, "measured") else {})}
-    run = s.get("d_ours_n_gpu", {}).get("runs", {}).get("16")
-    if s.get("d_ours_n_gpu", {}).get("label") in TIMED and run and parity:
-        yield "gpu-16", {"seconds": round(run["compute_span_s"], 2), "note": "compute span across containers", "startup_s": round(run["startup_and_transfer_s"], 1),
-                         "label": s["d_ours_n_gpu"]["label"], "hardware": "Modal", "cores": None,
-                         "gpu": f"{run['containers_seen']}x {' / '.join(sorted(set(run['gpus'])))}", "source": name}
 
 
 def rows_from(path, d):
     name = f"bench/results/{path.name}"
+    if isinstance(d.get("arms"), dict) and "labels" in d:
+        yield from four_arms(name, d)
     if d.get("kind") == "design_point":
         why = refused(d)
         if why:
@@ -114,10 +145,10 @@ def interim(name, d):
          "scope_line": f"{lab}, {k['speedup_median']:.2f}× faster: feature step only, NumPy vs GPU, same container, "
                   f"median of {len(rows['gpu']['samples_s'])}, exact parity", "rows": [
             {"id": "kernel-numpy", "method": "NumPy reference, same container", "role": "baseline", "label": lab,
-             "seconds": round(rows["numpy_reference"]["median_s"], 3), "hardware": "Modal GPU container, on its CPU",
+             "seconds": round(rows["numpy_reference"]["median_s"], 4), "hardware": "Modal GPU container, on its CPU",
              "cores": None, "gpu": None, "note": f"median of {len(rows['numpy_reference']['samples_s'])}", "source": name},
             {"id": "kernel-gpu", "method": "The same step on 1 GPU", "role": "screen", "label": lab,
-             "seconds": round(rows["gpu"]["median_s"], 3), "hardware": "Modal", "cores": None, "gpu": k["gpu"]["model"],
+             "seconds": round(rows["gpu"]["median_s"], 4), "hardware": "Modal", "cores": None, "gpu": k["gpu"]["model"],
              "note": f"median of {len(rows['gpu']['samples_s'])}, exact parity", "source": name}]},
         {"title": "1,000 studies: 1 A100 against 8", "unit": f["note"], "same_scope": True,
          "scope_line": f"{lab}, observed {one['compute_span_s'] / eight['compute_span_s']:.1f}× compute-span reduction "
