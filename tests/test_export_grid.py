@@ -217,9 +217,11 @@ def test_mixed_source_grammar_method_or_a_is_refused(column, value):
     ({"bank_key": "key-other"}, "imaging design"), ({"bank_hash": "hash-other"}, "imaging design"),
     ({"bank_seed": 1}, "imaging design"), ({"bank_key": None}, "bank_key"), ({"bank_hash": np.nan}, "bank_hash"),
 ])
-def test_one_imaging_design_keeps_one_bank_at_every_patient_count(change, message):
+@pytest.mark.parametrize("row", [16, -1])  # P=160 on the 1-region line, and P=160 off the lines (4 regions)
+def test_one_imaging_design_keeps_one_bank_at_every_patient_count(change, message, row):
     rows = bank_rows()
-    rows[-1].update(change)  # P=160's last design; P=40 has the same design with the original bank
+    assert rows[row]["patients"] == 160
+    rows[row].update(change)  # P=40 has the same imaging design with the original bank
     with pytest.raises(ValueError, match=message):
         build(rows)
 

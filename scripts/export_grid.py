@@ -39,6 +39,11 @@ MODEL = ("alpha", "plant_feature", "plant_mean", "plant_sd", "shape", "target_ev
 NEED = ["cohort", "patients", "regions_per_patient", "fov_um", "eps", "hr_per_source_sd", "alpha", "plant_feature",
         "power", "power_n", "power_lo", "power_hi", "identification_rate",
         "fwer", "wrong_identification_rate", *SOURCE]
+# Finite-bank provenance (#45): one of each per curve when the table has it; a bank curve needs all of them,
+# and each point keeps its imaging design's bank ids (one bank per (regions, FOV, eps), the same at every P).
+CURVE = ("source_hash", "grammar_hash", "measurement_model", "bank_draws")
+BANK = ("bank_key", "bank_hash", "bank_seed")
+FINITE = "finite-bank approximation"
 METHOD = ("Model-based Monte Carlo: each point is the share of simulated studies, re-imaged from real cells with "
           "planted Weibull outcomes, in which the maxT test rejects. A simulation estimate under the stated model, "
           "not an observed rate, whatever the source label.")
@@ -114,6 +119,29 @@ def _point(r, where):
     return p
 
 
+def _bank_ids(r, where):
+    ids = {k: getattr(r, k) for k in BANK}
+    for k in ("bank_key", "bank_hash"):
+        if _missing(ids[k]) or not isinstance(ids[k], str) or not ids[k]:
+            raise ValueError(f"{where}: {k}={ids[k]!r}: a {FINITE} point needs its bank id")
+    ids["bank_seed"] = _int(ids["bank_seed"], f"{where}: bank_seed", 0)
+    return ids
+
+
+def _one_bank_per_imaging_design(points):
+    banks = {}
+    for p in points:
+        banks.setdefault((p["regions"], p["fov_um"], p["miscall"]), set()).add(tuple(p[k] for k in BANK))
+    for design, ids in banks.items():
+        if len(ids) != 1:
+            raise ValueError(f"imaging design (regions, fov_um, miscall)={design} has {len(ids)} banks across "
+                             "patient counts; it needs one")
+    for k in ("bank_key", "bank_hash"):
+        seen = [next(iter(ids))[BANK.index(k)] for ids in banks.values()]
+        if len(set(seen)) != len(seen):
+            raise ValueError(f"two imaging designs share bank {k}; each design has its own bank")
+
+
 def input_split(df: pd.DataFrame) -> str:
     """The split the simulation results were drawn from, as their own split column states it."""
     if "split" not in df.columns or df.split.isna().all():
@@ -146,6 +174,23 @@ def build_grid(df: pd.DataFrame, cohort: dict, max_regions: int, *, cohort_key: 
         if len(values) != 1:
             raise ValueError(f"rows mix {k} values {sorted(map(str, values))}; export one model at a time")
         model[k] = _plain(values.iloc[0])
+    prov = {}
+    for k in [c for c in CURVE if c in df.columns]:
+        values = df[k].drop_duplicates()
+        if len(values) != 1:
+            raise ValueError(f"rows mix {k} values {sorted(map(str, values))}; one curve needs one {k}")
+        prov[k] = None if _missing(values.iloc[0]) else _plain(values.iloc[0])
+    bank = prov.get("measurement_model") == FINITE
+    if "measurement_model" in prov and prov["measurement_model"] not in ("direct", FINITE):
+        raise ValueError(f"measurement_model={prov['measurement_model']!r}: need 'direct' or '{FINITE}'")
+    if bank:
+        absent = [k for k in (*CURVE, *BANK) if k not in df.columns or (k in prov and prov[k] is None)]
+        if absent:
+            raise ValueError(f"a {FINITE} curve needs {absent}")
+        prov["bank_draws"] = _int(prov["bank_draws"], "bank_draws", 2)
+    elif any(k in df.columns and not df[k].map(_missing).all() for k in BANK):
+        raise ValueError("direct (or legacy) rows carry bank ids; a bank curve must say measurement_model "
+                         f"'{FINITE}'")
     counts = df.power_n.drop_duplicates()
     if len(counts) != 1:
         raise ValueError(f"rows mix power_n {sorted(map(str, counts))}; every point needs the same study count")
@@ -160,30 +205,39 @@ def build_grid(df: pd.DataFrame, cohort: dict, max_regions: int, *, cohort_key: 
     if "region_um" in facts and not (math.isfinite(facts["region_um"]) and facts["region_um"] > 0):
         raise ValueError(f"region_um={facts['region_um']}: need a positive size")
     lines = [k for k in REGION_LINES if k <= max_regions]
-    points, all_regions, dropped = [], [], 0
+    points, all_regions, off_lines = [], [], []
     for i, r in enumerate(df.itertuples()):
         p = _point(r, f"row {i}")
+        if bank:
+            p |= _bank_ids(r, f"row {i}")
         if p["regions"] == "all":
             all_regions.append(p)
         elif p["regions"] in lines:
             points.append(p)
         else:
-            dropped += 1
+            off_lines.append(p)
     if not points:
         raise ValueError(f"no design points on the regions lines {lines}")
     keys = [tuple(p[k] for k in ("patients", "regions", "fov_um", "miscall")) for p in points + all_regions]
     if len(set(keys)) != len(keys):
         raise ValueError("results repeat a design point; keep one row per point")
+    if bank:
+        _one_bank_per_imaging_design(points + all_regions + off_lines)  # dropped rows are still this curve's
     note = (f"Model-based Monte Carlo (#5): {len(points)} design points, {studies:,} planted-effect studies each, "
             f"from {source_name}.")
     if not measured:
         note += " Marked SYNTHETIC until the full atlas run on the real cohort."
+    method = METHOD
+    if bank:
+        approx = (f" Measurement model: {FINITE}, A={prov['bank_draws']} acquisitions per source patient and imaging "
+                  "design, not fresh imaging per study.")
+        note, method = note + approx, method + approx
     axes = {k: _axis([p[k] for p in points]) for k in ("patients", "regions", "fov_um", "miscall")}
     order = lambda p: tuple(axes[k].index(p[k]) for k in axes)  # noqa: E731
-    meta = {"method": METHOD, "source": source_name, "cohort_split": SPLIT, "input_split": input_split(df),
+    meta = {"method": method, "source": source_name, "cohort_split": SPLIT, "input_split": input_split(df),
             "model": model, "region_lines": lines,
             "max_regions_per_patient": max_regions, "cohorts": {cohort_key: facts},
-            "all_regions_points": all_regions, "points_off_region_lines": dropped}
+            "all_regions_points": all_regions, "points_off_region_lines": len(off_lines), **prov}
     return {"schema": "preflight-grid/1", "source": "MEASURED" if measured else "SYNTHETIC", "note": note,
             "studies_per_point": studies, "effect_hr_per_sd": float(hr), "cohort": cohort,
             "axes": axes, "points": sorted(points, key=order), "meta": meta}
