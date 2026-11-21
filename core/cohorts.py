@@ -184,7 +184,8 @@ def load_cells(cohort: str, region_ids: list[str] | None = None, data_dir: Path 
     from the discovery side.
 
     Returns xy_um float64 (N,2), cell_type int16 (N,), region_ptr int64 (R+1,), region_ids, type_names.
-    type_names is the sorted list of every type in the cohort, so codes are stable across calls.
+    type_names is the sorted list of every type in the split's regions (not just the requested ones), so codes
+    are stable across calls and a type seen only in locked regions never reaches the discovery grammar.
     """
     data_dir = Path(data_dir)
     all_regions = list(pd.read_csv(data_dir / f"{cohort}_labels.csv", usecols=["region_id"], dtype=str).region_id)
@@ -203,9 +204,14 @@ def load_cells(cohort: str, region_ids: list[str] | None = None, data_dir: Path 
         idx = [pos[r] for r in region_ids]
         sl = [np.arange(ptr[i], ptr[i + 1]) for i in idx]
         take = np.concatenate(sl) if sl else np.zeros(0, int)
-        return {"xy_um": z["xy_um"][take], "cell_type": z["cell_type"][take],
+        ct = z["cell_type"]
+        side = [np.arange(ptr[i], ptr[i + 1]) for r, i in pos.items() if on_side(r)]
+        seen = np.unique(ct[np.concatenate(side)]) if side else np.zeros(0, int)
+        code = np.full(len(z["type_names"]), -1, np.int16)
+        code[seen] = np.arange(len(seen))
+        return {"xy_um": z["xy_um"][take], "cell_type": code[ct[take]],
                 "region_ptr": np.concatenate([[0], np.cumsum([len(s) for s in sl])]).astype(np.int64),
-                "region_ids": region_ids, "type_names": list(z["type_names"])}
+                "region_ids": region_ids, "type_names": [str(z["type_names"][i]) for i in seen]}
     xy, ty = [], []
     with zipfile.ZipFile(data_dir / f"{cohort}_raw_data.zip") as z:
         for r in all_regions:
