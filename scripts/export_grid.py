@@ -5,7 +5,7 @@ Run from the repo root (cohort counts need `make data`):
 
 RESULTS is a .parquet, .csv or .json(l) table with one row per design point: the atlas's run_point
 summary (cohort, patients, regions_per_patient (null = all), fov_um (null = full core), eps,
-hr_per_source_sd, power with power_n/_lo/_hi, identification_rate, source_n, source_events,
+hr_per_source_sd, power with power_n/_lo/_hi, identification_rate, fwer, wrong_identification_rate, source_n, source_events,
 source_regions, region_um). Other columns are ignored.
 
 The chart's regions lines are 1, 2, 4 and 8, capped by the most regions any usable patient has;
@@ -26,7 +26,8 @@ NAMES = {"charville": "Charville", "upmc": "UPMC"}
 REGION_LINES = (1, 2, 4, 8)
 SOURCE = ("source_n", "source_events", "source_regions", "region_um")
 NEED = ["cohort", "patients", "regions_per_patient", "fov_um", "eps", "hr_per_source_sd",
-        "power", "power_n", "power_lo", "power_hi", "identification_rate", *SOURCE]
+        "power", "power_n", "power_lo", "power_hi", "identification_rate",
+        "fwer", "wrong_identification_rate", *SOURCE]
 
 
 def read_results(path: Path) -> pd.DataFrame:
@@ -90,7 +91,9 @@ def build_grid(df: pd.DataFrame, cohort: dict, max_regions: int, *, cohort_key: 
         p = {"patients": int(r.patients), "regions": None if _missing(r.regions_per_patient) else int(r.regions_per_patient),
              "fov_um": "full" if _missing(r.fov_um) else _num(r.fov_um), "miscall": float(r.eps),
              "power": float(r.power), "identification_rate": float(r.identification_rate),
-             "power_lo": float(r.power_lo), "power_hi": float(r.power_hi)}
+             "power_lo": float(r.power_lo), "power_hi": float(r.power_hi),
+             # validity evidence: maxT false-positive rate on null studies, and off-target top hits
+             "fwer": float(r.fwer), "wrong_identification_rate": float(r.wrong_identification_rate)}
         if p["regions"] is None:
             all_regions.append({**p, "regions": "all"})
         elif p["regions"] in lines:

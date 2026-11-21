@@ -31,7 +31,8 @@ def summaries(hr=2.0, regions=(1, 2, None, 4)):
                                  "regions_per_patient": k, "fov_um": fov, "eps": eps, "backend": "numpy",
                                  "hr_per_source_sd": hr, "power": power, "power_count": int(power * 1000),
                                  "power_n": 1000, "power_lo": max(0.0, power - 0.03), "power_hi": min(1.0, power + 0.03),
-                                 "identification_rate": power * 0.8, "fwer": 0.05, **FACTS})
+                                 "identification_rate": power * 0.8, "fwer": 0.05,
+                                 "wrong_identification_rate": power * 0.1, "omnibus_fwer": 0.04, **FACTS})
     return rows
 
 
@@ -56,6 +57,7 @@ def test_parquet_summaries_become_a_grid_check_data_accepts(tmp_path):
     assert grid["axes"]["fov_um"] == [200, "full"] and grid["axes"]["regions"] == [1, 2]
     assert len(grid["points"]) == 16 and grid["studies_per_point"] == 1000 and grid["effect_hr_per_sd"] == 2.0
     assert all(p["power_lo"] <= p["power"] <= p["power_hi"] for p in grid["points"])
+    assert all(p["fwer"] == 0.05 and "wrong_identification_rate" in p and "omnibus_fwer" not in p for p in grid["points"])
     r = check(grid, tmp_path)
     assert r.returncode == 0, r.stdout + r.stderr
     assert "16 points, source SYNTHETIC" in r.stdout
