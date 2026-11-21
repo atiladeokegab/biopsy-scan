@@ -112,7 +112,7 @@ The checker enforces these rules:
 The slider ranges are:
 - patients 20 to 300 in steps of 1, starting at the cohort (159);
 - regions 1 to 8;
-- field of view 250 to 2000 µm, plus full region;
+- field of view 200 µm up to the core width (`tissue.region_um`) in 100 µm steps, plus full core;
 - mis-call 0 to 30%.
 
 The page picks the grid point nearest the sliders, measuring each axis in steps along its own
@@ -120,7 +120,7 @@ The page picks the grid point nearest the sliders, measuring each axis in steps 
 point it shows differs from what was asked. The chart uses that point's field of view and
 mis-call rate.
 
-The page opens at our cohort's patients and regions, with two 1 mm fields and 10% mis-called, so
+The page opens at our cohort's patients and regions, with two 400 µm fields and 10% mis-called, so
 the fields of view and the noise are visible from the first second.
 
 ## Open: 60 fps on the demo laptop (lesson 27)

@@ -3,7 +3,7 @@
 // Canvas and WebGL cannot read var(); they take colours from the same CSS tokens through this.
 export const tok = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 export const pct = (x) => `${Math.round(x * 100)}%`;
-export const fovLabel = (v) => (v === "full" ? "full region" : `${v} µm`);
+export const fovLabel = (v) => (v === "full" ? "full core" : `${v} µm`);
 const plural = (k) => `${k} region${k > 1 ? "s" : ""}`;
 
 export function drawChart(box, grid, sel) {

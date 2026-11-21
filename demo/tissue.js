@@ -3,8 +3,11 @@
 import * as THREE from "./vendor/three/three.module.min.js";
 import { tok } from "./chart.js";
 
-const UM = 10; // microns per world unit
-const GAP = 40; // world units between slabs
+// The scene is sized in core widths, and each slab is cut to its own core, not microns: every core (720 µm real, 2500 µm synthetic) is
+// R world units across, so dots stay fine and slabs keep their spacing whatever region_um is.
+const R = 250; // world units across one core
+const GAP = R * 0.16; // between slabs
+const DOT = R * 0.01; // point size: a fine dot at any core size
 const TYPES = ["tumour", "stroma", "immune"]; // CSS tokens --tumour, --stroma, --immune
 const DIM = 0.14; // how much of a cell's colour survives outside every field of view
 
@@ -35,7 +38,7 @@ export function createTissue(canvas, tissue, { reducedMotion }) {
   const root = new THREE.Group();
   scene.add(root);
 
-  const R = tissue.region_um / UM;
+  const UM = tissue.region_um / R; // microns per world unit
   const base = Object.fromEntries(TYPES.map((t) => [t, new THREE.Color(tok(`--${t}`))]));
   const dot = dotTexture();
   const plateMat = new THREE.MeshBasicMaterial({ color: tok("--surface"), transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false });
@@ -47,10 +50,14 @@ export function createTissue(canvas, tissue, { reducedMotion }) {
     const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
     const type = new Uint8Array(n), flip = new Float32Array(n), other = new Uint8Array(n);
     const r = rng(1000 + i);
+    // The core's own extent (real cores are not square): cells are centred on the slab, squares stay inside it.
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const c of p.cells) { x0 = Math.min(x0, c.x); x1 = Math.max(x1, c.x); y0 = Math.min(y0, c.y); y1 = Math.max(y1, c.y); }
+    const core = { w: (x1 - x0) / UM, h: (y1 - y0) / UM };
     p.cells.forEach((c, j) => {
-      pos[j * 3] = c.x / UM - R / 2;
+      pos[j * 3] = (c.x - x0) / UM - core.w / 2;
       pos[j * 3 + 1] = 0.6;
-      pos[j * 3 + 2] = c.y / UM - R / 2;
+      pos[j * 3 + 2] = (c.y - y0) / UM - core.h / 2;
       type[j] = TYPES.indexOf(c.type);
       flip[j] = r(); // a cell is mis-called when flip < rate, so raising the rate only adds mis-calls
       other[j] = (type[j] + 1 + Math.floor(r() * 2)) % 3;
@@ -59,26 +66,26 @@ export function createTissue(canvas, tissue, { reducedMotion }) {
     geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
     geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
     const pts = new THREE.Points(geo, new THREE.PointsMaterial({
-      size: 4.6, vertexColors: true, map: dot, alphaTest: 0.5, transparent: false,
+      size: DOT, vertexColors: true, map: dot, alphaTest: 0.5, transparent: false,
     }));
     const group = new THREE.Group();
-    const plate = new THREE.Mesh(new THREE.PlaneGeometry(R, R), plateMat);
+    const plate = new THREE.Mesh(new THREE.PlaneGeometry(core.w * 1.06, core.h * 1.06), plateMat);
     plate.rotation.x = -Math.PI / 2;
     const edge = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(
-      [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => new THREE.Vector3((a * R) / 2, 0, (b * R) / 2))), edgeMat);
+      [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => new THREE.Vector3((a * core.w * 1.06) / 2, 0, (b * core.h * 1.06) / 2))), edgeMat);
     const squares = new THREE.Group();
     group.add(plate, edge, pts, squares);
     root.add(group);
     // Fractional square centres, fixed per patient, so a bigger field of view grows in place.
     const sr = rng(5000 + i), spots = Array.from({ length: 8 }, () => [sr(), sr()]);
-    return { group, pts, col, pos, type, flip, other, squares, spots, n };
+    return { group, pts, col, pos, type, flip, other, squares, spots, n, core };
   });
 
   let yaw = 0.6, pitch = 0.42, spin = !reducedMotion, dragging = null, drop = null, shown = 0;
 
-  function squareLoop(s) {
+  function squareLoop(w, h) {
     const g = new THREE.BufferGeometry().setFromPoints(
-      [[-1, -1], [1, -1], [1, 1], [-1, 1], [-1, -1]].map(([a, b]) => new THREE.Vector3((a * s) / 2, 0, (b * s) / 2)));
+      [[-1, -1], [1, -1], [1, 1], [-1, 1], [-1, -1]].map(([a, b]) => new THREE.Vector3((a * w) / 2, 0, (b * h) / 2)));
     const l = new THREE.Line(g, fovMat);
     l.computeLineDistances();
     return l;
@@ -86,7 +93,7 @@ export function createTissue(canvas, tissue, { reducedMotion }) {
 
   function update(d) {
     const full = d.fov_um === "full";
-    const s = full ? R : Math.min(R, d.fov_um / UM);
+    const s = full ? Infinity : d.fov_um / UM;
     const k = full ? 1 : d.regions;
     shown = Math.max(1, Math.min(slabs.length, Math.round(d.patients / 25)));
     slabs.forEach((sl, i) => {
@@ -94,9 +101,11 @@ export function createTissue(canvas, tissue, { reducedMotion }) {
       sl.group.position.y = (i - (shown - 1) / 2) * GAP;
       sl.squares.children.forEach((c) => c.geometry.dispose());
       sl.squares.clear();
-      const boxes = full ? [[0, 0]] : sl.spots.slice(0, k).map(([u, v]) => [(u - 0.5) * (R - s), (v - 0.5) * (R - s)]);
+      // Each field of view is clamped to the core: never wider than it, never hanging off its edge.
+      const w = Math.min(s, sl.core.w), h = Math.min(s, sl.core.h);
+      const boxes = sl.spots.slice(0, k).map(([u, v]) => [(u - 0.5) * (sl.core.w - w), (v - 0.5) * (sl.core.h - h)]);
       for (const [cx, cz] of boxes) {
-        const l = squareLoop(s);
+        const l = squareLoop(w, h);
         l.position.set(cx, 1.2, cz);
         sl.squares.add(l);
       }
@@ -105,7 +114,7 @@ export function createTissue(canvas, tissue, { reducedMotion }) {
         const t = sl.flip[j] < d.miscall ? sl.other[j] : sl.type[j];
         c.copy(base[TYPES[t]]);
         const x = sl.pos[j * 3], z = sl.pos[j * 3 + 2];
-        const inside = boxes.some(([cx, cz]) => Math.abs(x - cx) <= s / 2 && Math.abs(z - cz) <= s / 2);
+        const inside = boxes.some(([cx, cz]) => Math.abs(x - cx) <= w / 2 && Math.abs(z - cz) <= h / 2);
         if (!inside) c.lerp(BG, 1 - DIM);
         sl.col[j * 3] = c.r; sl.col[j * 3 + 1] = c.g; sl.col[j * 3 + 2] = c.b;
       }
@@ -113,7 +122,7 @@ export function createTissue(canvas, tissue, { reducedMotion }) {
     });
     drop = reducedMotion ? null : performance.now();
     canvas.setAttribute("aria-label",
-      `${shown} patient slabs of ${full ? "whole-region" : `${k} square${k > 1 ? "s" : ""} of ${d.fov_um} µm`} imaging, ` +
+      `${shown} patient slabs of ${full ? "whole-core" : `${k} square${k > 1 ? "s" : ""} of ${d.fov_um} µm`} imaging, ` +
       `${Math.round(d.miscall * 100)}% of cells mis-called (recoloured).`);
     return shown;
   }
