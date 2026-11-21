@@ -16,7 +16,7 @@ All real-data results are exploratory: the outcomes have already been seen.
 | The CPU and GPU (CUDA simulator) backends count the same neighbours as direct geometry, on unseen irregular regions | `reimage/` | `tests/test_reimage_contract.py`, `reimage/test_backends.py::test_region_matches_reference` | TESTED |
 | The score equals statsmodels PHReg (Breslow ties); its variance equals exhaustive permutation enumeration | `stats/reference.py` | `stats/test_reference.py::test_score_matches_phreg_breslow_with_ties`, `tests/test_score_contract.py::test_variance_is_exhaustive_permutation_variance` | TESTED |
 | A planted signal is found; batch confounding gives no evidence (hard negative) | `stats/reference.py` | `tests/test_score_contract.py::test_planted_ordered_signal_is_found`, `::test_batch_confounding_is_a_hard_negative` | TESTED |
-| When nothing is there, the false-alarm rate holds at the promised 5%: 28 of 700 null studies, 4.0% (95% CI 2.7 to 5.7%). This pools the 7 patient counts at 100 null studies each; the CI is Clopper-Pearson | `bench/results/vs-schoenfeld-300.json` (#53) | `bench/test_vs_schoenfeld.py` | MEASURED |
+| When nothing is there, the false-alarm rate holds at the promised 5%: 28 of 700 null studies, 4.0% (95% CI 2.7 to 5.7%). This pools the 7 patient counts at 100 null studies each; the CI is Clopper-Pearson | `bench/results/vs-schoenfeld-300.json` (#53) | `bench/test_vs_schoenfeld.py` | ESTIMATE |
 | Two GPU shards give bit-identical results to one device | `reimage/fleet.py` (#34) | `reimage/test_fleet.py::test_two_fake_shards_on_cuda_simulator_are_bit_identical` | TESTED on the CUDA simulator; real GPU PENDING |
 
 **Assumptions and why they hold**
@@ -42,7 +42,7 @@ All real-data results are exploratory: the outcomes have already been seen.
 | Rung 0, what a lab runs today (cKDTree recount plus 1,000 permutations, single core) | 7.52 s per study (mean of 3) | `bench/results/cpu-ladder.json` `lab_today` | MEASURED |
 | Rung 0 for one 1,000-study design | 7,521 s, about 2.1 h | same, `extrapolation` | ESTIMATE |
 | Preflight re-imaging on CPU, Charville, 100 studies | NumPy reference 2.98 s; Numba with 8 threads 3.26 s per study; the two agree exactly, including where NaNs fall | `cpu-ladder.json` `rows` | MEASURED |
-| R-14 baseline: one full PHReg fit for each of the 3,780 Charville patterns, 8 cores | 67.1 s | PR #64; the rerun commits as `bench/results/impl-a-charville-amd-epyc-7b13.json` | reported, rerun pending |
+| R-14 workflow baseline: one full PHReg fit for each of the 3,780 Charville patterns (a workflow comparison, not equal work) | 63.84 s on 8 workers; 298.30 s on 1 (shared VM, 1-minute load average 49 to 56) | `bench/results/impl-a-charville-amd-epyc-7b13.json` (#64) | MEASURED |
 | R-15 CPU score screen, same work as the GPU | n/a | R-15 | PENDING |
 | GPU re-imaging and GPU screen | n/a | Modal run | PENDING |
 
