@@ -1,4 +1,4 @@
-// "Can my study find it?": three linked views (tissue, race, answer) driven by four sliders.
+// The Preflight demo: three linked views (tissue, race, answer) driven by four sliders.
 // Data: data/grid.json, data/tissue.json, optional data/bench.json (schemas in README.md).
 import { createTissue } from "./tissue.js";
 import { createRace } from "./race.js";
