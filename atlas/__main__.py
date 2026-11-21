@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 
 from core.cohorts import load
-from core.grammar import grammar, grammar_hash
+from core.grammar import RADII_UM, grammar, grammar_hash
 from core.truth import layout, neighbours, truth
 
 from .artifacts import (
@@ -31,6 +31,22 @@ from .bank import build_bank
 from .runner import DEFAULT_BUDGET, design_id, run_point
 
 _GROUP_INPUTS = None
+
+
+def compact_radius_cache(nbr):
+    """Private NumPy cache: exact searchsorted bins, not geometric distances.
+
+    The reference counter only uses distances to select a radius bin. Integer
+    upper radius values reproduce those bins exactly, including boundaries.
+    Keep core.neighbours and every public true-distance result unchanged.
+    """
+    radii = np.asarray(RADII_UM)
+    if np.any(radii < 0) or np.any(radii > 255) or np.any(radii != radii.astype(np.uint8)):
+        raise ValueError("compact radius cache requires uint8-representable radii")
+    bins = np.searchsorted(radii, nbr["dist"])
+    if np.any(bins >= len(radii)):
+        raise ValueError("neighbour distance exceeds the declared radius support")
+    return {**nbr, "dist": radii[bins].astype(np.uint8)}
 
 
 def run_group(group):
@@ -94,6 +110,7 @@ def main(argv=None):
     parser.add_argument("--backend", choices=["numpy", "cpu", "gpu"], default="cpu")
     parser.add_argument("--bank-draws", type=int, default=64, help="finite-bank approximation; 0 uses fresh direct imaging")
     parser.add_argument("--workers", type=int, default=1, help="forked imaging groups sharing source arrays; NumPy/Unix only")
+    parser.add_argument("--compact-topology", action="store_true", help="private exact radius-bin cache; NumPy only")
     parser.add_argument("--out", type=Path, default=Path("atlas/results"))
     parser.add_argument("--cache", type=Path, default=Path("data/atlas-cache"))
     for name, value in DEFAULT_BUDGET.items():
@@ -103,6 +120,8 @@ def main(argv=None):
         parser.error("workers must be positive; concurrent groups require backend numpy")
     if args.workers > 1 and "fork" not in multiprocessing.get_all_start_methods():
         parser.error("concurrent groups require Unix fork; use --workers 1 on this platform")
+    if args.compact_topology and args.backend != "numpy":
+        parser.error("compact topology is supported only by the NumPy reference counter")
     if args.bank_draws != 0 and args.bank_draws < 2:
         parser.error("bank-draws must be 0 (direct) or >= 2")
     args.eps = list(dict.fromkeys(args.eps))
@@ -127,6 +146,7 @@ def main(argv=None):
         metadata = {"cohort": cohort, "result_label": "SYNTHETIC", **meta, "grammar_hash": fingerprint,
                     "budget": budget, "hr_per_source_sd": args.hr, "seed": args.seed,
                     "backend": args.backend, "numpy_version": np.__version__,
+                    "topology_encoding": "uint8 upper-radius cache" if args.compact_topology else "float64 distances",
                     "inference": "model-based Monte Carlo under the empirical verified source; no clinical claim",
                     "planned_fov_um": ([200, 300, 400, 500, 600, None] if cohort == "charville"
                                        else [200, 400, 600, 800, 1000, None]),
@@ -156,12 +176,14 @@ def main(argv=None):
         metadata["run_id"] = run_id
         # Warm once before workers share the immutable neighbour arrays. Otherwise
         # concurrent first acquisitions could build duplicate large source graphs.
-        if args.workers > 1:
+        if args.workers > 1 or args.compact_topology:
             L = layout(cells)
             cache = cells.setdefault("_nbr", {})
             for r in range(len(cells["patient_of_region"])):
                 if r not in cache:
                     cache[r] = neighbours(L["xy"](r))
+                if args.compact_topology:
+                    cache[r] = compact_radius_cache(cache[r])
         groups = {}
         for i, design in enumerate(designs):
             key = (design["regions_per_patient"], design["fov_um"], design["eps"])

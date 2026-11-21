@@ -253,6 +253,48 @@ def test_reference_cache_rebuilds_without_matching_generator_provenance(invented
     assert len(calls) == 2
 
 
+def test_private_compact_radius_cache_preserves_exact_counts_at_boundaries():
+    from atlas.__main__ import compact_radius_cache
+    from core.grammar import RADII_UM
+    from core.reimage_ref import reimage_region
+    from core.truth import neighbours
+
+    radii = np.asarray(RADII_UM)
+    xy = np.array([[0, 0], [0, 0], *[[r, 0] for r in radii],
+                   [np.nextafter(float(radii[0]), np.inf), 0], [7.5, 14], [49, 30]], float)
+    nbr = neighbours(xy)
+    compressed = compact_radius_cache(nbr)
+    assert nbr["dist"].dtype == np.float64 and compressed["dist"].dtype == np.uint8
+    assert compressed["dist"].nbytes * 8 == nbr["dist"].nbytes
+    assert_allclose(np.searchsorted(radii, compressed["dist"]), np.searchsorted(radii, nbr["dist"]))
+    types = np.arange(len(xy)) % 3
+    u = np.random.default_rng(17).random(len(xy))
+    for crop, eps in ((None, 0), (None, 0.25), ((0, 0, 40), 0.1), ((500, 500, 1), 0.1)):
+        a = reimage_region(nbr, xy, types, [0, 1, 2], 3, crop=crop, eps=eps, u=u)
+        b = reimage_region(compressed, xy, types, [0, 1, 2], 3, crop=crop, eps=eps, u=u)
+        for before, after in zip(a, b):
+            assert np.array_equal(before, after)
+
+
+def test_private_compact_cache_reproduces_public_numpy_acquisition_banks(tmp_path):
+    from atlas.__main__ import compact_radius_cache
+
+    source = {"cell_type": np.tile(np.array([0, 1, 2, 0], np.int8), 2),
+              "x": np.tile([0., 25., 50., 100.], 2), "y": np.tile([0., 0., 5., 0.], 2),
+              "region_id": np.repeat(np.arange(2), 4), "patient_of_region": np.arange(2),
+              "time": np.array([1., 2.]), "event": np.array([True, False]), "strata": np.zeros(2, int),
+              "type_names": ["Tumor", "Macrophage", "T cell"]}
+    for i, (fov, eps) in enumerate(((None, 0), (None, 0.25), (30, 0.1))):
+        cells = dict(source)
+        design = {"cohort": "invented", "patients": 2, "regions_per_patient": 1,
+                  "fov_um": fov, "eps": eps, "backend": "numpy"}
+        original = build_bank(cells, design, 4, 71, tmp_path / f"normal-{i}")
+        cells["_nbr"] = {r: compact_radius_cache(nbr) for r, nbr in cells["_nbr"].items()}
+        compact = build_bank(cells, design, 4, 71, tmp_path / f"compact-{i}")
+        assert original["key"] == compact["key"] and original["hash"] == compact["hash"]
+        assert np.array_equal(original["X"], compact["X"], equal_nan=True)
+
+
 def test_partitioned_evidence_retains_nullable_checks_and_uint64_seeds(invented, tmp_path):
     cells, reference = invented
     budget = {"calibration": 8, "null": 4, "alternative": 4, "nested": 0, "direct": 0, "batch": 2}
