@@ -69,12 +69,20 @@ def gpu_info() -> dict:
             "modal_task_id": os.environ.get("MODAL_TASK_ID")}
 
 
+NEEDED = ("charville_labels.csv", "charville_raw_data.zip")
+
+
 @app.function(image=image, volumes={DATA_DIR: data}, timeout=3600)
 def fetch_data() -> list[str]:
-    """CPU only: download the Zenodo cohort into the volume once; reruns keep what is there."""
-    subprocess.run(["bash", "scripts/fetch_data.sh"], cwd=APP_DIR, check=True, env={**os.environ, "DATA_DIR": DATA_DIR})
-    data.commit()
-    return sorted(p.name for p in Path(DATA_DIR).iterdir())
+    """CPU only: make sure the Charville cohort is in the volume; download only what is missing."""
+    have = lambda: sorted(p.name for p in Path(DATA_DIR).iterdir())  # noqa: E731
+    if not all((Path(DATA_DIR) / f).exists() for f in NEEDED):
+        subprocess.run(["bash", "scripts/fetch_data.sh"], cwd=APP_DIR, check=True, env={**os.environ, "DATA_DIR": DATA_DIR})
+        data.commit()
+    missing = [f for f in NEEDED if not (Path(DATA_DIR) / f).exists()]
+    if missing:  # Zenodo answers 403 to Modal's IPs: upload from a machine that has the files
+        raise RuntimeError(f"volume lacks {missing}; run: uv run modal volume put preflight-data <dir>/<file> /<file>")
+    return have()
 
 
 @app.function(**gpu_function)

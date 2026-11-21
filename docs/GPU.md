@@ -10,8 +10,10 @@ numbers come from [Modal](https://modal.com) through `gpu/modal_app.py`.
 | `make modal-gpu-tests GPU=A100` | `reimage/test_backends.py`, `test_expression.py`, `test_fleet.py` on a real GPU, so the CUDA-gated tests run instead of skipping | pass/fail/skip counts, nvidia-smi model, memory, driver |
 | `make modal-ladder GPU=A100 CONTAINERS=4 STUDIES=16 REPS=5` | `bench/real_cpu.py`'s Charville design point, NumPy reference vs GPU, same seeds, exact parity; the same studies on 1 and N GPU containers, merged bit-identical; R-15's `stats.screen` on the GPU when it is importable | one file |
 
-`GPU` is `A100` (default), `H100` or `L4`. The first `modal-ladder` downloads the Zenodo cohort into
-the `preflight-data` Modal volume (CPU only, once).
+`GPU` is `A100` (default), `H100` or `L4`. The cohort lives in the `preflight-data` Modal volume.
+Zenodo answers 403 to Modal's IPs, so upload it once from a machine that has `make data`'s files:
+`uv run modal volume put preflight-data data/charville_raw_data.zip /charville_raw_data.zip` (and
+`charville_labels.csv`). Runs stop with that hint when the files are missing.
 
 Each run writes `bench/results/modal-<gpu>-<utc>.json`, status `MEASURED`, with the GPU model,
 driver, CUDA driver and runtime versions, the commit (and whether the tree was dirty), and container
