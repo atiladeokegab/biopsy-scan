@@ -36,7 +36,8 @@ def schoenfeld_power(patients: float, event_fraction: float, hr_per_sd: float, a
     return N.cdf(s - z) + N.cdf(-s - z)
 
 
-def compare(summary: list[dict], meta: dict, m: int, *, cohort: str, control: list[dict] | None = None) -> dict:
+def compare(summary: list[dict], meta: dict, m: int, *, cohort: str, control: list[dict] | None = None,
+            status: str | None = None) -> dict:
     """control: an optional second atlas design (e.g. full core, no mis-calls) drawn as a reference line."""
     rows = [r for r in summary if r["cohort"] == cohort]
     if not rows:
@@ -77,13 +78,14 @@ def compare(summary: list[dict], meta: dict, m: int, *, cohort: str, control: li
     extra = {}
     if control is not None:
         c = compare(control, meta, m, cohort=cohort)
-        if [p["patients"] for p in c["points"]] != [p["patients"] for p in points] or c["hr_per_sd"] != float(hr):
-            raise ValueError("the control must cover the same patient counts at the same planted effect")
+        # a run stopped early may leave the control with fewer points; it may not add new ones
+        if not {p["patients"] for p in c["points"]} <= {p["patients"] for p in points} or c["hr_per_sd"] != float(hr):
+            raise ValueError("the control must use the main design's patient counts and planted effect")
         extra["control"] = {"label": "MEASURED (sim), control design", "design": c["design"],
                             "points": [{k: p[k] for k in ("patients", "sim_power", "sim_lo", "sim_hi", "sim_n",
                                                           "sim_identification", "sim_fwer")} for p in c["points"]]}
     return {
-        "schema": "preflight-vs-schoenfeld/1", "cohort": cohort, "verdict": verdict,
+        "schema": "preflight-vs-schoenfeld/1", "cohort": cohort, **({"status": status} if status else {}), "verdict": verdict,
         "hr_per_sd": float(hr), "alpha": alpha, "features_m": m, "bonferroni_alpha": alpha / m,
         "event_fraction": f, "events": events, "patients_source": n,
         "design": design,
@@ -118,7 +120,7 @@ def svg(res: dict) -> str:
     fov = _fov(d)
     out = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" font-family="sans-serif" font-size="13">',
            f'<rect width="{W}" height="{H}" fill="#fff"/>',
-           f'<text x="12" y="26" font-size="17" font-weight="bold">Textbook power formula vs Preflight, {escape(res["cohort"].title())}</text>',
+           f'<text x="12" y="26" font-size="17" font-weight="bold">{escape(res["status"] + " · ") if "status" in res else ""}Textbook power formula vs Preflight, {escape(res["cohort"].title())}</text>',
            (f'<text x="12" y="48" fill="#444">HR {res["hr_per_sd"]:g} per SD planted · alpha {res["alpha"]:g}, '
             f'Bonferroni over {res["features_m"]} features · event fraction {res["events"]}/{res["patients_source"]} · '
             f'design: {escape(str(d["regions_per_patient"]))} region(s), {escape(fov)} field, '
@@ -175,12 +177,13 @@ def main(argv=None):
     ap.add_argument("--cohort", default="charville", choices=["charville", "upmc"])
     ap.add_argument("--control", type=Path, help="a second atlas output dir drawn as a reference design")
     ap.add_argument("--name", default="vs-schoenfeld")
+    ap.add_argument("--status", help="a label for the whole result, e.g. ESTIMATE")
     a = ap.parse_args(argv)
     meta = json.loads((a.atlas_out / "metadata.json").read_text())
     audit = json.loads((ROOT / "audit" / "results" / f"{a.cohort}.json").read_text())
     read = lambda d: pd.read_parquet(d / "summary.parquet").astype(object).where(lambda t: t.notna(), None).to_dict("records")  # noqa: E731
     res = compare(read(a.atlas_out), meta, int(audit["n_features_tested"]), cohort=a.cohort,
-                  control=read(a.control) if a.control else None)
+                  control=read(a.control) if a.control else None, status=a.status)
     out = ROOT / "bench" / "results" / f"{a.name}.json"
     out.write_text(json.dumps(res, indent=1, allow_nan=False) + "\n")
     out.with_suffix(".svg").write_text(svg(res))
