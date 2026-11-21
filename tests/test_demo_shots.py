@@ -84,3 +84,17 @@ def test_click_without_cursor_draws_nothing():
     page = FakeClickPage()
     ds._click(page, "#run", cursor=False)
     assert ("click",) in page.calls and not [c for c in page.calls if c[0] == "glide"]
+
+
+def test_click_with_cursor_on_a_hidden_target_stops_with_a_clear_message():
+    import pytest
+
+    class Hidden(FakeTarget):
+        def bounding_box(self):
+            return None  # what playwright returns for an element that is not visible
+
+    page = FakeClickPage()
+    page.locator = lambda sel: Hidden(page.calls)
+    with pytest.raises(SystemExit, match="click target not visible: #run"):
+        ds._click(page, "#run", cursor=True)
+    assert ("click",) not in page.calls
