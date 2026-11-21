@@ -96,6 +96,8 @@ def result(points: dict, cores: tuple[int, ...], errors: dict, prior: dict | Non
     failures = [f"cores {c}: {e}" for c, e in errors.items()]
     failures += [f"cores {c}: missing" for c in cores if c not in points and c not in errors]
     failures += [f"cores {c}: workers {p['workers']}" for c, p in points.items() if p["workers"] != c]
+    failures += [f"cores {c}: threads {p['host']['thread_environment']}" for c, p in points.items()
+                 if set(p["host"]["thread_environment"].values()) != {"1"}]  # one BLAS/Numba thread per worker
     par = parity(points) if not failures else {"all": False}
     if not failures and not par["all"]:
         failures.append("parity: X or z differs from the 8-core point")

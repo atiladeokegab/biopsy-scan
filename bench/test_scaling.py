@@ -6,7 +6,9 @@ from bench import scaling
 
 def _points(cores=scaling.CORES, n=3, wall=lambda c: 100.0 / c):
     rec = [{"i": i, "x_sha": f"x{i}", "z_sha": f"z{i}", "maxT": 1.0 + i} for i in range(n)]
-    return {c: {"workers": c, "studies_wall_s": wall(c), "records": [dict(r) for r in rec]} for c in cores}
+    single = {"OMP_NUM_THREADS": "1", "NUMBA_NUM_THREADS": "1"}
+    return {c: {"workers": c, "studies_wall_s": wall(c), "records": [dict(r) for r in rec],
+                "host": {"thread_environment": dict(single)}} for c in cores}
 
 
 @pytest.mark.parametrize("bad", ["0,1,8", "1,8,8", "1,2,4", "2,8", "1,8,65", "1,8,x"])
@@ -42,6 +44,13 @@ def test_a_failed_or_missing_container_or_wrong_worker_count_fails():
     pts = _points()
     pts[4]["workers"] = 8
     assert scaling.result(pts, scaling.CORES, {}, None)["status"] == "FAILED"
+
+
+def test_a_container_with_more_than_one_blas_thread_fails():
+    pts = _points()
+    pts[8]["host"]["thread_environment"]["OMP_NUM_THREADS"] = "8"  # what Modal set in the 20:02Z smoke
+    out = scaling.result(pts, scaling.CORES, {}, None)
+    assert out["status"] == "FAILED" and "curve" not in out
 
 
 def test_curve_reports_wall_per_study_and_speedup_vs_one_core_only():

@@ -42,7 +42,7 @@ def _tracked(rel: Path) -> bool:
 image = (
     modal.Image.debian_slim(python_version="3.11")
     .uv_sync(str(REPO))
-    .env({"DATA_DIR": DATA_DIR, "PYTHONPATH": APP_DIR, **SINGLE})
+    .env({"DATA_DIR": DATA_DIR, "PYTHONPATH": APP_DIR})
     .add_local_file(LOCAL_DATA / "charville_labels.csv", f"{DATA_DIR}/charville_labels.csv", copy=True)
     .add_local_file(LOCAL_DATA / "charville_cells.npz", f"{DATA_DIR}/charville_cells.npz", copy=True)
     .workdir(APP_DIR)
@@ -87,7 +87,7 @@ def _point(cores: int, studies: int) -> dict:
             "host": host, "records": recs}
 
 
-@app.function(image=image, cpu=1.0, memory=16384, timeout=3600)
+@app.function(image=image, cpu=1.0, memory=16384, timeout=3600, env=SINGLE)  # Modal resets image-level OMP_* to the core count
 def point(cores: int, studies: int) -> dict:
     return _point(cores, studies)
 
