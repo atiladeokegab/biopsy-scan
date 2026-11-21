@@ -1,7 +1,7 @@
 {
  "schema": "preflight-grid/1",
  "source": "MEASURED",
- "note": "Model-based Monte Carlo (#5): 48 design points, 1,000 planted-effect studies each, from Atlas frozen 4408ff0, real verified charville source. SYNTHETIC Weibull outcomes (shape1.5), HR2 per frozen source SD; finite-bank approximation (64 acquisitions per source patient/design). Measured Monte Carlo estimates, not observed clinical rates. 10,000 calibration +10,000 independent global-null +1,000 planted-effect studies/design; 95% binomial intervals condition on source, bank and realized calibration. Cox U uses permutation variance (legacy R4); this is not an R15 score-screen power result.",
+ "note": "ESTIMATE: simulated power; compute MEASURED. Model-based Monte Carlo (#5): 48 design points, 1,000 planted-effect studies each, from Atlas frozen 4408ff0, real verified charville source. SYNTHETIC Weibull outcomes (shape1.5), HR2 per frozen source SD; finite-bank approximation (64 acquisitions per source patient/design). Computed Monte Carlo estimates, not observed clinical rates. 10,000 calibration +10,000 independent global-null +1,000 planted-effect studies/design; 95% binomial intervals condition on source, bank and realized calibration. Cox U uses permutation variance (legacy R4); this is not an R15 score-screen power result.",
  "studies_per_point": 1000,
  "effect_hr_per_sd": 2.0,
  "cohort": {
@@ -1798,6 +1798,8 @@
   "simulation_label": "SYNTHETIC",
   "measurement_model": "finite-bank approximation",
   "bank_draws": 64,
+  "statistical_result_label": "ESTIMATE",
+  "compute_status": "MEASURED",
   "source_sha": "4408ff07a1a77b50a41978f3267ce92a78a83fe8",
   "source_hash": "2ca08fb03ed2ecd51e552a5ab1bbe6caede58f54c07971ed35af08c10db4aa1b",
   "grammar_hash": "772f6a845266470456af96f92d0573cc1bec72432ad74d789439baff066c2156",
@@ -2026,5 +2028,15 @@
     "eps": 0.1
    }
   ]
+ },
+ "status": "ESTIMATE",
+ "compute_status": "MEASURED",
+ "labels": {
+  "source_tissue": "MEASURED",
+  "compute": "MEASURED",
+  "outcomes": "SYNTHETIC",
+  "power": "ESTIMATE",
+  "identification_rate": "ESTIMATE",
+  "fwer": "ESTIMATE"
  }
 }
