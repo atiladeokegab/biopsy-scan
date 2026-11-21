@@ -9,11 +9,13 @@ mis-calls, HR 2 per source SD), same budget (200 calibration, 100 null, 300 plan
 seed. design_id, and so every study seed, leaves out the backend, so the GPU re-images the same studies.
 
 Each run writes bench/results/modal-power-<gpu>-<utc>.json (raw, MEASURED); bench/power_at_scale.py merges them.
-Reads the preflight-data volume (build-modal's, gpu/modal_app.py); never writes to it.
+Mounts build-modal's preflight-data volume read-only and copies only the raw Charville inputs out of it.
 """
 from __future__ import annotations
 
 import hashlib
+import io
+import shutil
 import json
 import os
 import subprocess
@@ -30,24 +32,46 @@ REPO = Path(__file__).resolve().parents[1]
 RECORD = REPO / "bench" / "results" / "vs-schoenfeld-300.json"
 SNAPSHOT = REPO / "bench" / "atlas_snapshot" / "atlas"
 APP_DIR = "/root/preflight"
-DATA_DIR = "/data"
+DATA_DIR = "/tmp/data"  # private to each container: the pinned core builds its own cells cache here
 DESIGN = ["--cohorts", "charville", "--regions", "2", "--fov-um", "400", "--eps", "0.1", "--hr", "2.0",
           "--seed", "20261121", "--calibration", "200", "--null", "100", "--alternative", "300", "--nested", "0",
           "--permutations", "999", "--batch", "8"]
 
+FOREIGN = "/foreign"  # build-modal's preflight-data volume, mounted read-only
+
 app = modal.App("preflight-power")
-data = modal.Volume.from_name("preflight-data")
+data = modal.Volume.from_name("preflight-data").read_only()
 image = (modal.Image.from_registry("nvidia/cuda:12.4.1-devel-ubuntu22.04", add_python="3.11")
          .env({"DATA_DIR": DATA_DIR, "PYTHONPATH": APP_DIR, "CUDA_HOME": "/usr/local/cuda"}))
+
+
+def stage(dest: Path) -> Path:
+    """PIN's tracked files into a fresh dest, verified; nothing else in it."""
+    archive = subprocess.run(["git", "-C", str(REPO), "archive", PIN], capture_output=True, check=True).stdout
+    with tarfile.open(fileobj=io.BytesIO(archive)) as tar:
+        tar.extractall(dest, filter="data")
+    return verify(dest)
+
+
+def verify(dest: Path) -> Path:
+    """Every file in dest is one of PIN's tracked files, byte-identical by its git blob hash, and none is missing."""
+    tree = subprocess.run(["git", "-C", str(REPO), "ls-tree", "-r", PIN], capture_output=True, text=True,
+                          check=True).stdout.splitlines()
+    want = {line.split("\t", 1)[1]: line.split()[2] for line in tree if line.split()[0] in ("100644", "100755")}
+    got = {str(f.relative_to(dest)): f for f in dest.rglob("*") if f.is_file() or f.is_symlink()}
+    if set(got) != set(want):
+        raise RuntimeError(f"staged files differ from {PIN[:12]}: {sorted(set(got) ^ set(want))[:5]}")
+    for name, f in got.items():
+        b = f.read_bytes()
+        if hashlib.sha1(b"blob %d\0" % len(b) + b).hexdigest() != want[name]:
+            raise RuntimeError(f"staged {name} does not match {PIN[:12]}")
+    return dest
+
+
 if modal.is_local():
-    src = Path(tempfile.gettempdir()) / f"preflight-power-{PIN[:12]}"
-    if not (src / "pyproject.toml").exists():
-        src.mkdir(parents=True, exist_ok=True)
-        archive = subprocess.run(["git", "-C", str(REPO), "archive", PIN], capture_output=True, check=True).stdout
-        with tarfile.open(fileobj=__import__("io").BytesIO(archive)) as tar:
-            tar.extractall(src, filter="data")
+    src = stage(Path(tempfile.mkdtemp(prefix="preflight-power-")))
+    # only tracked files: the pinned commit's verified archive and the committed snapshot's 7 .py files
     image = image.uv_sync(str(src)).workdir(APP_DIR).add_local_dir(src, APP_DIR, ignore=["data", "demo", "results"])
-    # only tracked files: the pinned commit's archive and the committed snapshot's 7 .py files
     image = image.add_local_dir(SNAPSHOT, f"{APP_DIR}/atlas", ignore=["**/__pycache__"])
 
 
@@ -59,7 +83,7 @@ def gpu_info() -> dict:
     return {"model": name, "memory": memory, "driver": driver, "modal_task_id": os.environ.get("MODAL_TASK_ID")}
 
 
-@app.function(image=image, volumes={DATA_DIR: data}, gpu="A100-40GB", timeout=4 * 3600, memory=32768, cpu=8.0,
+@app.function(image=image, volumes={FOREIGN: data}, gpu="A100-40GB", timeout=4 * 3600, memory=32768, cpu=8.0,
               single_use_containers=True)
 def power_point(patients: int, backend: str, snapshot_sha256_12: dict) -> dict:
     """One design point, start to finish, in this container: calibrate, null, planted; the atlas's own summary."""
@@ -70,6 +94,9 @@ def power_point(patients: int, backend: str, snapshot_sha256_12: dict) -> dict:
            for p in sorted(Path(APP_DIR, "atlas").glob("*.py"))}
     if got != snapshot_sha256_12:
         raise RuntimeError(f"atlas snapshot differs from the 300 run's record: {got}")
+    Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
+    for name in ("charville_labels.csv", "charville_raw_data.zip"):  # raw inputs only; never the volume's caches
+        shutil.copy(Path(FOREIGN, name), Path(DATA_DIR, name))
     from atlas.__main__ import main
 
     out = Path(tempfile.mkdtemp())
