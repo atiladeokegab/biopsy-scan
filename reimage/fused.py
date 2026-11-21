@@ -41,12 +41,15 @@ def _region(ptr, idx, ends, types, u, Mcum, xy, has_crop, x0, y0, s, t_of, T, K)
             continue
         t = t_of[obs[i]]
         cnt[:] = 0
-        for e in range(ptr[i], ptr[i + 1]):
-            j = idx[e]
-            if vis[j]:
-                for r in range(R):
-                    if e < ends[i, r]:
-                        cnt[r, obs[j]] += 1
+        lo = ptr[i]
+        for r in range(R):  # row i's neighbours within radius r but not r - 1, then cumulate: exact integers
+            if r > 0:
+                cnt[r] = cnt[r - 1]
+            for e in range(lo, ends[i, r]):
+                j = idx[e]
+                if vis[j]:
+                    cnt[r, obs[j]] += 1
+            lo = ends[i, r]
         m[t] += 1
         for r in range(R):
             tot = 0
