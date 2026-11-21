@@ -10,7 +10,10 @@ import pandas as pd
 
 
 def array_hash(array):
-    return hashlib.sha256(np.ascontiguousarray(array).view(np.uint8)).hexdigest()
+    array = np.ascontiguousarray(array)
+    digest = hashlib.sha256(f"{array.dtype.str}:{array.shape}:".encode())
+    digest.update(array.view(np.uint8))
+    return digest.hexdigest()
 
 
 def code_fingerprint(packages=("atlas", "core", "reimage", "stats")):

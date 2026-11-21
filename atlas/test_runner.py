@@ -214,6 +214,20 @@ def test_bank_cache_binds_generating_backend_and_code(invented, tmp_path, monkey
     assert changed["key"] not in (numpy["key"], cpu["key"]) and not changed["cached"]
 
 
+def test_bank_shape_and_dtype_cannot_change_the_source_patient_pool(invented, tmp_path):
+    cells, reference = invented
+    design = {"cohort": "invented", "patients": 12, "regions_per_patient": 1, "eps": 0.0}
+    bank = build_bank(cells, design, 4, 71, tmp_path)
+    budget = {"calibration": 8, "null": 4, "alternative": 4, "nested": 0, "direct": 0, "batch": 2}
+    for X, draws in ((bank["X"].reshape(8, 2, 6), 8), (bank["X"].astype(np.float32), 4)):
+        assert array_hash(X) != bank["hash"]
+        changed = {**bank, "X": X, "draws": draws, "hash": array_hash(X)}
+        with pytest.raises(ValueError, match="shape/dtype"):
+            calibrate(cells, reference, {**design, "acquisition_bank": changed}, budget, 71)
+        with pytest.raises(ValueError, match="shape/dtype"):
+            run_point(cells, reference, {**design, "acquisition_bank": changed}, budget=budget)
+
+
 def test_reference_cache_rebuilds_without_matching_generator_provenance(invented, tmp_path, monkeypatch):
     import atlas.__main__ as cli
     from core.grammar import grammar, grammar_hash
@@ -276,17 +290,26 @@ def test_grouped_cli_checkpoints_and_resumes_without_repeating_studies(invented,
     before = pd.read_parquet(out / "summary.parquet")
     assert len(before) == 4 and len(list((out / "studies").glob("*.parquet"))) == 4
     assert len(before[before.null_nested_disagreement_n.notna()]) == 3
+    serial = tmp_path / "serial" / "charville"
+    cli.main([*args, "--workers", "1", "--out", str(serial.parent)])
+    dynamic = ["runtime_s", "bank_load_or_build_s"]
+    pd.testing.assert_frame_equal(before.drop(columns=dynamic),
+                                  pd.read_parquet(serial / "summary.parquet").drop(columns=dynamic))
+    order = ["design_id", "stage", "study"]
+    pd.testing.assert_frame_equal(pd.read_parquet(out / "studies").sort_values(order).reset_index(drop=True),
+                                  pd.read_parquet(serial / "studies").sort_values(order).reset_index(drop=True))
     real_runner = cli.run_point
-    calls = []
+    calls = tmp_path / "repeated-points.txt"
 
     def record_run(*args, **kwargs):
-        calls.append(1)
+        with calls.open("a") as output:
+            output.write("one\n")
         return real_runner(*args, **kwargs)
 
     next((out / "studies").glob("*.parquet")).unlink()
     monkeypatch.setattr(cli, "run_point", record_run)
     cli.main(args)
-    assert len(calls) == 1 and len(list((out / "studies").glob("*.parquet"))) == 4
+    assert calls.read_text() == "one\n" and len(list((out / "studies").glob("*.parquet"))) == 4
     before = pd.read_parquet(out / "summary.parquet")
     monkeypatch.setattr(cli, "run_point", lambda *args, **kwargs: pytest.fail("completed point repeated"))
     cli.main(args)

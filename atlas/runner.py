@@ -88,11 +88,15 @@ def studies(cells, model, design, count, seed, stage, batch_size):
     n = design["patients"]
     if not isinstance(n, (int, np.integer)) or isinstance(n, (bool, np.bool_)) or n < 2:
         raise ValueError("a design needs an integer patient count >= 2")
+    bank = design.get("acquisition_bank")
+    if bank is not None:
+        X = bank["X"]
+        if X.shape != (bank["draws"], len(model["source_z"]), model["n_features"]) or X.dtype != np.float64:
+            raise ValueError("acquisition bank shape/dtype does not match the source/model")
     point = design_id(design)
     for start in range(0, count, batch_size):
         seeds = [_seeds(seed, point, stage, i) for i in range(start, min(start + batch_size, count))]
         image_seeds = np.array([s[0] for s in seeds], dtype=np.uint64)
-        bank = design.get("acquisition_bank")
         batch = (run({**design, "cells": cells}, image_seeds) if bank is None
                  else bank_batch(bank, image_seeds, n))
         if batch.ndim != 3 or batch.shape != (len(seeds), n, model["n_features"]) or batch.dtype != np.float64:
