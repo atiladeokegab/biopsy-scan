@@ -8,7 +8,8 @@ and writes demo/shots/first-screen-<w>x<h>.png. Exits 1 if the page shows an err
 
 --video records 1280x720 from the moment the page is ready: the first screen for --hold seconds, then "Run the studies", until every timed race
 lane is done, plus --tail seconds (default 10, so the 30 s still exists); then each --scroll target, smoothly
-scrolled into view and held 5 s. It writes demo.mp4, stills at 0, 10, 20 and 30 s cut from that file, and timeline.json
+scrolled into view and held 5 s. --cursor draws a pointer that glides to each click target first, so viewers
+see what is clicked. It writes demo.mp4, stills at 0, 10, 20 and 30 s cut from that file, and timeline.json
 to --out (keep video out of git). Needs ffmpeg and ffprobe on PATH.
 """
 import argparse
@@ -36,6 +37,31 @@ RACE_DONE = """() => {
   return lanes.length > 0 && lanes.every((li) => li.classList.contains('done'));
 }"""
 STILLS_S = (0, 10, 20, 30)
+GLIDE_MS = 900
+# A drawn pointer (headless Chromium shows none), eased on requestAnimationFrame so it moves smoothly however
+# slow the round trips are. Arg: [x, y, ms]; the first call draws it at (x, y) when ms is 0.
+CURSOR_JS = """([x, y, ms]) => new Promise((done) => {
+  let c = document.getElementById('shots-cursor');
+  if (!c) {
+    c = document.createElement('div');
+    c.id = 'shots-cursor';
+    c.dataset.x = x; c.dataset.y = y;
+    c.style.cssText = 'position:fixed;left:0;top:0;z-index:2147483647;pointer-events:none';
+    c.innerHTML = '<svg width="22" height="30" viewBox="0 0 22 30"><path d="M2 2 L2 24 L8 18 L12 28 L16 26 L12 16 L20 16 Z" '
+      + 'fill="#fff" stroke="#000" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+    document.body.appendChild(c);
+  }
+  const x0 = +c.dataset.x, y0 = +c.dataset.y, t0 = performance.now();
+  const ease = (u) => (u < 0.5 ? 2 * u * u : 1 - (-2 * u + 2) ** 2 / 2);
+  const f = (now) => {
+    const u = ms > 0 ? Math.min(1, (now - t0) / ms) : 1, e = ease(u);
+    const cx = x0 + (x - x0) * e, cy = y0 + (y - y0) * e;
+    c.style.transform = `translate(${cx - 2}px, ${cy - 2}px)`;
+    c.dataset.x = cx; c.dataset.y = cy;
+    if (u < 1) requestAnimationFrame(f); else done();
+  };
+  requestAnimationFrame(f);
+})"""
 SCROLL_DWELL_S = 5.0
 
 
@@ -90,7 +116,16 @@ def _scroll(page, selectors: list[str], dwell_s: float) -> list[str]:
     return problems
 
 
-def _video(browser, url: str, out: Path, route, hold_s: float, tail_s: float, scroll: list[str]) -> list[str]:
+def _click(page, selector: str, cursor: bool) -> None:
+    target = page.locator(selector)
+    if cursor:
+        b = target.bounding_box()
+        page.evaluate(CURSOR_JS, [round(b["x"] + b["width"] / 2), round(b["y"] + b["height"] / 2), GLIDE_MS])
+        page.wait_for_timeout(300)  # let the eye land before the click
+    target.click()
+
+
+def _video(browser, url: str, out: Path, route, hold_s: float, tail_s: float, scroll: list[str], cursor: bool) -> list[str]:
     w, h = SIZES[0]
     with tempfile.TemporaryDirectory() as tmp:
         ctx = browser.new_context(viewport={"width": w, "height": h}, record_video_dir=tmp,
@@ -102,9 +137,11 @@ def _video(browser, url: str, out: Path, route, hold_s: float, tail_s: float, sc
         page.wait_for_function(READY, timeout=30_000)
         ready_s = time.monotonic() - t0  # the video is cut to start here, so it never opens on a blank page
         problems = _page_problems(page, "video")
+        if cursor:
+            page.evaluate(CURSOR_JS, [w // 2, round(h * 0.6), 0])
         page.wait_for_timeout(hold_s * 1000)
+        _click(page, "#run", cursor)
         click_s = time.monotonic() - t0 - ready_s
-        page.locator("#run").click()
         page.wait_for_function(RACE_DONE, timeout=60_000)
         done_s = time.monotonic() - t0 - ready_s
         _hold(page, tail_s)
@@ -143,6 +180,8 @@ def parse_args(argv=None) -> argparse.Namespace:
     ap.add_argument("--tail", type=float, default=10.0, help="seconds after the race finishes (video only)")
     ap.add_argument("--scroll", action="append", default=[], metavar="SELECTOR",
                     help="after the tail, scroll this element into view and hold it (video only; repeatable, in order)")
+    ap.add_argument("--cursor", action="store_true",
+                    help="draw a pointer that glides to each click target before clicking (video only)")
     return ap.parse_args(argv)
 
 
@@ -170,7 +209,7 @@ def main(argv=None) -> int:
             # froze the race panel (MEASURED: the bars never filled in the recording), so video mode goes without.
             args = [] if a.video else ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"]
             browser = pw.chromium.launch(args=args)
-            problems += _video(browser, url, out, route, a.hold, a.tail, a.scroll) if a.video else _shots(browser, url, out, route)
+            problems += _video(browser, url, out, route, a.hold, a.tail, a.scroll, a.cursor) if a.video else _shots(browser, url, out, route)
             browser.close()
     finally:
         server.shutdown()

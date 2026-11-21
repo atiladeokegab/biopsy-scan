@@ -42,3 +42,45 @@ def test_scroll_shows_each_target_in_order_and_reports_a_missing_one():
     assert [c[1] for c in page.calls if c[0] == "scroll"] == ["#power", "#gone"]
     assert ("frame",) in page.calls  # the dwell keeps feeding frames to the recording
     assert problems == ["scroll target not found: #gone"]
+
+
+def test_cursor_is_off_by_default():
+    assert ds.parse_args([]).cursor is False
+    assert ds.parse_args(["--cursor"]).cursor is True
+
+
+class FakeTarget:
+    def __init__(self, calls):
+        self.calls = calls
+
+    def bounding_box(self):
+        return {"x": 100, "y": 200, "width": 40, "height": 20}
+
+    def click(self):
+        self.calls.append(("click",))
+
+
+class FakeClickPage(FakePage):
+    def __init__(self):
+        super().__init__(set())
+
+    def locator(self, sel):
+        self.calls.append(("locate", sel))
+        return FakeTarget(self.calls)
+
+    def evaluate(self, js, arg):
+        self.calls.append(("glide", arg))
+
+
+def test_click_with_cursor_glides_to_the_target_centre_first():
+    page = FakeClickPage()
+    ds._click(page, "#run", cursor=True)
+    glides = [c for c in page.calls if c[0] == "glide"]
+    assert glides and glides[0][1][:2] == [120, 210]  # centre of the box
+    assert page.calls.index(glides[0]) < page.calls.index(("click",))
+
+
+def test_click_without_cursor_draws_nothing():
+    page = FakeClickPage()
+    ds._click(page, "#run", cursor=False)
+    assert ("click",) in page.calls and not [c for c in page.calls if c[0] == "glide"]
