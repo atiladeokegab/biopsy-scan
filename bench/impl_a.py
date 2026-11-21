@@ -189,7 +189,7 @@ def report(cohorts: list[dict], cores: int) -> dict:
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--cohort", nargs="+", default=["charville", "upmc"])
+    ap.add_argument("--cohort", nargs="+", default=["charville"])  # UPMC only on the discovery split (after #62)
     ap.add_argument("--cores", type=int, default=len(os.sched_getaffinity(0)))
     ap.add_argument("--output", required=True, help="one file per cohort, e.g. bench/results/impl-a-{cohort}-<cpu>.json")
     a = ap.parse_args(argv)
