@@ -145,3 +145,25 @@ def test_step2_c_full_below_chance_returns_unmeasured():
     assert s2["single_slide"]["status"] == "UNMEASURED"
     assert all(v["status"] == "UNMEASURED" for v in s2["serial_section"].values())
     assert all(v["status"] == "UNMEASURED" for v in s2["tiles"].values())
+
+
+def test_step2_physical_panel_column_order_invariance():
+    data = _make_proximity_cohort(n_patients=30, seed=55)
+    swapped = {
+        **data,
+        "markers": data["markers"][:, [1, 0, 2]].copy(),
+        "marker_names": ["aSMA", "Podoplanin", "Noise"],
+    }
+    res_orig = simulate_formats(data, panel=(0, 1), n_outer=3, n_boot=40, n_draws=3, seed=0)
+    res_swap = simulate_formats(swapped, panel=(0, 1), n_outer=3, n_boot=40, n_draws=3, seed=0)
+    assert res_orig["status"] == "MEASURED"
+    assert res_swap["status"] == "MEASURED"
+    assert res_orig["single_slide"]["c_panel"] == pytest.approx(res_swap["single_slide"]["c_panel"])
+    assert res_orig["single_slide"]["retained_c_index"] == pytest.approx(res_swap["single_slide"]["retained_c_index"])
+    assert res_orig["single_slide"]["ci_low"] == pytest.approx(res_swap["single_slide"]["ci_low"])
+    assert res_orig["single_slide"]["ci_high"] == pytest.approx(res_swap["single_slide"]["ci_high"])
+    assert res_orig["format_model_hash"] == res_swap["format_model_hash"]
+    assert all(
+        g["focal_marker"] == "Podoplanin" and g["neighbour_marker"] == "aSMA"
+        for g in res_swap["fold_gates"]
+    )

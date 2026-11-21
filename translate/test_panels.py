@@ -236,13 +236,18 @@ def test_public_entrypoints_fail_closed_on_split_real_provenance_and_bad_indices
         run_panel_cv(data, split="all")
     with pytest.raises(LockedSplitError):
         formats.simulate_formats({**data, "split": "all"})
-    # UPMC-tagged payload without verified lock provenance must fail closed.
+    # UPMC-tagged payload without active lock / verified manifest must fail closed,
+    # even with caller-asserted flags (lock_verified=True).
     with pytest.raises(LockedSplitError):
         run_panel_cv({**data, "cohort": "upmc"})
+    with pytest.raises(LockedSplitError):
+        run_panel_cv({**data, "cohort": "upmc", "lock_verified": True, "locked_regions_count": 1})
+    with pytest.raises(LockedSplitError):
+        formats.simulate_formats({**data, "cohort": "upmc", "lock_verified": True, "locked_regions_count": 1})
 
     # Missing required markers must report not testable cleanly (never dropped silently).
     missing_res = run_panel_cv(
-        {**data, "cohort": "upmc", "lock_verified": True, "locked_regions_count": 10},
+        data,
         r16_rule={
             "feature": "Tumor (Podo+)|Stromal / Fibroblast|25um|fraction",
             "focal": "Tumor (Podo+)",
@@ -256,7 +261,7 @@ def test_public_entrypoints_fail_closed_on_split_real_provenance_and_bad_indices
     assert missing_res["status"] == "UNMEASURED"
     assert "not testable" in missing_res["reason"] and "PD1" in missing_res["reason"]
 
-    # Negative/float indices must raise ValueError instead of silently wrapping.
+    # Negative, float, or 2D index/mapping arrays must raise ValueError instead of wrapping or broadcasting.
     for key in ("region_id", "patient_of_region", "cell_type"):
         bad = {**data, key: data[key].copy()}
         bad[key][0] = -1
@@ -264,13 +269,89 @@ def test_public_entrypoints_fail_closed_on_split_real_provenance_and_bad_indices
             run_panel_cv(bad)
         with pytest.raises(ValueError):
             formats.simulate_formats(bad)
+        bad_2d = {**data, key: data[key][:, None]}
+        with pytest.raises(ValueError):
+            run_panel_cv(bad_2d)
+        with pytest.raises(ValueError):
+            formats.simulate_formats(bad_2d)
 
-    # _load_upmc_discovery_markers must fail closed if LOCK_FILE is None (when R-13 API exists).
+    # _load_upmc_discovery_markers must fail closed if LOCK_FILE is None or load_cells lacks split.
     monkeypatch.setattr(cohorts, "LOCK_FILE", None, raising=False)
     monkeypatch.setattr(cohorts, "locked_regions", lambda *a, **k: {"REG1"}, raising=False)
-    orig_load = cohorts.load_regions
-    monkeypatch.setattr(cohorts, "load_regions", lambda cohort, data_dir=None, identity="case", split="discovery": orig_load(cohort, data_dir, identity), raising=False)
     with pytest.raises(LockedSplitError):
+        runner._load_upmc_discovery_markers(tmp_path)
+
+    # Mocked R-13 load_cells without split parameter must fail closed (no unsplit fallback).
+    lock_p = tmp_path / "lock.json"
+    lock_p.write_text("{}")
+    lbl_p = tmp_path / "upmc_labels.csv"
+    lbl_p.write_text("region_id\nREG1\n")
+    zip_p = tmp_path / "upmc_raw_data.zip"
+    zip_p.write_bytes(b"")
+    import pandas as pd
+    monkeypatch.setattr(cohorts, "LOCK_FILE", lock_p, raising=False)
+    monkeypatch.setattr(cohorts, "locked_regions", lambda *a, **k: {"LOCKED1"}, raising=False)
+    monkeypatch.setattr(
+        cohorts,
+        "load_regions",
+        lambda cohort, data_dir=None, identity="case", split="discovery": pd.DataFrame({
+            "region_id": ["REG1"],
+            "patient_id": ["P1"],
+            "time_days": [100.0],
+            "event": [1.0],
+            "group": [0],
+            "coverslip": ["c001"],
+        }),
+        raising=False,
+    )
+    monkeypatch.setattr(cohorts, "load_cells", lambda cohort, rids, data_dir: {}, raising=False)
+    with pytest.raises(LockedSplitError):
+        runner._load_upmc_discovery_markers(tmp_path)
+
+
+def test_upmc_loader_rejects_swapped_cached_geometry_rows(monkeypatch, tmp_path):
+    import pandas as pd
+    import zipfile
+    from core import cohorts
+    from translate import runner
+
+    lock_p = tmp_path / "lock.json"
+    lock_p.write_text("{}")
+    (tmp_path / "upmc_labels.csv").write_text("region_id\nREG1\n")
+    with zipfile.ZipFile(tmp_path / "upmc_raw_data.zip", "w") as zf:
+        zf.writestr("raw_data/REG1.cell_data.csv", "CELL_ID,X,Y\n1,10.0,20.0\n2,30.0,40.0\n")
+        zf.writestr("raw_data/REG1.cell_types.csv", "CELL_ID,CELL_TYPE\n1,Tumor (Podo+)\n2,Stromal / Fibroblast\n")
+        zf.writestr("raw_data/REG1.expression.csv", "CELL_ID,M0\n1,11.0\n2,20.0\n")
+
+    monkeypatch.setattr(cohorts, "LOCK_FILE", lock_p, raising=False)
+    monkeypatch.setattr(cohorts, "locked_regions", lambda *a, **k: {"LOCKED1"}, raising=False)
+    monkeypatch.setattr(
+        cohorts,
+        "load_regions",
+        lambda cohort, data_dir=None, identity="case", split="discovery": pd.DataFrame({
+            "region_id": ["REG1"],
+            "patient_id": ["P1"],
+            "time_days": [100.0],
+            "event": [1.0],
+            "group": [0],
+            "coverslip": ["c001"],
+        }),
+        raising=False,
+    )
+    # Cached geometry has rows 0 and 1 swapped relative to raw_data/REG1.cell_data.csv.
+    monkeypatch.setattr(
+        cohorts,
+        "load_cells",
+        lambda cohort, rids, data_dir=None, split="discovery": {
+            "xy_um": np.array([[30.0, 40.0], [10.0, 20.0]], dtype=np.float64) * cohorts.PIXEL_UM,
+            "cell_type": np.array([0, 1], dtype=np.int16),
+            "region_ptr": np.array([0, 2], dtype=np.int64),
+            "region_ids": ["REG1"],
+            "type_names": ["Stromal / Fibroblast", "Tumor (Podo+)"],
+        },
+        raising=False,
+    )
+    with pytest.raises(ValueError, match="cached geometry"):
         runner._load_upmc_discovery_markers(tmp_path)
 
 
@@ -302,7 +383,7 @@ def test_within_fold_c_index_offset_invariance_cox_grad_and_honest_ratio_ci():
     )
     assert err < 1e-6
 
-    # 3. Unconditional bootstrap marks ratio CI UNMEASURED when C_full <= 0.5 occurs in any draw.
+    # 3. Unconditional bootstrap marks ratio CI UNMEASURED when C_full <= 0.5 occurs or n_boot < 2.
     t8 = np.array([10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0])
     e8 = np.ones(8, dtype=bool)
     rf_weak = np.array([0.8, 0.1, 0.6, 0.2, 0.7, 0.3, 0.5, 0.4])
@@ -311,3 +392,34 @@ def test_within_fold_c_index_offset_invariance_cox_grad_and_honest_ratio_ci():
     assert stats_res["n_boot_nonpositive"] > 0
     assert stats_res["ci_status"] == "UNMEASURED"
     assert stats_res["ci_low"] is None and stats_res["ci_high"] is None
+
+    rf_strong = np.arange(8, 0, -1, dtype=np.float64)
+    one_boot = paired_retained_c_index(t8, e8, rf_strong, rf_strong, n_boot=1, seed=0)
+    assert one_boot["ci_status"] == "UNMEASURED"
+    assert one_boot["ci_low"] is None and one_boot["ci_high"] is None
+
+
+def test_inner_selection_requires_complete_oof_predictions(monkeypatch):
+    import translate.panels as panels_mod
+
+    data = _make_spatial_cohort(n_patients=18, m_markers=3, signal=True, seed=17)
+    orig_fit = panels_mod.fit_stratified_cox
+    calls = {"n": 0}
+
+    # Force inner models on marker 0 to return NaN on 1 patient while still getting C=1.0 on rest;
+    # incomplete panel must NOT be eligible to win inner selection over complete panels.
+    class _PartialNan:
+        def __init__(self, inner):
+            self._inner = inner
+        def predict_risk(self, X):
+            r = self._inner.predict_risk(X)
+            r[0] = np.nan
+            return r
+        def to_dict(self):
+            return self._inner.to_dict()
+
+    monkeypatch.setattr(panels_mod, "fit_stratified_cox", lambda *a, **k: _PartialNan(orig_fit(*a, **k)))
+    res = run_panel_cv(data, n_outer=3, n_inner=2, n_boot=20, seed=0)
+    assert all(sel["best_1marker_idx"] is None for sel in res["outer_selections"])
+    assert res["nested_selected_1marker"]["status"] == "UNMEASURED"
+    assert res["nested_selected_2marker"]["status"] == "UNMEASURED"

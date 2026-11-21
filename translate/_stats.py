@@ -471,12 +471,16 @@ def paired_retained_c_index(
         else None
     )
 
-    # Unconditional percentile CI is reported only when zero draws cross C_full <= 0.5.
-    if int(n_boot) > 0 and n_nonpos == 0 and len(ret_all) == int(n_boot):
+    # Unconditional percentile CI is reported only when >=2 draws ran and zero crossed C_full <= 0.5.
+    if int(n_boot) >= 2 and n_nonpos == 0 and len(ret_all) == int(n_boot):
         lo, hi = np.quantile(ret_all, [alpha / 2.0, 1.0 - alpha / 2.0])
         ci_status = "MEASURED"
         ci_reason = None
         ci_low, ci_high = float(lo), float(hi)
+    elif int(n_boot) < 2:
+        ci_status = "UNMEASURED"
+        ci_reason = f"need at least 2 paired bootstrap draws for a percentile interval (got n_boot={int(n_boot)})"
+        ci_low, ci_high = None, None
     else:
         ci_status = "UNMEASURED"
         ci_reason = f"{n_nonpos}/{int(n_boot)} paired bootstrap draws had C_full <= 0.5 or non-finite C"
@@ -589,10 +593,14 @@ def paired_retained_c_index_draws(
         if len(cf_all) >= 2
         else None
     )
-    if int(n_boot) > 0 and n_nonpos == 0 and len(ret_all) == int(n_boot):
+    if int(n_boot) >= 2 and n_nonpos == 0 and len(ret_all) == int(n_boot):
         lo, hi = np.quantile(ret_all, [alpha / 2.0, 1.0 - alpha / 2.0])
         ci_status, ci_reason = "MEASURED", None
         ci_low, ci_high = float(lo), float(hi)
+    elif int(n_boot) < 2:
+        ci_status = "UNMEASURED"
+        ci_reason = f"need at least 2 paired bootstrap draws for a percentile interval (got n_boot={int(n_boot)})"
+        ci_low, ci_high = None, None
     else:
         ci_status = "UNMEASURED"
         ci_reason = f"{n_nonpos}/{int(n_boot)} paired bootstrap draws had C_full <= 0.5 or non-finite C"

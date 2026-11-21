@@ -19,7 +19,12 @@ if __name__ == "__main__" and str(Path(__file__).resolve().parents[1]) not in sy
 
 from audit.schema import ALREADY_SEEN_DISCLOSURE
 from core import cohorts
-from translate._guard import LockedSplitError, resolve_r16_rule, validate_discovery_cohort
+from translate._guard import (
+    _TRUSTED_LOADER_TOKEN,
+    LockedSplitError,
+    resolve_r16_rule,
+    validate_discovery_cohort,
+)
 from translate.formats import simulate_formats
 from translate.panels import run_panel_cv
 
@@ -58,21 +63,24 @@ def _load_upmc_discovery_markers(data_dir: Path) -> tuple[dict[str, Any] | None,
         raise LockedSplitError("fail-closed: usable discovery regions overlap locked held-out regions")
 
     cells_sig = inspect.signature(cohorts.load_cells)
-    if "split" in cells_sig.parameters:
-        c = cohorts.load_cells("upmc", region_ids, Path(data_dir), split="discovery")
-    else:
-        c = cohorts.load_cells("upmc", region_ids, Path(data_dir))
-    reg_counts = np.diff(c["region_ptr"])
+    if "split" not in cells_sig.parameters:
+        raise LockedSplitError("fail-closed: cohorts.load_cells lacks mandatory split parameter")
+    c = cohorts.load_cells("upmc", region_ids, Path(data_dir), split="discovery")
+    reg_ptr = np.asarray(c["region_ptr"], dtype=np.int64)
+    reg_counts = np.diff(reg_ptr)
     rid = np.repeat(np.arange(len(reg), dtype=np.int32), reg_counts)
+    type_names = list(c["type_names"])
 
     chunks = []
     marker_names: list[str] | None = None
     with zipfile.ZipFile(zip_path) as zf:
         for r_idx, r in enumerate(region_ids):
-            cd = pd.read_csv(zf.open(f"raw_data/{r}.cell_data.csv"), usecols=["CELL_ID"])
-            if len(cd) != int(reg_counts[r_idx]):
+            start, end = int(reg_ptr[r_idx]), int(reg_ptr[r_idx + 1])
+            cd = pd.read_csv(zf.open(f"raw_data/{r}.cell_data.csv"), usecols=["CELL_ID", "X", "Y"])
+            ct = pd.read_csv(zf.open(f"raw_data/{r}.cell_types.csv"), usecols=["CELL_ID", "CELL_TYPE"])
+            if len(cd) != (end - start):
                 raise ValueError(
-                    f"{r}: geometry cell count {int(reg_counts[r_idx])} != raw cell_data count {len(cd)}"
+                    f"{r}: geometry cell count {end - start} != raw cell_data count {len(cd)}"
                 )
             ex = pd.read_csv(zf.open(f"raw_data/{r}.expression.csv"))
             cols = [col for col in ex.columns if col != "CELL_ID"]
@@ -80,11 +88,20 @@ def _load_upmc_discovery_markers(data_dir: Path) -> tuple[dict[str, Any] | None,
                 marker_names = cols
             elif marker_names != cols:
                 raise ValueError(f"{r}: inconsistent expression marker headers")
-            merged = cd.merge(ex, on="CELL_ID", how="inner", sort=False, validate="one_to_one")
+            merged = (
+                cd.merge(ct, on="CELL_ID", how="inner", sort=False, validate="one_to_one")
+                .merge(ex, on="CELL_ID", how="inner", sort=False, validate="one_to_one")
+            )
             if len(merged) != len(cd) or not np.array_equal(
                 merged["CELL_ID"].to_numpy(), cd["CELL_ID"].to_numpy()
             ):
-                raise ValueError(f"{r}: cell alignment/order mismatch between cell_data and expression")
+                raise ValueError(f"{r}: cell alignment/order mismatch between cell_data, cell_types, and expression")
+            expected_xy = merged[["X", "Y"]].to_numpy(np.float64) * cohorts.PIXEL_UM
+            if not np.allclose(c["xy_um"][start:end], expected_xy, rtol=0.0, atol=1e-6):
+                raise ValueError(f"{r}: cached geometry coordinates do not match raw cell_data row order")
+            cached_types = [type_names[code] for code in c["cell_type"][start:end]]
+            if cached_types != merged["CELL_TYPE"].astype(str).tolist():
+                raise ValueError(f"{r}: cached cell types do not match raw cell_types row order")
             vals = merged[marker_names].to_numpy(np.float64)
             if not np.isfinite(vals).all():
                 raise ValueError(f"{r}: non-finite marker intensity in discovery cells")
@@ -94,8 +111,8 @@ def _load_upmc_discovery_markers(data_dir: Path) -> tuple[dict[str, Any] | None,
     return {
         "cohort": "upmc",
         "split": "discovery",
-        "lock_verified": True,
-        "locked_regions_count": len(locked),
+        "data_dir": str(data_dir),
+        "_trusted_loader_token": _TRUSTED_LOADER_TOKEN,
         "x": c["xy_um"][:, 0].astype(np.float64),
         "y": c["xy_um"][:, 1].astype(np.float64),
         "cell_type": c["cell_type"].astype(np.int16),

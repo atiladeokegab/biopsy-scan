@@ -116,14 +116,27 @@ def fit_arcsinh_gmm(x_train: np.ndarray, *, max_iter: int = 50, tol: float = 1e-
     return ArcsinhGmmGate(cofactor, (pi[0], pi[1]), (mu[0], mu[1]), (var[0], var[1]))
 
 
-def _infer_morphology_compartments(type_names: list[str], cell_type: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Tumour vs non-tumour morphological compartments recoverable from haematoxylin brightfield IHC."""
+def _infer_target_compartments(
+    type_names: list[str], cell_type: np.ndarray, rule: dict[str, Any]
+) -> tuple[np.ndarray, np.ndarray]:
+    """Derive morphological compartments (tumour vs non-tumour) matching R-16 focal/neighbour roles."""
     tumour_codes = [i for i, name in enumerate(type_names) if "tumor" in name.lower() or "tumour" in name.lower()]
-    if tumour_codes:
-        is_tum = np.isin(cell_type, tumour_codes)
-        return is_tum, ~is_tum
-    ones = np.ones(len(cell_type), dtype=bool)
-    return ones, ones
+    if not tumour_codes:
+        ones = np.ones(len(cell_type), dtype=bool)
+        return ones, ones
+    is_tum = np.isin(cell_type, tumour_codes)
+    foc_is_tum = ("tumor" in str(rule["focal"]).lower()) or ("tumour" in str(rule["focal"]).lower())
+    nbr_is_tum = ("tumor" in str(rule["neighbour"]).lower()) or ("tumour" in str(rule["neighbour"]).lower())
+    return (is_tum if foc_is_tum else ~is_tum), (is_tum if nbr_is_tum else ~is_tum)
+
+
+def _pos_enrichment_margin(pos: np.ndarray, target: np.ndarray) -> float:
+    """Training-fold binary sensitivity minus false-positive rate against a reference cell type."""
+    if not target.any():
+        return 0.0
+    tpr = float(pos[target].mean())
+    fpr = float(pos[~target].mean()) if (~target).any() else 0.0
+    return tpr - fpr
 
 
 def _split_regions(cohort_data: dict[str, Any]) -> list[tuple[int, int, np.ndarray]]:
@@ -284,10 +297,15 @@ def simulate_formats(
         risk_full_oof = step1_result["_risk_full_oof"]
         if panel_by_fold is None and panel is None and "outer_selections" in step1_result:
             name_to_idx = {name: i for i, name in enumerate(marker_names)}
-            panel_by_fold = [
-                (name_to_idx[names[0]], name_to_idx[names[1]]) if len(names) == 2 else (name_to_idx[names[0]], name_to_idx[names[0]])
-                for names in (sel["best_2marker"] for sel in step1_result["outer_selections"])
-            ]
+            panel_by_fold = []
+            for sel in step1_result["outer_selections"]:
+                chosen = sel.get("best_2marker") or sel.get("best_1marker")
+                if chosen and len(chosen) == 2:
+                    panel_by_fold.append((name_to_idx[chosen[0]], name_to_idx[chosen[1]]))
+                elif chosen and len(chosen) == 1:
+                    panel_by_fold.append((name_to_idx[chosen[0]], name_to_idx[chosen[0]]))
+                else:
+                    panel_by_fold.append((0, min(1, markers.shape[1] - 1)))
     else:
         outer_folds = stratified_kfolds(event, strata, n_splits=n_outer, seed=seed)
         outer_fold_vec = fold_assignment_vector(n_pat, outer_folds)
@@ -314,7 +332,7 @@ def simulate_formats(
     reg_cells = _split_regions(cohort_data)
     xy_all = np.stack([np.asarray(cohort_data["x"], dtype=np.float64), np.asarray(cohort_data["y"], dtype=np.float64)], 1)
     cell_type = np.asarray(cohort_data["cell_type"], dtype=np.int64)
-    tum_comp, nbr_comp = _infer_morphology_compartments(list(cohort_data["type_names"]), cell_type)
+    foc_comp, nbr_comp = _infer_target_compartments(list(cohort_data["type_names"]), cell_type, rule)
     xy_only = [xy_all[cells_r] for _, _, cells_r in reg_cells]
     pat_of_cell = np.empty(len(xy_all), dtype=np.int64)
     for _r, p, cells_r in reg_cells:
@@ -323,18 +341,43 @@ def simulate_formats(
     radius_um = float(rule["radius_um"])
     stat_name = str(rule["statistic"])
     feat_name = str(rule["feature"])
+    foc_code = int(rule["focal_code"])
+    nbr_code = int(rule["nbr_code"])
 
-    # Fit training-fold arcsinh GMM gates across ALL training cells (matching A-17.2).
+    # Fit training-fold arcsinh GMM gates across ALL training cells AND derive
+    # column-order-invariant stain-to-target roles strictly inside each training fold.
     fold_calls: list[tuple[np.ndarray, np.ndarray, dict[str, Any]]] = []
     for f_id, (tr_idx, _te_idx) in enumerate(outer_folds):
         ma, mb = panel_by_fold[f_id]
         tr_cell_mask = np.isin(pat_of_cell, tr_idx)
         gate_a = fit_arcsinh_gmm(markers[tr_cell_mask, ma])
-        gate_b = fit_arcsinh_gmm(markers[tr_cell_mask, mb])
-        # Keep tumour/stroma morphology compartment alongside binary stain positivity.
-        pos_foc = tum_comp & gate_a.predict_positive(markers[:, ma])
-        pos_nbr = nbr_comp & gate_b.predict_positive(markers[:, mb])
-        fold_calls.append((pos_foc, pos_nbr, {"fold": f_id, "panel": [marker_names[ma], marker_names[mb]], "gate_a": gate_a.to_dict(), "gate_b": gate_b.to_dict()}))
+        gate_b = gate_a if ma == mb else fit_arcsinh_gmm(markers[tr_cell_mask, mb])
+        pos_a_tr = gate_a.predict_positive(markers[tr_cell_mask, ma])
+        pos_b_tr = gate_b.predict_positive(markers[tr_cell_mask, mb])
+        y_foc_tr = cell_type[tr_cell_mask] == foc_code
+        y_nbr_tr = cell_type[tr_cell_mask] == nbr_code
+        score_ab = _pos_enrichment_margin(pos_a_tr, y_foc_tr) + _pos_enrichment_margin(pos_b_tr, y_nbr_tr)
+        score_ba = _pos_enrichment_margin(pos_b_tr, y_foc_tr) + _pos_enrichment_margin(pos_a_tr, y_nbr_tr)
+        if score_ba > score_ab or (
+            score_ba == score_ab and (marker_names[mb], marker_names[ma]) < (marker_names[ma], marker_names[mb])
+        ):
+            foc_m, gate_foc, nbr_m, gate_nbr = mb, gate_b, ma, gate_a
+        else:
+            foc_m, gate_foc, nbr_m, gate_nbr = ma, gate_a, mb, gate_b
+        pos_foc = foc_comp & gate_foc.predict_positive(markers[:, foc_m])
+        pos_nbr = nbr_comp & gate_nbr.predict_positive(markers[:, nbr_m])
+        fold_calls.append((
+            pos_foc,
+            pos_nbr,
+            {
+                "fold": f_id,
+                "panel": sorted([marker_names[ma], marker_names[mb]]),
+                "focal_marker": marker_names[foc_m],
+                "neighbour_marker": marker_names[nbr_m],
+                "gate_focal": gate_foc.to_dict(),
+                "gate_neighbour": gate_nbr.to_dict(),
+            },
+        ))
 
     def _eval_shift(delta_um: float) -> tuple[list[np.ndarray], list[dict[str, Any]]]:
         rng = np.random.default_rng(seed + 777 + int(round(delta_um * 10)))

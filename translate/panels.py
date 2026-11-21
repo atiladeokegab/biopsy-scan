@@ -315,14 +315,16 @@ def run_panel_cv(
                     x_in[in_tr, None], time[in_tr], event[in_tr], strata[in_tr], columns=[feat_name], l2=0.05
                 )
                 in_oof[in_te_rel] = mdl_in.predict_risk(x_in[in_te, None])
-            inner_scores[p_idx] = harrell_c_index(
-                time[tr_idx], event[tr_idx], in_oof, strata=strata[tr_idx], folds=inner_fold_vec
-            )
+            # Eligibility requires complete finite inner OOF predictions across comparable training patients.
+            if np.isfinite(in_oof).all():
+                inner_scores[p_idx] = harrell_c_index(
+                    time[tr_idx], event[tr_idx], in_oof, strata=strata[tr_idx], folds=inner_fold_vec
+                )
 
-        one_idx = [i for i, p in enumerate(panels) if len(p) == 1]
-        two_idx = [i for i, p in enumerate(panels) if len(p) == 2]
-        best1 = max(one_idx, key=lambda idx: -np.inf if not np.isfinite(inner_scores[idx]) else inner_scores[idx])
-        best2 = max(two_idx, key=lambda idx: -np.inf if not np.isfinite(inner_scores[idx]) else inner_scores[idx]) if two_idx else best1
+        valid_1 = [i for i in one_idx if np.isfinite(inner_scores[i])] if (one_idx := [i for i, p in enumerate(panels) if len(p) == 1]) else []
+        valid_2 = [i for i in two_idx if np.isfinite(inner_scores[i])] if (two_idx := [i for i, p in enumerate(panels) if len(p) == 2]) else []
+        best1: int | None = max(valid_1, key=lambda idx: (float(inner_scores[idx]), -idx)) if valid_1 else None
+        best2: int | None = max(valid_2, key=lambda idx: (float(inner_scores[idx]), -idx)) if valid_2 else None
 
         fold_best_models = {}
         for p_idx, panel in enumerate(panels):
@@ -337,10 +339,10 @@ def run_panel_cv(
 
         outer_selections.append({
             "fold": f_id,
-            "best_1marker_idx": int(best1),
-            "best_1marker": [marker_names[i] for i in panels[best1]],
-            "best_2marker_idx": int(best2),
-            "best_2marker": [marker_names[i] for i in panels[best2]],
+            "best_1marker_idx": None if best1 is None else int(best1),
+            "best_1marker": None if best1 is None else [marker_names[i] for i in panels[best1]],
+            "best_2marker_idx": None if best2 is None else int(best2),
+            "best_2marker": None if best2 is None else [marker_names[i] for i in panels[best2]],
         })
         panel_hashes_per_fold.append({
             "fold": f_id,
@@ -350,9 +352,13 @@ def run_panel_cv(
 
     nested1_oof = np.full(n_pat, np.nan, dtype=np.float64)
     nested2_oof = np.full(n_pat, np.nan, dtype=np.float64)
+    all_valid_1 = all(sel["best_1marker_idx"] is not None for sel in outer_selections)
+    all_valid_2 = all(sel["best_2marker_idx"] is not None for sel in outer_selections)
     for (_tr_idx, te_idx), sel in zip(outer_folds, outer_selections):
-        nested1_oof[te_idx] = oof_risk_by_panel[sel["best_1marker_idx"], te_idx]
-        nested2_oof[te_idx] = oof_risk_by_panel[sel["best_2marker_idx"], te_idx]
+        if all_valid_1 and sel["best_1marker_idx"] is not None:
+            nested1_oof[te_idx] = oof_risk_by_panel[sel["best_1marker_idx"], te_idx]
+        if all_valid_2 and sel["best_2marker_idx"] is not None:
+            nested2_oof[te_idx] = oof_risk_by_panel[sel["best_2marker_idx"], te_idx]
 
     panel_records = []
     for p_idx, panel in enumerate(panels):
@@ -367,11 +373,47 @@ def run_panel_cv(
             **ev,
         })
 
-    nested1_res = paired_retained_c_index(
-        time, event, nested1_oof, risk_full_oof, strata=strata, folds=outer_fold_vec, n_boot=n_boot, seed=seed + 50000
+    nested1_res = (
+        paired_retained_c_index(
+            time, event, nested1_oof, risk_full_oof, strata=strata, folds=outer_fold_vec, n_boot=n_boot, seed=seed + 50000
+        )
+        if all_valid_1
+        else {
+            "status": "UNMEASURED",
+            "reason": "no eligible 1-marker panel produced complete usable inner OOF predictions",
+            "c_panel": None,
+            "c_full": None if not np.isfinite(c_full_oof) else float(c_full_oof),
+            "retained_c_index": None,
+            "ci_status": "UNMEASURED",
+            "ci_reason": "no eligible 1-marker panel produced complete usable inner OOF predictions",
+            "ci_low": None,
+            "ci_high": None,
+            "c_panel_ci": None,
+            "c_full_ci": None,
+            "n_boot": int(n_boot),
+            "n_boot_nonpositive": int(n_boot),
+        }
     )
-    nested2_res = paired_retained_c_index(
-        time, event, nested2_oof, risk_full_oof, strata=strata, folds=outer_fold_vec, n_boot=n_boot, seed=seed + 50001
+    nested2_res = (
+        paired_retained_c_index(
+            time, event, nested2_oof, risk_full_oof, strata=strata, folds=outer_fold_vec, n_boot=n_boot, seed=seed + 50001
+        )
+        if all_valid_2
+        else {
+            "status": "UNMEASURED",
+            "reason": "no eligible 2-marker panel produced complete usable inner OOF predictions",
+            "c_panel": None,
+            "c_full": None if not np.isfinite(c_full_oof) else float(c_full_oof),
+            "retained_c_index": None,
+            "ci_status": "UNMEASURED",
+            "ci_reason": "no eligible 2-marker panel produced complete usable inner OOF predictions",
+            "ci_low": None,
+            "ci_high": None,
+            "c_panel_ci": None,
+            "c_full_ci": None,
+            "n_boot": int(n_boot),
+            "n_boot_nonpositive": int(n_boot),
+        }
     )
 
     model_hash = stable_hash({

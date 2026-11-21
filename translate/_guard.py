@@ -1,15 +1,53 @@
 """Shared non-leakage, provenance, negative-index validation, and R-16 rule helpers."""
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 
 from ._stats import stable_hash
 
+_TRUSTED_LOADER_TOKEN = object()
+
 
 class LockedSplitError(PermissionError):
     """R-17 must never read or use locked held-out patients."""
+
+
+def _validate_real_cohort_manifest(cohort: str, cohort_data: dict[str, Any]) -> None:
+    """Fail-closed active lock & manifest verification for real-cohort payloads."""
+    from core import cohorts
+
+    lock_file = getattr(cohorts, "LOCK_FILE", None)
+    if lock_file is None or not Path(lock_file).exists():
+        raise LockedSplitError("fail-closed: cohorts.LOCK_FILE must exist for real-cohort R-17 access")
+
+    if cohort_data.get("_trusted_loader_token") is _TRUSTED_LOADER_TOKEN:
+        return
+
+    data_dir = Path(cohort_data.get("data_dir") or cohorts.DATA_DIR)
+    region_names = list(cohort_data.get("region_names") or ())
+    if not region_names:
+        raise LockedSplitError("fail-closed: real-cohort payload missing region_names for manifest validation")
+    try:
+        locked = cohorts.locked_regions(cohort, data_dir) if cohort == "upmc" else set()
+        if cohort == "upmc" and not locked:
+            raise LockedSplitError("fail-closed: cohorts.locked_regions returned empty set for UPMC")
+        if locked and (set(region_names) & locked):
+            raise LockedSplitError("fail-closed: real-cohort payload contains locked regions")
+        manifest = cohorts.load_regions(cohort, data_dir=data_dir, identity="case", split="discovery")
+    except LockedSplitError:
+        raise
+    except Exception as exc:
+        raise LockedSplitError(f"fail-closed: could not verify real-cohort discovery manifest ({exc})") from exc
+
+    allowed_regions = set(manifest["region_id"].astype(str))
+    if not set(region_names).issubset(allowed_regions):
+        raise LockedSplitError("fail-closed: real-cohort regions outside verified discovery manifest")
+    patient_names = list(cohort_data.get("patient_names") or ())
+    if patient_names and not set(patient_names).issubset(set(manifest["patient_id"].astype(str))):
+        raise LockedSplitError("fail-closed: real-cohort patient_names outside verified discovery manifest")
 
 
 def validate_discovery_cohort(
@@ -17,17 +55,15 @@ def validate_discovery_cohort(
     *,
     split: str = "discovery",
 ) -> None:
-    """Validate split provenance, real-data lock verification, and non-negative aligned indices."""
+    """Validate split provenance, real-data lock verification, and 1D non-negative aligned indices."""
     if split != "discovery":
         raise LockedSplitError(f"R-17 must run on split='discovery' only, got {split!r}")
     data_split = cohort_data.get("split")
     if data_split != "discovery":
         raise LockedSplitError(f"cohort_data split must be explicitly 'discovery', got {data_split!r}")
-    if cohort_data.get("cohort") in ("upmc", "charville"):
-        if cohort_data.get("lock_verified") is not True or int(cohort_data.get("locked_regions_count", 0)) <= 0:
-            raise LockedSplitError(
-                "real-cohort payload requires verified discovery lock provenance (lock_verified=True, non-empty locked split)"
-            )
+    cohort_name = str(cohort_data.get("cohort", ""))
+    if cohort_name in ("upmc", "charville"):
+        _validate_real_cohort_manifest(cohort_name, cohort_data)
     locked_pats = set(cohort_data.get("locked_patients", ()))
     if locked_pats and (locked_pats & set(cohort_data.get("patient_names", ()))):
         raise LockedSplitError("cohort_data includes locked patient IDs; refusing R-17 execution")
@@ -56,6 +92,19 @@ def validate_discovery_cohort(
     strata = st_raw.astype(np.int64)
     type_names = list(cohort_data["type_names"])
     marker_names = list(cohort_data["marker_names"])
+
+    for label, vec in (
+        ("x", x),
+        ("y", y),
+        ("cell_type", cell_type),
+        ("region_id", region_id),
+        ("patient_of_region", pat_of_reg),
+        ("time", time),
+        ("event", event),
+        ("strata", strata),
+    ):
+        if vec.ndim != 1:
+            raise ValueError(f"{label} must be 1D, got shape {vec.shape}")
 
     n_cells = len(x)
     n_reg = len(pat_of_reg)
