@@ -271,18 +271,19 @@ Expected 50–200× over 8 cores and 10–30× over a 64-core node. These are es
 3. **Charville coverslips:** check that they are patient-level before using them as strata.
 4. **Kernel route:** NumPy reference by build + 1.5 h; numba CPU by + 3 h; GPU by + 5 h. Atlas runs on numba if the GPU kernel slips.
 
-## Areas and owners (kept by gh-sync)
+## Areas and owners
 
-| Area | Directories | Owner |
-|---|---|---|
-| Core contract | `core/` | — |
-| Reference statistics | `stats/` | — |
-| Re-imaging kernel | `reimage/` | — |
-| Atlas | `atlas/` | — |
-| Benchmarks | `bench/` | — |
-| Real-data audit | `audit/` | — |
-| Demo and deck | `demo/` | — |
-| Tests | `tests/` | Prometheus |
+| Area | Directories | Owner | Issues |
+|---|---|---|---|
+| Core contract | `core/` | — | — |
+| Reference statistics | `stats/` | — | — |
+| Re-imaging kernel | `reimage/` | — | — |
+| Atlas | `atlas/` | — | — |
+| Benchmarks | `bench/` | — | — |
+| Real-data audit | `audit/` | — | — |
+| Demo and deck | `demo/` | — | — |
+| Tests | `tests/` | — | — |
+| Submission | `docs/film/`, `docs/SUBMISSION.md`, `README.md` | — | — |
 
 ## Deadlines (PROVISIONAL, confirm at 11:00)
 
