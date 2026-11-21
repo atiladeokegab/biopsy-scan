@@ -45,9 +45,14 @@ NULL_METHOD = {
 
 def get_backend(name="auto"):
     """Array module: cupy when a CUDA device is present (auto), else numpy."""
-    if name not in ("auto", "numpy", "cupy"):
-        raise ValueError("backend must be 'auto', 'numpy' or 'cupy'")
-    if name != "numpy":
+    if name not in ("auto", "numpy", "cupy", "gpu"):
+        raise ValueError("backend must be 'auto', 'numpy', 'cupy' or 'gpu' (numba.cuda)")
+    if name == "gpu":
+        from .gpu_score import require_cuda
+
+        require_cuda()  # raises without a device or the simulator; never falls back
+        return np  # host arrays; the kernel moves X-dependent work to the device
+    if name in ("auto", "cupy"):
         try:
             import cupy
 
@@ -88,15 +93,29 @@ def _stats(xp, X, C, M, m, a):
     """U, V, z [B,p] for centred X[n,p] given clinical C[n,q] at the null fit."""
     U = m @ X  # one dense product X'[m_1 .. m_B]
     MX = _rmul(M, X)
-    raw = a @ (X * X)
-    V = raw - (MX * MX).sum(1)
+    Ixx = a @ (X * X) - (MX * MX).sum(1)
+    Icx = _rmul(_cross(xp, C, M, a), X) if C.shape[1] else None  # [B,q,p]
+    return _finish(xp, U, Ixx, Icx, M, a, C)
+
+
+def _finish(xp, U, Ixx, Icx, M, a, C):
+    V = Ixx
     if C.shape[1]:
-        H = _cross(xp, C, M, a)
-        Icx = _rmul(H, X)  # [B,q,p]
-        V = V - (Icx * xp.linalg.solve(_rmul(H, C), Icx)).sum(1)
-    good = V > 1e-12 * xp.maximum(1.0, raw)  # roundoff floor: constant columns give 0
+        V = V - (Icx * xp.linalg.solve(_rmul(_cross(xp, C, M, a), C), Icx)).sum(1)
+    good = V > 1e-12 * xp.maximum(1.0, Ixx)  # roundoff floor: constant columns give 0
     z = xp.where(good, U / xp.sqrt(xp.where(good, V, 1.0)), 0.0)
     return U, xp.where(good, V, 0.0), z
+
+
+def _scores(xp, gpu, X, C, same, t, e, w):
+    """U, V, z [B,p] for one mask group's outcomes t, e [B,n] at null weights w [B,n]."""
+    M, m, a = _risk(xp, t, e, w, same)
+    if not gpu:
+        return _stats(xp, X, C, M, m, a)
+    from .gpu_score import moments  # X-dependent B x J x n^2 work on the device
+
+    U, Ixx, Ixc = moments(X, C, t, e, w, same)
+    return _finish(xp, U, Ixx, Ixc.transpose(0, 2, 1), M, a, C)
 
 
 def _newton(xp, C, t, e, same, iters=50, tol=1e-9):
@@ -190,7 +209,7 @@ def screen(X, time, event, clinical=None, strata=None, n_perm=999, backend="auto
     per-candidate analysis size n, maxT, its bootstrap p = (1 + #{maxT_b >= maxT})
     / (B + 1), single-step adjusted_p per candidate, null_maxT[B] and metadata.
     """
-    xp = get_backend(backend)
+    xp, gpu = get_backend(backend), backend == "gpu"
     X, time, event, C, codes, base = _inputs(X, time, event, clinical, strata)
     P, J = X.shape
     if not isinstance(n_perm, (int, np.integer)) or n_perm < 0:
@@ -215,11 +234,11 @@ def screen(X, time, event, clinical=None, strata=None, n_perm=999, backend="auto
     n = keep_all.sum(0)
     for cols, rows, Xg, Cg, same, beta in groups:
         w = xp.exp(Cg @ xp.asarray(beta))[None]
-        M, m, a = _risk(xp, xp.asarray(time[rows])[None], xp.asarray(event[rows])[None], w, same)
-        for out, value in zip((U, V, z), _stats(xp, Xg, Cg, M, m, a)):
+        tg, eg = xp.asarray(time[rows])[None], xp.asarray(event[rows])[None]
+        for out, value in zip((U, V, z), _scores(xp, gpu, Xg, Cg, same, tg, eg, w)):
             out[cols] = _host(value)[0]
     observed = float(np.abs(z).max())
-    null_maxT = _bootstrap(xp, groups, time, event, C, codes, base, n_perm, seed, block)
+    null_maxT = _bootstrap(xp, gpu, groups, time, event, C, codes, base, n_perm, seed, block)
     tol = 16 * np.finfo(np.float64).eps * max(1.0, observed)
     p = float((1 + np.sum(null_maxT >= observed - tol)) / (n_perm + 1)) if n_perm else float("nan")
     adjusted = ((1 + np.sum(null_maxT[:, None] >= np.abs(z)[None] - tol, axis=0)) / (n_perm + 1)
@@ -242,7 +261,7 @@ def screen(X, time, event, clinical=None, strata=None, n_perm=999, backend="auto
             "patients": {"rows": P, "analysis_base": int(base.sum()), "events": int(event[base].sum()),
                          "strata": int(codes[base].max() + 1) if base.any() else 0},
             "null": {**NULL_METHOD, "B": int(n_perm), "seed": seed} if n_perm else None,
-            "backend": xp.__name__,
+            "backend": "gpu (numba.cuda)" if gpu else xp.__name__,
         },
     }
 
@@ -267,7 +286,7 @@ def _null_draws(time, event, C, codes, base, B, seed, block):
         yield np.minimum(T, Cens), (T <= Cens).astype(np.float64)
 
 
-def _bootstrap(xp, groups, time, event, C, codes, base, B, seed, block):
+def _bootstrap(xp, gpu, groups, time, event, C, codes, base, B, seed, block):
     """maxT of z over all candidates for B clinical-null resamples."""
     if not B or not groups:
         return np.zeros(B)
@@ -279,8 +298,8 @@ def _bootstrap(xp, groups, time, event, C, codes, base, B, seed, block):
         for cols, rows, Xg, Cg, same, _ in groups:
             tg, eg = xp.asarray(tb[:, position[rows]]), xp.asarray(eb[:, position[rows]])
             fitted = _newton(xp, Cg, tg, eg, same) if Cg.shape[1] else xp.zeros((len(tb), 0))
-            M, m, a = _risk(xp, tg, eg, xp.exp(fitted @ Cg.T), same)
-            zmax = np.maximum(zmax, _host(xp.abs(_stats(xp, Xg, Cg, M, m, a)[2]).max(1)))
+            z = _scores(xp, gpu, Xg, Cg, same, tg, eg, xp.exp(fitted @ Cg.T))[2]
+            zmax = np.maximum(zmax, _host(xp.abs(z).max(1)))
         maxima.append(zmax)
     return np.concatenate(maxima)
 

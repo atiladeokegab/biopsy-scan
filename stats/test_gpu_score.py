@@ -1,8 +1,14 @@
 """A-15.2: GPU U, V, z equal the float64 CPU path; legacy zero-covariate regression.
 
-The GPU parity tests run only where cupy sees a CUDA device and skip cleanly
-elsewhere. They are UNPROVEN until run on a GPU box.
+backend="gpu" (the numba.cuda kernel) is checked under the CUDA simulator in a
+fresh process, as reimage/ does; the optional cupy backend's checks skip without
+a device.
 """
+
+import os
+import subprocess
+import sys
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -10,7 +16,7 @@ import pytest
 from stats import permutation_maxT, reference, screen
 from stats.screen import get_backend
 
-GPU = get_backend("auto") is not np
+GPU = get_backend("auto") is not np  # cupy with a device
 GPU_TOL = 1e-9  # float64 on both sides; only summation order differs
 
 
@@ -21,6 +27,53 @@ def _cohort(seed=1, n=120, p=300):
     X[rng.random((n, p)) < 0.05] = np.nan
     time = np.round(rng.exponential(np.exp(-0.5 * C[:, 0])), 2)
     return X, time, (rng.random(n) < 0.6).astype(float), C, rng.integers(0, 2, n)
+
+
+ROOT = str(Path(__file__).resolve().parents[1])
+SIM_PARITY = """
+import numpy as np
+from stats import screen
+rng = np.random.default_rng(1)
+n, p = 24, 5
+C = rng.integers(0, 2, (n, 2)).astype(float)
+C[:, 1] = rng.normal(size=n)
+X = rng.normal(size=(n, p)) + C[:, :1]
+X[rng.random((n, p)) < 0.1] = np.nan
+X[:, 4] = 1.0
+t = np.round(rng.exponential(size=n), 1)  # ties
+e = (rng.random(n) < 0.6).astype(float)
+s = rng.integers(0, 2, n)
+for clinical in (C, None):
+    cpu = screen(X, t, e, clinical, s, n_perm=3, backend="numpy")
+    gpu = screen(X, t, e, clinical, s, n_perm=3, backend="gpu")
+    for key in ("U", "V", "z", "null_maxT"):
+        np.testing.assert_allclose(gpu[key], cpu[key], rtol=1e-9, atol=1e-9, err_msg=key)
+    assert gpu["metadata"]["backend"] == "gpu (numba.cuda)"
+print("GPU_SCREEN_PARITY_OK")
+"""
+
+
+def _run(script, sim):
+    env = {k: v for k, v in os.environ.items() if k != "NUMBA_ENABLE_CUDASIM"}
+    env.update({"PYTHONPATH": ROOT, **({"NUMBA_ENABLE_CUDASIM": "1"} if sim else {})})
+    return subprocess.run([sys.executable, "-c", script], env=env, cwd=ROOT,
+                          capture_output=True, text=True, check=False)
+
+
+def test_numba_gpu_kernel_equals_cpu_under_cuda_simulator():
+    """Adjusted and zero-covariate U, V, z and bootstrap maxT, within 1e-9."""
+    proc = _run(SIM_PARITY, sim=True)
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+    assert "GPU_SCREEN_PARITY_OK" in proc.stdout
+
+
+def test_gpu_backend_raises_without_cuda_instead_of_falling_back():
+    proc = _run("from numba import cuda; print(cuda.is_available())", sim=False)
+    if "True" in proc.stdout:
+        pytest.skip("a CUDA device is present")
+    proc = _run("import numpy as np; from stats import screen; "
+                "screen(np.ones((3, 1)), [1, 2, 3], [1, 0, 1], backend='gpu')", sim=False)
+    assert proc.returncode != 0 and "needs a CUDA device" in proc.stderr
 
 
 def test_backend_falls_back_to_numpy_without_a_device():
