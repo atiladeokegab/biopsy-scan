@@ -2,13 +2,23 @@
 from __future__ import annotations
 
 import json
+import os
+import re
+import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import numpy as np
+import pytest
 
-from audit.charville_v2 import run_charville_v2
+from audit.charville_v2 import _code_revision, run_charville_v2
 from audit.test_audit import _fake_stats_api
 from core.grammar import EXPRESSION_CHANNELS, EXPRESSION_TRANSFORM, grammar, grammar_hash, grammar_v2
+
+ROOT = Path(__file__).resolve().parents[1]
+IN_GIT = (ROOT / ".git").exists()  # a file in a worktree, a directory in a clone, absent in GitHub's Download ZIP
+NO_GIT = "no .git (e.g. GitHub's Download ZIP): code_revision is labelled 'unknown', checked in the offline contract"
 
 
 def test_run_charville_v2_offline_contract(tmp_path):
@@ -50,7 +60,10 @@ def test_run_charville_v2_offline_contract(tmp_path):
     assert saved["exploratory"] is True and saved["already_seen"] is True and saved["clinical_claims"] is False
     assert saved["seed"] == 7
     assert len(saved["source_fingerprint"]) == 64
-    assert saved["code_revision"] != "unknown"
+    if IN_GIT:
+        assert saved["code_revision"] != "unknown"
+    else:  # no checkout to read: provenance must say so, never guess
+        assert saved["code_revision"] == "unknown"
     assert saved["normalization_stats"]["channels"] == list(EXPRESSION_CHANNELS)
     if saved["maxT"]["p"] > 0.05 and saved["omnibus"]["p"] > 0.05:
         assert saved["prepared_outcome"]["key"] == "exploratory_joint_search_nonsignificant"
@@ -62,6 +75,29 @@ def test_run_charville_v2_offline_contract(tmp_path):
     assert saved["labels"]["gpu_timing"] == "UNMEASURED"
     assert saved["maxT"]["top_hits"][0]["family"] in {"v1", "v2"}
     assert set(saved["labels"].values()) <= {"MEASURED", "UNMEASURED"}
+
+
+@pytest.mark.skipif(not IN_GIT, reason=NO_GIT)
+def test_code_revision_is_the_checkout_head():
+    assert re.fullmatch(r"[0-9a-f]{40}", _code_revision())
+
+
+def test_offline_contract_passes_in_a_copy_without_git(tmp_path):
+    """A judge's Download ZIP: the same tests in a copy with no .git pass, with the revision labelled unknown."""
+    copy = tmp_path / "zip"
+    for d in ("audit", "core", "stats"):
+        shutil.copytree(ROOT / d, copy / d, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copy(ROOT / "pyproject.toml", copy)
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    env["GIT_CEILING_DIRECTORIES"] = str(tmp_path)  # git must not find a repository above the copy either
+    res = subprocess.run(
+        [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "-rs",
+         "audit/test_charville_v2.py::test_run_charville_v2_offline_contract",
+         "audit/test_charville_v2.py::test_code_revision_is_the_checkout_head"],
+        cwd=copy, env=env, capture_output=True, text=True, timeout=300, check=False,
+    )
+    assert res.returncode == 0, res.stdout[-3000:] + res.stderr[-2000:]
+    assert "1 passed, 1 skipped" in res.stdout and "Download ZIP" in res.stdout, res.stdout[-2000:]
 
 
 def test_committed_charville_v2_results_artifact_valid():
