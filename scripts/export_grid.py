@@ -5,8 +5,10 @@ Run from the repo root (cohort counts need `make data`):
 
 RESULTS is a .parquet, .csv or .json(l) table with one row per design point: the atlas's run_point
 summary (cohort, patients, regions_per_patient (null = all), fov_um (null = full core), eps,
-hr_per_source_sd, power with power_n/_lo/_hi, identification_rate, fwer, wrong_identification_rate, source_n, source_events,
-source_regions, region_um). Other columns are ignored.
+hr_per_source_sd, alpha, plant_feature, power with power_n/_lo/_hi, identification_rate, fwer,
+wrong_identification_rate, source_n, source_events, source_regions, optional region_um). Other columns are ignored.
+Every row must share one model (alpha, plant and the other MODEL settings) and one power_n, and every
+value is validated before anything is written; a bad table exits non-zero and leaves the output alone.
 
 The chart's regions lines are 1, 2, 4 and 8, capped by the most regions any usable patient has;
 "all regions" points and the per-cohort source facts go to `meta`, which the page does not read.
@@ -14,6 +16,7 @@ source stays SYNTHETIC unless --measured is passed, which is for a full atlas ru
 """
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -24,11 +27,17 @@ import pandas as pd  # noqa: E402
 
 NAMES = {"charville": "Charville", "upmc": "UPMC"}
 REGION_LINES = (1, 2, 4, 8)
-SOURCE = ("source_n", "source_events", "source_regions", "region_um")
-NEED = ["cohort", "patients", "regions_per_patient", "fov_um", "eps", "hr_per_source_sd",
+SOURCE = ("source_n", "source_events", "source_regions")  # region_um is kept in meta when supplied
+# One curve = one model: rows that differ on any of these must not be merged (alpha and plant_feature
+# are required; the others are checked when the table has them).
+MODEL = ("alpha", "plant_feature", "plant_mean", "plant_sd", "shape", "target_event_fraction",
+         "censoring_tail_policy", "calibration_n")
+NEED = ["cohort", "patients", "regions_per_patient", "fov_um", "eps", "hr_per_source_sd", "alpha", "plant_feature",
         "power", "power_n", "power_lo", "power_hi", "identification_rate",
         "fwer", "wrong_identification_rate", *SOURCE]
-
+METHOD = ("Model-based Monte Carlo: each point is the share of simulated studies, re-imaged from real cells with "
+          "planted Weibull outcomes, in which the maxT test rejects. A simulation estimate under the stated model, "
+          "not an observed rate, whatever the source label.")
 
 def read_results(path: Path) -> pd.DataFrame:
     if path.suffix == ".parquet":
@@ -57,13 +66,48 @@ def _missing(v):
     return v is None or pd.isna(v)  # None, NaN or pd.NA, however the table stored "all" / "full core"
 
 
-def _num(v):
-    return int(v) if float(v).is_integer() else float(v)
+def _int(v, what, lo=1):
+    """A finite whole number >= lo, as int; anything else is an error (no silent casting of NaN or 2.5)."""
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        raise ValueError(f"{what}={v!r}: not a number") from None
+    if not (math.isfinite(f) and f.is_integer() and f >= lo):
+        raise ValueError(f"{what}={v!r}: need a whole number >= {lo}")
+    return int(f)
+
+
+def _rate(v, what):
+    f = float(v)
+    if not (math.isfinite(f) and 0 <= f <= 1):
+        raise ValueError(f"{what}={v!r}: need a rate in 0..1")
+    return f
+
+
+def _plain(v):
+    return v.item() if hasattr(v, "item") else v  # numpy scalar -> JSON-able Python value
 
 
 def _axis(values):
     nums = sorted({v for v in values if v != "full"})
     return nums + (["full"] if "full" in values else [])
+
+
+def _point(r, where):
+    fov = "full" if _missing(r.fov_um) else float(r.fov_um)
+    if fov != "full" and not (math.isfinite(fov) and fov > 0):
+        raise ValueError(f"{where}: fov_um={r.fov_um!r}: need a positive size or null (full core)")
+    p = {"patients": _int(r.patients, f"{where}: patients", 2),
+         "regions": "all" if _missing(r.regions_per_patient) else _int(r.regions_per_patient, f"{where}: regions_per_patient"),
+         "fov_um": int(fov) if fov != "full" and fov.is_integer() else fov,
+         "miscall": _rate(r.eps, f"{where}: eps")}
+    for k in ("power", "identification_rate", "power_lo", "power_hi", "fwer", "wrong_identification_rate"):
+        p[k] = _rate(getattr(r, k), f"{where}: {k}")
+    if not p["identification_rate"] <= p["power"]:
+        raise ValueError(f"{where}: identification_rate {p['identification_rate']} above power {p['power']}")
+    if not p["power_lo"] <= p["power"] <= p["power_hi"]:
+        raise ValueError(f"{where}: power {p['power']} outside its interval [{p['power_lo']}, {p['power_hi']}]")
+    return p
 
 
 def build_grid(df: pd.DataFrame, cohort: dict, max_regions: int, *, cohort_key: str,
@@ -82,20 +126,31 @@ def build_grid(df: pd.DataFrame, cohort: dict, max_regions: int, *, cohort_key: 
     df = df[df.hr_per_source_sd == hr]
     if df.empty:
         raise ValueError(f"no {cohort_key} rows at HR {hr}")
-    facts = df[list(SOURCE)].drop_duplicates()
+    model = {}
+    for k in [c for c in MODEL if c in df.columns]:
+        values = df[k].drop_duplicates()
+        if len(values) != 1:
+            raise ValueError(f"rows mix {k} values {sorted(map(str, values))}; export one model at a time")
+        model[k] = _plain(values.iloc[0])
+    counts = df.power_n.drop_duplicates()
+    if len(counts) != 1:
+        raise ValueError(f"rows mix power_n {sorted(map(str, counts))}; every point needs the same study count")
+    studies = _int(counts.iloc[0], "power_n")
+    facts_cols = [*SOURCE, *(["region_um"] if "region_um" in df.columns else [])]
+    facts = df[facts_cols].drop_duplicates()
     if len(facts) != 1:
-        raise ValueError(f"rows disagree on the source cohort facts {SOURCE}")
+        raise ValueError(f"rows disagree on the source cohort facts {facts_cols}")
+    facts = {k: _int(facts.iloc[0][k], k, 0) for k in SOURCE} | (
+        {} if "region_um" not in facts_cols or _missing(facts.iloc[0]["region_um"])
+        else {"region_um": float(facts.iloc[0]["region_um"])})
+    if "region_um" in facts and not (math.isfinite(facts["region_um"]) and facts["region_um"] > 0):
+        raise ValueError(f"region_um={facts['region_um']}: need a positive size")
     lines = [k for k in REGION_LINES if k <= max_regions]
     points, all_regions, dropped = [], [], 0
-    for r in df.itertuples():
-        p = {"patients": int(r.patients), "regions": None if _missing(r.regions_per_patient) else int(r.regions_per_patient),
-             "fov_um": "full" if _missing(r.fov_um) else _num(r.fov_um), "miscall": float(r.eps),
-             "power": float(r.power), "identification_rate": float(r.identification_rate),
-             "power_lo": float(r.power_lo), "power_hi": float(r.power_hi),
-             # validity evidence: maxT false-positive rate on null studies, and off-target top hits
-             "fwer": float(r.fwer), "wrong_identification_rate": float(r.wrong_identification_rate)}
-        if p["regions"] is None:
-            all_regions.append({**p, "regions": "all"})
+    for i, r in enumerate(df.itertuples()):
+        p = _point(r, f"row {i}")
+        if p["regions"] == "all":
+            all_regions.append(p)
         elif p["regions"] in lines:
             points.append(p)
         else:
@@ -105,15 +160,14 @@ def build_grid(df: pd.DataFrame, cohort: dict, max_regions: int, *, cohort_key: 
     keys = [tuple(p[k] for k in ("patients", "regions", "fov_um", "miscall")) for p in points + all_regions]
     if len(set(keys)) != len(keys):
         raise ValueError("results repeat a design point; keep one row per point")
-    studies = int(df.power_n.min())  # shortcut: one count for the page; points with more studies are not shown as such
-    note = (f"Atlas (#5): {len(points)} design points, at least {studies:,} planted-effect studies each, "
+    note = (f"Model-based Monte Carlo (#5): {len(points)} design points, {studies:,} planted-effect studies each, "
             f"from {source_name}.")
     if not measured:
         note += " Marked SYNTHETIC until the full atlas run on the real cohort."
     axes = {k: _axis([p[k] for p in points]) for k in ("patients", "regions", "fov_um", "miscall")}
     order = lambda p: tuple(axes[k].index(p[k]) for k in axes)  # noqa: E731
-    meta = {"source": source_name, "region_lines": lines, "max_regions_per_patient": max_regions,
-            "cohorts": {cohort_key: {k: _num(v) for k, v in facts.iloc[0].items()}},
+    meta = {"method": METHOD, "source": source_name, "model": model, "region_lines": lines,
+            "max_regions_per_patient": max_regions, "cohorts": {cohort_key: facts},
             "all_regions_points": all_regions, "points_off_region_lines": dropped}
     return {"schema": "preflight-grid/1", "source": "MEASURED" if measured else "SYNTHETIC", "note": note,
             "studies_per_point": studies, "effect_hr_per_sd": float(hr), "cohort": cohort,
@@ -128,10 +182,14 @@ def main(argv=None):
     ap.add_argument("--measured", action="store_true", help="a full atlas run on the real cohort")
     ap.add_argument("--out", type=Path, default=ROOT / "demo" / "data" / "grid.json")
     a = ap.parse_args(argv)
-    cohort, max_regions = cohort_block(a.cohort)
-    grid = build_grid(read_results(a.results), cohort, max_regions, cohort_key=a.cohort, hr=a.hr,
-                      measured=a.measured, source_name=a.results.name)
-    a.out.write_text(json.dumps(grid, indent=1) + "\n")
+    try:
+        cohort, max_regions = cohort_block(a.cohort)
+        grid = build_grid(read_results(a.results), cohort, max_regions, cohort_key=a.cohort, hr=a.hr,
+                          measured=a.measured, source_name=a.results.name)
+        text = json.dumps(grid, indent=1, allow_nan=False) + "\n"  # validated in full before anything is written
+    except ValueError as e:
+        sys.exit(f"export_grid: {e}")
+    a.out.write_text(text)
     print(f"{a.out}: {len(grid['points'])} points, source {grid['source']}, HR {grid['effect_hr_per_sd']}")
 
 
