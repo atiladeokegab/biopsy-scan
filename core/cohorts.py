@@ -85,6 +85,11 @@ def _split_regions(cohort: str, all_regions: list[str], region_ids, data_dir: Pa
     return region_ids
 
 
+def _cache(data_dir: Path, cohort: str, kind: str, split: str, side: list[str], all_regions: list[str]) -> Path:
+    """One cache per split, built from that split's regions only: a discovery read never opens a locked region's files."""
+    return Path(data_dir) / (f"{cohort}_{kind}.npz" if len(side) == len(all_regions) else f"{cohort}_{kind}.{split}.npz")
+
+
 def upmc_patient_ids(lab: pd.DataFrame) -> tuple[pd.Series, list[dict]]:
     """The UPMC patient-grouping rule: one patient_id per region, "" when unmapped, plus the conflicts.
 
@@ -235,8 +240,9 @@ def load_channels(cohort: str, region_ids: list[str] | None = None, data_dir: Pa
         raise ValueError(f"unknown cohort {cohort!r}")
     data_dir = Path(data_dir)
     all_regions = list(pd.read_csv(data_dir / f"{cohort}_labels.csv", usecols=["region_id"], dtype=str).region_id)
+    side = _split_regions(cohort, all_regions, None, data_dir, split)
     region_ids = _split_regions(cohort, all_regions, region_ids, data_dir, split)
-    cache = data_dir / f"{cohort}_channels.npz"
+    cache = _cache(data_dir, cohort, "channels", split, side, all_regions)
     if cache.exists():
         z = np.load(cache, allow_pickle=False)
         if (
@@ -246,7 +252,7 @@ def load_channels(cohort: str, region_ids: list[str] | None = None, data_dir: Pa
             and "region_ptr" in z
             and z["channels_raw"].dtype == np.float64
             and list(z["channel_names"]) == list(EXPRESSION_CHANNELS)
-            and list(z["region_ids"]) == all_regions
+            and list(z["region_ids"]) == side  # a cache from another lock or split is rebuilt
         ):
             names, ptr = list(z["region_ids"]), np.asarray(z["region_ptr"], dtype=np.int64)
             if len(ptr) != len(names) + 1 or ptr[0] != 0 or ptr[-1] != len(z["channels_raw"]) or np.any(ptr[1:] < ptr[:-1]):
@@ -266,7 +272,7 @@ def load_channels(cohort: str, region_ids: list[str] | None = None, data_dir: Pa
             }
     chunks = []
     with zipfile.ZipFile(data_dir / f"{cohort}_raw_data.zip") as z:
-        for r in all_regions:
+        for r in side:
             d = pd.read_csv(z.open(f"raw_data/{r}.cell_data.csv"), usecols=["CELL_ID"])
             t = pd.read_csv(z.open(f"raw_data/{r}.cell_types.csv"), usecols=["CELL_ID"])
             e = pd.read_csv(z.open(f"raw_data/{r}.expression.csv"), usecols=["CELL_ID", *EXPRESSION_MARKERS])
@@ -284,7 +290,7 @@ def load_channels(cohort: str, region_ids: list[str] | None = None, data_dir: Pa
             chunks.append(vals)
     all_ch = np.concatenate(chunks, axis=0) if chunks else np.zeros((0, len(EXPRESSION_CHANNELS)), np.float64)
     ptr = np.concatenate([[0], np.cumsum([len(a) for a in chunks])]).astype(np.int64)
-    np.savez(cache, channels_raw=all_ch, region_ptr=ptr, region_ids=np.array(all_regions),
+    np.savez(cache, channels_raw=all_ch, region_ptr=ptr, region_ids=np.array(side, dtype=str),
              channel_names=np.array(EXPRESSION_CHANNELS))
     return load_channels(cohort, region_ids, data_dir, split)
 
@@ -297,32 +303,27 @@ def load_cells(cohort: str, region_ids: list[str] | None = None, data_dir: Path 
     from the discovery side.
 
     Returns xy_um float64 (N,2), cell_type int16 (N,), region_ptr int64 (R+1,), region_ids, type_names.
-    type_names is the sorted list of every type in the split's regions (not just the requested ones), so codes
-    are stable across calls and a type seen only in locked regions never reaches the discovery grammar.
+    type_names is the sorted list of every type in the split's regions (not just the requested ones), frozen in the
+    split's own cache: codes are stable across calls and the discovery codebook is never learnt from locked tissue.
     """
     data_dir = Path(data_dir)
     all_regions = list(pd.read_csv(data_dir / f"{cohort}_labels.csv", usecols=["region_id"], dtype=str).region_id)
+    side = _split_regions(cohort, all_regions, None, data_dir, split)
     region_ids = _split_regions(cohort, all_regions, region_ids, data_dir, split)
-    side_regions = set(_split_regions(cohort, all_regions, None, data_dir, split))
-    cache = data_dir / f"{cohort}_cells.npz"
+    cache = _cache(data_dir, cohort, "cells", split, side, all_regions)
     if cache.exists():
         z = np.load(cache, allow_pickle=False)
-        names, ptr = list(z["region_ids"]), z["region_ptr"]
-        pos = {r: i for i, r in enumerate(names)}
-        idx = [pos[r] for r in region_ids]
-        sl = [np.arange(ptr[i], ptr[i + 1]) for i in idx]
-        take = np.concatenate(sl) if sl else np.zeros(0, int)
-        ct = z["cell_type"]
-        side = [np.arange(ptr[i], ptr[i + 1]) for r, i in pos.items() if r in side_regions]
-        seen = np.unique(ct[np.concatenate(side)]) if side else np.zeros(0, int)
-        code = np.full(len(z["type_names"]), -1, np.int16)
-        code[seen] = np.arange(len(seen))
-        return {"xy_um": z["xy_um"][take], "cell_type": code[ct[take]],
-                "region_ptr": np.concatenate([[0], np.cumsum([len(s) for s in sl])]).astype(np.int64),
-                "region_ids": region_ids, "type_names": [str(z["type_names"][i]) for i in seen]}
-    xy, ty = [], []
+        if list(z["region_ids"]) == side:  # a cache from another lock or split is rebuilt
+            ptr = z["region_ptr"]
+            pos = {r: i for i, r in enumerate(side)}
+            sl = [np.arange(ptr[pos[r]], ptr[pos[r] + 1]) for r in region_ids]
+            take = np.concatenate(sl) if sl else np.zeros(0, int)
+            return {"xy_um": z["xy_um"][take], "cell_type": z["cell_type"][take],
+                    "region_ptr": np.concatenate([[0], np.cumsum([len(s) for s in sl])]).astype(np.int64),
+                    "region_ids": region_ids, "type_names": [str(n) for n in z["type_names"]]}
+    xy, ty = [np.zeros((0, 2))], [np.zeros(0, str)]
     with zipfile.ZipFile(data_dir / f"{cohort}_raw_data.zip") as z:
-        for r in all_regions:
+        for r in side:
             d = pd.read_csv(z.open(f"raw_data/{r}.cell_data.csv"))
             t = pd.read_csv(z.open(f"raw_data/{r}.cell_types.csv"))
             m = d.merge(t, on="CELL_ID", how="inner", validate="one_to_one")
@@ -334,6 +335,6 @@ def load_cells(cohort: str, region_ids: list[str] | None = None, data_dir: Path 
     code = {n: i for i, n in enumerate(type_names)}
     np.savez(cache, xy_um=np.concatenate(xy), type_names=np.array(type_names),
              cell_type=np.array([code[n] for n in np.concatenate(ty)], np.int16),
-             region_ptr=np.concatenate([[0], np.cumsum([len(a) for a in xy])]).astype(np.int64),
-             region_ids=np.array(all_regions))
+             region_ptr=np.concatenate([[0], np.cumsum([len(a) for a in xy[1:]])]).astype(np.int64),
+             region_ids=np.array(side, dtype=str))
     return load_cells(cohort, region_ids, data_dir, split)

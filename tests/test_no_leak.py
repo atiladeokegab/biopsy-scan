@@ -19,6 +19,30 @@ def test_discovery_loaders_never_return_locked_regions(data_dir):
     assert set(cohorts.load_cells("upmc", data_dir=data_dir, split="locked")["region_ids"]) == locked
 
 
+def test_discovery_reads_an_archive_with_no_locked_files(data_dir):
+    """Cold (builds its cache) and warm (reads it), discovery never opens a locked region's files."""
+    locked = cohorts.locked_regions(data_dir=data_dir)
+    zp = data_dir / "upmc_raw_data.zip"
+    with zipfile.ZipFile(zp) as z:
+        keep = {n: z.read(n) for n in z.namelist() if n.split("/")[1].split(".")[0] not in locked}
+    m = cohorts.EXPRESSION_MARKERS
+    with zipfile.ZipFile(zp, "w") as z:
+        for n, b in keep.items():
+            z.writestr(n, b)
+            if n.endswith(".cell_data.csv"):
+                r = n[:-len(".cell_data.csv")]
+                z.writestr(f"{r}.expression.csv", "\n".join(",".join(v) for v in (["CELL_ID", *m], ["1", *["0.5"] * len(m)],
+                                                                                   ["2", *["1.5"] * len(m)])) + "\n")
+                z.writestr(f"{r}.cell_features.csv", "CELL_ID,SIZE\n1,10\n2,20\n")
+    for _ in ("cold", "warm"):
+        c = cohorts.load_cells("upmc", data_dir=data_dir)
+        ch = cohorts.load_channels("upmc", data_dir=data_dir)
+        assert c["region_ids"] == ch["region_ids"] and not locked & set(c["region_ids"])
+        assert len(c["cell_type"]) == len(ch["channels_raw"]) == 2 * len(c["region_ids"])
+    with pytest.raises(KeyError):  # the locked side really is missing from this archive
+        cohorts.load_cells("upmc", data_dir=data_dir, split="locked")
+
+
 def test_guard_raises_when_discovery_asks_for_a_locked_region(data_dir):
     r = sorted(cohorts.locked_regions(data_dir=data_dir))[0]
     for loader in (cohorts.load_cells, cohorts.load_channels):
