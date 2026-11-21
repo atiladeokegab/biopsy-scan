@@ -98,3 +98,8 @@ def test_click_with_cursor_on_a_hidden_target_stops_with_a_clear_message():
     with pytest.raises(SystemExit, match="click target not visible: #run"):
         ds._click(page, "#run", cursor=True)
     assert ("click",) not in page.calls
+
+
+def test_race_scroll_is_off_by_default_and_takes_one_target():
+    assert ds.parse_args([]).race_scroll is None
+    assert ds.parse_args(["--race-scroll", "#speed-interim"]).race_scroll == "#speed-interim"
