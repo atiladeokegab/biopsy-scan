@@ -4,7 +4,7 @@ import json
 import numpy as np
 import pytest
 
-from audit import rediscovery_score as rs
+from audit import rediscovery as rs
 
 RULE = {"expressible": True, "feature": "Tumor (Podo+)|Stromal / Fibroblast|25um|fraction",
         "direction": "higher is worse: hazard ratio > 1; a top rank with HR < 1 counts as not rediscovered"}
@@ -133,3 +133,7 @@ def test_an_underpowered_locked_set_is_unmeasured_whatever_the_p(monkeypatch):
     assert out["power"]["value"] == 0.3 and out["p_one_sided"] == 1e-9
     monkeypatch.setattr(rs, "power", lambda *a, **k: 0.8)
     assert rs.score_locked(fixture_cells([0, 1, 2, 3]), RULE, SHA, 2)["status"] == "MEASURED"
+
+
+def test_the_scorer_takes_the_frozen_pre_registration():
+    assert rs.rule_sha256(rs.RULE) == rs.RULE_SHA256 == rs.PREREG_SHA256
