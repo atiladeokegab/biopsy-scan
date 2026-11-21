@@ -71,7 +71,7 @@ def omnibus_p(calibration, z):
 def design_id(design):
     design = bind_design(design)
     scientific = {key: design.get(key) for key in
-                  ("cohort", "patients", "regions_per_patient", "fov_um", "eps", "alpha", "measurement_model", "bank_key")}
+                  ("cohort", "patients", "regions_per_patient", "fov_um", "eps", "alpha", "measurement_model", "bank_key", "bank_hash")}
     scientific = {k: v.item() if isinstance(v, np.generic) else v for k, v in scientific.items()}
     return hashlib.sha256(json.dumps(scientific, sort_keys=True).encode()).hexdigest()[:16]
 
@@ -129,6 +129,7 @@ def calibrate(cells, reference, design, budget, seed):
             LOG.info("%s calibration %s/%s", point, study["index"] + 1, budget["calibration"])
     z = np.array(rows)
     return {"design_id": point, "source_hash": source_metadata(cells)["source_hash"],
+            "bank_hash": design["bank_hash"],
             "threshold": stats.threshold(design, z),
             "omnibus": fit_omnibus(z), "records": records, "n": len(z)}
 
@@ -171,7 +172,8 @@ def run_point(cells, reference, design, *, hr=2.0, budget=None, seed=0, calibrat
     point = design_id(design)
     calibration = calibration or calibrate(cells, reference, design, budget, seed)
     if (calibration["design_id"] != point or calibration["n"] != budget["calibration"]
-            or calibration["source_hash"] != source["source_hash"]):
+            or calibration["source_hash"] != source["source_hash"]
+            or calibration["bank_hash"] != design["bank_hash"]):
         raise ValueError("calibration does not match the design/budget")
     alpha = float(design.get("alpha", 0.05))
     summary = {"design_id": point, "result_label": "SYNTHETIC", **source, **{k: design.get(k) for k in
@@ -188,6 +190,7 @@ def run_point(cells, reference, design, *, hr=2.0, budget=None, seed=0, calibrat
                "bank_seed": None if bank is None else bank["seed"],
                "bank_key": None if bank is None else bank["key"],
                "bank_hash": None if bank is None else bank["hash"],
+               "bank_generator_json": json.dumps(None if bank is None else bank["generator"], sort_keys=True),
                "error_control_scope": "unconditional empirical-source global null; separate maxT and omnibus tests"}
     records = list(calibration["records"])
     for stage, stage_id, count, stage_model in (

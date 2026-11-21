@@ -8,7 +8,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .artifacts import source_metadata
+from .artifacts import array_hash, generator_provenance, source_metadata
 
 LOG = logging.getLogger(__name__)
 
@@ -24,9 +24,12 @@ def bind_design(design):
     bank = design.get("acquisition_bank")
     if bank is not None and bank["imaging"] != imaging_descriptor(design):
         raise ValueError("acquisition bank does not match the imaging design")
+    if bank is not None and array_hash(bank["X"]) != bank["hash"]:
+        raise ValueError("acquisition bank content hash mismatch")
     return {**design, "alpha": design.get("alpha", 0.05), "eps": design.get("eps", 0.0),
             "measurement_model": "direct" if bank is None else "finite-bank approximation",
-            "bank_key": None if bank is None else bank["key"]}
+            "bank_key": None if bank is None else bank["key"],
+            "bank_hash": None if bank is None else bank["hash"]}
 
 
 def build_bank(cells, design, draws, seed, cache_dir, *, batch_size=8, grammar_hash=""):
@@ -42,8 +45,10 @@ def build_bank(cells, design, draws, seed, cache_dir, *, batch_size=8, grammar_h
     if not isinstance(draws, int) or isinstance(draws, bool) or draws < 2:
         raise ValueError("bank draws must be an integer >= 2")
     source = source_metadata(cells)
+    provenance = generator_provenance(("atlas", "core", "reimage"), design.get("backend", "numpy"))
+    encoded_provenance = json.dumps(provenance, sort_keys=True)
     description = {"source_hash": source["source_hash"], "grammar_hash": grammar_hash,
-                   "draws": draws, "seed": seed,
+                   "draws": draws, "seed": seed, "generator": provenance,
                    **imaging_descriptor(design)}
     description = {k: v.item() if isinstance(v, np.generic) else v for k, v in description.items()}
     key = hashlib.sha256(json.dumps(description, sort_keys=True).encode()).hexdigest()
@@ -52,7 +57,11 @@ def build_bank(cells, design, draws, seed, cache_dir, *, batch_size=8, grammar_h
     cached = path.exists()
     if cached:
         with np.load(path, allow_pickle=False) as saved:
+            if str(saved["generator"]) != encoded_provenance:
+                raise ValueError("acquisition bank cache has different generator provenance")
             X = saved["X"]
+            if str(saved["hash"]) != array_hash(X):
+                raise ValueError("acquisition bank cache content hash mismatch")
     else:
         rows = []
         for begin in range(0, draws, batch_size):
@@ -68,11 +77,12 @@ def build_bank(cells, design, draws, seed, cache_dir, *, batch_size=8, grammar_h
     if not cached:
         path.parent.mkdir(parents=True, exist_ok=True)
         temporary = path.with_suffix(".tmp.npz")
-        np.savez(temporary, X=X)
+        np.savez(temporary, X=X, generator=encoded_provenance, hash=array_hash(X))
         temporary.replace(path)
+    X.flags.writeable = False
     return {"X": X, "key": key, "draws": draws, "seed": seed, "source_hash": source["source_hash"],
-            "imaging": imaging_descriptor(design),
-            "hash": hashlib.sha256(np.ascontiguousarray(X).view(np.uint8)).hexdigest(),
+            "imaging": imaging_descriptor(design), "generator": provenance,
+            "hash": array_hash(X),
             "load_or_build_s": time.perf_counter() - start, "cached": cached}
 
 

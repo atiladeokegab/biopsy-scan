@@ -8,6 +8,7 @@ import pytest
 from numpy.testing import assert_allclose
 
 from atlas.artifacts import (
+    array_hash,
     charts,
     comparison_charts,
     save_point,
@@ -180,6 +181,62 @@ def test_public_calibration_can_be_reused_with_implicit_defaults(invented):
     calibration = calibrate(cells, reference, design, budget, 71)
     summary, _, reused = run_point(cells, reference, design, budget=budget, seed=71, calibration=calibration)
     assert reused is calibration and summary["design_id"] == calibration["design_id"]
+
+
+def test_calibration_rejects_changed_bank_contents_even_with_same_recipe(invented, tmp_path):
+    cells, reference = invented
+    design = {"cohort": "invented", "patients": 12, "regions_per_patient": 1, "eps": 0.0}
+    bank = build_bank(cells, design, 4, 71, tmp_path)
+    design["acquisition_bank"] = bank
+    budget = {"calibration": 8, "null": 4, "alternative": 4, "nested": 0, "direct": 0, "batch": 2}
+    calibration = calibrate(cells, reference, design, budget, 71)
+    changed = bank["X"].copy()
+    changed[0, 0, 0] += 1
+    design["acquisition_bank"] = {**bank, "X": changed}
+    with pytest.raises(ValueError, match="content hash"):
+        run_point(cells, reference, design, budget=budget, seed=71, calibration=calibration)
+    design["acquisition_bank"]["hash"] = array_hash(changed)
+    with pytest.raises(ValueError, match="calibration does not match"):
+        run_point(cells, reference, design, budget=budget, seed=71, calibration=calibration)
+
+
+def test_bank_cache_binds_generating_backend_and_code(invented, tmp_path, monkeypatch):
+    import atlas.bank as module
+
+    cells, _ = invented
+    design = {"cohort": "invented", "patients": 12, "regions_per_patient": 1, "eps": 0.0}
+    numpy = build_bank(cells, design, 4, 71, tmp_path)
+    cpu = build_bank(cells, {**design, "backend": "cpu"}, 4, 71, tmp_path)
+    assert numpy["key"] != cpu["key"] and not cpu["cached"]
+    assert cpu["generator"]["backend"] == "cpu"
+    monkeypatch.setattr(module, "generator_provenance", lambda *args: {"code_fingerprint": "changed"})
+    changed = build_bank(cells, design, 4, 71, tmp_path)
+    assert changed["key"] not in (numpy["key"], cpu["key"]) and not changed["cached"]
+
+
+def test_reference_cache_rebuilds_without_matching_generator_provenance(invented, tmp_path, monkeypatch):
+    import atlas.__main__ as cli
+    from core.grammar import grammar, grammar_hash
+
+    cells, reference = invented
+    metadata = source_metadata(cells)
+    path = tmp_path / "reference.npz"
+    np.savez(path, X=np.zeros_like(reference), source_hash=metadata["source_hash"],
+             grammar_hash=grammar_hash(grammar(cells["type_names"])))
+    calls = []
+
+    def fresh(_):
+        calls.append(1)
+        return reference
+
+    monkeypatch.setattr(cli, "truth", fresh)
+    X, _ = cli.reference_matrix(cells, path, metadata)
+    assert_allclose(X, reference)
+    cli.reference_matrix(cells, path, metadata)
+    assert len(calls) == 1
+    monkeypatch.setattr(cli, "generator_provenance", lambda *args: {"code_fingerprint": "changed"})
+    cli.reference_matrix(cells, path, metadata)
+    assert len(calls) == 2
 
 
 def test_partitioned_evidence_retains_nullable_checks_and_uint64_seeds(invented, tmp_path):

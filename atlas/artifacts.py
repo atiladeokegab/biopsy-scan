@@ -2,10 +2,31 @@
 
 import hashlib
 import json
+from importlib.metadata import version
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+
+def array_hash(array):
+    return hashlib.sha256(np.ascontiguousarray(array).view(np.uint8)).hexdigest()
+
+
+def code_fingerprint(packages=("atlas", "core", "reimage", "stats")):
+    root = Path(__file__).parent.parent
+    paths = [path for package in packages for path in (root / package).rglob("*.py")
+             if not path.name.startswith("test_")]
+    digest = hashlib.sha256()
+    for path in sorted([*paths, root / "uv.lock", root / "pyproject.toml"]):
+        digest.update(str(path.relative_to(root)).encode())
+        digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
+def generator_provenance(packages, backend):
+    return {"code_fingerprint": code_fingerprint(packages), "backend": backend,
+            "software": {name: version(name) for name in ("numpy", "scipy", "numba")}}
 
 
 def source_metadata(cells):

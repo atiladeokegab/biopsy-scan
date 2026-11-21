@@ -17,8 +17,11 @@ from core.grammar import grammar, grammar_hash
 from core.truth import layout, neighbours, truth
 
 from .artifacts import (
+    array_hash,
     charts,
+    code_fingerprint,
     comparison_charts,
+    generator_provenance,
     save_point,
     save_tables,
     source_metadata,
@@ -29,14 +32,18 @@ from .runner import DEFAULT_BUDGET, design_id, run_point
 
 def reference_matrix(cells, path, metadata):
     fingerprint = grammar_hash(grammar(cells["type_names"]))
+    provenance = json.dumps(generator_provenance(("core",), "numpy"), sort_keys=True)
     if path.exists():
         with np.load(path, allow_pickle=False) as cached:
-            if str(cached["source_hash"]) == metadata["source_hash"] and str(cached["grammar_hash"]) == fingerprint:
+            if (str(cached["source_hash"]) == metadata["source_hash"] and str(cached["grammar_hash"]) == fingerprint
+                    and "generator" in cached and str(cached["generator"]) == provenance
+                    and "hash" in cached and str(cached["hash"]) == array_hash(cached["X"])):
                 return cached["X"], fingerprint
     X = truth(cells)
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(".tmp.npz")
-    np.savez(temporary, X=X, source_hash=metadata["source_hash"], grammar_hash=fingerprint)
+    np.savez(temporary, X=X, source_hash=metadata["source_hash"], grammar_hash=fingerprint,
+             generator=provenance, hash=array_hash(X))
     temporary.replace(path)
     return X, fingerprint
 
@@ -92,14 +99,8 @@ def main(argv=None):
                     "mc_interval_scope": "conditional on source, acquisition bank and realized calibration; excludes source and bank-construction uncertainty",
                     "method_check_scope": "paired differences with conservative 95% bounds; interval containing zero does not establish equivalence",
                     "direct_check_scope": "bank and direct imaging use the same bank-derived cutoff"}
-        code = hashlib.sha256()
-        root = Path(__file__).parent.parent
-        paths = [path for package in ("atlas", "core", "reimage", "stats")
-                 for path in (root / package).rglob("*.py") if not path.name.startswith("test_")]
-        for path in sorted([*paths, root / "uv.lock", root / "pyproject.toml"]):
-            code.update(str(path.relative_to(root)).encode())
-            code.update(path.read_bytes())
-        metadata["code_fingerprint"] = code.hexdigest()
+        metadata["code_fingerprint"] = code_fingerprint()
+        metadata["reference_generator"] = generator_provenance(("core",), "numpy")
         metadata["inference_scope"] = ("descriptive verified-source simulation only" if cohort == "upmc"
                                         else "empirical-source study-design simulation")
         out = args.out / cohort
