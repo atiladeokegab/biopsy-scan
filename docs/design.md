@@ -19,7 +19,7 @@ Binding token file: `demo/tokens.css`. Only `docs/design.md` and `demo/tokens.cs
 | Window | Visual Proof | What the Judge Sees |
 |---|---|---|
 | 0:00–0:25 | First fold (`1280×633` & `390×757`) | Page title (`Can my study find it?`), 1-line subtitle, dominant **3D Tissue Slabs** canvas, interactive design sliders, primary button, and immediate **Power %** + **Identification %** answer. |
-| 0:25–1:45 | Tissue distortion & CPU-vs-GPU race | Dragging `Regions per patient` draws up to `k` regions per patient without replacement (capped at each patient's available regions) and places one `Field of view` square crop per sampled region, dimming excluded cells outside the crop; raising `Mis-call rate` recolors cells across tumour/immune/stroma. Clicking **"Can my study find it?"** compares the **all-core CPU baseline vs. measured GPU backend** (both sharing identical per-region `region_kernel` sampling; neutral measured timing with `UNMEASURED` placeholder when `bench` has not run, distinct from the illustrative tile reveal), lighting found (`#2BD4A4`) vs missed (`#243040`) tiles. |
+| 0:25–1:45 | Tissue distortion & CPU-vs-GPU race | Dragging `Regions per patient` draws up to `k` regions per patient without replacement (capped at each patient's available regions) and places one `Field of view` square crop per sampled region (FOV capped at the cohort's region size — Charville ~650 µm, UPMC ~1000 µm — plus full core), dimming excluded cells outside the crop; raising `Mis-call rate` recolors cells across tumour/immune/stroma. Clicking **"Can my study find it?"** compares **CPU (all cores, Numba) vs. GPU (batched studies)** (both sharing identical per-region `region_kernel` sampling; neutral measured timing with `UNMEASURED` placeholder when `bench` has not run, distinct from the illustrative tile reveal), lighting found (`#2BD4A4`) vs missed (`#243040`) tiles. |
 | 1:45–3:00 | Design Atlas curve | **One chart**: `Power against patients`, plotting one curve per `Regions per patient` setting present in the saved `grid.json` at the active `Field of view`, `Mis-call rate`, and fixed planted-effect scenario, with `"our cohort"` (Charville, `P = 159`, `38` events) marked in `#2BD4A4`. |
 
 ### Hierarchy, Motion, and What Is Cut
@@ -50,7 +50,7 @@ flowchart LR
 |---|---|---|
 | Top bar (`48px`) | Plain text wordmark `Preflight` (left), `Team Dry Lab` + data provenance tag (`SYNTHETIC` / `MEASURED`) (right) | Inspect provenance cleanly |
 | Hero & Stage (First Fold) | Page `h1` (`Can my study find it?`), 1-line subtitle, dominant 3D tissue canvas (`#tissue`), legend (`Tumour`, `Stroma`, `Immune`, `Field of view`), design controls (`Patients`, `Regions per patient`, `Field of view`, `Mis-call rate`), primary CTA (`Can my study find it?`), answer (`Power %` + `Identification %`) | Drag/rotate 3D slabs, pause spin, tune 4 sliders, trigger replay |
-| Study Race | Side-by-side 2D study-tile grids: `CPU (all-core baseline)` vs `GPU (measured backend)`, tile counts, neutral measured seconds (or `UNMEASURED` placeholder) | Compare sequential/CPU baseline vs measured GPU runtime |
+| Study Race | Side-by-side 2D study-tile grids: `CPU (all cores, Numba)` vs `GPU (batched studies)`, tile counts, neutral measured seconds (or `UNMEASURED` placeholder) | Compare fair all-core CPU vs batched GPU runtime |
 | Design Atlas Chart | Single SVG chart: `Power vs. Patients` (curves for the `Regions per patient` settings saved in `grid.json`), vertical/dot markers for current design, planted scenario caption, and `"our cohort"` | See whether adding regions beats adding patients |
 
 ---
@@ -113,6 +113,6 @@ flowchart LR
 | Primary CTA | `Can my study find it?` |
 | Axis 1 / 2 / 3 / 4 | `Patients`, `Regions per patient`, `Field of view`, `Mis-call rate` |
 | Cell classes | `Tumour`, `Stroma`, `Immune` |
-| Outcome metrics | `Power` (`share of studies at the active design & fixed planted scenario where maxT rejects at the unconditional threshold`), `Identification rate` (`top-ranked feature matches the planted motif; state numerator/denominator — across all studies or conditional on rejection — explicitly from grid.json`) |
+| Outcome metrics | `Power` (`share of all studies at the active design & fixed planted scenario where maxT rejects at the unconditional threshold`), `Identification rate` (`share of all studies where the top-ranked feature matches the planted motif`, stating `"of all studies"` explicitly as denominator) |
 | Provenance tags | `SYNTHETIC` / `MEASURED` / `UNMEASURED` (never omit; never overclaim) |
 | Cohort marker | `Our cohort` (Charville: `159 patients · 38 events`, `explored already-seen`) |
