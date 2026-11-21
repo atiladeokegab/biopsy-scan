@@ -1,6 +1,5 @@
 {
- "label": "SIMULATED",
- "label_note": "null data: the SYNTHETIC hard-negative fixture, no candidate effect given C",
+ "label": "SYNTHETIC",
  "fixture": "n=120, 2 strata, C=[binary, normal], 20 candidates correlated with C, Weibull hazard on C, censoring on C, no candidate effect given C",
  "alpha": 0.05,
  "B": 99,
@@ -13,7 +12,36 @@
    "clopper_pearson_95": [
     0.04609503542248433,
     0.07656049040393477
-   ],
+   ]
+  },
+  "raw_residual_shuffle": {
+   "rejections": 1,
+   "rate": 0.001,
+   "clopper_pearson_95": [
+    2.5317487491294065e-05,
+    0.005558924279826672
+   ]
+  },
+  "unadjusted": {
+   "rejections": 997,
+   "rate": 0.997,
+   "clopper_pearson_95": [
+    0.9912579767615217,
+    0.9993809000683505
+   ]
+  }
+ },
+ "annotations_added_by": {
+  "who": "build-10, after the run; stats.hard_negative.run() does not emit anything below",
+  "fields_added": [
+   "annotations",
+   "supersedes",
+   "provenance"
+  ],
+  "method": "Wilson 95% computed from the exact rejection counts and n_datasets (z=1.959964); contains_alpha checks alpha=0.05 against each interval. No producer field was changed."
+ },
+ "annotations": {
+  "bootstrap": {
    "wilson_95": [
     0.04689647267593196,
     0.07647107479135655
@@ -24,12 +52,6 @@
    }
   },
   "raw_residual_shuffle": {
-   "rejections": 1,
-   "rate": 0.001,
-   "clopper_pearson_95": [
-    2.5317487491294065e-05,
-    0.005558924279826672
-   ],
    "wilson_95": [
     0.00017654637062607809,
     0.0056425585979579355
@@ -40,12 +62,6 @@
    }
   },
   "unadjusted": {
-   "rejections": 997,
-   "rate": 0.997,
-   "clopper_pearson_95": [
-    0.9912579767615217,
-    0.9993809000683505
-   ],
    "wilson_95": [
     0.9912169859464968,
     0.9989792161188613
@@ -56,10 +72,9 @@
    }
   }
  },
- "fixture_label": "SYNTHETIC",
  "supersedes": "stats/results/hard-negative.json (51/1000, old interleaved RNG stream and information floor), now historical",
  "provenance": {
-  "command": "uv run --frozen python -m stats.hard_negative 1000 (stdout unchanged, plus wilson_95 and contains_alpha added after)",
+  "command": "uv run --frozen python -m stats.hard_negative 1000; every field above annotations_added_by is its stdout verbatim",
   "code": "integration f458ad17d7b2880d5fa78715bdc40ad9a723b363 (contains #80 merge 32a69fa: per-resample RNG streams, new information floor), tracked files via git archive",
   "machine": "Modal CPU container, 8 reserved cores (nproc 24), Python 3.11.12, CPU model not exposed",
   "wall_s": 136.4,
