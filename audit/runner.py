@@ -241,21 +241,28 @@ def run_cohort_audit(
             "note": "Provisional tuple matching; never used for patient-level inference.",
         }
 
-    excluded_summary = (
-        "120 NA-labelled regions excluded from verified case-number cohort."
-        if cohort == "upmc"
-        else "Excluded cases: 24135, 24136 (no survival dates) and 24180 (spans coverslips c002 and c003)."
-    )
-    strata_note = (
-        "Coverslip groups 0=c001-c003, 1=c004-c007 (7 / 43 patients; no verified case crosses group boundary). "
-        "UPMC has 10 events on verified cases and is descriptive only."
-        if cohort == "upmc"
-        else "Coverslip strata c001-c004 mapped to 0-3 (patient-level cohort; 38 events)."
-    )
+    if cohort == "upmc":  # counted from what was loaded: the discovery side of the locked split
+        n0, n1 = np.bincount(strata, minlength=2)[:2]
+        n_excluded = (
+            f"{len(core.load_regions('upmc', identity='tuple', **kwargs)) - len(cells['region_names'])} "
+            if core.load_regions is not None else ""
+        )
+        excluded_summary = (
+            f"{n_excluded}discovery-side regions without a verified case number excluded; "
+            "the locked held-out regions are never loaded."
+        )
+        strata_note = (
+            f"Coverslip groups 0=c001-c003, 1=c004-c007 ({n0} / {n1} patients; no verified case crosses group "
+            f"boundary). UPMC has {int(np.sum(event))} events on verified discovery-side cases and is descriptive only."
+        )
+    else:
+        excluded_summary = "Excluded cases: 24135, 24136 (no survival dates) and 24180 (spans coverslips c002 and c003)."
+        strata_note = "Coverslip strata c001-c004 mapped to 0-3 (patient-level cohort; 38 events)."
 
     result = {
         "schema_version": AUDIT_SCHEMA_VERSION,
         "cohort": cohort,
+        "split": "discovery",  # core.load's default; this audit never reads the locked held-out patients
         "exploratory": True,
         "already_seen": True,
         "already_seen_disclosure": ALREADY_SEEN_DISCLOSURE,
