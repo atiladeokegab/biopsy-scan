@@ -3,7 +3,7 @@
 import numpy as np
 
 
-def run(design, seeds):
+def run(design, seeds, *, devices=None):
     """Stack seeded patient-feature matrices using the core's exact sampling order."""
     from core import reimage_ref
 
@@ -13,6 +13,13 @@ def run(design, seeds):
     if "cells" not in design:
         raise ValueError("design must provide cells")
     backend = design.get("backend", "numpy")
+    if devices is not None:
+        if isinstance(devices, (bool, np.bool_)) or not isinstance(devices, (int, np.integer)) or devices < 1:
+            raise ValueError("devices must be a positive integer")
+        if int(devices) != 1:
+            from . import fleet
+
+            return fleet.run_sharded(design, seeds, devices=int(devices))
     if backend == "numpy":
         kernel = reimage_ref.reimage_region
     elif backend in ("cpu", "gpu"):

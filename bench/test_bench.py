@@ -3,7 +3,7 @@ import json
 
 import numpy as np
 
-from bench import chart, ladder
+from bench import chart, fleet, ladder
 
 
 def test_tiny_run_writes_json_and_chart(tmp_path):
@@ -41,3 +41,28 @@ def test_cuda_simulator_never_yields_a_gpu_rung(monkeypatch):
     monkeypatch.setenv("NUMBA_ENABLE_CUDASIM", "1")
     gpu = ladder.rungs()["gpu"]
     assert isinstance(gpu, str) and "simulator" in gpu
+
+
+def test_ladder_devices_flag_records_request_and_never_fakes_gpu(tmp_path):
+    path = ladder.main(["--out", str(tmp_path), "--trials", "2", "--cells", "200", "--devices", "2"])
+    res = json.loads(path.read_text())
+    assert res["devices_requested"] == 2
+    gpu = res["rungs"]["gpu"]
+    assert isinstance(gpu, dict) or gpu.startswith("pending")
+
+
+def test_fleet_reports_1_2_4_8_measured_or_unmeasured_without_guessing(tmp_path, monkeypatch):
+    path = fleet.main(["--out", str(tmp_path), "--trials", "2", "--cells", "200"])
+    res = json.loads(path.read_text())
+    rows = res["fleet"]
+    assert [r["devices"] for r in rows] == [1, 2, 4, 8]
+    for r in rows:
+        assert r["status"] in {"MEASURED", "UNMEASURED"}
+        if r["status"] == "UNMEASURED":
+            assert r["studies_per_s"] is None and r["reason"]
+        else:
+            assert isinstance(r["studies_per_s"], float) and r["studies_per_s"] > 0
+
+    monkeypatch.setenv("NUMBA_ENABLE_CUDASIM", "1")
+    sim_res = fleet.run_fleet(studies=2, cells=200)
+    assert all(r["status"] == "UNMEASURED" and "simulator" in r["reason"].lower() for r in sim_res["fleet"])
