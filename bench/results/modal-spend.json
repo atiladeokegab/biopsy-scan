@@ -199,6 +199,21 @@
         "est_usd": 0.016,
         "basis": "each container x local wall (an upper bound: includes image build and queueing)"
       }
+    },
+    {
+      "utc": "2026-11-21T20:10Z",
+      "run": "modal-scaling 1000 null studies, cores [1, 2, 4, 8, 16, 32, 64]",
+      "containers": 7,
+      "est_usd": 2.59,
+      "source_commit": "2207648fb9c7932d6928c42d2ca93f2f91fcc7fb",
+      "basis": "ceiling: each container's timeout x (cores x $0.0000131 + GiB x $0.00000222) per s; task cap $5.0, $0.05 spent before",
+      "running_total_usd": 36.27,
+      "actual": {
+        "modal_wall_s": 1306.2,
+        "result": "bench/results/modal-scaling-20261121T201008Z.json",
+        "est_usd": 3.008,
+        "basis": "each container x local wall (an upper bound: includes image build and queueing)"
+      }
     }
   ],
   "container_usd_per_hour_H100": 4.58,
