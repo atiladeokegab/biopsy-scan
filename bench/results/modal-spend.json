@@ -167,7 +167,7 @@
         "modal_wall_s": 90.1,
         "result": "bench/results/modal-scaling-20261121T200238Z.json",
         "est_usd": 0.017,
-        "basis": "each container x local wall (an upper bound: includes image build and queueing)"
+        "basis": "single-attempt estimate at list price: each container x local wall (includes image build and queueing); invoice not verified"
       }
     },
     {
@@ -182,7 +182,7 @@
         "modal_wall_s": 77.2,
         "result": "bench/results/modal-scaling-20261121T200516Z.json",
         "est_usd": 0.015,
-        "basis": "each container x local wall (an upper bound: includes image build and queueing)"
+        "basis": "single-attempt estimate at list price: each container x local wall (includes image build and queueing); invoice not verified"
       }
     },
     {
@@ -197,7 +197,7 @@
         "modal_wall_s": 85.1,
         "result": "bench/results/modal-scaling-20261121T200810Z.json",
         "est_usd": 0.016,
-        "basis": "each container x local wall (an upper bound: includes image build and queueing)"
+        "basis": "single-attempt estimate at list price: each container x local wall (includes image build and queueing); invoice not verified"
       }
     },
     {
@@ -212,7 +212,7 @@
         "modal_wall_s": 1306.2,
         "result": "bench/results/modal-scaling-20261121T201008Z.json",
         "est_usd": 3.008,
-        "basis": "each container x local wall (an upper bound: includes image build and queueing)"
+        "basis": "single-attempt estimate at list price: each container x local wall (includes image build and queueing); invoice not verified"
       },
       "note": "single-attempt estimates at list price, not billing ceilings (est_usd: each container once to its timeout; actual: containers x local wall); one container was preempted and restarted by Modal; invoice not verified"
     }
