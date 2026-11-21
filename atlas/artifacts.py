@@ -188,7 +188,9 @@ def comparison_charts(summaries, out_dir, *, cohort):
             ax.errorbar(x + j * 0.12, y, yerr=[y - lo, hi - y], fmt="o", capsize=3, label=label)
         checked = checked.drop_duplicates("design_id")
         ax.set_xticks(np.arange(len(checked)))
-        ax.set_xticklabels([f"{r.patients}/{r.regions_per_patient}/{r.fov_um}/{r.eps}" for r in checked.itertuples()], rotation=30, ha="right", fontsize=8)
+        ax.set_xticklabels([f"{r.patients}/{r.regions_per_patient}/"
+                            f"{'full' if pd.isna(r.fov_um) else f'{r.fov_um:g}'}/{r.eps}"
+                            for r in checked.itertuples()], rotation=30, ha="right", fontsize=8)
         ax.axhline(0, color="0.4", linestyle="--")
         ax.set(title=stage.title(), xlabel="Patients / regions / FOV / mis-call", ylabel="Paired rejection-rate difference")
         ax.grid(axis="y", alpha=0.2)
