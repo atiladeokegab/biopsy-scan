@@ -6,8 +6,9 @@ install:
 test:
 	uv run pytest -q
 
-# The event smoke: offline, tiny invented fixture, no real data.
+# The event smoke: offline, tiny invented fixture, no real data. Plus the demo's race regression (Node).
 smoke: install test
+	node demo/race.test.mjs
 
 data:
 	./scripts/fetch_data.sh
