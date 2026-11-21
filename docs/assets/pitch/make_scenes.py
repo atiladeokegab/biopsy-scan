@@ -87,7 +87,7 @@ canvas {{ width: 832px; height: 624px; background: var(--canvas); border: 1px so
 .panel .id {{ font-size: 15px; color: var(--muted); font-family: "JetBrains Mono", monospace; }}
 </style>
 <h1>Two real patients. Same HPV status.</h1>
-<div class="key"><span><i style="background:var(--tumour)"></i>Tumour</span><span><i style="background:var(--stroma)"></i>Stroma</span>
+<div class="key"><span><i style="background:var(--tumour)"></i>Tumour</span><span><i style="background:var(--stroma)"></i>Stroma and other</span>
 <span><i style="background:var(--immune)"></i>Immune</span><span class="sub">One {W:,} × {H} µm field per patient, every cell, coloured by type</span></div>
 <div class="row" id="row"></div>
 <div class="foot"><span>UPMC head and neck cohort, CODEX (Wu et al., Zenodo 13179600, CC-BY-4.0) · captions are label fields only</span><span>MEASURED tissue</span></div>
@@ -124,10 +124,10 @@ def wall(expert: bool) -> str:
     n2 = sum(len(b["on"]) for b in blocks if b["v"] == 2)
     assert (n1, n2) == (630, 3150)
     n_on = sum(map(sum, (b["on"] for b in blocks)))
-    assert not expert or n_on == 18
-    title = (f"What one expert study tested: {n_on} of {n1 + n2:,}" if expert
+    assert not expert or n_on == 18 == 6 * 3
+    title = ("What one expert study compared: 6 × 3 signatures" if expert
              else f"{n1 + n2:,} patterns in every study")
-    sub = ("Helsinki study: 6 tumour × 3 stroma signatures (Punovuori et al., Cell 2024)" if expert
+    sub = (f"Helsinki study: 6 epithelial × 3 stromal signatures (Punovuori et al., Cell 2024). Ours: all {n1 + n2:,} patterns" if expert
            else "Every tumour type × every neighbour type × three distances, by neighbour mix, protein and size")
     return f"""<!doctype html><meta charset="utf-8"><style>{CSS}
 .wall {{ display: grid; grid-template-columns: repeat(6, auto); gap: 24px 0; justify-content: space-between; }}
@@ -138,10 +138,12 @@ def wall(expert: bool) -> str:
 .v1 .g i {{ background: #3A4B5E; }}
 .dim .g i {{ opacity: .35; }}
 .g i.on {{ background: var(--accent); opacity: 1; }}
+.note {{ font-family: "JetBrains Mono", monospace; font-size: 18px; color: var(--accent); margin-top: -14px; }}
 </style>
 <h1>{title}</h1><p class="sub">{sub}</p>
+{'<p class="note">Illustrative: the 18 lit tiles show the count only, not our features</p>' if expert else ''}
 <div class="wall {'dim' if expert else ''}" id="w"></div>
-<div class="foot"><span>Charville cohort · v1 neighbour mix {n1} · v2 protein and size {n2:,} (PR #47) · one tile = one feature</span><span>7 tumour types × 15 neighbour types × 3 radii per family</span></div>
+<div class="foot"><span>Charville cohort · v1 neighbour mix {n1} · v2 protein and size {n2:,} (PR #47) · one tile = one feature</span><span>ANALYTIC · 7 tumour types × 15 neighbour types × 3 radii per family</span></div>
 <script>
 for (const b of {json.dumps(blocks)}) {{
   const el = document.createElement("div"); el.className = "b v" + b.v;
