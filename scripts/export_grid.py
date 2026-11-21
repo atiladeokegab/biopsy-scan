@@ -23,6 +23,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))  # python -I drops the cwd
 
+import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
 NAMES = {"charville": "Charville", "upmc": "UPMC"}
@@ -77,6 +78,10 @@ def _missing(v):
 
 def _int(v, what, lo=1):
     """A finite whole number >= lo, as int; anything else is an error (no silent casting of NaN or 2.5)."""
+    if isinstance(v, (int, np.integer)) and not isinstance(v, bool):  # exact: float() would round past 2**53
+        if v < lo:
+            raise ValueError(f"{what}={v!r}: need a whole number >= {lo}")
+        return int(v)
     try:
         f = float(v)
     except (TypeError, ValueError):
@@ -136,10 +141,10 @@ def _one_bank_per_imaging_design(points):
         if len(ids) != 1:
             raise ValueError(f"imaging design (regions, fov_um, miscall)={design} has {len(ids)} banks across "
                              "patient counts; it needs one")
-    for k in ("bank_key", "bank_hash"):
-        seen = [next(iter(ids))[BANK.index(k)] for ids in banks.values()]
-        if len(set(seen)) != len(seen):
-            raise ValueError(f"two imaging designs share bank {k}; each design has its own bank")
+    # #45 keys a bank by its imaging descriptor, so a key is unique per design; content hashes may coincide
+    keys = [next(iter(ids))[0] for ids in banks.values()]
+    if len(set(keys)) != len(keys):
+        raise ValueError("two imaging designs share bank bank_key; each design has its own bank")
 
 
 def input_split(df: pd.DataFrame) -> str:
