@@ -162,7 +162,9 @@ def test_charvilles_top_hit_is_not_testable_on_upmc_never_a_failed_replication(c
     assert (r["status"], r["reason"]) == ("NOT TESTABLE", "not testable on UPMC: marker absent (PD1)")
     assert rs.upmc_marker_check(RULE["feature"]) is None and rs.upmc_marker_check("Tumor|Macrophage|50um|CD68") is None
     assert cli["run"]("--events", "4", "--out", str(cli["dir"] / "r.json")) == 0
-    assert json.loads((cli["dir"] / "r.json").read_text())["charville_top_hit"] == r
+    hit = json.loads((cli["dir"] / "r.json").read_text())["charville_top_hit"]
+    assert hit == {**r, **rs.CHARVILLE_TOP_HIT_SOURCE}
+    assert hit["source_pr"] == 47 and hit["statistic"].startswith("maxT") and hit["source_result"].endswith(".json")
 
 
 def test_the_cli_refuses_without_the_flag_or_the_approved_events(cli):
