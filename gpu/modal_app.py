@@ -598,6 +598,8 @@ def run_gpu_vs(studies: int = 1000, blocks: int = 4, gpus: str = "A100-40GB,H100
 
     _launch()
     names = [_check_gpu(g) for g in gpus.split(",")]
+    if not 1 <= blocks <= studies:
+        raise SystemExit(f"--blocks must be 1..--studies ({studies}): no block may get zero studies")
     print("volume:", fetch_data.remote())
     hours = sum(blocks * 120 + studies * 1.2 for _ in names) / 3600  # ~2 min start-up per block, ~1.2 s/study
     _spend(f"GPU comparison {'/'.join(names)}, {studies} studies", hours * max(map(_gpu_rate, names)),

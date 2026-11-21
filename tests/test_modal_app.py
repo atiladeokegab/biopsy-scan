@@ -246,3 +246,14 @@ def test_bad_fleet_sizes_stop_before_any_launch(modal_app, monkeypatch, containe
 
 def test_good_fleet_sizes_are_sorted_and_include_one(modal_app):
     assert modal_app._fleet_sizes(4, 16, "8, 2,16") == [1, 2, 4, 8, 16]
+
+
+@pytest.mark.parametrize("studies,blocks", [(1000, 0), (2, 4), (1000, -1)])
+def test_bad_gpu_vs_blocks_stop_before_any_launch(modal_app, monkeypatch, studies, blocks):
+    def launched(*a):
+        raise AssertionError("a Modal call or spend entry ran before --blocks was validated")
+
+    monkeypatch.setattr(modal_app, "fetch_data", type("F", (), {"remote": staticmethod(launched)}))
+    monkeypatch.setattr(modal_app, "_spend", launched)
+    with pytest.raises(SystemExit):
+        modal_app.run_gpu_vs(studies=studies, blocks=blocks, gpus="A100-40GB,H100")
