@@ -2,9 +2,9 @@
 
 # Preflight
 
-**Preflight tells a lab, before it images a single slide, whether its study can find the pattern that decides a patient's treatment.**
+**Find the tissue patterns that decide a cancer patient's treatment, prove they are not luck, and check they still work as a test a hospital can run.**
 
-It re-images thousands of simulated studies cell by cell from real cancer tissue (CODEX), and it is being rebuilt so the whole search runs on GPUs.
+Decode searches every spatial pattern in multiplex tissue (3,780 today) with an honest correction for multiple testing. Translate asks whether a pattern survives one or two routine stains and real-world imaging error, by re-imaging thousands of simulated studies cell by cell from real tissue (CODEX). That simulation is what runs on the GPU.
 
 ![The Preflight demo page, with real Charville tissue cores side by side in 3D](docs/assets/demo-1280.png)
 
