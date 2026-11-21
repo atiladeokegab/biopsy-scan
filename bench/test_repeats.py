@@ -39,10 +39,20 @@ def test_a_clean_single_arm_run_is_accepted_and_checked_against_the_prior(tmp_pa
     prior["arms"]["lab"]["studies"][0]["p"] = 0.5
     prior["arms"]["numba"]["studies"][0]["x_sha"] = "y"
     assert rp.extract(p, "lab", prior)["parity_vs_prior"]["all"] is False
-    one["clean_tree"] = False
+    got = rp.extract(p, "lab", prior)
+    assert got["runner_status"] == "FAILED" and got["runner_status_note"] == "FAILED: single-arm, no in-run parity"
+
+
+@pytest.mark.parametrize("spoil", [{"clean_tree": False}, {"errors": {"lab": "RuntimeError()"}},
+                                   {"same_container_class": False}, {"parity": {"all": False, "reason": "an arm failed"}}])
+def test_a_repeat_with_a_dirty_tree_errors_or_a_real_parity_failure_is_rejected(tmp_path, spoil):
+    one = raw("lab", 200.0, 200, status="FAILED")
+    one.update(parity={"all": False, "this_run": "one arm"}, clean_tree=True, errors={}, same_container_class=True)
+    one.update(spoil)
+    p = tmp_path / "a.json"
     p.write_text(json.dumps(one))
-    with pytest.raises(ValueError):
-        rp.extract(p, "lab", prior)
+    with pytest.raises(ValueError, match="need MEASURED or a clean single-arm run"):
+        rp.extract(p, "lab")
 
 
 def test_summary_is_median_and_range_and_the_ratio_range_is_the_extreme_pairs():
@@ -62,12 +72,13 @@ def test_the_committed_summary_matches_its_raw_repeats():
     r = json.loads(found[-1].read_text())
     assert r["summary"] == rp.summarize(r["repeats"])
     assert all(len(v) == 3 for v in r["repeats"].values())
-    assert r["status"] == "MEASURED" and all(x["parity_vs_prior"]["all"] for v in r["repeats"].values() for x in v)
+    assert r["status"] == rp.STATUS and all(x["parity_vs_prior"]["all"] for v in r["repeats"].values() for x in v)
     raw_dir = Path(__file__).parent / "results" / "repeats-raw"
     for arm, reps in r["repeats"].items():  # every stored repeat is exactly what its committed raw file says
         for x in reps:
             again = rp.extract(raw_dir / x["file"], "fused" if arm == rp.PREVIOUS else arm)
             assert {k: v for k, v in x.items() if k != "parity_vs_prior"} == again
+            assert x["parity_vs_prior"]["against"] == r["parity"]["prior"]["file"]
     for arm, reps in r["repeats"].items():
         for x in reps:
             assert x["wall_per_study_s"] == pytest.approx(x["studies_wall_s"] / x["evaluated_studies"])

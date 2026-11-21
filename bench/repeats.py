@@ -21,6 +21,7 @@ HARNESS = {"pr": 120, "branch": "reimage-fast-b9", "commit": "0b27ea1f79db7d45a7
            "runner": "bench/modal_design.py (unchanged, run from a detached checkout)"}
 # 0b27ea1 is the head that merges (fused crop fix) and is what the published ratio uses; a29f1b7's fused runs sit beside it.
 PREVIOUS = "fused_a29f1b7"
+STATUS = "MEASURED timing; parity checked against #113's four-arm run, not within the run"
 
 
 ONE_ARM = {"all": False, "this_run": "one arm"}  # the runner's parity for a single-arm run without --compare-with
@@ -63,12 +64,14 @@ def extract(path, arm: str, prior: dict | None = None) -> dict:
     a = r["arms"][arm]
     st = a["stages"]
     out = {"file": Path(path).name, "file_sha256": hashlib.sha256(data).hexdigest(), "source_commit": r["source_commit"],
-           "runner_status": r["status"], "workers": a["workers"], "evaluated_studies": st["evaluated_studies"],
+           "runner_status": r["status"], "runner_parity": r.get("parity"),
+           "runner_status_note": "MEASURED" if r["status"] == "MEASURED" else "FAILED: single-arm, no in-run parity",
+           "workers": a["workers"], "evaluated_studies": st["evaluated_studies"],
            "studies_wall_s": st["studies_wall_s"], "compute_wall_s": st["compute_wall_s"],
            "wall_per_study_s": st["wall_per_study_s"], "end_to_end_in_container_s": st["end_to_end_in_container_s"],
            "warm_s": a["warm_s"], "host": a["host"], "modal": r["modal"]}
     if prior is not None:
-        out["parity_vs_prior"] = parity_vs_prior(a["studies"], arm, prior)
+        out["parity_vs_prior"] = {"against": prior.get("_file", "prior"), **parity_vs_prior(a["studies"], arm, prior)}
     return out
 
 
@@ -98,6 +101,7 @@ def main(argv=None):
         raise FileExistsError(f"preserving existing evidence: {out}")
     prior_bytes = Path(a.prior).read_bytes()
     prior = json.loads(prior_bytes)
+    prior["_file"] = Path(a.prior).name
     if prior["status"] != "MEASURED":
         raise ValueError("--prior must be MEASURED")
     repeats = {"lab": [extract(p, "lab", prior) for p in a.lab], "fused": [extract(p, "fused", prior) for p in a.fused]}
@@ -110,7 +114,8 @@ def main(argv=None):
     s = summarize(repeats)
     spend = json.loads(Path(a.spend).read_text())
     doc = {
-        "status": "MEASURED" if all(x["parity_vs_prior"]["all"] for v in repeats.values() for x in v) else "FAILED",
+        "status": (STATUS if all(x["parity_vs_prior"]["all"] for v in repeats.values() for x in v)
+                   else "FAILED: a repeat failed the external parity check"),
         "labels": {"compute": "MEASURED", "outcomes": "SYNTHETIC (atlas/simulation.py at 79a7792)"},
         "harness": HARNESS,
         "parity": {"prior": {"file": Path(a.prior).name, "sha256": hashlib.sha256(prior_bytes).hexdigest(),
