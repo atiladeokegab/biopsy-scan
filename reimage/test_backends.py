@@ -86,9 +86,9 @@ def test_gpu_selection_never_reports_cpu_fallback(region_case):
         gpu.reimage_counts(nbr, types, np.ones(len(types), dtype=bool), 3)
 
 
-@pytest.mark.parametrize("backend", ["numpy", "cpu", "gpu"])
+@pytest.mark.parametrize("backend", ["numpy", "cpu", "gpu", None])
 @pytest.mark.parametrize("patients,k,fov,eps", [(None, None, None, 0), ([1, 0, 1], 1, 40, 0.25)])
-def test_study_batch_matches_shared_draws(region_case, backend, patients, k, fov, eps):
+def test_study_batch_matches_shared_draws(region_case, backend, patients, k, fov, eps, monkeypatch):
     """Patient order, region cap, crop and mis-call draws are identical across backends."""
     if backend == "gpu" and not cuda.is_available():
         pytest.skip("no CUDA device; CUDA simulator is checked in a separate process")
@@ -103,6 +103,9 @@ def test_study_batch_matches_shared_draws(region_case, backend, patients, k, fov
     )
     design = dict(cells=cells, backend=backend, patients=patients, regions_per_patient=k,
                   fov_um=fov, eps=eps, seed=37)
+    if backend is None:
+        design.pop("backend")
+        monkeypatch.setattr(cpu, "prepare", lambda *_args: pytest.fail("default backend must be NumPy"))
     seeds = [37, 61]
     expected = np.stack([reimage_ref.reimage(cells, design, seed) for seed in seeds])
     actual = run(design, seeds)

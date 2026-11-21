@@ -12,7 +12,7 @@ def run(design, seeds):
         raise ValueError("seeds must be a nonempty one-dimensional sequence of nonnegative integers")
     if "cells" not in design:
         raise ValueError("design must provide cells")
-    backend = design.get("backend", "cpu")
+    backend = design.get("backend", "numpy")
     if backend == "numpy":
         kernel = reimage_ref.reimage_region
     elif backend in ("cpu", "gpu"):
