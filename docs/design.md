@@ -103,7 +103,7 @@ flowchart LR
 |---|---|---|---|---|
 | 3D Tissue (`#tissue`) | Renders `k` slabs, `FOV` boxes, mis-call tint | `"No cells loaded for this design."` | `"Preparing tissue slabs..."` | `"Cannot load tissue data. Serve over HTTP (python3 -m http.server 8000 -d demo) and reload."` |
 | CPU-vs-GPU Race | Lights `1,000` tiles; shows measured `CPU s -> GPU s` | `UNMEASURED`: shows tile simulation with `"Measured CPU/GPU timing pending bench run."` | Animates tiles left-to-right | `"Bench timing unavailable; grid power estimates still active."` |
-| Answer & Chart | Tabular-numeral Power `%` + Identification `%` + cohort curve | `"Select a design point to view power."` | `"Evaluating design..."` | `"Cannot read grid.json. Run python3 -I demo/check_grid.py and reload."` |
+| Answer & Chart | Tabular-numeral Power `%` + Identification `%` + cohort curve | `"Select a design point to view power."` | `"Evaluating design..."` | `"Cannot read grid.json. Run python3 -I demo/check_data.py and reload."` |
 
 ### Frozen Copy Glossary
 
