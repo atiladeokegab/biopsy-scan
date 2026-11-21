@@ -1,0 +1,159 @@
+{
+ "schema": "preflight-vs-schoenfeld/1",
+ "cohort": "charville",
+ "status": "ESTIMATE",
+ "verdict": "Mixed: the formula overstates at 6 and understates at 1 of 7 patient counts.",
+ "hr_per_sd": 2.0,
+ "alpha": 0.05,
+ "features_m": 630,
+ "bonferroni_alpha": 7.936507936507937e-05,
+ "event_fraction": 0.2389937106918239,
+ "events": 38,
+ "patients_source": 159,
+ "design": {
+  "regions_per_patient": 2,
+  "fov_um": 400.0,
+  "eps": 0.1,
+  "backend": "cpu"
+ },
+ "analytic": {
+  "label": "ANALYTIC (formula)",
+  "method": "Schoenfeld (1983) events formula, continuous covariate (Hsieh and Lavori 2000), D = patients x event fraction, two-sided, Bonferroni over m features; assumes the feature is measured exactly on the whole tissue"
+ },
+ "simulated": {
+  "label": "MEASURED (sim)",
+  "method": "model-based Monte Carlo (model-based Monte Carlo under the empirical verified source; no clinical claim)",
+  "budget": {
+   "calibration": 200,
+   "null": 100,
+   "alternative": 300,
+   "nested": 0,
+   "permutations": 999,
+   "batch": 8
+  },
+  "seed": 20261121,
+  "source_hash": "2ca08fb03ed2ecd51e552a5ab1bbe6caede58f54c07971ed35af08c10db4aa1b",
+  "grammar_hash": "772f6a845266470456af96f92d0573cc1bec72432ad74d789439baff066c2156",
+  "atlas_code": {
+   "branch": "5-study-atlas",
+   "base_commit": "ab0ae72",
+   "note": "frozen snapshot of Atlas's working tree taken 2026-11-21T12:56:20Z (runner/artifacts not yet pushed)",
+   "sha256_12": {
+    "atlas/__init__.py": "fc5b891418e4",
+    "atlas/__main__.py": "f4ad4e3ecb9b",
+    "atlas/artifacts.py": "1801872f7b87",
+    "atlas/runner.py": "c380b0abfeb2",
+    "atlas/simulation.py": "b922388d90ff",
+    "atlas/test_runner.py": "2137b05d4f8d",
+    "atlas/test_simulation.py": "f37574145a4d"
+   }
+  }
+ },
+ "points": [
+  {
+   "patients": 40,
+   "analytic_power": 0.03568009967731012,
+   "sim_power": 0.06333333333333334,
+   "sim_lo": 0.03855801982837607,
+   "sim_hi": 0.0971381966071201,
+   "sim_n": 300,
+   "sim_identification": 0.0033333333333333335,
+   "sim_mean_events": 9.656666666666666,
+   "sim_fwer": 0.04,
+   "sim_fwer_lo": 0.011004493986188198,
+   "sim_fwer_hi": 0.09925715671265992,
+   "formula_minus_sim": -0.02765323365602322,
+   "formula_outside_sim_interval": true
+  },
+  {
+   "patients": 80,
+   "analytic_power": 0.1799739029929721,
+   "sim_power": 0.09666666666666666,
+   "sim_lo": 0.06569857461558702,
+   "sim_hi": 0.135874909828131,
+   "sim_n": 300,
+   "sim_identification": 0.023333333333333334,
+   "sim_mean_events": 19.11,
+   "sim_fwer": 0.02,
+   "sim_fwer_lo": 0.0024313368239425423,
+   "sim_fwer_hi": 0.07038393247107011,
+   "formula_minus_sim": 0.08330723632630545,
+   "formula_outside_sim_interval": true
+  },
+  {
+   "patients": 120,
+   "analytic_power": 0.4073769223935919,
+   "sim_power": 0.18,
+   "sim_lo": 0.13821040458516728,
+   "sim_hi": 0.22823938614489622,
+   "sim_n": 300,
+   "sim_identification": 0.06666666666666667,
+   "sim_mean_events": 29.126666666666665,
+   "sim_fwer": 0.05,
+   "sim_fwer_lo": 0.016431879182052155,
+   "sim_fwer_hi": 0.11283491110546275,
+   "formula_minus_sim": 0.22737692239359192,
+   "formula_outside_sim_interval": true
+  },
+  {
+   "patients": 160,
+   "analytic_power": 0.6330538326025872,
+   "sim_power": 0.15,
+   "sim_lo": 0.1115625224301255,
+   "sim_hi": 0.19551644068402696,
+   "sim_n": 300,
+   "sim_identification": 0.07333333333333333,
+   "sim_mean_events": 38.32333333333333,
+   "sim_fwer": 0.07,
+   "sim_fwer_lo": 0.028605288907438704,
+   "sim_fwer_hi": 0.13891972845585732,
+   "formula_minus_sim": 0.48305383260258716,
+   "formula_outside_sim_interval": true
+  },
+  {
+   "patients": 200,
+   "analytic_power": 0.8011893244036327,
+   "sim_power": 0.27,
+   "sim_lo": 0.2205882653286876,
+   "sim_hi": 0.32401877317210587,
+   "sim_n": 300,
+   "sim_identification": 0.13333333333333333,
+   "sim_mean_events": 48.223333333333336,
+   "sim_fwer": 0.06,
+   "sim_fwer_lo": 0.022334886071316368,
+   "sim_fwer_hi": 0.12602993458082296,
+   "formula_minus_sim": 0.5311893244036326,
+   "formula_outside_sim_interval": true
+  },
+  {
+   "patients": 240,
+   "analytic_power": 0.9037583246121441,
+   "sim_power": 0.31,
+   "sim_lo": 0.2581057346337669,
+   "sim_hi": 0.3656939294152805,
+   "sim_n": 300,
+   "sim_identification": 0.2,
+   "sim_mean_events": 57.51,
+   "sim_fwer": 0.02,
+   "sim_fwer_lo": 0.0024313368239425423,
+   "sim_fwer_hi": 0.07038393247107011,
+   "formula_minus_sim": 0.5937583246121441,
+   "formula_outside_sim_interval": true
+  },
+  {
+   "patients": 300,
+   "analytic_power": 0.9727534641065244,
+   "sim_power": 0.41,
+   "sim_lo": 0.3538119678255766,
+   "sim_hi": 0.4679836990634417,
+   "sim_n": 300,
+   "sim_identification": 0.25666666666666665,
+   "sim_mean_events": 71.63333333333334,
+   "sim_fwer": 0.02,
+   "sim_fwer_lo": 0.0024313368239425423,
+   "sim_fwer_hi": 0.07038393247107011,
+   "formula_minus_sim": 0.5627534641065244,
+   "formula_outside_sim_interval": true
+  }
+ ]
+}
