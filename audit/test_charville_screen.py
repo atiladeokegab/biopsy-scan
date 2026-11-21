@@ -59,3 +59,7 @@ def test_committed_result_is_labelled_and_strict_json():
     assert r["status"] == "MEASURED" and r["inference"].startswith("exploratory")
     assert (r["n_patients"], r["n_events"], r["n_features_tested"]) == (159, 38, 3780)
     assert 0 < r["maxT"]["p"] <= 1 and r["n_perm"] >= 1
+    # A-18.1: it records C (declared zero-covariate), the coverslip strata, the null method and the top candidates
+    assert "clinical_covariates" in r and r["clinical_covariates"] is None and r["strata"] == "coverslip groups"
+    assert r["null"]["name"] and r["null"]["B"] == r["n_perm"] and 0 < r["maxT"]["statistic"]
+    assert r["top_candidates"] and all({"feature", "rank"} <= set(c) for c in r["top_candidates"])
