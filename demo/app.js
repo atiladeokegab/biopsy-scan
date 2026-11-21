@@ -2,7 +2,7 @@
 // then the power and honesty results (claims.json). Below: explore a design (grid.json, tissue.json, four sliders).
 // Every file is local, so a served checkout replays the committed results with no network (schemas in README.md).
 import { createTissue } from "./tissue.js";
-import { createSpeedRace, workflowHTML } from "./race.js";
+import { createSpeedRace, workflowHTML, pairRatio } from "./race.js";
 import { drawRegion, drawKM } from "./bio.js";
 import { drawChart, pct, fovLabel } from "./chart.js";
 
@@ -115,7 +115,9 @@ async function hero() {
       $("speed-dp").hidden = false;
       for (const g of d.interim) {
         const head = document.createElement("p"), lanes = document.createElement("div");
-        head.className = "sr-head"; head.textContent = g.title; head.title = g.unit;
+        head.className = "sr-head"; head.title = g.unit;
+        const ratio = pairRatio(g);
+        head.textContent = ratio ? `${g.title} · ${ratio}` : g.title;
         $("speed-interim").append(head, lanes);
         races.push(createSpeedRace(lanes, g, { reducedMotion }));
       }
@@ -140,7 +142,7 @@ async function hero() {
     }
     tagOf($("bio-tag"), biomarker.source);
     $("bio-cap").textContent = `Top of 3,780 patterns, z = ${biomarker.feature.z.toFixed(2)}. ${biomarker.note} ` +
-      "Not replicated in a second cohort.";
+      "Can't be tested in our second cohort: it has no PD1 stain.";
   }
 
   if (cl.status === "fulfilled") {

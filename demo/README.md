@@ -168,7 +168,7 @@ The KM split at the cohort median (`km.arms[].curve`, `n`, `events`, `p_value: n
 arm (the arm's median patient; columnar `cells`, `counts`). The page leads with the curves and the death counts,
 shows `km.label` ("exploratory, cutoff chosen on the same cohort, no p-value") beside them, and states each
 region's counts. `check_data.py` refuses a file without `exploratory: true`, with a p-value, or without "no
-p-value" in its label. PD1 is not replicated in a second cohort, and the page says so.
+p-value" in its label. The hit cannot be tested in our second cohort (UPMC has no PD1 stain), and the page says so; it never says "not replicated".
 
 ## How the page picks a grid point
 
