@@ -89,13 +89,24 @@
     "B": 999,
     "seed": 0
   },
-  "code_revision": "8145b03",
-  "wall_s": 62.331985337000006,
+  "code_revision": "d751361",
+  "wall_s": 49.45290782,
   "runner": {
     "where": "modal",
     "cpu": 8.0,
-    "modal_wall_s": 62.33995461463928,
+    "modal_wall_s": 49.45763182640076,
     "logical_cpus": 24,
-    "local_wall_s": 69.23282814025879
-  }
+    "local_wall_s": 55.55356574058533
+  },
+  "superseded_runs": [
+    {
+      "code_revision": "8145b03",
+      "r15_head": "4fa7790",
+      "modal_app": "ap-bLiCKX1j5e61cW3RZF9VlH",
+      "maxT_p": 0.278,
+      "top_feature": "Tumor 2 (Ki67 Proliferating)|CD4 T cell|100um|enrichment",
+      "top_z": 4.084449051400471
+    }
+  ],
+  "r15_head": "91d765e"
 }
