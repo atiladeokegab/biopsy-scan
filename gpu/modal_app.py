@@ -276,7 +276,7 @@ def screen_hook() -> dict:
     # Backend results and the device record live under separate keys: a backend named "gpu" must not be
     # overwritten by the device's metadata.
     backends = {}
-    for backend in ("numpy", "gpu", "cupy"):  # brief names "gpu"; the R-15 branch currently names it "cupy"
+    for backend in ("numpy", "gpu", "cupy"):  # #80 (32a69fa) names it "gpu"; "cupy" is an alias
         try:
             t0 = time.perf_counter()
             out = screen(X, t, ev, n_perm=999, backend=backend)
@@ -338,7 +338,7 @@ def ab_screen(reps: int = 3, n_perm: int = 999) -> dict:
             if key:
                 screens[key] = out
 
-        for key, backend in (("B_r15_screen_cpu", "numpy"), ("C_r15_screen_gpu", "cupy")):
+        for key, backend in (("B_r15_screen_cpu", "numpy"), ("C_r15_screen_gpu", "gpu")):
             run_screen(backend)  # warm-up: imports, BLAS and CUDA kernels; not timed
             parts[key] = partial(run_screen, backend, key)
     except (ImportError, RuntimeError) as e:  # RuntimeError: cupy or its device unavailable
