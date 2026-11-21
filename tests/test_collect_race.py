@@ -305,7 +305,7 @@ def test_interim_seconds_display_as_the_raw_file_rounds():
 
 def _fused_parity():
     """bench/design_batch.prior_parity's shape: X for every arm; maxT for the batched arms (not the lab's permutation)."""
-    maxT = {"maxT_max_rel_diff": 1.6e-15, "maxT_within_tol": True}
+    maxT = {"maxT_max_rel_diff": 1.6e-15, "maxT_within_tol": True, "maxT_compared": 3000}
     return {"all": True, "against_prior": {"fused": {"lab": {"x_bitwise": True, "x_compared": 2000}, "all": True,
                                                      **{a: {"x_bitwise": True, "x_compared": 3000, **maxT}
                                                         for a in ("numba", "gpu", "hybrid")}}}}
@@ -388,3 +388,19 @@ def test_the_fused_lane_binds_to_the_planned_studies_even_when_every_observed_co
         if isinstance(e, dict):
             e.update(x_compared=1, **({"maxT_compared": 1} if "maxT_within_tol" in e else {}))
     assert list(cr.rows_from(Path("modal-design.json"), five)) == []
+
+
+def test_maxT_coverage_is_inferred_from_X_only_for_the_legacy_064bd6e_file(capsys):
+    """Lead ruling on #120: a file without maxT_compared is refused unless it is the legacy 064bd6e result."""
+    five = _four()
+    five["arms"]["fused"] = {**five["arms"]["numba"], "source": "this run"}
+    five["parity"] = _fused_parity()
+    for a in ("numba", "gpu", "hybrid"):
+        del five["parity"]["against_prior"]["fused"][a]["maxT_compared"]
+    for commit in (None, "1234567890abcdef", "064bd6e"):  # absent, another commit, a bare prefix
+        five["source_commit"] = commit
+        assert list(cr.rows_from(Path("modal-design.json"), five)) == [], commit
+    five["source_commit"] = "064bd6e95f721c8be7747d4cfef5eb5bd4bbd79d"
+    capsys.readouterr()
+    assert "fused-cpu" in dict(cr.rows_from(Path("modal-design.json"), five))
+    assert "maxT coverage inferred from X coverage (legacy file, prior_parity at 064bd6e)" in capsys.readouterr().err
