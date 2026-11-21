@@ -146,8 +146,50 @@ def test_event_free_stratum_never_squares_uninformative_features():
         assert_allclose(value, 0, atol=0)
 
 
+def test_missing_features_use_complete_case_risk_sets_and_batch(tiny):
+    X, time, event, strata = tiny
+    X = np.column_stack([X, np.full(len(X), np.nan)])
+    X[0, 0], X[4, 1] = np.nan, np.nan
+    result = score(X, time, event, strata)
+    for j in range(2):
+        keep = np.isfinite(X[:, j])
+        expected = PHReg(time[keep], X[keep, j:j + 1], status=event[keep],
+                         strata=strata[keep], ties="breslow").score(np.zeros(1))
+        assert_allclose(result["U"][j], expected[0], atol=2e-15)
+        complete = score(X[keep, j:j + 1], time[keep], event[keep], strata[keep])
+        for key in result:
+            assert_allclose(result[key][j], complete[key][0])
+    for key in result:
+        assert result[key][-1] == 0
+        assert_allclose(score(np.stack([X, X]), time, event, strata)[key], [result[key], result[key]])
+
+
+def test_missing_feature_permutations_recompute_risk_sets():
+    X = np.array([[0, 3], [1, np.nan], [np.nan, 2], [4, 1]])
+    time, event, strata = np.array([1, 1, 2, 3]), np.array([1, 0, 1, 0]), np.zeros(4)
+    result = permutation_test(X, time, event, strata, exact=True)
+    expected = []
+    for order in permutations(range(4)):
+        t, e = time[list(order)], event[list(order)]
+        z = []
+        for j in range(2):
+            keep = np.isfinite(X[:, j])
+            x, t0, e0 = X[keep, j], t[keep], e[keep]
+            r = e0.astype(float)
+            U = 0.0
+            for value in np.unique(t0[e0 == 1]):
+                d, risk = (t0 == value) & (e0 == 1), t0 >= value
+                U += x[d].sum() - d.sum() * x[risk].mean()
+                r[risk] -= d.sum() / risk.sum()
+            V = np.sum((x - x.mean()) ** 2) * np.sum((r - r.mean()) ** 2) / (len(x) - 1)
+            z.append(U / np.sqrt(V) if V else 0)
+        expected.append(z)
+    assert_allclose(result["null_z"], expected, atol=2e-15)
+    assert result["p"] == pytest.approx(np.mean(maxT(expected) >= result["maxT"] - 1e-14))
+
+
 @pytest.mark.parametrize("field,value", [
-    ("X", [[np.nan]]), ("X", [[np.inf]]), ("X", []),
+    ("X", [[np.inf]]), ("X", []),
     ("time", [-1]), ("time", [np.nan]), ("time", [1, 2]),
     ("event", [2]), ("event", [np.nan]), ("strata", [np.nan]),
 ])

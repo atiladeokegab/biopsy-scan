@@ -17,8 +17,8 @@ def _inputs(X, time, event, strata):
     n = X.shape[-2]
     if time.shape != (n,) or event.shape != (n,) or strata.shape != (n,):
         raise ValueError("time, event and strata must each have shape [patients]")
-    if not np.isfinite(X).all() or not np.isfinite(time).all() or (time < 0).any():
-        raise ValueError("X and time must be finite; time must be nonnegative")
+    if np.isinf(X).any() or not np.isfinite(time).all() or (time < 0).any():
+        raise ValueError("X must not contain infinity; time must be finite and nonnegative")
     if not np.isin(event, [0, 1]).all():
         raise ValueError("event must contain only 0 or 1")
     if strata.dtype.kind not in "biufUS" or (strata.dtype.kind in "f" and not np.isfinite(strata).all()):
@@ -65,10 +65,32 @@ def score(X, time, event, strata):
     score at beta=0 with Breslow ties. V=sum_s Sxx_s*Srr_s/(n_s-1) is its exact
     within-stratum permutation variance, not Cox information. A feature with no
     permutation variance has U=V=z=0. Event-free and singleton strata contribute 0.
+    NaN features use featurewise complete cases: risk sets and V are recomputed
+    on that feature's finite patients. An entirely missing feature contributes 0.
+    Missing endpoints must be removed with the same patient mask before calling.
     """
     X, time, event, groups = _inputs(X, time, event, strata)
-    result, _ = _score(X, _residuals(time, event, groups), groups)
-    return result
+    return _complete_cases(X, time, event, groups)
+
+
+def _complete_cases(X, time, event, groups):
+    if not np.isnan(X).any():
+        return _score(X, _residuals(time, event, groups), groups)[0]
+    studies = X[None] if X.ndim == 2 else X
+    result = {key: np.zeros((len(studies), X.shape[-1])) for key in ("U", "V", "z")}
+    for s, study in enumerate(studies):
+        masks, inverse = np.unique(np.isfinite(study).T, axis=0, return_inverse=True)
+        for i, keep in enumerate(masks):
+            if not keep.any():
+                continue
+            columns = np.flatnonzero(inverse == i)
+            mapping = np.cumsum(keep) - 1
+            subset = [mapping[ix[keep[ix]]] for ix in groups if keep[ix].any()]
+            r = _residuals(time[keep], event[keep], subset)
+            values, _ = _score(study[np.ix_(keep, columns)], r, subset)
+            for key, target in result.items():
+                target[s, columns] = values[key]
+    return {key: value[0] if X.ndim == 2 else value for key, value in result.items()}
 
 
 def _z_array(z):
@@ -157,8 +179,11 @@ def omnibus(z, null_z):
 def permutation_test(X, time, event, strata, *, n_resamples=9999, seed=0, exact=False, max_exact=100000):
     """Conditional single-step maxT and joint omnibus for one study.
 
-    Shuffle outcome-pair residuals within strata, with one shared shuffle for all
-    columns. Exact mode enumerates every index permutation (including identity)
+    Shuffle outcome pairs within strata, with one shared shuffle for all columns.
+    Fully observed features use the equivalent residual shuffle. With NaN feature
+    values, recompute risk sets and V on each feature's complete cases after every
+    shuffle; missingness must be jointly exchangeable with outcomes under the null.
+    Exact mode enumerates every index permutation (including identity)
     with equal weight and refuses more than max_exact combinations. Monte Carlo
     mode uses the observed row plus n_resamples draws and the +1 tail rule.
     """
@@ -166,7 +191,11 @@ def permutation_test(X, time, event, strata, *, n_resamples=9999, seed=0, exact=
     if X.ndim != 2:
         raise ValueError("permutation_test accepts one study X[P,C]")
     r = _residuals(time, event, groups)
-    observed, centered = _score(X, r, groups)
+    missing = np.isnan(X).any()
+    if missing:
+        observed, centered = _complete_cases(X, time, event, groups), None
+    else:
+        observed, centered = _score(X, r, groups)
     sd = np.sqrt(observed["V"])
     if exact:
         total = 1
@@ -184,11 +213,16 @@ def permutation_test(X, time, event, strata, *, n_resamples=9999, seed=0, exact=
         rows = np.empty((n_resamples + 1, X.shape[1]), dtype=np.float64)
         rows[0] = observed["z"]
     shuffled = np.empty_like(r)
+    outcome_order = np.empty(len(r), dtype=int)
     for row, perm in enumerate(draws, start=0 if exact else 1):
         for ix, order in zip(groups, perm):
             shuffled[ix] = r[list(order)]
-        U = np.einsum("pc,p->c", centered, shuffled)
-        rows[row] = np.divide(U, sd, out=np.zeros_like(U), where=sd > 0)
+            outcome_order[ix] = order
+        if missing:
+            rows[row] = _complete_cases(X, time[outcome_order], event[outcome_order], groups)["z"]
+        else:
+            U = np.einsum("pc,p->c", centered, shuffled)
+            rows[row] = np.divide(U, sd, out=np.zeros_like(U), where=sd > 0)
     # The first exact tuple is the identity and must use the observed arithmetic.
     rows[0] = observed["z"]
     maxima = maxT(rows)
