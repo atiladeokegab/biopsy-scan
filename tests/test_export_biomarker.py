@@ -20,6 +20,8 @@ def test_km_matches_a_hand_count():
 def test_committed_panel_data_is_consistent():
     b = json.loads((ROOT / "demo" / "data" / "biomarker.json").read_text())
     assert b["exploratory"] and b["already_seen"] and b["km"]["p_value"] is None
+    assert b["label"] == b["km"]["label"] == eb.LABEL == "exploratory, cutoff chosen on the same cohort, no p-value"
+    assert "cutoff chosen on the same cohort, no p-value" in b["note"]
     assert sum(a["n"] for a in b["km"]["arms"]) == b["cohort"]["patients_with_value"]
     for r in b["regions"]:
         c = r["cells"]

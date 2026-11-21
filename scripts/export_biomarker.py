@@ -31,6 +31,7 @@ from core.truth import truth_region_v2, truth_v2  # noqa: E402
 
 RESULT = ROOT / "results" / "charville-v2.json"
 FOCAL, NEIGHBOUR, RADIUS, CHANNEL = "Tumor 5", "Macrophage", 100, "PD1"
+LABEL = "exploratory, cutoff chosen on the same cohort, no p-value"  # the panel shows this verbatim
 PD1_POSITIVE_Z = 1.0  # display only; the feature itself uses the continuous z-score
 
 
@@ -106,7 +107,8 @@ def build(data_dir: Path = cohorts.DATA_DIR) -> dict:
 
     return {
         "schema": "preflight-biomarker/1", "source": "MEASURED", "exploratory": True, "already_seen": True,
-        "note": (f"Exploratory, outcomes already seen. Corrected for all {json.loads(RESULT.read_text())['n_features_tested']:,} "
+        "label": LABEL,
+        "note": (f"Exploratory: outcomes already seen, KM cutoff chosen on the same cohort, no p-value. Corrected for all {json.loads(RESULT.read_text())['n_features_tested']:,} "
                  f"tests, adjusted p = {hit['adjusted_p']:.3f}: not significant."),
         "feature": {"name": name, "z": round(hit["z"], 3), "adjusted_p": hit["adjusted_p"], "source": "results/charville-v2.json",
                     "definition": "per Tumor 5 cell, the mean cohort z-scored PD1 of macrophages within 100 µm; "
@@ -117,7 +119,7 @@ def build(data_dir: Path = cohorts.DATA_DIR) -> dict:
                            "(n - 1) // 2; then that patient's region whose own value is closest to the patient's"),
         "pd1_positive_rule": f"PD1 cohort z-score > {PD1_POSITIVE_Z:g} (display only; the feature uses the continuous z-score)",
         "regions": regions,
-        "km": {"endpoint": "death; days from surgery to last contact", "cutoff": "the cohort median of the feature",
+        "km": {"label": LABEL, "endpoint": "death; days from surgery to last contact", "cutoff": "the cohort median of the feature",
                "cutoff_value": round(med, 4), "p_value": None, "arms": arms},
     }
 
