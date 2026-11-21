@@ -1,10 +1,10 @@
 # Preflight against the four judging criteria
 
-Every number below is copied from a results file on `integration`, except the one row marked otherwise. Labels:
+Every number below is copied from a committed results file. Where that file is on an open PR, the row names the PR. Labels:
 - **MEASURED**: a committed results file from a real run.
 - **TESTED**: a passing test in `make smoke`.
 - **ESTIMATE**: arithmetic on measured rows, not a run.
-- **PENDING**: not on `integration` yet.
+- **PENDING**: not built or not run yet. A row whose evidence sits on an open PR names the PR.
 
 All real-data results are exploratory: the outcomes have already been seen.
 
@@ -17,14 +17,23 @@ All real-data results are exploratory: the outcomes have already been seen.
 | The score equals statsmodels PHReg (Breslow ties); its variance equals exhaustive permutation enumeration | `stats/reference.py` | `stats/test_reference.py::test_score_matches_phreg_breslow_with_ties`, `tests/test_score_contract.py::test_variance_is_exhaustive_permutation_variance` | TESTED |
 | A planted signal is found; batch confounding gives no evidence (hard negative) | `stats/reference.py` | `tests/test_score_contract.py::test_planted_ordered_signal_is_found`, `::test_batch_confounding_is_a_hard_negative` | TESTED |
 | When nothing is there, the false-alarm rate holds at the promised 5%: 28 of 700 null studies, 4.0% (95% CI 2.7 to 5.7%). This pools the 7 patient counts at 100 null studies each; the CI is Clopper-Pearson | `bench/results/vs-schoenfeld-300.json` (#53) | `bench/test_vs_schoenfeld.py` | ESTIMATE |
-| Two GPU shards give bit-identical results to one device | `reimage/fleet.py` (#34) | `reimage/test_fleet.py::test_two_fake_shards_on_cuda_simulator_are_bit_identical` | TESTED on the CUDA simulator; real GPU PENDING |
+| Two GPU shards give bit-identical results to one device | `reimage/fleet.py` (#34) | `reimage/test_fleet.py::test_two_fake_shards_on_cuda_simulator_are_bit_identical` | TESTED on the CUDA simulator; on a real A100, see the GPU parity row below |
 
-**Assumptions and why they hold**
-- **Patients and strata.** Charville is patient-level: 159 patients, 38 events, coverslip strata, and 0 patients span two coverslips (`results/charville-v2.json` `leakage_audit`). UPMC stays descriptive until its patient loader and locked split land (#62, PENDING).
-- **Missing values.** A feature that is undefined for a patient is missing, not zero; risk sets are recomputed per feature on complete cases (`stats/test_reference.py::test_missing_features_use_complete_case_risk_sets_and_batch`). Charville v2 keeps 11,880 NaN cells.
-- **Clinical covariates in the C-003 screen.** UPMC adjusts for HPV status only. Charville uses no covariates, because its labels carry no stage, margins or age. Both use coverslip strata (PRD R-15).
-- **Imaging model.** A study is patients drawn with replacement, up to two regions each, a square field of view and a cell-typing mis-call rate eps (`bench/results/cpu-ladder.json` `sampling`). The model is a simplification of real imaging; it is seeded and reproducible (`core/test_spine.py::test_reimage_design_draws_are_seeded_and_change_x`).
-- **Timing workloads.** Rung 0 re-uses resampled outcomes as a timing workload only; no p-value is claimed from it (`cpu-ladder.json` `lab_today.inference_note`).
+### Assumptions, and where each is tested
+
+| Assumption | Why it's reasonable | Test or result that checks it | Label |
+|---|---|---|---|
+| A simulated study resamples real Charville patients: patients with replacement, up to two regions each without replacement, from their real cells | A study is a sample from the same population the cohort came from. Re-imaging keeps each patient's real tissue | `core/test_spine.py::test_reimage_design_draws_are_seeded_and_change_x`; `atlas/test_runner.py::test_patient_rows_match_shared_core_draws_and_stage_streams_are_disjoint` (#45) | TESTED (atlas test on #45, open) |
+| The planted effect is HR 2 per SD of the feature | The formula and the simulation get the same effect, so the comparison is like for like; at 200 patients the formula gives the textbook 80% | `bench/results/vs-schoenfeld-300.json` `hr_per_sd`; `bench/test_vs_schoenfeld.py::test_formula_hits_the_textbook_80_percent_point`; `atlas/test_simulation.py::test_source_sd_frozen_and_hr_quantile_identity` (#45) | TESTED (atlas test on #45, open) |
+| Real censoring and coverslip strata: censoring follows each stratum's reverse Kaplan-Meier from real follow-up; the unresolved tail sits at the stratum's last follow-up, a declared administrative horizon | Simulated studies lose patients to follow-up the way the cohort did. Strata are safe because 0 of 159 patients span two coverslips | `atlas/test_simulation.py::test_reverse_km_event_first_ties_and_unresolved_tail`, `::test_tail_mass_becomes_declared_administrative_horizon` (#45); `results/charville-v2.json` `leakage_audit` | TESTED (#45, open); strata MEASURED |
+| The score test matches statsmodels PHReg | PHReg is an independent, standard Cox implementation; the tie convention is the same on both sides (Breslow) | `stats/test_reference.py::test_score_matches_phreg_breslow_with_ties` | TESTED |
+| maxT holds family-wise false alarms at 5% | 28 of 700 null studies rejected, 4.0% (95% CI 2.7 to 5.7%), pooled over 7 patient counts | `bench/results/vs-schoenfeld-300.json` (#53) | ESTIMATE |
+| A missing feature is missing, not zero | Risk sets are recomputed per feature on complete cases; Charville v2 keeps 11,880 NaN cells | `stats/test_reference.py::test_missing_features_use_complete_case_risk_sets_and_batch` | TESTED |
+| UPMC's locked held-out split: no patient on both sides, and discovery never sees locked patients | Validation patients are fixed before any search, so a later score on them is honest | `core/test_holdout.py::test_no_patient_is_on_both_sides_under_any_identity`; `tests/test_no_leak.py::test_changing_locked_patients_leaves_discovery_outputs_byte_identical` (#62) | TESTED (#62, open) |
+| GPU kernels agree with the CPU reference | The same backend, fleet and expression tests run on real hardware: 39 passed, 0 failed, 1 skipped (that check needs CUDA absent), NVIDIA A100-SXM4-40GB | `bench/results/modal-a100-20261121T164808Z.json` (#75; run from commit d6dc39c with uncommitted changes) | MEASURED (#75, open) |
+| One null threshold per design gives the same answer as a fresh shuffle for every study | n/a | build-modal | PENDING |
+| Clinical covariates in the C-003 screen: UPMC adjusts for HPV status only; Charville uses none | The labels carry no stage, margins or age; both cohorts use coverslip strata | PRD R-15 | PENDING (R-15) |
+| Rung 0 reuses resampled outcomes only as a timing workload | No p-value is claimed from it | `bench/results/cpu-ladder.json` `lab_today.inference_note` | MEASURED |
 
 ## 2. Reshaping for parallelism
 
@@ -54,7 +63,7 @@ The rung-0 row and the reshaped row cover different scopes, so their ratio is no
 |---|---|---|
 | The textbook formula overstates power at 6 of 7 patient counts and understates it at 1. At 200 patients it says 80%; simulation on real tissue gives 27% (95% CI 22 to 32%)[^60] | `bench/results/vs-schoenfeld-300.json` (#53) | ESTIMATE (300 studies per point) |
 | Charville, 630 cell-mix patterns: the best pattern has maxT p = 0.13 (9,999 resamples) and omnibus p = 0.14. Chance explains it | `audit/results/charville.json` | MEASURED, negative |
-| Charville, 3,780 patterns with protein channels: the top candidate moves to PD1 on macrophages within 100 µm of Tumor 5 cells (`Tumor 5|Macrophage|100um|PD1`), z = 3.96. Adjusted p = 0.098 and omnibus p = 0.17, so it is not significant. It stays rank 1 in 158 of 159 leave-one-patient-out drops | `results/charville-v2.json` (#47) | MEASURED, negative |
+| Charville, 3,780 patterns with protein channels: the top candidate moves to PD1 on macrophages within 100 µm of Tumor 5 cells (`Tumor 5\|Macrophage\|100um\|PD1`), z = 3.96. Adjusted p = 0.098 and omnibus p = 0.17, so it is not significant. It stays rank 1 in 158 of 159 leave-one-patient-out drops | `results/charville-v2.json` (#47) | MEASURED, negative |
 | On a loaded shared 8-core VM, Numba all-core was no faster than NumPy (3.26 vs 2.98 s per study) | `bench/results/cpu-ladder.json` | MEASURED, negative |
 | The R-16 rediscovery candidate is fixed before any search | #61 | TESTED (`audit/test_rediscovery_definition.py`) |
 
