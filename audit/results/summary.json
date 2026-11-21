@@ -1,0 +1,379 @@
+[
+  {
+    "schema_version": 1,
+    "cohort": "upmc",
+    "exploratory": true,
+    "already_seen": true,
+    "already_seen_disclosure": "Both cohorts' outcomes have been examined by reviewers already; all real-data results are already-seen and exploratory, not confirmatory.",
+    "clinical_claims": false,
+    "inference_scope": "descriptive_verified_cases_and_tuple_bounds",
+    "grammar_hash": "adc93e69df4280df4ebc40432d4b3ca84ffb4d8e83513ae1ce883feff981915a",
+    "n_regions": 188,
+    "n_patients": 50,
+    "n_events": 10,
+    "excluded_summary": "120 NA-labelled regions excluded from verified case-number cohort.",
+    "n_features_total": 612,
+    "n_features_tested": 612,
+    "nan_policy": "all_finite",
+    "strata_note": "Coverslip groups 0=c001-c003, 1=c004-c007 (7 / 43 patients; no verified case crosses group boundary). UPMC has 10 events on verified cases and is descriptive only.",
+    "leakage_audit": {
+      "total_patients": 50,
+      "patients_spanning_multiple_coverslips": 48,
+      "mean_leakage_fraction": 0.9523809523809523,
+      "min_leakage_fraction": 0.6666666666666666,
+      "max_leakage_fraction": 1.0,
+      "per_coverslip": [
+        {
+          "coverslip": "c001",
+          "n_patients": 6,
+          "shared_patients": 4,
+          "leakage_fraction": 0.6666666666666666
+        },
+        {
+          "coverslip": "c002",
+          "n_patients": 2,
+          "shared_patients": 2,
+          "leakage_fraction": 1.0
+        },
+        {
+          "coverslip": "c003",
+          "n_patients": 4,
+          "shared_patients": 4,
+          "leakage_fraction": 1.0
+        },
+        {
+          "coverslip": "c004",
+          "n_patients": 32,
+          "shared_patients": 32,
+          "leakage_fraction": 1.0
+        },
+        {
+          "coverslip": "c005",
+          "n_patients": 39,
+          "shared_patients": 39,
+          "leakage_fraction": 1.0
+        },
+        {
+          "coverslip": "c006",
+          "n_patients": 36,
+          "shared_patients": 36,
+          "leakage_fraction": 1.0
+        },
+        {
+          "coverslip": "c007",
+          "n_patients": 29,
+          "shared_patients": 29,
+          "leakage_fraction": 1.0
+        }
+      ]
+    },
+    "maxT": {
+      "statistic": 4.1576953345753696,
+      "p": 0.007,
+      "conditional_cutoff_alpha_05": 3.6605549775050803,
+      "cutoff_scope": "conditional_within_stratum_permutation_not_reusable_design_calibration",
+      "n_resamples": 9999,
+      "top_hits": [
+        {
+          "rank": 1,
+          "feature": "Tumor (Ki67+)|Tumor (CD21+)|100um|fraction",
+          "index": 484,
+          "grammar_index": 484,
+          "z": 4.1576953345753696,
+          "adjusted_p": 0.007,
+          "lopo": {
+            "n_patients": 50,
+            "min_z": 3.8496409304841728,
+            "max_z": 4.264769642428075,
+            "max_abs_z_delta": 0.3080544040911968,
+            "sign_flips": 0,
+            "rank1_retained_fraction": 0.82,
+            "most_influential_patient_index": 44,
+            "most_influential_patient_name": "HN15-8293"
+          }
+        },
+        {
+          "rank": 2,
+          "feature": "Tumor (CD20+)|Tumor (CD21+)|100um|fraction",
+          "index": 280,
+          "grammar_index": 280,
+          "z": 4.118791238483927,
+          "adjusted_p": 0.0078,
+          "lopo": {
+            "n_patients": 50,
+            "min_z": 3.7167419864416726,
+            "max_z": 4.300518035323347,
+            "max_abs_z_delta": 0.40204925204225406,
+            "sign_flips": 0,
+            "rank1_retained_fraction": null,
+            "most_influential_patient_index": 37,
+            "most_influential_patient_name": "HN15-8227"
+          }
+        },
+        {
+          "rank": 3,
+          "feature": "Tumor (CD15+)|Tumor (CD21+)|100um|fraction",
+          "index": 178,
+          "grammar_index": 178,
+          "z": 3.9336069720026794,
+          "adjusted_p": 0.0182,
+          "lopo": {
+            "n_patients": 50,
+            "min_z": 3.485365163457082,
+            "max_z": 4.128575733233085,
+            "max_abs_z_delta": 0.4482418085455975,
+            "sign_flips": 0,
+            "rank1_retained_fraction": null,
+            "most_influential_patient_index": 37,
+            "most_influential_patient_name": "HN15-8227"
+          }
+        },
+        {
+          "rank": 4,
+          "feature": "Tumor (Ki67+)|Tumor (CD21+)|50um|fraction",
+          "index": 482,
+          "grammar_index": 482,
+          "z": 3.858118845978683,
+          "adjusted_p": 0.0245,
+          "lopo": {
+            "n_patients": 50,
+            "min_z": 3.5582544729675036,
+            "max_z": 3.987544263358726,
+            "max_abs_z_delta": 0.2998643730111792,
+            "sign_flips": 0,
+            "rank1_retained_fraction": null,
+            "most_influential_patient_index": 44,
+            "most_influential_patient_name": "HN15-8293"
+          }
+        },
+        {
+          "rank": 5,
+          "feature": "Tumor (CD20+)|Tumor (CD21+)|50um|fraction",
+          "index": 278,
+          "grammar_index": 278,
+          "z": 3.8396222646727916,
+          "adjusted_p": 0.0261,
+          "lopo": {
+            "n_patients": 50,
+            "min_z": 3.383611451187282,
+            "max_z": 4.0563293523376505,
+            "max_abs_z_delta": 0.45601081348550965,
+            "sign_flips": 0,
+            "rank1_retained_fraction": null,
+            "most_influential_patient_index": 37,
+            "most_influential_patient_name": "HN15-8227"
+          }
+        }
+      ]
+    },
+    "omnibus": {
+      "statistics": {
+        "maxT": 4.1576953345753696,
+        "sum_z2": 1413.76646170301,
+        "HC": 20.045587477355884
+      },
+      "component_p": {
+        "maxT": 0.007,
+        "sum_z2": 0.001,
+        "HC": 0.0059
+      },
+      "p": 0.002
+    },
+    "sensitivity": {
+      "kind": "tuple_vs_tuple+case_descriptive_only",
+      "tuple_patients": 79,
+      "tuple_events": 27,
+      "tuple_plus_case_patients": 81,
+      "tuple_plus_case_events": 27,
+      "note": "Provisional tuple matching; never used for patient-level inference."
+    },
+    "atlas_placement": {
+      "cohort": "upmc",
+      "n_patients": 50,
+      "n_events": 10,
+      "regions_per_patient_median": 3.0,
+      "atlas_overlay_ready": true
+    },
+    "prepared_outcome": {
+      "key": "atlas_design_choices",
+      "label": "The atlas shows design choices matter",
+      "statement": "Exploratory already-seen cohort search did not isolate a stable single-pattern hit; the cohort-specific atlas quantifies how regions per patient, field of view, and cell-typing mis-calls govern study power."
+    }
+  },
+  {
+    "schema_version": 1,
+    "cohort": "charville",
+    "exploratory": true,
+    "already_seen": true,
+    "already_seen_disclosure": "Both cohorts' outcomes have been examined by reviewers already; all real-data results are already-seen and exploratory, not confirmatory.",
+    "clinical_claims": false,
+    "inference_scope": "patient_level_exploratory",
+    "grammar_hash": "772f6a845266470456af96f92d0573cc1bec72432ad74d789439baff066c2156",
+    "n_regions": 286,
+    "n_patients": 159,
+    "n_events": 38,
+    "excluded_summary": "Excluded cases: 24135, 24136 (no survival dates) and 24180 (spans coverslips c002 and c003).",
+    "n_features_total": 630,
+    "n_features_tested": 630,
+    "nan_policy": "complete_case_per_feature (1980 NaN cells preserved)",
+    "strata_note": "Coverslip strata c001-c004 mapped to 0-3 (patient-level cohort; 38 events).",
+    "leakage_audit": {
+      "total_patients": 159,
+      "patients_spanning_multiple_coverslips": 0,
+      "mean_leakage_fraction": 0.0,
+      "min_leakage_fraction": 0.0,
+      "max_leakage_fraction": 0.0,
+      "per_coverslip": [
+        {
+          "coverslip": "c001",
+          "n_patients": 40,
+          "shared_patients": 0,
+          "leakage_fraction": 0.0
+        },
+        {
+          "coverslip": "c002",
+          "n_patients": 33,
+          "shared_patients": 0,
+          "leakage_fraction": 0.0
+        },
+        {
+          "coverslip": "c003",
+          "n_patients": 48,
+          "shared_patients": 0,
+          "leakage_fraction": 0.0
+        },
+        {
+          "coverslip": "c004",
+          "n_patients": 38,
+          "shared_patients": 0,
+          "leakage_fraction": 0.0
+        }
+      ]
+    },
+    "maxT": {
+      "statistic": 3.457000725630962,
+      "p": 0.1275,
+      "conditional_cutoff_alpha_05": 3.717004252047451,
+      "cutoff_scope": "conditional_within_stratum_permutation_not_reusable_design_calibration",
+      "n_resamples": 9999,
+      "top_hits": [
+        {
+          "rank": 1,
+          "feature": "Tumor 3|Blood vessel|100um|enrichment",
+          "index": 191,
+          "grammar_index": 191,
+          "z": 3.457000725630962,
+          "adjusted_p": 0.1275,
+          "lopo": {
+            "n_patients": 159,
+            "min_z": 3.190692333346158,
+            "max_z": 3.7032172061906627,
+            "max_abs_z_delta": 0.26630839228480374,
+            "sign_flips": 0,
+            "rank1_retained_fraction": 0.9748427672955975,
+            "most_influential_patient_index": 33,
+            "most_influential_patient_name": "22380"
+          }
+        },
+        {
+          "rank": 2,
+          "feature": "Tumor 3|Blood vessel|50um|enrichment",
+          "index": 189,
+          "grammar_index": 189,
+          "z": 3.261202177293202,
+          "adjusted_p": 0.2294,
+          "lopo": {
+            "n_patients": 159,
+            "min_z": 2.919853683109365,
+            "max_z": 3.4863668566542665,
+            "max_abs_z_delta": 0.34134849418383695,
+            "sign_flips": 0,
+            "rank1_retained_fraction": null,
+            "most_influential_patient_index": 33,
+            "most_influential_patient_name": "22380"
+          }
+        },
+        {
+          "rank": 3,
+          "feature": "Tumor 7|Tumor 4|25um|fraction",
+          "index": 606,
+          "grammar_index": 606,
+          "z": 3.224954235520248,
+          "adjusted_p": 0.2546,
+          "lopo": {
+            "n_patients": 159,
+            "min_z": 2.8073345091545407,
+            "max_z": 3.622826417067336,
+            "max_abs_z_delta": 0.4176197263657073,
+            "sign_flips": 0,
+            "rank1_retained_fraction": null,
+            "most_influential_patient_index": 128,
+            "most_influential_patient_name": "24234"
+          }
+        },
+        {
+          "rank": 4,
+          "feature": "Tumor 2 (Ki67 Proliferating)|Stroma|100um|enrichment",
+          "index": 137,
+          "grammar_index": 137,
+          "z": 3.1856807816979025,
+          "adjusted_p": 0.2846,
+          "lopo": {
+            "n_patients": 159,
+            "min_z": 2.555031046184669,
+            "max_z": 3.33629334617958,
+            "max_abs_z_delta": 0.6306497355132334,
+            "sign_flips": 0,
+            "rank1_retained_fraction": null,
+            "most_influential_patient_index": 21,
+            "most_influential_patient_name": "22245"
+          }
+        },
+        {
+          "rank": 5,
+          "feature": "Tumor 7|Macrophage|25um|enrichment",
+          "index": 571,
+          "grammar_index": 571,
+          "z": 3.146350992879998,
+          "adjusted_p": 0.3144,
+          "lopo": {
+            "n_patients": 159,
+            "min_z": 2.8184657123928383,
+            "max_z": 3.488318517770844,
+            "max_abs_z_delta": 0.3419675248908458,
+            "sign_flips": 0,
+            "rank1_retained_fraction": null,
+            "most_influential_patient_index": 7,
+            "most_influential_patient_name": "21947"
+          }
+        }
+      ]
+    },
+    "omnibus": {
+      "statistics": {
+        "maxT": 3.457000725630962,
+        "sum_z2": 865.6840621213023,
+        "HC": 6.470371980326745
+      },
+      "component_p": {
+        "maxT": 0.1275,
+        "sum_z2": 0.0796,
+        "HC": 0.1299
+      },
+      "p": 0.1365
+    },
+    "sensitivity": null,
+    "atlas_placement": {
+      "cohort": "charville",
+      "n_patients": 159,
+      "n_events": 38,
+      "regions_per_patient_median": 2.0,
+      "atlas_overlay_ready": true
+    },
+    "prepared_outcome": {
+      "key": "atlas_design_choices",
+      "label": "The atlas shows design choices matter",
+      "statement": "Exploratory already-seen cohort search did not isolate a stable single-pattern hit; the cohort-specific atlas quantifies how regions per patient, field of view, and cell-typing mis-calls govern study power."
+    }
+  }
+]

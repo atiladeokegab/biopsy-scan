@@ -5,6 +5,7 @@ import argparse
 from collections.abc import Callable
 from dataclasses import dataclass
 import json
+import math
 from pathlib import Path
 import sys
 from typing import Any
@@ -41,8 +42,18 @@ class CoreAPI:
 class StatsAPI:
     score: Callable[..., dict[str, np.ndarray]]
     permutation_test: Callable[..., dict[str, Any]]
-    threshold: Callable[..., float]
     maxT: Callable[[np.ndarray], Any]
+    threshold: Callable[..., float] | None = None
+
+
+def conditional_permutation_cutoff(null_z: np.ndarray, alpha: float = 0.05) -> float:
+    """Compute the conditional within-stratum maxT cutoff from permutation draws (not design-calibrated)."""
+    arr = np.asarray(null_z, dtype=np.float64)
+    if arr.ndim != 2 or len(arr) < 1:
+        raise ValueError("null_z must be a non-empty 2D array")
+    maxima = np.max(np.where(np.isfinite(arr), np.abs(arr), 0.0), axis=1)
+    k = math.ceil((len(maxima) + 1) * (1.0 - alpha))
+    return float(np.partition(maxima, k - 1)[k - 1]) if k <= len(maxima) else float("inf")
 
 
 def load_default_core() -> CoreAPI:
@@ -262,7 +273,8 @@ def run_cohort_audit(
         "maxT": {
             "statistic": float(perm["maxT"]),
             "p": maxt_p,
-            "threshold_alpha_05": float(stats.threshold({"alpha": 0.05}, perm["null_z"])),
+            "conditional_cutoff_alpha_05": conditional_permutation_cutoff(perm["null_z"], alpha=0.05),
+            "cutoff_scope": "conditional_within_stratum_permutation_not_reusable_design_calibration",
             "n_resamples": int(n_resamples),
             "top_hits": top_hits,
         },

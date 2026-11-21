@@ -113,6 +113,10 @@ def validate_audit_result(record: dict[str, Any]) -> None:
     omnibus = record["omnibus"]
     if not isinstance(maxt, dict) or "statistic" not in maxt or "p" not in maxt or "top_hits" not in maxt:
         raise ValueError("maxT block must contain statistic, p, and top_hits")
+    if "threshold_alpha_05" in maxt:
+        raise ValueError("maxT must not expose unlabeled 'threshold_alpha_05'; use 'conditional_cutoff_alpha_05'")
+    if "conditional_cutoff_alpha_05" not in maxt or "conditional" not in str(maxt.get("cutoff_scope", "")).lower():
+        raise ValueError("maxT block must carry conditional_cutoff_alpha_05 and conditional cutoff_scope")
     if not isinstance(omnibus, dict) or "statistics" not in omnibus or "p" not in omnibus:
         raise ValueError("omnibus block must contain statistics and p")
     leakage = record["leakage_audit"]
