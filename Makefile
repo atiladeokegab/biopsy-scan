@@ -21,6 +21,6 @@ demo:
 	python3 -I demo/check_data.py
 	python3 -m http.server $(PORT) -d demo
 
-# Regenerate demo/data/tissue.json from real Charville cells (needs `make data`; seeded, so deterministic).
-tissue:
+# Regenerate demo/data/tissue.json from real Charville cells (fetches the data first; seeded, so deterministic).
+tissue: data
 	uv run python -I scripts/export_tissue.py

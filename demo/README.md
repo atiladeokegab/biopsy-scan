@@ -8,7 +8,7 @@ page works with Wi-Fi off.
 ```bash
 make demo                               # checks demo/data, then serves; open http://localhost:8000
 python3 -m http.server 8000 -d demo     # the same, without the data check
-make tissue                             # regenerates demo/data/tissue.json (needs `make data`)
+make tissue                             # fetches the data, then regenerates demo/data/tissue.json
 ```
 
 Browsers block `fetch` and modules from `file://`. If you double-click `index.html`, the page
