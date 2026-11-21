@@ -99,6 +99,30 @@ def test_merger_validates_the_summary_itself(change, match):
         build([real(400, **change)])
 
 
+@pytest.mark.parametrize("change, match", [
+    ({"plant_feature": 19}, "frozen model"), ({"shape": 5}, "frozen model"),
+    ({"plant_mean": 0.5}, "frozen model"), ({"plant_sd": 0.5}, "frozen model"),
+    ({"target_event_fraction": 0.5}, "frozen model"), ({"source_events": 37}, "frozen model"),
+    ({"censoring_tail_policy": "none"}, "frozen model"), ({"administrative_horizons_json": "{}"}, "frozen model"),
+    ({"error_control_scope": "conditional"}, "frozen model"), ({"plant_feature": None}, "frozen model"),
+    ({"threshold": float("nan")}, "cutoff"), ({"threshold": float("inf")}, "cutoff"),
+    ({"threshold": None}, "cutoff"), ({"threshold": "3.7"}, "cutoff"),
+])
+def test_merger_refuses_a_shard_with_another_model_or_no_finite_cutoff(change, match):
+    from bench.power_at_scale import build
+
+    with pytest.raises(ValueError, match=match):
+        build([real(400, **change)])
+
+
+def test_frozen_model_is_the_one_every_committed_shard_ran():
+    from bench.power_at_scale import FROZEN_MODEL
+
+    for f in sorted(RESULT.parent.glob("modal-power-*.json")):
+        for point in json.loads(f.read_text())["points"]:
+            assert {k: point["summary"][k] for k in FROZEN_MODEL} == FROZEN_MODEL, f.name
+
+
 def test_merger_refuses_wrong_pin_status_and_mismatched_p():
     from bench.power_at_scale import build
 
