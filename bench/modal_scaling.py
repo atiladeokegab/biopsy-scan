@@ -5,9 +5,11 @@
 
 One container per core count, all launched at once, each cpu=(n, n) (a hard limit, no burst), workers = n,
 the same 1,000 null studies (bench/design_batch.py seeds). The run refuses a dirty tracked tree and a
-ceiling (every container to its timeout) over the $5 cap, logs the estimate in bench/results/modal-spend.json
+single-attempt estimate (each container once, to its timeout, at list price; not a billing ceiling) over the $5 cap, logs the estimate in bench/results/modal-spend.json
 before launch and the actual after, and writes a new bench/results/modal-scaling-<utc>.json: MEASURED only
-when every count ran with X and z identical to the 8-core point, else FAILED with no timings.
+when every count covers exactly the planned studies with X identical to the 8-core point and z within 1e-9
+relative (bitwise z reported, not required), else FAILED with no timings. Limits (scaling.CAVEATS) go into the file:
+one concurrent cross-host sweep, hidden CPU model, RAM growing with cores, possible preemption restarts.
 """
 from __future__ import annotations
 
@@ -82,7 +84,8 @@ def _point(cores: int, studies: int) -> dict:
             for r in out["records"]]  # z comes home for the tolerance check, then only its sha256 is written
     return {"cores": cores, "workers": out["workers"], "studies_wall_s": out["studies_wall_s"], "warm_s": out["warm_s"],
             "load_s": load_s, "prep_s": out["setup"]["prep_s"], "adjacency_s": out["setup"]["adjacency_s"],
-            "reimage_cpu_s": sum(r["reimage_s"] for r in recs), "scoring_cpu_s": sum(r["score_s"] for r in recs),
+            "reimage_worker_wall_s": sum(r["reimage_s"] for r in recs),
+            "scoring_worker_wall_s": sum(r["score_s"] for r in recs),
             "host": host, "records": recs}
 
 
@@ -129,7 +132,7 @@ def main(studies: int = 1000, cores: str = ",".join(map(str, scaling.CORES))):
     start = datetime.now(timezone.utc)
     _ledger(new={"utc": start.strftime("%Y-%m-%dT%H:%MZ"), "run": f"modal-scaling {studies} null studies, cores {list(counts)}",
                  "containers": len(counts), "est_usd": ceiling, "source_commit": commit,
-                 "basis": "ceiling: each container's timeout x (cores x $0.0000131 + GiB x $0.00000222) per s; "
+                 "basis": "single-attempt estimate (not a billing ceiling): each container's timeout x (cores x $0.0000131 + GiB x $0.00000222) per s; "
                           f"task cap ${scaling.CAP_USD}, ${round(spent, 2)} spent before"})
     calls = {c: point.with_options(cpu=(float(c), float(c)), memory=scaling.memory_gib(c) * 1024,
                                    timeout=scaling.timeout_s(c, studies)).spawn(c, studies) for c in counts}
@@ -145,7 +148,8 @@ def main(studies: int = 1000, cores: str = ",".join(map(str, scaling.CORES))):
     except subprocess.CalledProcessError:
         prior = None
     clean = not [f for f in _git("diff", "--name-only", commit).splitlines() if f != str(SPEND.relative_to(REPO))]
-    res = scaling.result(points, counts, errors if clean else {**errors, "tree": "changed during the run"}, prior)
+    res = scaling.result(points, counts, errors if clean else {**errors, "tree": "changed during the run"}, prior,
+                         studies)
     from bench import design_batch as db
     out = {
         "status": res["status"], "failures": res["failures"], "source_commit": commit,
@@ -157,7 +161,7 @@ def main(studies: int = 1000, cores: str = ",".join(map(str, scaling.CORES))):
                      "timed": "studies_wall_s: the pool's re-imaging and Cox scoring of every study; excludes data "
                               "load, study preparation, adjacency and JIT warm-up (each recorded per point)"},
         "container_class": {c: class_name(c) for c in counts},
-        "parity": res["parity"],
+        "parity": res["parity"], "caveats": res["caveats"], "fields": res["fields"],
         "curve": res.get("curve"),
         "points": {c: {k: v for k, v in p.items() if k != "records"} | {"container_class": class_name(c)}
                    for c, p in points.items()} if res["status"] == "MEASURED" else
@@ -175,6 +179,7 @@ def main(studies: int = 1000, cores: str = ",".join(map(str, scaling.CORES))):
     wall = (end - start).total_seconds()
     _ledger(update={"modal_wall_s": round(wall, 1), "result": str(path.relative_to(REPO)),
                     "est_usd": round(sum(wall * scaling.usd_per_s(c) for c in counts), 3),
-                    "basis": "each container x local wall (an upper bound: includes image build and queueing)"})
+                    "basis": "single-attempt estimate: each container x local wall at list price; a preemption restart is "
+                             "billed again and is not separated; invoice not verified"})
     print(res["status"], json.dumps(res["failures"]), json.dumps(res.get("curve")), json.dumps(res["parity"], default=str))
     print(f"Saved {path}")

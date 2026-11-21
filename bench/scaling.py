@@ -2,12 +2,22 @@
 
 The same fixed null studies (design_batch seeds, stream "null", i = 0..n-1) run at each core count, one
 Modal CPU container per count, workers = cores, cpu=(cores, cores) as a hard limit. Reported: studies wall,
-wall per study and the speedup vs 1 core (a ratio of measured walls). Parity: every count's X sha256 and
-z sha256 per study equal the 8-core point's, bit for bit. Anything short of that is FAILED with no timings.
+wall per study and the speedup vs 1 core (a ratio of measured walls). Parity: every count's X sha256 per study
+equals the 8-core point's bit for bit; every z is within Z_TOL relative of the 8-core z (bitwise z equality is
+reported separately, never required). Every point must cover exactly the planned study IDs, once each, with finite
+positive walls, one thread per worker and finite z vectors of one common shape whose sha256 is recomputed here.
+Anything short of that is FAILED with no timings.
+
+What these numbers are not: one concurrent sweep, every point on whatever Modal host it landed on (CPU model and
+cgroup telemetry hidden by the sandbox), RAM allocation growing with cores, and a preempted point restarted by Modal.
+Host, cache and scheduling variation are not separated from scaling, so a ratio above the core count is an
+observation, not a guaranteed speedup, and nothing here is a parallel-efficiency measurement.
 """
 from __future__ import annotations
 
 import hashlib
+import math
+import re
 
 import numpy as np
 
@@ -20,6 +30,28 @@ Z_TOL = 1e-9  # bench/design_batch.Z_TOL
 # design_batch's pool forks after the parent's JIT warm-up; GNU OpenMP aborts a fork, workqueue does not
 SINGLE = {"OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1", "MKL_NUM_THREADS": "1", "NUMBA_NUM_THREADS": "1",
           "NUMBA_THREADING_LAYER": "workqueue"}
+
+
+CAVEATS = {
+    "sweep": "one concurrent sweep: every core count launched at once, each in its own Modal container; no repeat",
+    "hosts": "each container on whatever host Modal chose; the CPU model reads 'unknown' and cgroup cpu.max is "
+             "unavailable in the sandbox, so host, cache and scheduling variation are not separated from scaling",
+    "memory": "RAM allocation changes with cores: max(16, 2 x cores) GiB",
+    "preemption": "Modal may preempt and restart a container; the 2026-11-21T20:10Z sweep had one such restart",
+    "ratios": "speedup_vs_1_core is a ratio of measured studies walls; a ratio above the core count (5.07x at 4 "
+              "workers, 12.71x at 8 in the 20:10Z sweep) is an observation of this sweep, not a guaranteed speedup; "
+              "nothing here is a parallel-efficiency measurement",
+    "parity": "X: sha256 per study, exact at every core count. z: within Z_TOL (1e-9 relative) of the 8-core z; "
+              "bitwise z equality is reported per core count, not required",
+    "spend": "single-attempt estimate at list price (each container once); not a billing ceiling across preemption "
+             "or retries; invoice not verified",
+}
+FIELDS = {
+    "studies_wall_s": "perf_counter wall of the worker pool over every study (re-imaging and Cox scoring); excludes "
+                      "data load, study preparation, adjacency and JIT warm-up",
+    "reimage_worker_wall_s": "sum over studies of each worker's perf_counter wall in re-imaging; not CPU time",
+    "scoring_worker_wall_s": "sum over studies of each worker's perf_counter wall in Cox scoring; not CPU time",
+}
 
 
 def parse_cores(text: str) -> tuple[int, ...]:
@@ -49,19 +81,48 @@ def usd_per_s(cores: int) -> float:
 
 
 def ceiling_usd(cores: tuple[int, ...], studies: int) -> float:
-    """Every container running to its timeout: the most this sweep can bill."""
+    """Single-attempt estimate: each container once, to its timeout, at list price. Not a billing ceiling:
+    Modal reruns a preempted input, and the invoice is not verified."""
     return round(sum(timeout_s(c, studies) * usd_per_s(c) for c in cores), 2)
 
 
 def check_cap(cores: tuple[int, ...], studies: int, spent_usd: float, cap_usd: float = CAP_USD) -> float:
+    if not all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+               for v in (spent_usd, cap_usd)) or spent_usd < 0 or cap_usd <= 0:
+        raise SystemExit(f"bad spend ${spent_usd!r} or cap ${cap_usd!r}: fix the ledger before any launch")
     ceiling = ceiling_usd(cores, studies)
-    if spent_usd + ceiling > cap_usd:
+    if not math.isfinite(ceiling) or spent_usd + ceiling > cap_usd:
         raise SystemExit(f"ceiling ${ceiling} + ${spent_usd} already spent > ${cap_usd} cap: ask the lead first")
     return ceiling
 
 
 def z_sha(z) -> str:
     return hashlib.sha256(np.ascontiguousarray(z, dtype=np.float64).tobytes()).hexdigest()
+
+
+def validate(points: dict, studies: int) -> list:
+    """Failures that make a point unusable, checked before any dict-by-ID conversion or parity."""
+    out, shape = [], None
+    for c, p in sorted(points.items()):
+        ids = [r.get("i") for r in p.get("records", [])]
+        if not all(type(i) is int for i in ids) or sorted(ids) != list(range(studies)):
+            out.append(f"cores {c}: study IDs are not exactly 0..{studies - 1} once each")
+            continue
+        wall = p.get("studies_wall_s")
+        if not (isinstance(wall, (int, float)) and math.isfinite(wall) and wall > 0):
+            out.append(f"cores {c}: studies wall {wall!r} is not finite and positive")
+        if p.get("host", {}).get("thread_environment") != SINGLE:
+            out.append(f"cores {c}: threads {p.get('host', {}).get('thread_environment')} are not {SINGLE}")
+        for r in p["records"]:
+            z = np.asarray(r.get("z"), dtype=np.float64)
+            shape = z.shape if shape is None else shape
+            if z.ndim != 1 or z.shape != shape or not np.isfinite(z).all():
+                out.append(f"cores {c}: study {r['i']} z has shape {z.shape} or non-finite values (want {shape})")
+            elif z_sha(z) != r.get("z_sha"):
+                out.append(f"cores {c}: study {r['i']} z_sha does not match its z")
+            if not re.fullmatch(r"[0-9a-f]{64}", str(r.get("x_sha"))):
+                out.append(f"cores {c}: study {r['i']} x_sha is not a sha256")
+    return out
 
 
 def parity(points: dict) -> dict:
@@ -100,19 +161,19 @@ def curve(points: dict) -> list:
             for c, p in sorted(points.items())]
 
 
-def result(points: dict, cores: tuple[int, ...], errors: dict, prior: dict | None) -> dict:
-    """MEASURED only when every count ran, parity holds and workers == cores; else FAILED with no timings."""
+def result(points: dict, cores: tuple[int, ...], errors: dict, prior: dict | None, studies: int) -> dict:
+    """MEASURED only when every count ran, covers the plan, parity holds and workers == cores; else FAILED."""
     failures = [f"cores {c}: {e}" for c, e in errors.items()]
     failures += [f"cores {c}: missing" for c in cores if c not in points and c not in errors]
     failures += [f"cores {c}: workers {p['workers']}" for c, p in points.items() if p["workers"] != c]
-    failures += [f"cores {c}: threads {p['host']['thread_environment']}" for c, p in points.items()
-                 if {v for k, v in p["host"]["thread_environment"].items() if k.endswith("_THREADS")} != {"1"}]  # one BLAS/Numba thread per worker
+    failures += validate(points, studies)
     par = parity(points) if not failures else {"all": False}
     if not failures and not par["all"]:
         failures.append("parity: X differs, or z differs past Z_TOL, from the 8-core point")
     if prior is not None and REFERENCE_CORES in points:
         par["against_build9_8core"] = prior_parity(points[REFERENCE_CORES]["records"], prior)
-    out = {"status": "FAILED" if failures else "MEASURED", "failures": failures, "parity": par}
+    out = {"status": "FAILED" if failures else "MEASURED", "failures": failures, "parity": par,
+           "caveats": CAVEATS, "fields": FIELDS}
     if not failures:
         out["curve"] = curve(points)
     return out
