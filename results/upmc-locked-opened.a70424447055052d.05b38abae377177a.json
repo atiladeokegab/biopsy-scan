@@ -1,0 +1,32 @@
+{
+ "code_sha": "32a69fa63454c6879490ca1035520ea6a2e065da",
+ "rule_sha256": "a70424447055052d19610332a478fb46da68d87a9f2f30b350cc3c14a4bada1e",
+ "manifest_sha256": "05b38abae377177a097f2db0cd42188178c275a338aa44ec79c1be8ecd3969e3",
+ "design": {
+  "manifest_sha256": "05b38abae377177a097f2db0cd42188178c275a338aa44ec79c1be8ecd3969e3",
+  "identity": "case",
+  "locked_patients": 16,
+  "locked_events": 4
+ },
+ "opened_utc": "2026-11-21T19:40:44+00:00",
+ "discovery": {
+  "screen": "stratified Cox score at (beta_C-hat, 0), Breslow ties, nuisance-adjusted information",
+  "clinical": "adjusted",
+  "patients": {
+   "rows": 34,
+   "analysis_base": 34,
+   "events": 6,
+   "strata": 2
+  },
+  "of_all": 612,
+  "uninformative": 0,
+  "n_rule": 34,
+  "status": "MEASURED",
+  "rank": 366,
+  "of": 612,
+  "candidates": "v1 grammar columns of UPMC's own cell types, informative on discovery: all measurable on UPMC",
+  "z": 0.9077592935093333,
+  "direction_ok": true,
+  "label": "MEASURED on discovery patients only; exploratory: outcomes already seen (Punovuori et al., Cell 2024); internal held-out split"
+ }
+}

@@ -1,0 +1,78 @@
+{
+ "cohort": "upmc",
+ "code_sha": "32a69fa63454c6879490ca1035520ea6a2e065da",
+ "rule_sha256": "a70424447055052d19610332a478fb46da68d87a9f2f30b350cc3c14a4bada1e",
+ "manifest_sha256": "05b38abae377177a097f2db0cd42188178c275a338aa44ec79c1be8ecd3969e3",
+ "opening_record": "upmc-locked-opened.a70424447055052d.05b38abae377177a.json",
+ "label": "exploratory: outcomes already seen (Punovuori et al., Cell 2024); internal held-out split",
+ "discovery": {
+  "screen": "stratified Cox score at (beta_C-hat, 0), Breslow ties, nuisance-adjusted information",
+  "clinical": "adjusted",
+  "patients": {
+   "rows": 34,
+   "analysis_base": 34,
+   "events": 6,
+   "strata": 2
+  },
+  "of_all": 612,
+  "uninformative": 0,
+  "n_rule": 34,
+  "status": "MEASURED",
+  "rank": 366,
+  "of": 612,
+  "candidates": "v1 grammar columns of UPMC's own cell types, informative on discovery: all measurable on UPMC",
+  "z": 0.9077592935093333,
+  "direction_ok": true,
+  "label": "MEASURED on discovery patients only; exploratory: outcomes already seen (Punovuori et al., Cell 2024); internal held-out split"
+ },
+ "locked": {
+  "rule_sha256": "a70424447055052d19610332a478fb46da68d87a9f2f30b350cc3c14a4bada1e",
+  "feature": "Tumor (Podo+)|Stromal / Fibroblast|25um|fraction",
+  "test": "The rule (feature and direction) is frozen in audit/rediscovery.py at RULE_SHA256 (#61). The scorer computes\nthat one feature on locked patients only and runs one pre-specified test:\n    Cox proportional hazards, the single feature, strata = coverslip group, Breslow ties (statsmodels PHReg);\n    H0: HR <= 1 against H1: HR > 1 (the rule's direction), one-sided Wald p, alpha 0.05.\nIt also gives Harrell's C-index with the feature as the risk score (higher = worse).\nEvery number is labelled exploratory: the outcomes were already seen in the literature and the split is internal.",
+  "power": {
+   "effect_hr_per_sd": 2.0,
+   "design_events": 4,
+   "alpha": 0.05,
+   "min_power": 0.5,
+   "sims": 400,
+   "seed": 20261121,
+   "n_design": 16,
+   "n_with_feature": 16,
+   "n_missing_feature": 0,
+   "event_model": "design events planted over all design patients (missing feature at average hazard), type II censoring, then patients without the feature dropped as in the real test",
+   "label": "SIMULATED conditional model power, no outcomes read; not achieved power",
+   "value": 0.18,
+   "mean_analysable_events": 4.0
+  },
+  "n_patients": 16,
+  "n_dropped_no_focal_cells": 0,
+  "n_events": 4,
+  "label": "exploratory: outcomes already seen (Punovuori et al., Cell 2024); internal held-out split",
+  "status": "UNMEASURED",
+  "feature_sd": 0.028617216133304462,
+  "hr_per_sd": 1.8155607450072015,
+  "hr_per_sd_ci95": [
+   0.4726041343004135,
+   6.974676223877079
+  ],
+  "log_hr_per_sd": 0.5963943704186524,
+  "se": 0.6866919681665209,
+  "wald_z": 0.8685034892879778,
+  "p_one_sided": 0.19255938147949075,
+  "alpha": 0.05,
+  "locked_test_passes": false,
+  "c_index": 0.5476190476190477,
+  "reason": "underpowered: Preflight conditional power 18% < 50% at HR 2 per SD with 4 design events; the test numbers below cannot confirm or refute the rule"
+ },
+ "charville_top_hit": {
+  "feature": "Tumor 5|Macrophage|100um|PD1",
+  "status": "NOT TESTABLE",
+  "reason": "not testable on UPMC: marker absent (PD1)",
+  "note": "the UPMC panel cannot measure this feature; this is not a failed replication",
+  "source_pr": 47,
+  "source_result": "results/charville-v2.json",
+  "statistic": "maxT over per-feature Cox score z (stats.reference.score), within-stratum permutation, 9999 resamples: z 3.957, maxT-adjusted p 0.0981"
+ }
+}
+
+exit 0
