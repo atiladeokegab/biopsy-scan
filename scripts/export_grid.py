@@ -26,6 +26,9 @@ sys.path.insert(0, str(ROOT))  # python -I drops the cwd
 import pandas as pd  # noqa: E402
 
 NAMES = {"charville": "Charville", "upmc": "UPMC"}
+# The power grid describes study designs, not a discovery search, so it reads both sides of the locked
+# UPMC split (core/heldout.py); the only caller allowed to, and every grid records it in meta.
+SPLIT = "all"
 REGION_LINES = (1, 2, 4, 8)
 SOURCE = ("source_n", "source_events", "source_regions")  # region_um is kept in meta when supplied
 # One curve = one model: rows that differ on any of these must not be merged (alpha and plant_feature
@@ -54,7 +57,7 @@ def cohort_block(cohort: str) -> tuple[dict, int]:
     and the most regions any of those patients has."""
     from core.cohorts import load_patients, load_regions
 
-    pts = load_patients(load_regions(cohort))
+    pts = load_patients(load_regions(cohort, split=SPLIT))
     pts = pts[pts.usable]
     n_pat, n_reg = len(pts), int(pts.n_regions.sum())
     block = {"name": NAMES[cohort], "patients": n_pat, "regions": max(1, round(n_reg / n_pat)),
@@ -166,7 +169,7 @@ def build_grid(df: pd.DataFrame, cohort: dict, max_regions: int, *, cohort_key: 
         note += " Marked SYNTHETIC until the full atlas run on the real cohort."
     axes = {k: _axis([p[k] for p in points]) for k in ("patients", "regions", "fov_um", "miscall")}
     order = lambda p: tuple(axes[k].index(p[k]) for k in axes)  # noqa: E731
-    meta = {"method": METHOD, "source": source_name, "model": model, "region_lines": lines,
+    meta = {"method": METHOD, "source": source_name, "split": SPLIT, "model": model, "region_lines": lines,
             "max_regions_per_patient": max_regions, "cohorts": {cohort_key: facts},
             "all_regions_points": all_regions, "points_off_region_lines": dropped}
     return {"schema": "preflight-grid/1", "source": "MEASURED" if measured else "SYNTHETIC", "note": note,

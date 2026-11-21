@@ -87,6 +87,7 @@ def test_source_facts_and_method_in_meta_even_when_measured():
     grid = build(summaries(), measured=True)
     assert grid["source"] == "MEASURED" and "SYNTHETIC" not in grid["note"]
     assert grid["meta"]["cohorts"] == {"charville": FACTS}
+    assert grid["meta"]["split"] == "all"  # the grid reads both sides of the locked UPMC split
     assert grid["meta"]["method"].startswith("Model-based Monte Carlo") and "Monte Carlo" in grid["note"]
     no_size = build(pd.DataFrame(summaries()).drop(columns="region_um"))
     assert no_size["meta"]["cohorts"]["charville"] == {k: v for k, v in FACTS.items() if k != "region_um"}
