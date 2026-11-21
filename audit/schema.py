@@ -50,15 +50,12 @@ _REQUIRED_KEYS = {
     "inference_scope",
     "grammar_hash",
     "n_regions",
-    "n_patients_total",
-    "n_patients_evaluable",
+    "n_patients",
     "n_events",
-    "excluded_patients",
+    "excluded_summary",
     "n_features_total",
     "n_features_tested",
-    "dropped_features_reason",
-    "coverslips",
-    "patients_spanning_multiple_coverslips",
+    "nan_policy",
     "strata_note",
     "leakage_audit",
     "maxT",
@@ -71,16 +68,23 @@ _REQUIRED_KEYS = {
 
 def choose_prepared_outcome(
     *,
+    cohort: str,
     maxt_p: float,
     omnibus_p: float,
     top_hit_stable: bool,
+    n_events: int = 38,
     alpha: float = 0.05,
 ) -> dict[str, str]:
-    """Select one of the three prepared outcomes from IDEA.md based on observed test results."""
-    if maxt_p <= alpha and top_hit_stable:
-        return dict(PREPARED_OUTCOMES["real_hit_stable"])
-    if maxt_p > alpha and omnibus_p <= alpha:
-        return dict(PREPARED_OUTCOMES["omnibus_only_diffuse"])
+    """Select one of the three prepared outcomes from IDEA.md based on observed test results and cohort policy.
+
+    Charville is the only cohort with patient-level inference; UPMC (10 events on verified cases; tuple match
+    provisional/descriptive only) never claims a patient-level real hit.
+    """
+    if cohort == "charville" and n_events >= 20:
+        if maxt_p <= alpha and top_hit_stable:
+            return dict(PREPARED_OUTCOMES["real_hit_stable"])
+        if maxt_p > alpha and omnibus_p <= alpha:
+            return dict(PREPARED_OUTCOMES["omnibus_only_diffuse"])
     return dict(PREPARED_OUTCOMES["atlas_design_choices"])
 
 

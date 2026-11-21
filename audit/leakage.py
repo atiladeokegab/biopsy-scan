@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 
@@ -49,3 +50,19 @@ def compute_leakage_audit(regions: pd.DataFrame) -> dict[str, Any]:
         "max_leakage_fraction": float(max(fractions)),
         "per_coverslip": per_coverslip,
     }
+
+
+def leakage_from_cells(cells: dict[str, Any]) -> dict[str, Any]:
+    """Build coverslip-vs-patient leakage audit directly from a Contract `load(cohort)` dict."""
+    region_names = list(cells["region_names"])
+    patient_names = list(cells["patient_names"])
+    patient_of_region = np.asarray(cells["patient_of_region"], dtype=np.int64)
+    rows = [
+        {
+            "region_id": rname,
+            "coverslip": rname.split("_")[1] if "_" in rname else "unknown",
+            "patient_id": patient_names[int(patient_of_region[ri])],
+        }
+        for ri, rname in enumerate(region_names)
+    ]
+    return compute_leakage_audit(pd.DataFrame(rows))

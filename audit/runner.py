@@ -1,4 +1,4 @@
-"""Contract-based real-data audit runner for UPMC and Charville (Issue #6)."""
+"""Contract-based real-data audit runner for UPMC and Charville (Issue #6, aligned to binding CONTRACT.md)."""
 from __future__ import annotations
 
 import argparse
@@ -14,7 +14,7 @@ import numpy as np
 if __name__ == "__main__" and str(Path(__file__).resolve().parents[1]) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from audit.leakage import compute_leakage_audit
+from audit.leakage import leakage_from_cells
 from audit.schema import (
     ALREADY_SEEN_DISCLOSURE,
     AUDIT_SCHEMA_VERSION,
@@ -27,15 +27,14 @@ DEFAULT_OUT_DIR = Path(__file__).resolve().parent / "results"
 
 @dataclass(frozen=True)
 class CoreAPI:
-    load_regions: Callable[..., Any]
-    load_patients: Callable[..., Any]
-    load_cells: Callable[..., dict[str, Any]]
+    load: Callable[..., dict[str, Any]]
+    truth: Callable[[dict[str, Any]], np.ndarray]
     grammar: Callable[[list[str]], dict[str, Any]]
     n_features: Callable[[dict[str, Any]], int]
     grammar_hash: Callable[[dict[str, Any]], str]
     feature_names: Callable[[dict[str, Any]], list[str]]
-    truth_region: Callable[[np.ndarray, np.ndarray, list[int], int], tuple[np.ndarray, np.ndarray]]
-    features: Callable[[np.ndarray, np.ndarray], np.ndarray]
+    load_regions: Callable[..., Any] | None = None
+    load_patients: Callable[..., Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -43,70 +42,45 @@ class StatsAPI:
     score: Callable[..., dict[str, np.ndarray]]
     permutation_test: Callable[..., dict[str, Any]]
     threshold: Callable[..., float]
+    maxT: Callable[[np.ndarray], Any]
 
 
 def load_default_core() -> CoreAPI:
     from core import cohorts
-    from core.grammar import feature_names, features, grammar, grammar_hash, n_features
-    from core.truth import truth_region
+    from core.grammar import feature_names, grammar, grammar_hash, n_features
+    from core.truth import truth
 
     return CoreAPI(
-        load_regions=cohorts.load_regions,
-        load_patients=cohorts.load_patients,
-        load_cells=cohorts.load_cells,
+        load=cohorts.load,
+        truth=truth,
         grammar=grammar,
         n_features=n_features,
         grammar_hash=grammar_hash,
         feature_names=feature_names,
-        truth_region=truth_region,
-        features=features,
+        load_regions=getattr(cohorts, "load_regions", None),
+        load_patients=getattr(cohorts, "load_patients", None),
     )
 
 
 def load_default_stats() -> StatsAPI:
-    from stats.reference import permutation_test, score, threshold
+    import stats
+    from stats import reference
 
-    return StatsAPI(score=score, permutation_test=permutation_test, threshold=threshold)
+    return StatsAPI(
+        score=getattr(stats, "score", reference.score),
+        permutation_test=getattr(stats, "permutation_test", reference.permutation_test),
+        threshold=getattr(stats, "threshold", reference.threshold),
+        maxT=getattr(stats, "maxT", reference.maxT),
+    )
 
 
-def _aggregate_patient_features(
-    *,
-    regions: Any,
-    patients: Any,
-    cells: dict[str, Any],
-    g: dict[str, Any],
-    core_api: CoreAPI,
-    region_cache: dict[str, tuple[np.ndarray, np.ndarray]] | None = None,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Pool truth_region sums per patient in sorted patient_id index order."""
-    region_index = {rid: idx for idx, rid in enumerate(cells["region_ids"])}
-    patient_index = {pid: idx for idx, pid in enumerate(patients["patient_id"])}
-    ptr = cells["region_ptr"]
-    xy_all = cells["xy_um"]
-    ty_all = cells["cell_type"]
-    focal = list(g["focal_types"])
-    k_types = len(g["type_names"])
-
-    first_s, first_m = core_api.truth_region(xy_all[:0], ty_all[:0], focal, k_types)
-    p_count = len(patients)
-    s_pat = np.zeros((p_count, *first_s.shape), dtype=np.float64)
-    m_pat = np.zeros((p_count, *first_m.shape), dtype=np.int64)
-
-    for row in regions.itertuples(index=False):
-        rid = str(row.region_id)
-        cached = region_cache.get(rid) if region_cache is not None else None
-        if cached is None:
-            ri = region_index[row.region_id]
-            sl = slice(int(ptr[ri]), int(ptr[ri + 1]))
-            cached = core_api.truth_region(xy_all[sl], ty_all[sl], focal, k_types)
-            if region_cache is not None:
-                region_cache[rid] = cached
-        s_reg, m_reg = cached
-        pi = patient_index[row.patient_id]
-        s_pat[pi] += s_reg
-        m_pat[pi] += m_reg
-
-    return core_api.features(s_pat, m_pat), m_pat
+def _finite_feature_subset(X: np.ndarray, fnames: list[str]) -> tuple[np.ndarray, list[str], list[int], str]:
+    finite_cols = np.isfinite(X).all(axis=0)
+    if finite_cols.all():
+        return X, fnames, list(range(len(fnames))), "all_finite"
+    kept_indices = [int(i) for i, ok in enumerate(finite_cols) if ok]
+    kept_names = [fnames[i] for i in kept_indices]
+    return X[:, finite_cols], kept_names, kept_indices, "fallback_dropped_nonfinite_cols"
 
 
 def leave_one_patient_out(
@@ -115,13 +89,13 @@ def leave_one_patient_out(
     time: np.ndarray,
     event: np.ndarray,
     strata: np.ndarray,
-    patient_ids: list[str],
+    patient_names: list[str],
     observed_z: np.ndarray,
     top_indices: list[int],
     score_fn: Callable[..., dict[str, np.ndarray]],
 ) -> dict[int, dict[str, Any]]:
-    """Measure leave-one-patient-out z stability and rank-1 retention for selected features."""
-    n_patients = len(patient_ids)
+    """Measure leave-one-patient-out z stability and rank-1 retention for top features."""
+    n_patients = len(patient_names)
     overall_top = int(np.argmax(np.abs(observed_z))) if len(observed_z) else -1
     z_traces: dict[int, list[float]] = {idx: [] for idx in top_indices}
     rank1_matches = 0
@@ -129,8 +103,9 @@ def leave_one_patient_out(
     for drop_i in range(n_patients):
         keep = np.ones(n_patients, dtype=bool)
         keep[drop_i] = False
-        z_sub = score_fn(X[keep], time[keep], event[keep], strata[keep])["z"]
-        if len(z_sub) and int(np.argmax(np.abs(z_sub))) == overall_top:
+        z_sub = np.asarray(score_fn(X[keep], time[keep], event[keep], strata[keep])["z"], dtype=np.float64)
+        finite_abs = np.where(np.isfinite(z_sub), np.abs(z_sub), -1.0)
+        if len(finite_abs) and int(np.argmax(finite_abs)) == overall_top:
             rank1_matches += 1
         for idx in top_indices:
             z_traces[idx].append(float(z_sub[idx]))
@@ -140,165 +115,19 @@ def leave_one_patient_out(
         vals = np.asarray(z_traces[idx], dtype=np.float64)
         obs = float(observed_z[idx])
         deltas = np.abs(vals - obs)
-        worst_i = int(np.argmax(deltas)) if len(deltas) else 0
+        worst_i = int(np.nanargmax(deltas)) if len(deltas) and np.isfinite(deltas).any() else 0
         sign_flips = int(np.sum((vals * obs) < 0)) if obs != 0.0 else 0
         summary[idx] = {
             "n_patients": n_patients,
-            "min_z": float(np.min(vals)),
-            "max_z": float(np.max(vals)),
-            "max_abs_z_delta": float(np.max(deltas)),
+            "min_z": float(np.nanmin(vals)),
+            "max_z": float(np.nanmax(vals)),
+            "max_abs_z_delta": float(np.nanmax(deltas)),
             "sign_flips": sign_flips,
             "rank1_retained_fraction": float(rank1_matches / n_patients) if idx == overall_top else None,
             "most_influential_patient_index": worst_i,
-            "most_influential_patient_id": patient_ids[worst_i],
+            "most_influential_patient_name": patient_names[worst_i],
         }
     return summary
-
-
-def _run_permutation_audit(
-    *,
-    cohort: str,
-    identity: str,
-    n_resamples: int,
-    seed: int,
-    top_k: int,
-    data_dir: Path | None,
-    core_api: CoreAPI,
-    stats_api: StatsAPI,
-    region_cache: dict[str, tuple[np.ndarray, np.ndarray]] | None = None,
-    cells: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    kwargs = {"data_dir": data_dir} if data_dir is not None else {}
-    regions = core_api.load_regions(cohort, identity=identity, **kwargs) if cohort == "upmc" else core_api.load_regions(cohort, **kwargs)
-    patients = core_api.load_patients(regions)
-    if cells is None:
-        cells = core_api.load_cells(cohort, **kwargs)
-    g = core_api.grammar(cells["type_names"])
-    fnames = core_api.feature_names(g)
-    x_all, m_pat = _aggregate_patient_features(
-        regions=regions, patients=patients, cells=cells, g=g, core_api=core_api, region_cache=region_cache
-    )
-
-    time_all = patients["time_days"].to_numpy(dtype=np.float64)
-    event_all = patients["event"].to_numpy(dtype=np.float64)
-    strata_all = np.asarray(patients["stratum"].astype(str), dtype=str)
-    pids_all = [str(p) for p in patients["patient_id"]]
-
-    valid_mask = np.isfinite(time_all) & (time_all >= 0) & np.isin(event_all, [0.0, 1.0])
-    excluded = [pid for pid, ok in zip(pids_all, valid_mask) if not ok]
-
-    x_eval = x_all[valid_mask]
-    time_eval = time_all[valid_mask]
-    event_eval = event_all[valid_mask]
-    strata_eval = strata_all[valid_mask]
-    m_eval = m_pat[valid_mask]
-    pids_eval = [pid for pid, ok in zip(pids_all, valid_mask) if ok]
-
-    finite_cols = np.isfinite(x_eval).all(axis=0)
-    x_tested = x_eval[:, finite_cols]
-    tested_names = [name for name, ok in zip(fnames, finite_cols) if ok]
-    grammar_indices = [int(i) for i, ok in enumerate(finite_cols) if ok]
-
-    dropped_focal = []
-    for ti, ft in enumerate(g["focal_types"]):
-        n_zero = int(np.sum(m_eval[:, ti] == 0))
-        if n_zero > 0:
-            dropped_focal.append(f"{g['type_names'][ft]} ({n_zero}/{len(m_eval)} patients lack focal cells)")
-    dropped_reason = (
-        "Excluded features for focal types absent in some evaluable patients: " + "; ".join(dropped_focal)
-        if dropped_focal or not finite_cols.all()
-        else None
-    )
-
-    perm = stats_api.permutation_test(
-        x_tested, time_eval, event_eval, strata_eval, n_resamples=n_resamples, seed=seed
-    )
-    z_obs = perm["z"]
-    adj_p = perm["adjusted_p"]
-    order = sorted(range(len(tested_names)), key=lambda idx: (-abs(float(z_obs[idx])), idx))[:top_k]
-    lopo = leave_one_patient_out(
-        X=x_tested,
-        time=time_eval,
-        event=event_eval,
-        strata=strata_eval,
-        patient_ids=pids_eval,
-        observed_z=z_obs,
-        top_indices=order,
-        score_fn=stats_api.score,
-    )
-    top_hits = [
-        {
-            "rank": rank,
-            "feature": tested_names[idx],
-            "index": int(idx),
-            "grammar_index": grammar_indices[idx],
-            "z": float(z_obs[idx]),
-            "adjusted_p": float(adj_p[idx]),
-            "lopo": lopo[idx],
-        }
-        for rank, idx in enumerate(order, start=1)
-    ]
-
-    leakage = compute_leakage_audit(regions)
-    top_hit_stable = bool(
-        top_hits
-        and top_hits[0]["lopo"]["sign_flips"] == 0
-        and (top_hits[0]["lopo"]["rank1_retained_fraction"] or 0.0) >= 0.8
-    )
-    maxt_p = float(perm["p"])
-    omnibus_p = float(perm["omnibus"]["p"])
-
-    return {
-        "schema_version": AUDIT_SCHEMA_VERSION,
-        "cohort": cohort,
-        "exploratory": True,
-        "already_seen": True,
-        "already_seen_disclosure": ALREADY_SEEN_DISCLOSURE,
-        "clinical_claims": False,
-        "inference_scope": (
-            "descriptive_with_tuple_sensitivity" if cohort == "upmc" else "patient_level_exploratory"
-        ),
-        "grammar_hash": core_api.grammar_hash(g),
-        "n_regions": int(len(regions)),
-        "n_patients_total": int(len(patients)),
-        "n_patients_evaluable": int(len(pids_eval)),
-        "n_events": int(np.sum(event_eval)),
-        "excluded_patients": excluded,
-        "n_features_total": int(core_api.n_features(g)),
-        "n_features_tested": int(x_tested.shape[1]),
-        "dropped_features_reason": dropped_reason,
-        "coverslips": sorted(regions["coverslip"].astype(str).unique().tolist()),
-        "patients_spanning_multiple_coverslips": leakage["patients_spanning_multiple_coverslips"],
-        "strata_note": (
-            "Modal coverslip per patient (UPMC patients span multiple coverslips; descriptive only with tuple+case sensitivity)."
-            if cohort == "upmc"
-            else "Patient-level coverslip strata (Charville case numbers identify patients)."
-        ),
-        "leakage_audit": leakage,
-        "maxT": {
-            "statistic": float(perm["maxT"]),
-            "p": maxt_p,
-            "threshold_alpha_05": float(stats_api.threshold({"alpha": 0.05}, perm["null_z"])),
-            "n_resamples": int(n_resamples),
-            "top_hits": top_hits,
-        },
-        "omnibus": {
-            "statistics": {k: float(v) for k, v in perm["omnibus"]["statistics"].items()},
-            "component_p": {k: float(v) for k, v in perm["omnibus"]["component_p"].items()},
-            "p": omnibus_p,
-        },
-        "sensitivity": None,
-        "atlas_placement": {
-            "cohort": cohort,
-            "n_evaluable": int(len(pids_eval)),
-            "n_events": int(np.sum(event_eval)),
-            "regions_per_patient_median": float(np.median(patients["n_regions"].to_numpy())),
-            "atlas_overlay_ready": True,
-        },
-        "prepared_outcome": choose_prepared_outcome(
-            maxt_p=maxt_p, omnibus_p=omnibus_p, top_hit_stable=top_hit_stable
-        ),
-    }
 
 
 def run_cohort_audit(
@@ -312,46 +141,153 @@ def run_cohort_audit(
     core_api: CoreAPI | None = None,
     stats_api: StatsAPI | None = None,
 ) -> dict[str, Any]:
-    """Run the already-seen real-data audit for one cohort and optionally save JSON."""
+    """Run the already-seen real-data audit against the binding CONTRACT.md schema."""
+    if cohort not in {"upmc", "charville"}:
+        raise ValueError(f"unknown cohort {cohort!r}")
     core = core_api or load_default_core()
     stats = stats_api or load_default_stats()
     kwargs = {"data_dir": data_dir} if data_dir is not None else {}
-    cells = core.load_cells(cohort, **kwargs)
-    region_cache: dict[str, tuple[np.ndarray, np.ndarray]] = {}
-    result = _run_permutation_audit(
-        cohort=cohort,
-        identity="tuple",
-        n_resamples=n_resamples,
-        seed=seed,
-        top_k=top_k,
-        data_dir=data_dir,
-        core_api=core,
-        stats_api=stats,
-        region_cache=region_cache,
-        cells=cells,
+
+    cells = core.load(cohort, **kwargs)
+    g = core.grammar(list(cells["type_names"]))
+    fnames = core.feature_names(g)
+    x_full = np.asarray(core.truth(cells), dtype=np.float64)
+
+    time = np.asarray(cells["time"], dtype=np.float64)
+    event = np.asarray(cells["event"], dtype=np.float64)
+    strata = np.asarray(cells["strata"], dtype=np.int32)
+    patient_names = [str(p) for p in cells["patient_names"]]
+
+    # Prefer native per-feature complete-case NaN handling in stats/; fallback only if stats rejects NaN.
+    nan_count = int(np.isnan(x_full).sum())
+    try:
+        perm = stats.permutation_test(x_full, time, event, strata, n_resamples=n_resamples, seed=seed)
+        x_tested = x_full
+        tested_names = fnames
+        grammar_indices = list(range(len(fnames)))
+        nan_policy = f"complete_case_per_feature ({nan_count} NaN cells preserved)" if nan_count else "all_finite"
+    except ValueError:
+        x_tested, tested_names, grammar_indices, nan_policy = _finite_feature_subset(x_full, fnames)
+        perm = stats.permutation_test(x_tested, time, event, strata, n_resamples=n_resamples, seed=seed)
+
+    z_obs = np.asarray(perm["z"], dtype=np.float64)
+    adj_p = np.asarray(perm["adjusted_p"], dtype=np.float64)
+    order = sorted(
+        (i for i in range(len(tested_names)) if np.isfinite(z_obs[i])),
+        key=lambda idx: (-abs(float(z_obs[idx])), idx),
+    )[:top_k]
+
+    lopo = leave_one_patient_out(
+        X=x_tested,
+        time=time,
+        event=event,
+        strata=strata,
+        patient_names=patient_names,
+        observed_z=z_obs,
+        top_indices=order,
+        score_fn=stats.score,
     )
-    if cohort == "upmc":
-        tc = _run_permutation_audit(
-            cohort="upmc",
-            identity="tuple+case",
-            n_resamples=n_resamples,
-            seed=seed,
-            top_k=1,
-            data_dir=data_dir,
-            core_api=core,
-            stats_api=stats,
-            region_cache=region_cache,
-            cells=cells,
-        )
-        result["sensitivity"] = {
-            "kind": "tuple+case",
-            "n_patients": tc["n_patients_evaluable"],
-            "n_events": tc["n_events"],
-            "maxT": tc["maxT"]["statistic"],
-            "maxT_p": tc["maxT"]["p"],
-            "omnibus_p": tc["omnibus"]["p"],
-            "top_hit_feature": tc["maxT"]["top_hits"][0]["feature"] if tc["maxT"]["top_hits"] else None,
+    top_hits = [
+        {
+            "rank": rank,
+            "feature": tested_names[idx],
+            "index": int(idx),
+            "grammar_index": int(grammar_indices[idx]),
+            "z": float(z_obs[idx]),
+            "adjusted_p": float(adj_p[idx]),
+            "lopo": lopo[idx],
         }
+        for rank, idx in enumerate(order, start=1)
+    ]
+
+    leakage = leakage_from_cells(cells)
+    top_hit_stable = bool(
+        top_hits
+        and top_hits[0]["lopo"]["sign_flips"] == 0
+        and (top_hits[0]["lopo"]["rank1_retained_fraction"] or 0.0) >= 0.8
+    )
+    maxt_p = float(perm["p"])
+    omnibus_p = float(perm["omnibus"]["p"])
+
+    patient_of_region = np.asarray(cells["patient_of_region"], dtype=np.int64)
+    regions_per_patient = np.bincount(patient_of_region, minlength=len(patient_names))
+
+    sensitivity: dict[str, Any] | None = None
+    if cohort == "upmc" and core.load_regions is not None and core.load_patients is not None:
+        reg_tuple = core.load_regions("upmc", identity="tuple", **kwargs)
+        pts_tuple = core.load_patients(reg_tuple)
+        reg_tc = core.load_regions("upmc", identity="tuple+case", **kwargs)
+        pts_tc = core.load_patients(reg_tc)
+        sensitivity = {
+            "kind": "tuple_vs_tuple+case_descriptive_only",
+            "tuple_patients": int(len(pts_tuple)),
+            "tuple_events": int(np.nansum(pts_tuple["event"])),
+            "tuple_plus_case_patients": int(len(pts_tc)),
+            "tuple_plus_case_events": int(np.nansum(pts_tc["event"])),
+            "note": "Provisional tuple matching; never used for patient-level inference.",
+        }
+
+    excluded_summary = (
+        "120 NA-labelled regions excluded from verified case-number cohort."
+        if cohort == "upmc"
+        else "Excluded cases: 24135, 24136 (no survival dates) and 24180 (spans coverslips c002 and c003)."
+    )
+    strata_note = (
+        "Coverslip groups 0=c001-c003, 1=c004-c007 (7 / 43 patients; no verified case crosses group boundary). "
+        "UPMC has 10 events on verified cases and is descriptive only."
+        if cohort == "upmc"
+        else "Coverslip strata c001-c004 mapped to 0-3 (patient-level cohort; 38 events)."
+    )
+
+    result = {
+        "schema_version": AUDIT_SCHEMA_VERSION,
+        "cohort": cohort,
+        "exploratory": True,
+        "already_seen": True,
+        "already_seen_disclosure": ALREADY_SEEN_DISCLOSURE,
+        "clinical_claims": False,
+        "inference_scope": (
+            "descriptive_verified_cases_and_tuple_bounds" if cohort == "upmc" else "patient_level_exploratory"
+        ),
+        "grammar_hash": core.grammar_hash(g),
+        "n_regions": int(len(cells["region_names"])),
+        "n_patients": int(len(patient_names)),
+        "n_events": int(np.sum(event)),
+        "excluded_summary": excluded_summary,
+        "n_features_total": int(core.n_features(g)),
+        "n_features_tested": int(x_tested.shape[1]),
+        "nan_policy": nan_policy,
+        "strata_note": strata_note,
+        "leakage_audit": leakage,
+        "maxT": {
+            "statistic": float(perm["maxT"]),
+            "p": maxt_p,
+            "threshold_alpha_05": float(stats.threshold({"alpha": 0.05}, perm["null_z"])),
+            "n_resamples": int(n_resamples),
+            "top_hits": top_hits,
+        },
+        "omnibus": {
+            "statistics": {k: float(v) for k, v in perm["omnibus"]["statistics"].items()},
+            "component_p": {k: float(v) for k, v in perm["omnibus"]["component_p"].items()},
+            "p": omnibus_p,
+        },
+        "sensitivity": sensitivity,
+        "atlas_placement": {
+            "cohort": cohort,
+            "n_patients": int(len(patient_names)),
+            "n_events": int(np.sum(event)),
+            "regions_per_patient_median": float(np.median(regions_per_patient)),
+            "atlas_overlay_ready": True,
+        },
+        "prepared_outcome": choose_prepared_outcome(
+            cohort=cohort,
+            maxt_p=maxt_p,
+            omnibus_p=omnibus_p,
+            top_hit_stable=top_hit_stable,
+            n_events=int(np.sum(event)),
+        ),
+    }
+
     validate_audit_result(result)
     if out_dir is not None:
         out_dir = Path(out_dir)
@@ -363,15 +299,15 @@ def run_cohort_audit(
 def format_summary_table(results: list[dict[str, Any]]) -> str:
     """Format an already-seen exploratory results table across audited cohorts."""
     lines = [
-        "| Cohort (already-seen, exploratory) | Evaluable P (Events) | Features Tested | maxT (p) | Omnibus p | Leakage (mean/max) | Top Hit (LOPO flips) | Prepared Outcome |",
-        "|---|---:|---:|---:|---:|---:|---|---|",
+        "| Cohort (already-seen, exploratory) | P (Events) | Regions | Features | maxT (p) | Omnibus p | Coverslip Leakage (mean/max) | Top Hit (LOPO flips) | Prepared Outcome |",
+        "|---|---:|---:|---:|---:|---:|---:|---|---|",
     ]
     for r in results:
         hit = r["maxT"]["top_hits"][0] if r["maxT"]["top_hits"] else None
         hit_s = f"`{hit['feature']}` (z={hit['z']:.2f}, flips={hit['lopo']['sign_flips']})" if hit else "none"
         leak = r["leakage_audit"]
         lines.append(
-            f"| {r['cohort']} | {r['n_patients_evaluable']} ({r['n_events']}) | "
+            f"| {r['cohort']} | {r['n_patients']} ({r['n_events']}) | {r['n_regions']} | "
             f"{r['n_features_tested']}/{r['n_features_total']} | "
             f"{r['maxT']['statistic']:.2f} ({r['maxT']['p']:.4f}) | {r['omnibus']['p']:.4f} | "
             f"{leak['mean_leakage_fraction']:.2f}/{leak['max_leakage_fraction']:.2f} | "
