@@ -19,6 +19,7 @@ from audit.leakage import leakage_from_cells
 from audit.schema import (
     ALREADY_SEEN_DISCLOSURE,
     AUDIT_SCHEMA_VERSION,
+    CONDITIONAL_CUTOFF_SCOPE,
     choose_prepared_outcome,
     validate_audit_result,
 )
@@ -46,14 +47,16 @@ class StatsAPI:
     threshold: Callable[..., float] | None = None
 
 
-def conditional_permutation_cutoff(null_z: np.ndarray, alpha: float = 0.05) -> float:
+def conditional_permutation_cutoff(null_z: np.ndarray, alpha: float = 0.05) -> float | None:
     """Compute the conditional within-stratum maxT cutoff from permutation draws (not design-calibrated)."""
     arr = np.asarray(null_z, dtype=np.float64)
     if arr.ndim != 2 or len(arr) < 1:
         raise ValueError("null_z must be a non-empty 2D array")
-    maxima = np.max(np.where(np.isfinite(arr), np.abs(arr), 0.0), axis=1)
+    if not np.isfinite(arr).all():
+        raise ValueError("null_z must contain only finite null z values")
+    maxima = np.max(np.abs(arr), axis=1)
     k = math.ceil((len(maxima) + 1) * (1.0 - alpha))
-    return float(np.partition(maxima, k - 1)[k - 1]) if k <= len(maxima) else float("inf")
+    return float(np.partition(maxima, k - 1)[k - 1]) if k <= len(maxima) else None
 
 
 def load_default_core() -> CoreAPI:
@@ -274,7 +277,7 @@ def run_cohort_audit(
             "statistic": float(perm["maxT"]),
             "p": maxt_p,
             "conditional_cutoff_alpha_05": conditional_permutation_cutoff(perm["null_z"], alpha=0.05),
-            "cutoff_scope": "conditional_within_stratum_permutation_not_reusable_design_calibration",
+            "cutoff_scope": CONDITIONAL_CUTOFF_SCOPE,
             "n_resamples": int(n_resamples),
             "top_hits": top_hits,
         },

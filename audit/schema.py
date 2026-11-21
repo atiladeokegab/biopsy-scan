@@ -1,9 +1,12 @@
 """Output schema, prepared outcome selector, and exploratory/already-seen guards for the real-data audit."""
 from __future__ import annotations
 
+import math
 from typing import Any
 
 AUDIT_SCHEMA_VERSION = 1
+
+CONDITIONAL_CUTOFF_SCOPE = "conditional_within_stratum_permutation_not_reusable_design_calibration"
 
 ALREADY_SEEN_DISCLOSURE = (
     "Both cohorts' outcomes have been examined by reviewers already; "
@@ -115,8 +118,15 @@ def validate_audit_result(record: dict[str, Any]) -> None:
         raise ValueError("maxT block must contain statistic, p, and top_hits")
     if "threshold_alpha_05" in maxt:
         raise ValueError("maxT must not expose unlabeled 'threshold_alpha_05'; use 'conditional_cutoff_alpha_05'")
-    if "conditional_cutoff_alpha_05" not in maxt or "conditional" not in str(maxt.get("cutoff_scope", "")).lower():
-        raise ValueError("maxT block must carry conditional_cutoff_alpha_05 and conditional cutoff_scope")
+    if maxt.get("cutoff_scope") != CONDITIONAL_CUTOFF_SCOPE:
+        raise ValueError(f"maxT cutoff_scope must equal {CONDITIONAL_CUTOFF_SCOPE!r}")
+    if "conditional_cutoff_alpha_05" not in maxt:
+        raise ValueError("maxT block must carry conditional_cutoff_alpha_05")
+    cutoff = maxt["conditional_cutoff_alpha_05"]
+    if cutoff is not None and (
+        isinstance(cutoff, bool) or not isinstance(cutoff, (int, float)) or not math.isfinite(cutoff) or cutoff < 0.0
+    ):
+        raise ValueError("conditional_cutoff_alpha_05 must be a finite non-negative number or None")
     if not isinstance(omnibus, dict) or "statistics" not in omnibus or "p" not in omnibus:
         raise ValueError("omnibus block must contain statistics and p")
     leakage = record["leakage_audit"]

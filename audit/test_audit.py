@@ -8,9 +8,17 @@ import pandas as pd
 import pytest
 
 from audit.leakage import compute_leakage_audit, leakage_from_cells
-from audit.runner import CoreAPI, StatsAPI, format_summary_table, leave_one_patient_out, run_cohort_audit
+from audit.runner import (
+    CoreAPI,
+    StatsAPI,
+    conditional_permutation_cutoff,
+    format_summary_table,
+    leave_one_patient_out,
+    run_cohort_audit,
+)
 from audit.schema import (
     AUDIT_SCHEMA_VERSION,
+    CONDITIONAL_CUTOFF_SCOPE,
     PREPARED_OUTCOMES,
     choose_prepared_outcome,
     validate_audit_result,
@@ -137,6 +145,19 @@ def test_schema_validation_accepts_valid_record_and_rejects_missing_or_clinical_
         bad_maxt = dict(rec["maxT"])
         bad_maxt.pop("conditional_cutoff_alpha_05")
         validate_audit_result({**rec, "maxT": bad_maxt})
+
+    with pytest.raises(ValueError, match="cutoff_scope"):
+        validate_audit_result({**rec, "maxT": {**rec["maxT"], "cutoff_scope": "unconditional_reusable_design_calibration"}})
+
+    for bad_cutoff in ("bad cutoff", -1.0, True, float("inf")):
+        with pytest.raises(ValueError, match="conditional_cutoff_alpha_05"):
+            validate_audit_result({**rec, "maxT": {**rec["maxT"], "conditional_cutoff_alpha_05": bad_cutoff}})
+
+    validate_audit_result({**rec, "maxT": {**rec["maxT"], "conditional_cutoff_alpha_05": None, "cutoff_scope": CONDITIONAL_CUTOFF_SCOPE}})
+
+    assert conditional_permutation_cutoff(np.ones((10, 3))) is None
+    with pytest.raises(ValueError, match="finite"):
+        conditional_permutation_cutoff(np.array([[1.0, np.nan], [0.5, 0.2]]))
 
 
 def test_leakage_audit_detects_cross_coverslip_patient_overlap_and_works_on_contract_cells() -> None:
