@@ -140,9 +140,11 @@ const where = (r) => [r.hardware, r.gpu || (r.cores ? `${r.cores} core${r.cores 
 
 // Every dynamic string is escaped; a row whose seconds are not a positive finite number is drawn as untimed.
 export function speedRaceHTML(data) {
-  return `<ol class="sr">${data.rows.map((r) => {
+  const sc = data.scope; // the design point's own qualifications (#75): printed whenever its lanes are timed
+  return (sc ? `<p class="sr-head">${esc(sc.comparison)}. ${esc(sc.calibration)}.</p>` : "") + `<ol class="sr">${data.rows.map((r) => {
     const tag = `<span class="tag${r.label === "MEASURED" ? " ok" : ""}">${esc(r.label)}</span>`;
-    const src = [r.source, r.note, Number.isFinite(r.startup_s) && r.startup_s > 0 ? `+ ${secs(r.startup_s)} start-up, not counted` : null]
+    const src = [r.source, r.note, Number.isFinite(r.startup_s) && r.startup_s > 0 ? `+ ${secs(r.startup_s)} start-up, not counted` : null,
+      Number.isFinite(r.calls_s) ? `+ ${secs(r.calls_s)} threshold and calls, timed apart` : null]
       .filter(Boolean).map(esc).join(" · ");
     if (!timed(r)) // no bar, no number: the track only says where the time will come from
       return `<li class="pending"><span class="sr-name">${esc(r.method)}</span><span class="sr-time">${tag}</span>` +

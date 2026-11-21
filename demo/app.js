@@ -4,7 +4,7 @@
 import { createTissue } from "./tissue.js";
 import { createSpeedRace, workflowHTML, pairRatio } from "./race.js";
 import { drawRegion, drawKM } from "./bio.js";
-import { claimTexts, bioTexts, gridTexts } from "./claims.js";
+import { claimTexts, bioTexts, gridTexts, dialRanges } from "./claims.js";
 import { drawChart, pct, fovLabel } from "./chart.js";
 
 const $ = (id) => document.getElementById(id);
@@ -193,11 +193,7 @@ async function main() {
   // Field of view: 200 µm up to the core's width in 100 µm steps, then one more stop for "full core".
   FULL_SLIDER = Math.floor(tissue.region_um / FOV_STEP) * FOV_STEP + FOV_STEP;
   Object.assign($("fov"), { min: 200, step: FOV_STEP, max: FULL_SLIDER });
-  // The other dials span exactly the grid's axes; an axis with one value is shown but fixed.
-  for (const [id, k, f] of [["patients", "patients", 1], ["regions", "regions", 1], ["miscall", "miscall", 100]]) {
-    const v = grid.axes[k];
-    Object.assign($(id), { min: Math.min(...v) * f, max: Math.max(...v) * f, disabled: v.length < 2 });
-  }
+  for (const [id, range] of Object.entries(dialRanges(grid))) Object.assign($(id), range);
   setSliders({ ...grid.cohort, fov_um: 400, miscall: 0.1 });
   update();
 }

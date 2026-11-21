@@ -4,12 +4,11 @@ Run: python3 -I demo/collect_race.py [extra.json ...]. Pages runs it before ever
 A bench file feeds the race in one of two ways:
   Only a file with "status": "MEASURED" and "studies": 1000 (the declared design point) may fill a race row;
   anything else is refused with a message. Either
-  0. build-modal's "kind": "design_point" file (slots a_lab_all_cores, b_ours_cpu_all_cores, c_ours_1_gpu,
+  1. build-modal's "kind": "design_point" file (slots a_lab_all_cores, b_ours_cpu_all_cores, c_ours_1_gpu,
      d_ours_n_gpu.runs["16"]), or
-  1. a top-level "race" list, one entry per row of the equal-work unit (one design point, 1,000 studies):
-     [{"id": "gpu-1", "seconds": 4.2, "startup_s": 90.0, "label": "MEASURED", "hardware": "Modal", "gpu": "1x NVIDIA H100"}]
-     ids: lab-cpu, preflight-cpu, gpu-1, gpu-16. "seconds" is compute time; start-up goes in "startup_s",
-     shown apart and never counted. Or
+     It must carry its "scope" (WORKFLOW comparison, EXPLORATORY calibration), which the page prints; GPU lanes
+     need e_gpu_parity.exact_all_containers; gpu-16 is the measured compute span; the threshold-and-calls step
+     is kept apart in "calls_s". A generic "race" list feeds nothing. Or
   2. R-14's impl-a shape (cpu_model, cohorts[].timings[]): the Charville 3,780-candidate Cox screen fills the
      "workflow" footnote only. It is different work, so it is never a race bar and never part of a ratio.
   3. the Modal runner's "kind": "ladder" file (#75): fills "interim", two measured pairs shown until the
@@ -30,7 +29,6 @@ PLANNED_PATIENTS = 200  # the demo's study: "they plan 200 patients"
 DESIGN_STUDIES = 1000  # the race's declared unit: one design point, 1,000 simulated studies (baseline.json task)
 TIMED = ("MEASURED", "ESTIMATE")
 SLOTS = {"lab-cpu": "a_lab_all_cores", "preflight-cpu": "b_ours_cpu_all_cores", "gpu-1": "c_ours_1_gpu"}
-KEEP = ("seconds", "startup_s", "label", "hardware", "cores", "gpu", "note")
 
 
 def refused(d):
@@ -44,7 +42,11 @@ def refused(d):
 
 def design_point(name, d):
     """build-modal's "kind": "design_point" file: slots a-d become the four race rows."""
-    s = d["slots"]
+    s, scope = d["slots"], d.get("scope") or {}
+    if not all(isinstance(scope.get(k), str) and scope[k] for k in ("comparison", "calibration")):
+        print(f"{name}: refused for the race: no WORKFLOW/EXPLORATORY scope to print", file=sys.stderr)
+        return
+    yield "scope", {k: scope[k] for k in ("comparison", "calibration")}
     parity = d.get("e_gpu_parity", {}).get("exact_all_containers") is True
     for rid, key in SLOTS.items():
         r = s.get(key, {})
@@ -54,25 +56,24 @@ def design_point(name, d):
         if gpu and not parity:  # a GPU lane must give the CPU's answer exactly
             continue
         yield rid, {"seconds": round(r["seconds"], 2), "label": r["label"], "hardware": "Modal",
-                    "cores": None if gpu else r.get("workers"), "gpu": f"1x {gpu[0]}" if gpu else None, "source": name}
+                    "cores": None if gpu else r.get("workers"), "gpu": f"1x {gpu[0]}" if gpu else None, "source": name,
+                    **({"calls_s": round(r["plus_threshold_and_calls_s"], 2)} if "plus_threshold_and_calls_s" in r else {}),
+                    **({"note": r["basis"]} if r.get("basis") not in (None, "measured") else {})}
     run = s.get("d_ours_n_gpu", {}).get("runs", {}).get("16")
     if s.get("d_ours_n_gpu", {}).get("label") in TIMED and run and parity:
-        yield "gpu-16", {"seconds": round(run["compute_s"], 2), "startup_s": round(run["startup_and_transfer_s"], 1),
+        yield "gpu-16", {"seconds": round(run["compute_span_s"], 2), "note": "compute span across containers", "startup_s": round(run["startup_and_transfer_s"], 1),
                          "label": s["d_ours_n_gpu"]["label"], "hardware": "Modal", "cores": None,
                          "gpu": f"{run['containers_seen']}x {' / '.join(sorted(set(run['gpus'])))}", "source": name}
 
 
 def rows_from(path, d):
     name = f"bench/results/{path.name}"
-    if d.get("race") or d.get("kind") == "design_point":
+    if d.get("kind") == "design_point":
         why = refused(d)
         if why:
             print(f"{name}: refused for the race: {why}", file=sys.stderr)
-        elif d.get("kind") == "design_point":
-            yield from design_point(name, d)
         else:
-            for r in d["race"]:
-                yield r["id"], {**{k: r[k] for k in KEEP if k in r}, "source": r.get("source", name)}
+            yield from design_point(name, d)
     if d.get("kind") == "ladder" and d.get("status") == "MEASURED":
         yield "interim", interim(name, d)
     if "cpu_model" in d:
@@ -130,6 +131,9 @@ def main(extra):
                 race["interim"] = fields
                 print(f"interim: {len(fields)} groups from {fields[0]['rows'][0]['source']}")
                 continue
+            if rid == "scope":
+                race["scope"] = fields
+                continue
             if rid == "workflow":
                 race["workflow"] = fields
                 print(f"workflow footnote: {fields['seconds']} s {fields['label']} from {fields['source']}")
@@ -152,9 +156,10 @@ def claims(write=True):
         "schema": "preflight-claims/1",
         "power": {"patients": PLANNED_PATIENTS, "sim": p["sim_power"], "lo": p["sim_lo"], "hi": p["sim_hi"],
                   "n": p["sim_n"], "label": vs["status"], "formula": p["analytic_power"], "formula_label": "ANALYTIC",
-                  "model": f"a planted effect of HR {vs['hr_per_sd']:g} per SD among {vs['features_m']} candidate features "
-                           f"(Bonferroni), {vs['design']['regions_per_patient']} fields of {vs['design']['fov_um']:g} µm "
-                           f"per patient, {vs['design']['eps']:.0%} cells mis-called; not the PD1 pattern's power",
+                  "model": f"a planted effect of HR {vs['hr_per_sd']:g} per source SD among {vs['features_m']} candidate "
+                           f"features, {vs['design']['regions_per_patient']} fields of {vs['design']['fov_um']:g} µm per "
+                           f"patient, {vs['design']['eps']:.0%} cells mis-called (simulation: calibrated maxT; formula: "
+                           "Bonferroni); not the PD1 pattern's power",
                   "source": vs_path},
         "false_alarms": {"hits": hits, "n": n_null * len(vs["points"]), "designs": len(vs["points"]),
                          "target": vs["alpha"], "label": vs["status"],

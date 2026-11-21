@@ -5,14 +5,15 @@ const int = (v) => Number.isInteger(v);
 const pct = (v) => `${Math.round(v * 100)}%`;
 const pct1 = (v) => `${(v * 100).toFixed(v < 0.1 ? 1 : 0)}%`;
 const need = (ok, what) => { if (!ok) throw new Error(`bad data: ${what}`); };
+const count = (v, lo) => int(v) && v >= lo;
+const rate = (v) => fin(v) && v >= 0 && v <= 1;
 
 export function claimTexts({ power: pw, false_alarms: fa, maxT: mt }) {
-  need(int(pw?.patients) && int(pw.n) && [pw.sim, pw.lo, pw.hi, pw.formula].every(fin) &&
-    0 <= pw.lo && pw.lo <= pw.sim && pw.sim <= pw.hi && pw.hi <= 1 && pw.formula >= 0 && pw.formula <= 1 &&
-    typeof pw.model === "string", "power");
-  need(int(fa?.hits) && int(fa.n) && fa.n > 0 && fa.hits >= 0 && fa.hits <= fa.n && fin(fa.target) &&
-    int(fa.designs) && fa.designs > 0, "false_alarms");
-  need(fin(mt?.p) && mt.p > 0 && mt.p <= 1 && int(mt.tests) && mt.tests > 0, "maxT");
+  // The same rules as check_data.py check_claims (tests/test_collect_race.py checks they agree).
+  need(count(pw?.patients, 1) && count(pw.n, 1) && [pw.sim, pw.lo, pw.hi, pw.formula].every(rate) &&
+    pw.lo <= pw.sim && pw.sim <= pw.hi && typeof pw.model === "string", "power");
+  need(count(fa?.n, 1) && count(fa.designs, 1) && count(fa.hits, 0) && fa.hits <= fa.n && rate(fa.target), "false_alarms");
+  need(fin(mt?.z) && fin(mt.p) && mt.p > 0 && mt.p <= 1 && count(mt.tests, 1), "maxT");
   return {
     "pw-n": String(pw.patients),
     "pw-sim": pct(pw.sim),
@@ -58,4 +59,10 @@ export function gridTexts(g) {
     planted: `Planted ${outcomes === "SYNTHETIC" ? "synthetic " : ""}effect: HR ${g.effect_hr_per_sd} per SD` +
       (legacy ? ", legacy Cox score test (R4); not the PD1 pattern, not the R15 screen" : ""),
   };
+}
+
+// The dials span exactly the grid's axes (mis-call in %); an axis with one value is shown but fixed.
+export function dialRanges(g) {
+  const r = (v, f) => ({ min: Math.min(...v) * f, max: Math.max(...v) * f, disabled: v.length < 2 });
+  return { patients: r(g.axes.patients, 1), regions: r(g.axes.regions, 1), miscall: r(g.axes.miscall, 100) };
 }

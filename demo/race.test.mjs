@@ -119,11 +119,17 @@ for (const grp of bl.interim ?? []) {
 assert.match(speedRaceHTML({ rows: [row({ label: "PENDING", seconds: 5 })] }), /class="pending"/);
 assert.equal(raceState([row({ label: "UNMEASURED", seconds: 5 }), row({ seconds: 1 })], 1e9)[0].clock, null);
 assert.doesNotMatch(speedRaceHTML({ rows: [row({ seconds: 4, startup_s: "5" })] }), /start-up/);
+// Round 3 (2): a design-point race prints its WORKFLOW/EXPLORATORY scope and the calls timed apart.
+const dpHTML = speedRaceHTML({ rows: [row({ seconds: 4, calls_s: 0.41 })],
+  scope: { comparison: "WORKFLOW comparison: x <b>", calibration: "EXPLORATORY: y" } });
+assert.match(dpHTML, /WORKFLOW comparison: x &#60;b&#62;/); assert.match(dpHTML, /EXPLORATORY: y/);
+assert.match(dpHTML, /\+ 0\.41 s threshold and calls, timed apart/);
 // (1) (3) (5) every rendered claim number is checked before it is shown; the panels' words are exact.
 const { claimTexts, bioTexts } = await import("./claims.js");
 const cl = JSON.parse(readFileSync(new URL("./data/claims.json", import.meta.url), "utf8"));
 const ct = claimTexts(cl);
-assert.match(ct["pw-model"], /HR 2(\.0)? per SD .* not the PD1 pattern's power/, "power says which model it is");
+assert.match(ct["pw-model"], /HR 2(\.0)? per source SD .* not the PD1 pattern's power/, "power says which model it is");
+assert.match(ct["pw-model"], /simulation: calibrated maxT; formula: Bonferroni/, "Bonferroni is the formula's, not the simulation's");
 assert.match(ct["fa-detail"], /^28 of 700 null studies, pooled over 7 designs.*not per-design error control$/);
 for (const [k, f, v] of [["maxT", "p", undefined], ["maxT", "p", "0.1"], ["power", "hi", 0.1], ["power", "sim", NaN],
   ["false_alarms", "hits", 701], ["false_alarms", "designs", undefined], ["power", "model", undefined], ["maxT", "tests", 1.5]])
@@ -143,4 +149,11 @@ const gt = gridTexts(grid);
 assert.equal(gt.provenance, "MEASURED tissue · SYNTHETIC outcomes");
 assert.equal(gt["grid-tag"], "MEASURED simulation · SYNTHETIC outcomes");
 assert.match(gt.planted, /^Planted synthetic effect: HR 2 per SD, legacy Cox score test \(R4\); not the PD1 pattern, not the R15 screen$/);
+// The lead: the dials span the grid's own axes (Atlas's grid: 80-477 patients, 1-2 regions, mis-call 10% only).
+const { dialRanges } = await import("./claims.js");
+assert.deepEqual(dialRanges(grid), {
+  patients: { min: 80, max: 477, disabled: false }, regions: { min: 1, max: 2, disabled: false },
+  miscall: { min: 10, max: 10, disabled: true } });
+assert.deepEqual(dialRanges({ axes: { patients: [20, 300], regions: [1, 8], miscall: [0, 0.3] } }).miscall,
+  { min: 0, max: 30, disabled: false });
 console.log("race.test.mjs: ok");

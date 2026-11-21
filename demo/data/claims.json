@@ -9,7 +9,7 @@
     "label": "ESTIMATE",
     "formula": 0.8011893244036327,
     "formula_label": "ANALYTIC",
-    "model": "a planted effect of HR 2 per SD among 630 candidate features (Bonferroni), 2 fields of 400 \u00b5m per patient, 10% cells mis-called; not the PD1 pattern's power",
+    "model": "a planted effect of HR 2 per source SD among 630 candidate features, 2 fields of 400 \u00b5m per patient, 10% cells mis-called (simulation: calibrated maxT; formula: Bonferroni); not the PD1 pattern's power",
     "source": "bench/results/vs-schoenfeld-300.json"
   },
   "false_alarms": {

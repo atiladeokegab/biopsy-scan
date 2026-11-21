@@ -9,12 +9,11 @@ cr = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(cr)
 
 
-def test_race_list_feeds_rows_by_id():
+def test_a_generic_race_list_feeds_nothing():
+    """Atlas #79 round 3 (2): no producer writes one, and it bypassed the GPU parity check; only design_point fills rows."""
     d = {"status": "MEASURED", "studies": 1000,
          "race": [{"id": "gpu-1", "seconds": 0.8, "startup_s": 90.0, "label": "MEASURED", "hardware": "Modal", "gpu": "1x H100"}]}
-    [(rid, f)] = cr.rows_from(Path("modal-gpu.json"), d)
-    assert rid == "gpu-1" and f["seconds"] == 0.8 and f["startup_s"] == 90.0 and f["gpu"] == "1x H100"
-    assert f["source"] == "bench/results/modal-gpu.json"
+    assert list(cr.rows_from(Path("modal-gpu.json"), d)) == []
 
 
 def test_impl_a_feeds_only_the_workflow_footnote():
@@ -66,7 +65,7 @@ def _row(**o):
 
 def test_checker_validates_each_field_on_its_own():
     """Atlas #79 (4): a gpu string never excuses a bad cores value; seconds must be positive and finite."""
-    base = {"schema": "preflight-baseline/1", "task": "t"}
+    base = {"schema": "preflight-baseline/1", "task": "t", "scope": {"comparison": "WORKFLOW c", "calibration": "EXPLORATORY c"}}
     assert _check(base | {"rows": [_row()]}) is None
     for bad in ({"cores": "<b>8</b>"}, {"cores": True}, {"cores": 0}, {"seconds": float("nan")}, {"seconds": True},
                 {"seconds": -1}, {"startup_s": 0}, {"label": "PENDING"}, {"source": ""}, {"label": "GUESS"}):
@@ -102,20 +101,38 @@ def test_ladder_feeds_interim_compute_only_with_startup_apart():
     assert list(cr.rows_from(Path("x.json"), LADDER | {"status": "FAILED"})) == []
 
 
-DP = {"kind": "design_point", "status": "MEASURED", "studies": 1000, "e_gpu_parity": {"exact_all_containers": True}, "slots": {
-    "a_lab_all_cores": {"label": "MEASURED", "seconds": 1043.2, "workers": 48},
-    "b_ours_cpu_all_cores": {"label": "MEASURED", "seconds": 673.1, "workers": 48},
-    "c_ours_1_gpu": {"label": "MEASURED", "seconds": 865.4, "gpu": ["NVIDIA H100"]},
-    "d_ours_n_gpu": {"label": "MEASURED", "runs": {"16": {"compute_s": 54.1, "startup_and_transfer_s": 6.2,
-                                                          "containers_seen": 16, "gpus": ["NVIDIA H100"]}}}}}
+# The shape #75's gpu/modal_app.py run_design_point writes (origin/modal-gpu 25fcaca, lines 704-760), values invented.
+DP = {"schema_version": 1, "runner": "modal", "status": "MEASURED", "kind": "design_point", "studies": 1000,
+      "unit": "one design point: 1000 Charville studies, bench/real_cpu.py DESIGN. ...",
+      "slots": {
+          "a_lab_all_cores": {"label": "MEASURED", "seconds": 1043.2, "measured_studies": 1000, "measured_seconds": 1043.2,
+                              "basis": "measured", "workers": 48, "host": "h", "positives": 61},
+          "b_ours_cpu_all_cores": {"label": "MEASURED", "seconds": 673.1, "workers": 48, "host": "h",
+                                   "plus_threshold_and_calls_s": 0.41},
+          "c_ours_1_gpu": {"label": "MEASURED", "seconds": 865.4, "gpu": ["NVIDIA H100"], "plus_threshold_and_calls_s": 0.38},
+          "d_ours_n_gpu": {"label": "MEASURED", "runs": {"1": {"compute_span_s": 865.4}, "16": {
+              "containers_requested": 16, "containers_seen": 16, "gpus": ["NVIDIA H100"], "compute_s_max_shard": 57.0,
+              "modal_wall_s": 70.0, "compute_span_s": 54.1, "common_overlap_s": 50.2, "startup_and_transfer_s": 6.2,
+              "preparation_s_slowest": 3.0, "parity_exact_all": True, "bit_identical_to_N1": True,
+              "speedup_vs_N1": 16.0, "efficiency": 1.0}}}},
+      "scope": {"comparison": "WORKFLOW comparison: different statistic (conditional permutation maxT vs R-15 Cox score) "
+                              "and different calibration; not equal work",
+                "calibration": "EXPLORATORY: one paired shuffle per study (same X, outcomes shuffled within strata), "
+                               "not an independent null study or unconditional calibration",
+                "agreement": "same-call counts compare two methods; they do not establish validity"},
+      "e_gpu_parity": {"exact_all_containers": True, "suite": "s"},
+      "timing": "seconds = in-container compute (GPU slots: the measured compute span across containers); ..."}
 
 
 def test_design_point_fills_the_four_rows_only_when_measured_at_1000_studies():
     """Atlas #79 re-check (b): a FAILED run, or any workload but the declared design point, fills nothing."""
     rows = dict(cr.rows_from(Path("dp.json"), DP))
-    assert sorted(rows) == ["gpu-1", "gpu-16", "lab-cpu", "preflight-cpu"]
+    assert sorted(rows) == ["gpu-1", "gpu-16", "lab-cpu", "preflight-cpu", "scope"]
     assert rows["gpu-1"]["gpu"] == "1x NVIDIA H100" and rows["lab-cpu"]["cores"] == 48
     assert (rows["gpu-16"]["seconds"], rows["gpu-16"]["startup_s"], rows["gpu-16"]["gpu"]) == (54.1, 6.2, "16x NVIDIA H100")
+    # Atlas #79 round 3 (1)(2): the measured compute span, the calls timed apart, the scope kept
+    assert rows["preflight-cpu"]["calls_s"] == 0.41 and rows["gpu-1"]["calls_s"] == 0.38 and "calls_s" not in rows["lab-cpu"]
+    assert rows["scope"] == {k: DP["scope"][k] for k in ("comparison", "calibration")}
     for bad in ({"status": "FAILED"}, {"status": None}, {"studies": 32}, {"studies": "1000"}, {"studies": None}):
         assert list(cr.rows_from(Path("dp.json"), DP | bad)) == [], bad
     race = {"race": [{"id": "gpu-1", "seconds": 1.0, "label": "MEASURED", "hardware": "h", "gpu": "g"}]}
@@ -154,12 +171,62 @@ def test_gpu_rows_need_exact_parity_and_failed_one_study_lists_stay_pending():
                                                           "hardware": "h", "cores": 8}]}
     assert list(cr.rows_from(Path("f.json"), failed)) == []
     rows = dict(cr.rows_from(Path("dp.json"), DP | {"e_gpu_parity": {"exact_all_containers": False}}))
-    assert sorted(rows) == ["lab-cpu", "preflight-cpu"], "no GPU lane without exact parity"
-    assert sorted(dict(cr.rows_from(Path("dp.json"), {k: v for k, v in DP.items() if k != "e_gpu_parity"}))) == ["lab-cpu", "preflight-cpu"]
+    assert sorted(rows) == ["lab-cpu", "preflight-cpu", "scope"], "no GPU lane without exact parity"
+    assert sorted(dict(cr.rows_from(Path("dp.json"), {k: v for k, v in DP.items() if k != "e_gpu_parity"}))) == ["lab-cpu", "preflight-cpu", "scope"]
+    no_scope = {k: v for k, v in DP.items() if k != "scope"}
+    assert list(cr.rows_from(Path("dp.json"), no_scope)) == [], "without its WORKFLOW/EXPLORATORY scope, every lane stays PENDING"
+
+
+def test_timed_design_point_rows_need_their_scope_on_the_page():
+    """Atlas #79 round 3 (2): the checker refuses timed race rows without the WORKFLOW/EXPLORATORY scope."""
+    b = json.loads((ROOT / "demo" / "data" / "baseline.json").read_text())
+    rows = dict(cr.rows_from(Path("dp.json"), DP))
+    scope = rows.pop("scope")
+    timed = b | {"rows": [r | rows.get(r["id"], {}) for r in b["rows"]]}
+    assert _check(timed) and "scope" in _check(timed)
+    assert _check(timed | {"scope": scope}) is None
+    assert _check(timed | {"scope": scope, "rows": [r | {"calls_s": -1} for r in timed["rows"]]})
 
 
 def test_power_and_false_alarms_say_which_model_they_are():
     """Atlas #79 re-check (1): 27% is the v1 planted-HR model's power, not PD1's; 28/700 is pooled over designs."""
     c = cr.claims(write=False)
     assert "HR 2" in c["power"]["model"] and "not the PD1 pattern's power" in c["power"]["model"]
+    # Atlas #79 round 3 (3): the simulation calls by calibrated maxT; Bonferroni is the formula's
+    m = c["power"]["model"]
+    assert "per source SD" in m and "simulation: calibrated maxT" in m and "formula: Bonferroni" in m
+    assert m.index("Bonferroni") > m.index("formula")
     assert c["false_alarms"]["designs"] == 7
+
+
+BAD_CLAIMS = [("power", "patients", 0), ("power", "patients", 1.5), ("power", "n", 0), ("power", "n", 2.5),
+              ("power", "sim", 1.2), ("power", "lo", 0.9), ("power", "formula", -0.1), ("power", "formula", 1.1),
+              ("false_alarms", "hits", -1), ("false_alarms", "hits", 1.5), ("false_alarms", "hits", 701),
+              ("false_alarms", "n", 0), ("false_alarms", "designs", 0), ("false_alarms", "target", 1.5),
+              ("false_alarms", "target", -0.1), ("false_alarms", "target", None), ("maxT", "p", 0), ("maxT", "p", 1.1),
+              ("maxT", "tests", 0), ("maxT", "tests", 2.5), ("maxT", "z", None), ("maxT", "p", True)]
+
+
+def test_python_and_browser_claims_validators_agree():
+    """Atlas #79 round 3 (4): check_data and claims.js accept and refuse exactly the same claims files."""
+    import shutil
+    import subprocess
+    node = shutil.which("node")
+    if not node:
+        import pytest
+        pytest.skip("node not installed")
+    good = json.loads((ROOT / "demo" / "data" / "claims.json").read_text())
+    cases = [good] + [good | {k: good[k] | {f: v}} for k, f, v in BAD_CLAIMS]
+    js = ("import { claimTexts } from './demo/claims.js'; import { readFileSync } from 'node:fs';"
+          "const cs = JSON.parse(readFileSync(0, 'utf8'));"
+          "console.log(JSON.stringify(cs.map((c) => { try { claimTexts(c); return true } catch { return false } })));")
+    out = subprocess.run([node, "--input-type=module", "-e", js], input=json.dumps(cases), capture_output=True, text=True,
+                         cwd=ROOT, check=True).stdout
+    def py_ok(c):
+        try:
+            cd.check_claims(c, "claims.json")
+            return True
+        except SystemExit:
+            return False
+    assert json.loads(out) == [py_ok(c) for c in cases]
+    assert json.loads(out) == [True] + [False] * len(BAD_CLAIMS)

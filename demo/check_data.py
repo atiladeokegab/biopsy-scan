@@ -117,7 +117,8 @@ def check_timing(r, w, at):
     need(text(r.get("source")), w, f"{at}.source: string, required")          # its label and its source
     for k, ok, what in (("cores", lambda v: isinstance(v, int) and not isinstance(v, bool) and v > 0, "positive int"),
                         ("gpu", text, "non-empty string"), ("hardware", text, "non-empty string"),
-                        ("startup_s", pos, "positive finite number"), ("note", text, "non-empty string")):
+                        ("startup_s", pos, "positive finite number"), ("note", text, "non-empty string"),
+                        ("calls_s", lambda v: num(v) and math.isfinite(v) and v >= 0, "non-negative finite number")):
         need(r.get(k) is None or ok(r[k]), w, f"{at}.{k}: {what} or null")
     if r["label"] in ("PENDING", "UNMEASURED"):
         need(r.get("seconds") is None and r.get("startup_s") is None, w, f"{at}: a {r['label']} row has seconds: null, never a number")
@@ -144,6 +145,9 @@ def check_baseline(b, w):
     if b.get("workflow") is not None:  # different work: shown as a footnote, never as a bar or a ratio
         check_timing(b["workflow"], w, "workflow")
     timed = sum(r["seconds"] is not None for r in rows)
+    sc = b.get("scope") or {}
+    need(not timed or all(text(sc.get(k)) for k in ("comparison", "calibration")), w,
+         "scope.comparison and scope.calibration: required once a race row is timed (WORKFLOW/EXPLORATORY)")
     return f"{len(rows)} rows, {timed} timed"
 
 
@@ -189,10 +193,19 @@ def check_claims(c, w):
         need(text(b.get("source")) and (root / b["source"]).is_file(), w, f"{k}.source: a committed file, required")
         for f in fields:
             need(num(b.get(f)) and math.isfinite(b[f]), w, f"{k}.{f}: finite number")
-    need(c["power"].get("formula_label") == "ANALYTIC", w, "power.formula_label: ANALYTIC")
-    need(text(c["power"].get("model")) and "not the PD1" in c["power"]["model"], w, "power.model: says it is not PD1's power")
-    need(0 <= c["power"]["lo"] <= c["power"]["sim"] <= c["power"]["hi"] <= 1, w, "power: lo <= sim <= hi in [0, 1]")
-    need(0 < c["maxT"]["p"] <= 1 and c["false_alarms"]["hits"] <= c["false_alarms"]["n"], w, "maxT.p, false_alarms")
+    # The same rules as claims.js claimTexts, which renders them (tests/test_collect_race.py checks they agree).
+    pw, fa, mt = c["power"], c["false_alarms"], c["maxT"]
+    count = lambda v, lo: isinstance(v, int) and not isinstance(v, bool) and v >= lo
+    rate = lambda v: 0 <= v <= 1
+    need(count(pw["patients"], 1) and count(pw["n"], 1), w, "power.patients, power.n: positive integers")
+    need(all(rate(pw[f]) for f in ("sim", "lo", "hi", "formula")) and pw["lo"] <= pw["sim"] <= pw["hi"], w,
+         "power: sim, lo, hi, formula in [0, 1] and lo <= sim <= hi")
+    need(count(fa["n"], 1) and count(fa["designs"], 1) and count(fa["hits"], 0) and fa["hits"] <= fa["n"], w,
+         "false_alarms: n, designs positive integers; hits an integer in [0, n]")
+    need(rate(fa["target"]), w, "false_alarms.target in [0, 1]")
+    need(0 < mt["p"] <= 1 and count(mt["tests"], 1), w, "maxT: p in (0, 1], tests a positive integer")
+    need(pw.get("formula_label") == "ANALYTIC", w, "power.formula_label: ANALYTIC")
+    need(text(pw.get("model")) and "not the PD1" in pw["model"], w, "power.model: says it is not PD1's power")
     return "power, false_alarms, maxT"
 
 
