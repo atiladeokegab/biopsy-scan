@@ -276,14 +276,14 @@ Expected 50–200× over 8 cores and 10–30× over a 64-core node. These are es
 | Area | Directories | Owner | Issues |
 |---|---|---|---|
 | Core contract | `core/` | — | — |
-| Reference statistics | `stats/` | — | — |
-| Re-imaging kernel | `reimage/` | — | — |
-| Atlas | `atlas/` | — | — |
-| Benchmarks | `bench/` | — | — |
-| Real-data audit | `audit/` | — | — |
-| Demo and deck | `demo/` | — | — |
-| Tests | `tests/` | — | — |
-| Submission | `docs/film/`, `docs/SUBMISSION.md`, `README.md` | — | — |
+| Reference statistics | `stats/` | @atiladeokegab | #4 |
+| Re-imaging kernel | `reimage/` | @FHL-08 | #2 |
+| Atlas | `atlas/` | @atiladeokegab | #5 |
+| Benchmarks | `bench/` | @FHL-08 | #3 |
+| Real-data audit | `audit/` | @atiladeokegab | #6 |
+| Demo and deck | `demo/` | @atiladeokegab | #7 |
+| Tests | `tests/` | @atiladeokegab [Prometheus] | #8 |
+| Submission | `docs/film/`, `docs/SUBMISSION.md`, `README.md` | @atiladeokegab | #9, #10, #11 |
 
 ## Deadlines (PROVISIONAL, confirm at 11:00)
 
