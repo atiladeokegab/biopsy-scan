@@ -100,7 +100,7 @@ def test_candidate_streaming_bounds_temporaries_and_keeps_results(monkeypatch):
     shapes = []
     real = S._stats
     monkeypatch.setattr(S, "_stats", lambda xp, Xc, Cc, M, *a: shapes.append((len(M), *Xc.shape)) or real(xp, Xc, Cc, M, *a))
-    monkeypatch.setattr(S, "CHUNK_ELEMS", 5 * n * 2)
+    monkeypatch.setattr(S, "CHUNK_ELEMS", 5 * n * 2, raising=False)
     small = screen(X, t, e, C, n_perm=5, block=5, backend="numpy")
     assert max(b * m * k for b, m, k in shapes) <= 5 * n * 2  # every [resamples, n, chunk] moment array
     assert max(k for b, _, k in shapes if b == 5) == 2
@@ -111,10 +111,13 @@ def test_candidate_streaming_bounds_temporaries_and_keeps_results(monkeypatch):
     np.testing.assert_array_equal(small["adjusted_p"], brute)
 
 
-def test_permutation_maxT_rejects_the_gpu_backend():
+def test_permutation_maxT_rejects_the_gpu_backend(monkeypatch):
+    import stats.gpu_score as g
+
+    monkeypatch.setattr(g, "require_cuda", lambda: None)  # as under NUMBA_ENABLE_CUDASIM: no silent CPU run
     X = np.random.default_rng(0).normal(size=(6, 2))
     with pytest.raises(ValueError, match="gpu"):
-        permutation_maxT(X, np.arange(1.0, 7.0), np.ones(6), None, n_perm=3, backend="gpu")
+        permutation_maxT(X, np.arange(1.0, 7.0), np.ones(6), np.zeros(6), n_perm=3, backend="gpu")
 
 
 def test_observed_monotone_clinical_fit_is_rejected_not_used():
