@@ -53,7 +53,7 @@ def reimage_region(nbr, xy, types, focal, K, crop=None, eps=0.0, M=None, u=None,
         not isinstance(prepared, _PreparedCounts) or prepared.backend != "cpu"
         or prepared.K != K or prepared.n != len(types) or prepared.source is not nbr
     ):
-        raise ValueError("prepared adjacency belongs to a different backend, region or K")
+        raise ValueError("prepared adjacency belongs to a different region, K, or backend")
     counter = reimage_counts if prepared is None else (
         lambda _nbr, observed, visible, _K: prepared.reimage_counts(observed, visible)
     )

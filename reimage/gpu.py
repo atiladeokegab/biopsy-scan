@@ -80,7 +80,7 @@ def reimage_region(nbr, xy, types, focal, K, crop=None, eps=0.0, M=None, u=None,
         or prepared.n != len(types)
         or prepared.source is not nbr
     ):
-        raise ValueError("prepared adjacency belongs to a different backend, region, or K")
+        raise ValueError("prepared adjacency belongs to a different region, K, or backend")
     counter = reimage_counts if prepared is None else (
         lambda _nbr, observed, visible, _K: prepared.reimage_counts(observed, visible)
     )
@@ -213,7 +213,7 @@ def reimage_region_v2(nbr, xy, types, channels, focal, K, crop=None, eps=0.0, M=
         or prepared.n != len(types)
         or not prepared.matches(nbr, channels, K)
     ):
-        raise ValueError("prepared v2 snapshot belongs to a different backend, region, K, or channels")
+        raise ValueError("prepared v2 snapshot belongs to a different region, K, channels, or backend")
     counter = reimage_counts_and_channels if prepared is None else (
         lambda _nbr, observed, visible, _channels, _K: prepared.reimage_counts_and_channels(observed, visible)
     )
