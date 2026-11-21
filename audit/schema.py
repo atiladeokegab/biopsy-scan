@@ -24,9 +24,8 @@ PREPARED_OUTCOMES: dict[str, dict[str, str]] = {
         "key": "omnibus_only_diffuse",
         "label": "The real-data search finds nothing under maxT but the omnibus is significant",
         "statement": (
-            "The signal is real but diffuse (already-seen exploratory omnibus p <= 0.05 while single-step "
-            "maxT > 0.05); no single pattern is detectable at this sample size, and the cohort atlas marks "
-            "the study size where one would be."
+            "Exploratory conditional association only (already-seen omnibus p <= 0.05 while single-step "
+            "maxT > 0.05); no single-pattern detection under maxT and no biological effect-size claim."
         ),
     },
     "real_hit_stable": {
@@ -77,10 +76,11 @@ def choose_prepared_outcome(
 ) -> dict[str, str]:
     """Select one of the three prepared outcomes from IDEA.md based on observed test results and cohort policy.
 
-    Charville is the only cohort with patient-level inference; UPMC (10 events on verified cases; tuple match
-    provisional/descriptive only) never claims a patient-level real hit.
+    Charville is the only cohort with patient-level inference (IDEA v5 action 1 dropped the 20-event
+    validity gate); UPMC (verified-case / tuple-matched records) remains descriptive only.
     """
-    if cohort == "charville" and n_events >= 20:
+    del n_events  # IDEA v5 action 1: do not gate patient-level outcomes on n_events >= 20
+    if cohort == "charville":
         if maxt_p <= alpha and top_hit_stable:
             return dict(PREPARED_OUTCOMES["real_hit_stable"])
         if maxt_p > alpha and omnibus_p <= alpha:
