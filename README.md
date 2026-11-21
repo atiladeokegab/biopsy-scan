@@ -10,7 +10,7 @@ Decode searches every spatial pattern in multiplex tissue (3,780 today) with an 
 |---|---|---|---|
 | **Correctness** | The Numba kernel equals the NumPy reference cell for cell, including where NaNs fall, on 100 real Charville studies. The CUDA kernel matches it too | MEASURED (CPU); TESTED (CUDA simulator) | `bench/results/cpu-ladder.json`, `reimage/test_backends.py` |
 | | The score statistic equals statsmodels PHReg (Breslow ties), and its variance equals exhaustive permutations | TESTED | `stats/test_reference.py`, `tests/test_score_contract.py` |
-| | 39 of 39 GPU tests pass on a real NVIDIA A100-SXM4-40GB: kernels, expression channels and the fleet | MEASURED | `bench/results/modal-a100-20261121T164808Z.json` (PR #75, in review) |
+| | 39 of 39 GPU tests pass on a real NVIDIA A100-SXM4-40GB: kernels, expression channels and the fleet | MEASURED | `bench/results/modal-a100-20261121T173127Z.json` (PR #75, in review) |
 | | When nothing is there, the search raises a false alarm in 28 of 700 null studies: 4.0% (95% CI 2.7–5.7%), inside the promised 5% | ESTIMATE | `bench/results/vs-schoenfeld-300.json` |
 | **Reshaping for parallelism** | Every study is independent: the kernel re-images a batch of studies with one GPU warp per cell, and the fleet shards studies across GPUs with results bit-identical to one device | TESTED (CUDA simulator); MEASURED bit-identical on 4 A100s | `reimage/test_backends.py`, `reimage/test_fleet.py`, `bench/results/modal-a100-20261121T171213Z.json` (PR #75) |
 | | Testing all 3,780 patterns is one matrix product per study, U = X'r. One screen with 10,000 shuffles is about 38 million tests | TESTED (CPU) | `stats/test_reference.py` |
