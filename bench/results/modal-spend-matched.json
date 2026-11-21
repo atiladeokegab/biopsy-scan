@@ -1,0 +1,37 @@
+{
+  "workspace_profile": "fhl-08",
+  "rates_usd_per_hour": {
+    "cpu_core": 0.04716,
+    "memory_gib": 0.007992,
+    "source": "bench/results/modal-spend-numba.json (modal.com/pricing read 2026-11-21T17:36Z)"
+  },
+  "entries": [
+    {
+      "utc": "2026-11-21T20:19Z",
+      "run": "matched lab vs Preflight end to end, 8 cores, 64 GiB, no GPU",
+      "plan": {
+        "lab": {
+          "null": 50,
+          "alternative": 50
+        },
+        "preflight": {
+          "calibration": 1000,
+          "null": 1000,
+          "alternative": 1000
+        }
+      },
+      "containers": 1,
+      "cap_usd": 8.0,
+      "est_hours": 1.0,
+      "est_usd": 0.889,
+      "basis": "8 cores + 64 GiB at the 3600 s function-timeout ceiling",
+      "source_commit": "b4dad4380e6ca10a8d219d9b3724b84af3627a24",
+      "actual": {
+        "modal_wall_s": 1609,
+        "est_usd": 0.397,
+        "result": "bench/results/matched-e2e-20261121T201925Z.json"
+      }
+    }
+  ],
+  "running_total_usd": 0.397
+}
