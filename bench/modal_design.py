@@ -10,7 +10,8 @@ file, side by side, after checking every new study's X sha256 and batched maxT a
 skips calibration). Each arm runs in its own A100 container with 8 cores and 64 GiB, in parallel.
 Commit first: the run refuses a dirty tracked tree, so source_commit is the code that ran. A run whose
 ceiling (3 containers x timeout x rate) is over --cap-usd (default 20) is refused before it starts.
-Writes bench/results/modal-design-<utc>.json, MEASURED only with full parity, a clean tree and one
+Writes bench/results/modal-design-<utc>.json, MEASURED only when its parity gate passes (parity.scope says
+what it covered: --compare-with checks z only through maxT), a clean tree and one
 container class (SMOKE when --cpu-arms-on-cpu put the CPU arms in GPU-less containers), else FAILED; logs the spend in the workspace ledger bench/results/modal-spend.json before and after the run.
 """
 from __future__ import annotations
@@ -18,6 +19,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -195,25 +197,38 @@ def main(studies: int = 20, cap_usd: float = 20.0, cpu_arms_on_cpu: bool = False
     if prior and arms:
         par["against_prior"] = {a: db.prior_parity(o["records"], prior["arms"]) for a, o in arms.items()}
         par["all"] = bool(par["all"] and all(v["all"] for v in par["against_prior"].values()))
+        par["scope"] = ("against the prior run: X sha256 on every shared study, and z only through each study's "
+                        "maxT (the prior file stores maxT, not z); not full z parity")
     # the code that ran is unchanged since start (the spend log is the only tracked file this run writes)
     clean = not [f for f in _git("diff", "--name-only", commit).splitlines() if f != str(SPEND.relative_to(REPO))]
     same_class = not cpu_arms_on_cpu
     status = ("MEASURED" if same_class else "SMOKE") if par["all"] and clean and not errors else "FAILED"
-    new = {a: {"summary": db.summarize(o, plant), "stages": db.stage_times(o), "warm_s": o["warm_s"],
+    summaries, summary_s = {}, {}
+    for a, o in arms.items():
+        t = time.perf_counter()
+        summaries[a] = db.summarize(o, plant)
+        summary_s[a] = time.perf_counter() - t
+    new = {a: {"summary": summaries[a], "stages": db.stage_times(o) | {"summary_local_s": summary_s[a]},
+               "warm_s": o["warm_s"],
                "warm_score_s": o.get("warm_score_s"), "workers": o["workers"], "load_s": o["load_s"],
                "host": o["host"], "container_class": CLASS, "source": "this run",
                "expected_event_fraction": o["setup"]["expected_event_fraction"],
                "studies": [{k: r[k] for k in ("stream", "i", "x_sha", "maxT", "p") if k in r}
                            | ({"maxT": float(np.abs(r["z"]).max())} if "z" in r else {}) for r in o["records"]]}
            for a, o in arms.items()}
-    old = {a: {**v, "container_class": CLASS, "source": f"{compare_with} (source_commit {prior['source_commit']})"}
+    old = {a: {**v, "container_class": CLASS, "source": f"{compare_with} (source_commit {prior['source_commit']})",
+               "stages": db.complete(v["stages"], v.get("load_s"), v.get("warm_s"), v.get("warm_score_s"))}
            for a, v in prior["arms"].items()} if prior else {}
     side = {a: (new.get(a) or old[a]) for a in [*ARMS] if a in new or a in old}
     for a, v in side.items():
         v["split"] = db.split(a, v["stages"])
         if a in db.GPU_SCORE and "numba" in side:  # the z check that covers this arm
-            if a in old:
-                v["z_vs_numba"] = {"max_rel_diff": prior["parity"]["z_max_rel_diff"], "basis": "every z, prior run"}
+            if a in old:  # a four-arm prior records it per arm; a three-arm prior in its parity block
+                pp = prior["parity"]
+                v["z_vs_numba"] = v.get("z_vs_numba") or (
+                    {**pp[f"z_{a}_vs_numba"], "basis": "every z, prior run"} if f"z_{a}_vs_numba" in pp else
+                    {"max_rel_diff": pp["z_max_rel_diff"], "basis": "every z, prior run"} if a == "gpu" and "z_max_rel_diff" in pp
+                    else {"max_rel_diff": None, "basis": "not recorded in the prior run"})
             elif "numba" in new:
                 v["z_vs_numba"] = {**par.get(f"z_{a}_vs_numba", {}), "basis": "every z, this run"}
             else:

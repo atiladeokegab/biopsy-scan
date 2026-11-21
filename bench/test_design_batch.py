@@ -62,7 +62,16 @@ def test_hybrid_parity_split_and_headline():
     assert not db.prior_parity(arms["hybrid"]["records"], prior)["all"]  # maxT 3.1 against 3.0
     s = {"hybrid": {"split": db.split("hybrid", {"studies_wall_s": 9.0, "scoring_wall_s": 1.0}),
                     "stages": {"wall_per_study_s": 0.1}},
-         "numba": {"split": db.split("numba", {"reimage_cpu_s": 3.0, "scoring_cpu_s": 1.0}),
+         "numba": {"split": db.split("numba", {"reimage_worker_wall_s": 3.0, "scoring_worker_wall_s": 1.0}),
                    "stages": {"wall_per_study_s": 0.2}}}
     assert s["hybrid"]["split"]["reimage_share"] == 0.9
     assert db.headline(s).startswith("Re-imaging dominates every arm")
+
+
+def test_legacy_stage_names_are_renamed_and_the_end_to_end_adds_every_recorded_stage():
+    old = {"prep_s": 10.0, "adjacency_s": 5.0, "reimage_cpu_s": 80.0, "scoring_cpu_s": 2.0, "studies_wall_s": 12.0,
+           "evaluated_studies": 4}
+    st = db.complete(old, load_s=1.0, warm_s=2.0, warm_score_s=None)
+    assert "reimage_cpu_s" not in st and st["reimage_worker_wall_s"] == 80.0 and st["scoring_worker_wall_s"] == 2.0
+    assert st["compute_wall_s"] == 12.0 and st["wall_per_study_s"] == 3.0 and st["end_to_end_in_container_s"] == 30.0
+    assert db.split("numba", st)["reimage_share"] == 80 / 82
