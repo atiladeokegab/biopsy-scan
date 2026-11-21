@@ -9,7 +9,10 @@
   "eq": "the value as stored (strings, integers, booleans)",
   "ratio": "first path divided by second path, then the rule",
   "product": "first path times second path, then the rule",
-  "md": "the string with | escaped as \\\\| (inside a Markdown table cell)"
+  "md": "the string with | escaped as \\\\| (inside a Markdown table cell)",
+  "median_ratio": "{over, items, group, num, den, pick}: for each group of `over` (by `group`), the median over its `items` of num/den; then the min or max of those medians, then the rule",
+  "distinct": "[list path, key]: the number of distinct values of key across the list",
+  "len": "the length of the list at the path"
  },
  "claims": [
   {
@@ -101,6 +104,105 @@
     {
      "file": "README.md",
      "text": "`{speedup}×` (median): NumPy `{numpy} s` vs GPU `{gpu} s`, exact parity (**{label}**)"
+    }
+   ]
+  },
+  {
+   "id": "numba-quiet-2.5-4.1x",
+   "claim": "Numba 2.5–4.1× faster than NumPy per study on a quiet 8-core Modal host, by threading mode",
+   "source": "bench/results/modal-quiet-cpu-20261121T180327Z.json",
+   "pr": 94,
+   "label": "MEASURED",
+   "label_path": "status",
+   "formula": "for each threading mode (runs[].mode), the median over that mode's studies of numpy.wall_s / numba.wall_s; the range is the smallest and largest of those per-mode medians (workqueue 2.49 and omp-default 4.11 at this commit)",
+   "values": [
+    {
+     "name": "lo",
+     "median_ratio": {
+      "over": "runs",
+      "items": "studies",
+      "group": "mode",
+      "num": "numpy.wall_s",
+      "den": "numba.wall_s",
+      "pick": "min"
+     },
+     "rule": "fixed:1",
+     "expect": "2.5"
+    },
+    {
+     "name": "hi",
+     "median_ratio": {
+      "over": "runs",
+      "items": "studies",
+      "group": "mode",
+      "num": "numpy.wall_s",
+      "den": "numba.wall_s",
+      "pick": "max"
+     },
+     "rule": "fixed:1",
+     "expect": "4.1"
+    },
+    {
+     "name": "lo2",
+     "median_ratio": {
+      "over": "runs",
+      "items": "studies",
+      "group": "mode",
+      "num": "numpy.wall_s",
+      "den": "numba.wall_s",
+      "pick": "min"
+     },
+     "rule": "fixed:2",
+     "expect": "2.49"
+    },
+    {
+     "name": "hi2",
+     "median_ratio": {
+      "over": "runs",
+      "items": "studies",
+      "group": "mode",
+      "num": "numpy.wall_s",
+      "den": "numba.wall_s",
+      "pick": "max"
+     },
+     "rule": "fixed:2",
+     "expect": "4.11"
+    },
+    {
+     "name": "cores",
+     "path": "host.requested_cores",
+     "rule": "fixed:0",
+     "expect": "8"
+    },
+    {
+     "name": "rounds",
+     "distinct": [
+      "runs",
+      "round"
+     ],
+     "rule": "eq",
+     "expect": "5"
+    },
+    {
+     "name": "studies",
+     "len": "runs[0].studies",
+     "rule": "eq",
+     "expect": "2"
+    },
+    {
+     "name": "modes",
+     "distinct": [
+      "runs",
+      "mode"
+     ],
+     "rule": "eq",
+     "expect": "3"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "(`{cores}` Modal cores, `{rounds} rounds × {studies} studies` per mode, #94) | Numba `{lo}–{hi}×` faster than NumPy per study, by threading mode (**{label}**)"
     }
    ]
   },

@@ -5,6 +5,7 @@ python3 -I scripts/check_claims.py [ROOT]   prints each claim, the files it is b
 """
 import json
 import re
+import statistics
 import sys
 from pathlib import Path
 
@@ -57,6 +58,17 @@ def compute(claim, src):
         elif "product" in v:
             a, b = (lookup(src, p) for p in v["product"])
             raw = a * b
+        elif "median_ratio" in v:  # per group, the median over its items of num/den; then the min or max of those medians
+            m, groups = v["median_ratio"], {}
+            for run in lookup(src, m["over"]):
+                for item in lookup(run, m["items"]):
+                    groups.setdefault(run[m["group"]], []).append(lookup(item, m["num"]) / lookup(item, m["den"]))
+            raw = {"min": min, "max": max}[m["pick"]](statistics.median(x) for x in groups.values())
+        elif "distinct" in v:  # how many distinct values a key takes across a list
+            items, key = v["distinct"]
+            raw = len({x[key] for x in lookup(src, items)})
+        elif "len" in v:
+            raw = len(lookup(src, v["len"]))
         else:
             raw = lookup(src, v["path"])
         out[v["name"]] = (raw, render(raw, v["rule"]))

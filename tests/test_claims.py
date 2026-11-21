@@ -61,6 +61,20 @@ def test_a_relabelled_source_fails(copy):
     assert check_claims.drift(copy)[0] == ("fwer-0.060", "label", "SYNTHETIC", "SIMULATED")
 
 
+def test_a_derived_range_follows_its_source(copy):
+    """The Numba range is derived (per-mode median of numpy/numba wall); slowing one mode's Numba moves it."""
+    src = copy / "bench/results/modal-quiet-cpu-20261121T180327Z.json"
+    data = json.loads(src.read_text())
+    for run in data["runs"]:
+        if run["mode"].endswith("workqueue"):
+            for s in run["studies"]:
+                s["numba"]["wall_s"] *= 2
+    src.write_text(json.dumps(data))
+    bad = check_claims.drift(copy)
+    assert ("numba-quiet-2.5-4.1x", "lo", "2.5", "1.2") in bad
+    assert any(b[:2] == ("numba-quiet-2.5-4.1x", "README.md") for b in bad)
+
+
 MUTANTS = [  # (kind, file, published text, mutant): each must make the check fail
     ("value", "README.md", "`68.3%`", "`98.3%`"),
     ("value", "README.md", "NumPy `2.24 s`", "NumPy `2.34 s`"),
@@ -77,6 +91,8 @@ MUTANTS = [  # (kind, file, published text, mutant): each must make the check fa
     ("value", "docs/JUDGING.md", "one-sided p 0.193", "one-sided p 0.019"),
     ("label", "README.md", "**UNMEASURED** (underpowered", "**MEASURED** (underpowered"),
     ("label", "docs/SUBMISSION.md", "which is UNMEASURED (underpowered)", "which is MEASURED (underpowered)"),
+    ("value", "README.md", "Numba `2.5–4.1×`", "Numba `2.5–5.1×`"),
+    ("label", "README.md", "by threading mode (**MEASURED**)", "by threading mode (**ESTIMATE**)"),
     ("prose", "README.md", "interpolated between", "measured between"),
     ("prose", "README.md", "the locked test does not pass", "the locked test passes"),
     ("prose", "README.md", "exact parity", "close parity"),
