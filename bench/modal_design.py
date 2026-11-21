@@ -1,6 +1,10 @@
-"""The batched design point on Modal: three arms, same container class, same studies (bench/design_batch.py).
+"""The batched design point on Modal: four arms, same container class, same studies (bench/design_batch.py).
 
     DATA_DIR=<dir> MODAL_PROFILE=fhl-08 uv run --with modal modal run bench/modal_design.py --studies 20
+    ... --arms hybrid --timeout-s 1800 --compare-with bench/results/modal-design-<utc>.json
+
+--arms picks arms (default lab,numba,gpu). --compare-with adds a committed MEASURED result's arms to the
+file, side by side, after checking every new study's X sha256 and batched maxT against them.
 
 --studies is per stream: calibration, null and alternative each get that many studies (the lab arm
 skips calibration). Each arm runs in its own A100 container with 8 cores and 64 GiB, in parallel.
@@ -23,7 +27,8 @@ REPO = Path(__file__).resolve().parents[1]
 APP_DIR, DATA_DIR, PIN = "/root/preflight", "/data", "/root/pins/atlas_simulation.py"
 LOCAL_DATA = Path(os.environ.get("DATA_DIR", REPO / "data"))
 GPU, CORES, MEMORY_MIB = "A100", 8.0, 65536
-ARMS = ("lab", "numba", "gpu")
+ARMS = ("lab", "numba", "gpu", "hybrid")
+CLASS = f"Modal {GPU} + {CORES:g} cores + {MEMORY_MIB // 1024} GiB"
 RATES = {"A100": 2.0988, "cpu_core": 0.04716, "memory_gib": 0.007992,
          "source": "bench/results/modal-spend.json on modal-gpu (modal.com/pricing read 2026-11-21T17:36Z)"}
 USD_PER_HOUR = RATES["A100"] + CORES * RATES["cpu_core"] + MEMORY_MIB / 1024 * RATES["memory_gib"]
@@ -120,34 +125,43 @@ def _log_spend(entry: dict) -> None:
 
 
 @app.local_entrypoint()
-def main(studies: int = 20, cap_usd: float = 20.0, cpu_arms_on_cpu: bool = False):
+def main(studies: int = 20, cap_usd: float = 20.0, cpu_arms_on_cpu: bool = False, arms: str = "lab,numba,gpu",
+         timeout_s: int = 0, compare_with: str = ""):
     import numpy as np
 
     from bench import design_batch as db
 
     if ATLAS_SHA != db.ATLAS_PIN[0]:
         raise SystemExit("ATLAS_SHA and design_batch.ATLAS_PIN disagree")
+    chosen = tuple(a for a in arms.split(",") if a)
+    if not chosen or set(chosen) - set(ARMS) or len(set(chosen)) != len(chosen):
+        raise SystemExit(f"--arms must be distinct names from {ARMS}")
+    prior = json.loads((REPO / compare_with).read_text()) if compare_with else None
+    if prior and (prior["status"] != "MEASURED" or prior["design"]["studies_per_stream"] != studies
+                  or prior["design"]["root_seed"] != db.ROOT or prior["design"]["streams"] != db.STREAMS
+                  or set(prior["arms"]) & set(chosen)):
+        raise SystemExit("--compare-with needs a MEASURED result at the same design and seeds, with other arms")
     if studies < 4:
         raise SystemExit("need at least 4 studies per stream (the calibration rank rule)")
     _git("ls-files", "--error-unmatch", "bench/modal_design.py", "bench/design_batch.py")
     if _git("status", "--porcelain", "--untracked-files=no"):
         raise SystemExit("commit tracked changes first: source_commit must be the code that runs")
     commit = _git("rev-parse", "HEAD")
-    timeout = _timeout_s(studies)
+    timeout = timeout_s or _timeout_s(studies)
     cpu_rate = USD_PER_HOUR - RATES["A100"]
-    rates = {a: cpu_rate if cpu_arms_on_cpu and a != "gpu" else USD_PER_HOUR for a in ARMS}
+    rates = {a: cpu_rate if cpu_arms_on_cpu and a not in db.GPU_SCORE else USD_PER_HOUR for a in chosen}
     ceiling = round(timeout / 3600 * sum(rates.values()), 2)
     if ceiling > cap_usd:
         raise SystemExit(f"ceiling ${ceiling} > cap ${cap_usd}: ask the lead first")
     plan = {s: studies for s in db.STREAMS}
     start = datetime.now(timezone.utc)
-    entry = {"utc": start.strftime("%Y-%m-%dT%H:%MZ"), "run": f"modal-design {studies}/stream, arms {list(ARMS)}",
-             "containers": len(ARMS), "gpu": GPU, "cores": CORES, "memory_gib": MEMORY_MIB / 1024, "cap_usd": cap_usd,
+    entry = {"utc": start.strftime("%Y-%m-%dT%H:%MZ"), "run": f"modal-design {studies}/stream, arms {list(chosen)}",
+             "containers": len(chosen), "gpu": GPU, "cores": CORES, "memory_gib": MEMORY_MIB / 1024, "cap_usd": cap_usd,
              "est_usd": ceiling, "basis": f"{timeout} s ceiling x per-arm $/h {rates}", "source_commit": commit,
              "container_class": "lab and numba without a GPU (smoke only)" if cpu_arms_on_cpu else "all arms identical"}
     _log_spend(entry)
-    fn = {a: arm_cpu if cpu_arms_on_cpu and a != "gpu" else arm for a in ARMS}
-    calls = {a: fn[a].with_options(timeout=timeout).spawn(a, plan) for a in ARMS}
+    fn = {a: arm_cpu if cpu_arms_on_cpu and a not in db.GPU_SCORE else arm for a in chosen}
+    calls = {a: fn[a].with_options(timeout=timeout).spawn(a, plan) for a in chosen}
     arms, errors = {}, {}
     for a, call in calls.items():
         try:
@@ -161,24 +175,45 @@ def main(studies: int = 20, cap_usd: float = 20.0, cpu_arms_on_cpu: bool = False
             if "z" in r:
                 r["z"] = np.asarray(r["z"])
     plant = next(iter(arms.values()))["setup"]["plant_feature"] if arms else None
-    par = db.parity(arms) if len(arms) == len(ARMS) else {"all": False, "reason": "an arm failed"}
+    par = db.parity(arms) if len(arms) == len(chosen) else {"all": False, "reason": "an arm failed"}
+    if prior and arms:
+        par["against_prior"] = {a: db.prior_parity(o["records"], prior["arms"]) for a, o in arms.items()}
+        par["all"] = bool(par["all"] and all(v["all"] for v in par["against_prior"].values()))
     # the code that ran is unchanged since start (the spend log is the only tracked file this run writes)
     clean = not [f for f in _git("diff", "--name-only", commit).splitlines() if f != str(SPEND.relative_to(REPO))]
     same_class = not cpu_arms_on_cpu
     status = ("MEASURED" if same_class else "SMOKE") if par["all"] and clean and not errors else "FAILED"
+    new = {a: {"summary": db.summarize(o, plant), "stages": db.stage_times(o), "warm_s": o["warm_s"],
+               "warm_score_s": o.get("warm_score_s"), "workers": o["workers"], "load_s": o["load_s"],
+               "host": o["host"], "container_class": CLASS, "source": "this run",
+               "expected_event_fraction": o["setup"]["expected_event_fraction"],
+               "studies": [{k: r[k] for k in ("stream", "i", "x_sha", "maxT", "p") if k in r}
+                           | ({"maxT": float(np.abs(r["z"]).max())} if "z" in r else {}) for r in o["records"]]}
+           for a, o in arms.items()}
+    old = {a: {**v, "container_class": CLASS, "source": f"{compare_with} (source_commit {prior['source_commit']})"}
+           for a, v in prior["arms"].items()} if prior else {}
+    side = {a: (new.get(a) or old[a]) for a in [*ARMS] if a in new or a in old}
+    for a, v in side.items():
+        v["split"] = db.split(a, v["stages"])
+        if a in db.GPU_SCORE and "numba" in side:  # the z check that covers this arm
+            if a in old:
+                v["z_vs_numba"] = {"max_rel_diff": prior["parity"]["z_max_rel_diff"], "basis": "every z, prior run"}
+            elif "numba" in new:
+                v["z_vs_numba"] = {**par.get(f"z_{a}_vs_numba", {}), "basis": "every z, this run"}
+            else:
+                v["z_vs_numba"] = {"max_rel_diff": par["against_prior"][a]["numba"].get("maxT_max_rel_diff"),
+                                   "basis": "maxT per study against the prior run's numba arm"}
     result = {
         "status": status, "source_commit": commit, "clean_tree": clean, "errors": errors,
+        "labels": {"compute": "MEASURED", "outcomes": f"SYNTHETIC (atlas/simulation.py at {db.ATLAS_PIN[0][:7]})",
+                   "rates": "ESTIMATE (FWER and power: binomial rates with Wilson 95% intervals)"},
+        "headline": db.headline(side) if side else None,
         "same_container_class": same_class,
         "design": {**db.design(), "cohort": "charville", "alpha": db.ALPHA, "hr_per_source_sd": db.HR,
                    "plant_feature": plant, "studies_per_stream": studies, "streams": db.STREAMS, "root_seed": db.ROOT,
                    "outcome_model": f"atlas/simulation.py at {db.ATLAS_PIN[0]}"},
         "parity": par,
-        "arms": {a: {"summary": db.summarize(o, plant), "stages": db.stage_times(o), "warm_s": o["warm_s"],
-                     "workers": o["workers"], "load_s": o["load_s"], "host": o["host"],
-                     "expected_event_fraction": o["setup"]["expected_event_fraction"],
-                     "studies": [{k: r[k] for k in ("stream", "i", "x_sha", "maxT", "p") if k in r}
-                                 | ({"maxT": float(np.abs(r["z"]).max())} if "z" in r else {}) for r in o["records"]]}
-                 for a, o in arms.items()},
+        "arms": side,
         "modal": {"app": "preflight-design-batch", "gpu": GPU, "cpu": CORES, "memory_mib": MEMORY_MIB,
                   "started_utc": start.isoformat(), "finished_utc": end.isoformat(), "wall_s": wall,
                   "note": "wall_s includes container start and image pull; stage times are inside the container"},
@@ -188,5 +223,5 @@ def main(studies: int = 20, cap_usd: float = 20.0, cpu_arms_on_cpu: bool = False
     entry["actual"] = {"modal_wall_s": round(wall, 1), "est_usd": round(wall / 3600 * sum(rates.values()), 3),
                        "basis": "each container x local wall (an upper bound: includes queueing)", "result": str(path.relative_to(REPO))}
     _log_spend(entry)
-    print(status, json.dumps(par), json.dumps({a: v["summary"] for a, v in result["arms"].items()}, default=str))
+    print(status, result["headline"], json.dumps(par), json.dumps({a: v["summary"] for a, v in side.items()}, default=str))
     print(f"Saved {path}")

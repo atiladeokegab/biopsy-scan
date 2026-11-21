@@ -48,3 +48,21 @@ def test_lab_summary_calls_on_p_and_parity_flags_any_x_or_z_mismatch():
     b["records"][0]["z"] = np.array([1.0, 2.0])
     b["records"][0]["x_sha"] = "other"
     assert not db.parity({"numba": a, "gpu": b})["all"]
+
+
+def test_hybrid_parity_split_and_headline():
+    z = {"calibration": [[1.0, 2.0]], "null": [[0.5, 3.0]]}
+    arms = {"numba": _arm("numba", z), "gpu": _arm("gpu", z), "hybrid": _arm("hybrid", z)}
+    par = db.parity(arms)
+    assert par["all"] and par["z_hybrid_vs_numba"]["compared"] == 2
+    arms["hybrid"]["records"][1]["z"] = np.array([0.5, 3.1])
+    assert not db.parity(arms)["all"]
+    prior = {"gpu": {"studies": [{"stream": "null", "i": 0, "x_sha": "null0", "maxT": 3.0}]}}
+    assert db.prior_parity(_arm("hybrid", z)["records"], prior)["all"]
+    assert not db.prior_parity(arms["hybrid"]["records"], prior)["all"]  # maxT 3.1 against 3.0
+    s = {"hybrid": {"split": db.split("hybrid", {"studies_wall_s": 9.0, "scoring_wall_s": 1.0}),
+                    "stages": {"wall_per_study_s": 0.1}},
+         "numba": {"split": db.split("numba", {"reimage_cpu_s": 3.0, "scoring_cpu_s": 1.0}),
+                   "stages": {"wall_per_study_s": 0.2}}}
+    assert s["hybrid"]["split"]["reimage_share"] == 0.9
+    assert db.headline(s).startswith("Re-imaging dominates every arm")

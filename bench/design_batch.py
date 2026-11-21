@@ -15,8 +15,9 @@ Arms:
   numba  per study: CSR Numba re-imaging, then the R-15 Cox score (screen_batch, NumPy).
   gpu    per study: CSR re-imaging with the numba.cuda kernel; then every study's Cox score
          in blocks on the GPU (stats.screen.screen_studies).
-CPU arms run studies in a pool of single-thread workers; the GPU arm is one process.
-Parity: X bit-identical across arms (sha256 per study) and z of numba vs gpu within 1e-9.
+  hybrid the numba arm's re-imaging on the CPU pool feeding the gpu arm's batched GPU scoring.
+CPU stages run studies in a pool of single-thread workers; the gpu arm is one process.
+Parity: X bit-identical across arms (sha256 per study) and z of gpu and hybrid vs numba within 1e-9.
 """
 from __future__ import annotations
 
@@ -31,6 +32,8 @@ ROOT = 20261121
 STREAMS = {"calibration": 101, "null": 202, "alternative": 303}
 ALPHA, HR, LAB_RESAMPLES = 0.05, 2.0, 1000
 Z_TOL = 1e-9
+CPU_REIMAGE = ("numba", "hybrid")  # Numba CSR re-imaging on the CPU pool
+GPU_SCORE = ("gpu", "hybrid")  # batched screen_studies on the GPU
 # atlas (#5) is not on this branch yet: its outcome model is read from this commit (ATLAS_SIMULATION = a copy).
 ATLAS_PIN = ("79a77926aa0c07fc2c85574736f0f1396767ded0", "atlas/simulation.py")
 
@@ -113,7 +116,7 @@ def prepare(arm: str, cells: dict, plan: dict) -> dict:
         need = sorted({r for rows in studies.values() for s in rows for r in s["regions"]})
         cells["_nbr"] = {r: neighbours(L["xy"](r)) for r in need}
         from reimage import cpu, gpu
-        module = cpu if arm == "numba" else gpu
+        module = cpu if arm in CPU_REIMAGE else gpu
         _S["prepared"] = {id(cells["_nbr"][r]): module.prepare(cells["_nbr"][r], L["K"]) for r in need}
     adjacency_s = perf_counter() - t
     _S.update(cells=cells, studies=studies, arm=arm, plant=models["alternative"]["feature"])
@@ -126,7 +129,7 @@ def _kernel(arm: str):
         from bench.lab_today import tree_region
         return tree_region
     from reimage import cpu, gpu
-    module = cpu if arm == "numba" else gpu
+    module = cpu if arm in CPU_REIMAGE else gpu
     prepared = _S["prepared"]  # adjacency and CSR built once per cohort in prepare()
 
     def region(nbr, xy, types, focal, K, **kw):
@@ -164,9 +167,13 @@ def warm(arm: str) -> float:
     t = perf_counter()
     X = reimage(_S["cells"], design(), first["image_seed"], region_kernel=_S.setdefault("kernel", _kernel(arm)))
     if arm == "gpu":
-        from stats.screen import screen_studies
-        screen_studies(X[None], first["time"][None], first["event"][None], first["strata"][None], backend="gpu")
+        warm_score(first, X)
     return perf_counter() - t
+
+
+def warm_score(first: dict, X) -> None:
+    from stats.screen import screen_studies
+    screen_studies(X[None], first["time"][None], first["event"][None], first["strata"][None], backend="gpu")
 
 
 def run_arm(arm: str, cells: dict, plan: dict, workers: int = 8, block: int = 128) -> dict:
@@ -176,7 +183,7 @@ def run_arm(arm: str, cells: dict, plan: dict, workers: int = 8, block: int = 12
     setup = prepare(arm, cells, plan)
     if arm == "lab":
         plan = {k: v for k, v in plan.items() if k != "calibration"}  # the lab calibrates per study
-    warm_s = warm(arm) if arm != "lab" else None  # before the fork: workers inherit the JIT
+    warm_s = warm(arm) if arm != "lab" else None  # before the fork: workers inherit the JIT (hybrid: no CUDA yet)
     jobs = [(stream, i) for stream, n in plan.items() for i in range(n)]
     t = perf_counter()
     if arm == "gpu":
@@ -186,8 +193,13 @@ def run_arm(arm: str, cells: dict, plan: dict, workers: int = 8, block: int = 12
         with ProcessPoolExecutor(workers, mp_context=mp.get_context("fork"), initializer=_single_thread) as pool:
             recs = list(pool.map(one_study, jobs))
     studies_wall = perf_counter() - t
-    score_wall = None
-    if arm == "gpu":
+    score_wall = warm_score_s = None
+    if arm == "hybrid":  # CUDA starts only after the pool has closed: forking a CUDA process is unsafe
+        first = next(rows[0] for rows in _S["studies"].values() if rows)
+        t = perf_counter()
+        warm_score(first, recs[0]["X"])  # jobs[0] is the first planned study
+        warm_score_s = perf_counter() - t
+    if arm in GPU_SCORE:
         from stats.screen import screen_studies
         t = perf_counter()
         for stream in plan:
@@ -200,6 +212,7 @@ def run_arm(arm: str, cells: dict, plan: dict, workers: int = 8, block: int = 12
                 r["z"] = z
         score_wall = perf_counter() - t
     return {"arm": arm, "setup": setup, "warm_s": warm_s, "workers": 1 if arm == "gpu" else workers,
+            "warm_score_s": warm_score_s,
             "studies_wall_s": studies_wall, "batched_score_wall_s": score_wall, "records": recs}
 
 
@@ -245,12 +258,16 @@ def parity(arms: dict) -> dict:
                 x_n += 1
                 x_ok &= r["x_sha"] == keyed[names[0]][k]["x_sha"]
     res = {"x_bitwise": bool(x_ok and x_n), "x_compared": x_n}
-    if "numba" in keyed and "gpu" in keyed:
-        common = sorted(set(keyed["numba"]) & set(keyed["gpu"]))
-        dz = max(float(np.max(np.abs(keyed["numba"][k]["z"] - keyed["gpu"][k]["z"])
+    z_ok = True
+    for other in (a for a in GPU_SCORE if a in keyed and "numba" in keyed):
+        common = sorted(set(keyed["numba"]) & set(keyed[other]))
+        dz = max(float(np.max(np.abs(keyed["numba"][k]["z"] - keyed[other][k]["z"])
                        / np.maximum(1.0, np.abs(keyed["numba"][k]["z"])))) for k in common)
-        res.update(z_max_rel_diff=dz, z_within_tol=bool(dz <= Z_TOL), z_compared=len(common), z_tol=Z_TOL)
-    res["all"] = bool(res["x_bitwise"] and res.get("z_within_tol", True))
+        res[f"z_{other}_vs_numba"] = {"max_rel_diff": dz, "within_tol": bool(dz <= Z_TOL), "compared": len(common)}
+        z_ok &= dz <= Z_TOL
+    if "numba" in keyed and any(a in keyed for a in GPU_SCORE):
+        res["z_tol"] = Z_TOL
+    res["all"] = bool(res["x_bitwise"] and z_ok)
     return res
 
 
@@ -270,3 +287,42 @@ def stage_times(arm_out: dict) -> dict:
     st["evaluated_studies"] = n
     st["wall_per_study_s"] = (arm_out["studies_wall_s"] + (arm_out["batched_score_wall_s"] or 0)) / n
     return st
+
+
+def prior_parity(records: list, prior_arms: dict) -> dict:
+    """A new arm against a committed result's arms: X sha256 per shared study; batched maxT within Z_TOL."""
+    new = {(r["stream"], r["i"]): r for r in records}
+    out, ok = {}, True
+    for a, o in prior_arms.items():
+        old = {(s["stream"], s["i"]): s for s in o["studies"]}
+        common = [k for k in new if k in old]
+        e = {"x_bitwise": bool(common) and all(new[k]["x_sha"] == old[k]["x_sha"] for k in common),
+             "x_compared": len(common)}
+        if a != "lab" and common:  # the lab's maxT is its permutation statistic, not compared
+            d = max(abs(float(np.abs(new[k]["z"]).max()) - old[k]["maxT"]) / max(1.0, old[k]["maxT"]) for k in common)
+            e.update(maxT_max_rel_diff=d, maxT_within_tol=bool(d <= Z_TOL))
+        ok &= e["x_bitwise"] and e.get("maxT_within_tol", True)
+        out[a] = e
+    out["all"] = bool(ok)
+    return out
+
+
+def split(arm: str, stages: dict) -> dict:
+    """Re-imaging vs scoring. GPU-scored arms: wall of each stage. CPU arms: CPU-seconds over the pool's workers."""
+    if arm in GPU_SCORE:
+        r, sc, basis = stages["studies_wall_s"], stages["scoring_wall_s"], "wall seconds"
+    else:
+        r, basis = stages["reimage_cpu_s"], "CPU-seconds summed over the workers (both stages share each worker)"
+        sc = stages["scoring_cpu_s"] if arm == "numba" else stages["scoring_and_calibration_cpu_s"]
+    return {"reimage_s": r, "scoring_s": sc, "basis": basis, "reimage_share": r / (r + sc),
+            "dominant": "re-imaging" if r >= sc else "scoring"}
+
+
+def headline(arms: dict) -> str:
+    """Which stage dominates, and wall per study, from each arm's split and stages."""
+    dom = {a: v["split"]["dominant"] for a, v in arms.items()}
+    shares = ", ".join(f"{a} {100 * v['split']['reimage_share']:.1f}%" for a, v in arms.items())
+    walls = ", ".join(f"{a} {v['stages']['wall_per_study_s']:.3f} s" for a, v in arms.items())
+    stage = dom[next(iter(dom))] if len(set(dom.values())) == 1 else "mixed"
+    lead = f"{stage.capitalize()} dominates every arm" if stage != "mixed" else f"Dominant stage differs by arm: {dom}"
+    return f"{lead} (re-imaging share: {shares}). Wall per evaluated study: {walls}."
