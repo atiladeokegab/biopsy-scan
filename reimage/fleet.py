@@ -175,9 +175,10 @@ def _warm_timed_worker(
     warmup_seeds: np.ndarray,
     warm_seeds: np.ndarray,
     barrier: Any,
+    start_event: Any,
     queue: Any,
 ) -> None:
-    """Warm up CUDA/JIT + prepared snapshots, synchronize on barrier, then time warm shard."""
+    """Warm up CUDA/JIT + prepared snapshots, barrier-sync, wait for parent start_event, then run warm shard."""
     try:
         dev_name = ""
         if design.get("backend") == "gpu":
@@ -190,6 +191,8 @@ def _warm_timed_worker(
         prepared: dict = {}
         run(design, warmup_seeds, devices=1, _prepared=prepared)
         barrier.wait(timeout=120)
+        if not start_event.wait(timeout=120):
+            raise TimeoutError("timed out waiting for parent start_event")
         out = run(design, warm_seeds, devices=1, _prepared=prepared)
         queue.put((shard_id, out, dev_name, None))
     except Exception as exc:  # noqa: BLE001
@@ -208,7 +211,7 @@ def measure_warm_sharded(
     devices: int | None = None,
     fake_shards: bool = False,
 ) -> tuple[np.ndarray, dict[str, Any]]:
-    """Spawn N persistent workers (including N=1), warm each in-worker, barrier-sync, and time."""
+    """Spawn N persistent workers (including N=1), warm each in-worker, barrier-sync, start_event, and time."""
     warm_arr = _validate_seeds(warm_seeds)
     warmup_arr = _validate_seeds(warmup_seeds)
     if "cells" not in design:
@@ -245,13 +248,14 @@ def measure_warm_sharded(
     n_workers = len(bounds)
     ctx = mp.get_context("spawn")
     barrier = ctx.Barrier(n_workers + 1)
+    start_event = ctx.Event()
     queue = ctx.Queue()
     procs = []
     for sid, s, e in bounds:
         w_seed = warmup_arr[sid % len(warmup_arr): sid % len(warmup_arr) + 1]
         p = ctx.Process(
             target=_warm_timed_worker,
-            args=(sid, dev_for(sid), dict(design), w_seed, warm_arr[s:e], barrier, queue),
+            args=(sid, dev_for(sid), dict(design), w_seed, warm_arr[s:e], barrier, start_event, queue),
         )
         p.start()
         procs.append(p)
@@ -261,9 +265,11 @@ def measure_warm_sharded(
         barrier.wait(timeout=120)
         cold_warmup_s = time.perf_counter() - cold_t0
         t0 = time.perf_counter()
+        start_event.set()
         results = [queue.get(timeout=300) for _ in range(n_workers)]
         wall_s = time.perf_counter() - t0
     finally:
+        start_event.set()
         for p in procs:
             p.join(timeout=30)
             if p.is_alive():
