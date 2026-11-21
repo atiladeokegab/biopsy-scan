@@ -5,8 +5,8 @@
 Writes bench/results/power-at-scale.json, status ESTIMATE. The points up to 300 patients come from
 bench/results/vs-schoenfeld-300.json (same design, seed and budget, run on the CPU backend); the larger ones from
 the raw Modal runs named on the command line (gpu/power_at_scale.py). n for 80% power is the first crossing of the
-simulated power curve, interpolated linearly in patients between the two bracketing points; its band is the same
-crossing of the per-point 95% Clopper-Pearson bounds (upper bound: fewest patients, lower bound: most).
+simulated power curve, interpolated linearly in patients between the two bracketing points. The same crossing of the
+per-point 95% Clopper-Pearson bounds is reported as pointwise only: it is not a confidence interval for n.
 """
 from __future__ import annotations
 
@@ -36,21 +36,23 @@ def answer(points: list[dict]) -> dict:
     n80, lo, hi = (crossing(ns, [p[k] for p in points]) for k in ("power", "power_hi", "power_lo"))
     top = max(points, key=lambda p: p["patients"])
     cleared = [p["patients"] for p in points if p["power_lo"] >= TARGET]
-    clear = f" Smallest simulated count whose lower 95% bound clears 80%: {min(cleared)}." if cleared else (
-        f" No simulated count up to {top['patients']} has its lower 95% bound above 80% (beyond {top['patients']}).")
     if n80 is None:
         statement = (f"Simulated power never reached 80% up to {top['patients']} patients: "
                      f"{top['power']:.0%} [{top['power_lo']:.0%}, {top['power_hi']:.0%}] there.")
     else:
-        band = f"{lo:.0f} to {hi:.0f}" if hi is not None else f"{lo:.0f} to more than {top['patients']}"
-        statement = f"About {n80:.0f} patients for 80% simulated power (95% band {band})."
-    statement += clear
-    return {"target_power": TARGET, "n_80": n80, "n_80_lo": lo, "n_80_hi": hi,
-            "n_80_hi_beyond_range": hi is None,
-            "smallest_patients_lower_bound_clears_80": min(cleared) if cleared else None,
+        statement = (f"Simulated power first crosses 80% at about {n80:.0f} patients (interpolated). The pointwise "
+                     f"95% CI bounds cross 80% at {lo:.0f} (upper) and "
+                     + (f"{hi:.0f} (lower)" if hi is not None else f"not by {top['patients']} (lower)")
+                     + "; these are pointwise intervals, not a confidence interval for n.")
+    statement += (f" Smallest simulated count whose pointwise lower 95% bound is at least 80%: {min(cleared)}."
+                  if cleared else f" No simulated count up to {top['patients']} has its pointwise lower 95% bound "
+                                  f"at 80% or above: beyond {top['patients']}.")
+    return {"target_power": TARGET, "n_80": n80, "n_80_pointwise_ci_crossings": [lo, hi],
+            "smallest_patients_pointwise_lower_bound_clears_80": min(cleared) if cleared else None,
             "max_patients_simulated": top["patients"], "statement": statement,
-            "method": "first crossing of 80%, linear in patients between bracketing points; band: the same crossing "
-                      "of the per-point 95% Clopper-Pearson upper bound (lo) and lower bound (hi)"}
+            "method": "n_80: first crossing of 80% by the simulated power, linear in patients between the bracketing "
+                      "points, no extrapolation. n_80_pointwise_ci_crossings: the same crossing of the per-point 95% "
+                      "Clopper-Pearson upper and lower bounds; pointwise, so not a confidence interval for n_80"}
 
 
 def build(runs: list[dict]) -> dict:
@@ -65,6 +67,8 @@ def build(runs: list[dict]) -> dict:
             if "error" in r or r["patients"] in seen:
                 continue
             s, m = r["summary"], r["metadata"]
+            if s["patients"] != r["patients"]:
+                raise ValueError(f"point P={r['patients']}: its summary is for P={s['patients']}")
             if (m["seed"] != base["simulated"]["seed"] or m["source_hash"] != base["simulated"]["source_hash"]
                     or m["grammar_hash"] != base["simulated"]["grammar_hash"]
                     or {k: m["budget"][k] for k in base["simulated"]["budget"]} != base["simulated"]["budget"]):
