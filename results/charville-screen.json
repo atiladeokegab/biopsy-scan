@@ -1,0 +1,81 @@
+{
+  "cohort": "charville",
+  "status": "MEASURED",
+  "inference": "exploratory (outcomes already seen)",
+  "n_patients": 159,
+  "n_events": 38,
+  "n_features_tested": 3780,
+  "clinical_covariates": null,
+  "strata": "coverslip groups",
+  "n_perm": 999,
+  "seed": 0,
+  "maxT": {
+    "p": 0.101,
+    "statistic": 3.9571818541499213
+  },
+  "top_candidates": [
+    {
+      "rank": 1,
+      "feature": "Tumor 5|Macrophage|100um|PD1",
+      "z": 3.9571818541499213,
+      "adjusted_p": 0.101
+    },
+    {
+      "rank": 2,
+      "feature": "Tumor 3|Blood vessel|100um|enrichment",
+      "z": 3.457000725630962,
+      "adjusted_p": 0.473
+    },
+    {
+      "rank": 3,
+      "feature": "Tumor 7|Tumor 4|100um|aSMA",
+      "z": 3.3025444382682116,
+      "adjusted_p": 0.666
+    },
+    {
+      "rank": 4,
+      "feature": "Tumor 3|Blood vessel|50um|enrichment",
+      "z": 3.261202177293202,
+      "adjusted_p": 0.729
+    },
+    {
+      "rank": 5,
+      "feature": "Tumor 7|Tumor 4|25um|fraction",
+      "z": 3.224954235520248,
+      "adjusted_p": 0.753
+    },
+    {
+      "rank": 6,
+      "feature": "Tumor 2 (Ki67 Proliferating)|Stroma|100um|enrichment",
+      "z": 3.1856807816979025,
+      "adjusted_p": 0.788
+    },
+    {
+      "rank": 7,
+      "feature": "Tumor 7|Macrophage|25um|enrichment",
+      "z": 3.146350992879998,
+      "adjusted_p": 0.832
+    },
+    {
+      "rank": 8,
+      "feature": "Tumor 2 (Ki67 Proliferating)|CD4 T cell|100um|enrichment",
+      "z": 3.0894633327655345,
+      "adjusted_p": 0.879
+    },
+    {
+      "rank": 9,
+      "feature": "Tumor 7|Macrophage|50um|enrichment",
+      "z": 3.0811825524896403,
+      "adjusted_p": 0.885
+    },
+    {
+      "rank": 10,
+      "feature": "Tumor 2 (Ki67 Proliferating)|CD4 T cell|50um|enrichment",
+      "z": 3.0718845660420517,
+      "adjusted_p": 0.893
+    }
+  ],
+  "backend": "numpy_reference (shim)",
+  "code_revision": "ed7fa3c68bf3924af953155b7fdcf0e91561da50",
+  "wall_s": 399.12704273080453
+}
