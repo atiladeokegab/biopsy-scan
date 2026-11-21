@@ -20,6 +20,16 @@ RESULTS = ROOT / "bench" / "results"
 TARGET = 0.80
 LABEL = "ESTIMATE: simulated"
 PIN = "1f1bc7457eaf98e5cff600c0e17001d7e2fc44bf"  # gpu/power_at_scale.py's PIN: the code the 300 run used
+# The model every shard must have run: plant, hazard shape, source normalisation and censoring, as the P=40 GPU
+# replicate that reproduced #53 to every digit reported them. vs-schoenfeld-300.json does not record these per point.
+FROZEN_MODEL = {
+    "shape": 1.5, "plant_feature": 0, "plant_mean": 0.022642723251553813, "plant_sd": 0.021889184398124352,
+    "target_event_fraction": 0.2389937106918239, "source_events": 38, "source_regions": 286, "source_cells": 619645,
+    "max_regions_per_patient": 2,
+    "censoring_tail_policy": "administrative horizon = stratum maximum observed follow-up",
+    "administrative_horizons_json": '{"0": 1562.0, "1": 1675.0, "2": 5812.0, "3": 4821.0}',
+    "error_control_scope": "unconditional empirical-source global null; separate maxT and omnibus tests",
+}
 
 
 def crossing(ns: list[int], ys: list[float], target: float = TARGET) -> float | None:
@@ -87,6 +97,12 @@ def check_point(r: dict, base: dict, source: str) -> dict:
             base["cohort"], base["alpha"], base["design"]["regions_per_patient"], base["design"]["fov_um"],
             base["design"]["eps"], base["hr_per_sd"]):
         raise ValueError(f"P={P} is a different design")
+    if {k: (type(s.get(k)), s.get(k)) for k in FROZEN_MODEL} != {k: (type(v), v) for k, v in FROZEN_MODEL.items()}:
+        bad = sorted(k for k, v in FROZEN_MODEL.items() if (type(s.get(k)), s.get(k)) != (type(v), v))
+        raise ValueError(f"P={P}: {', '.join(bad)} differ from the frozen model of the 300 run")
+    t = s.get("threshold")
+    if not (isinstance(t, (int, float)) and not isinstance(t, bool) and math.isfinite(t)):
+        raise ValueError(f"P={P}: calibrated cutoff {t!r} is not a finite number")
     if (s["backend"], m["backend"]) != ("gpu", "gpu"):
         raise ValueError(f"P={P}: backend {s['backend']}/{m['backend']}, not gpu, so the GPU model is not its hardware")
     if (s["calibration_n"], s["fwer_n"], s["power_n"]) != (budget["calibration"], budget["null"], budget["alternative"]):
