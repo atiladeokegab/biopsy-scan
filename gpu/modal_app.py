@@ -445,7 +445,7 @@ def _launch() -> dict:
 
 
 PARITY_KEYS = {"parity_exact", "parity_exact_all", "bit_identical_to_1", "bit_identical_to_N1",
-               "exact_all_containers", "gpu_matches_cpu_z"}
+               "exact_all_containers", "gpu_matches_cpu_z", "bit_identical_across_gpus"}
 
 
 def parity_failures(x, path: str = "") -> list[str]:
@@ -670,3 +670,51 @@ def run_design(gpu: str = DEFAULT_GPU, studies: int = 1000, fleet: str = "1,2,4,
         if "seconds" in v:
             print(f"  {k}: {v['seconds']:.1f} s ({v['label']})")
     print("  same call:", payload["f_same_call"])
+
+
+@app.local_entrypoint()
+def run_gpu_vs(studies: int = 1000, blocks: int = 4, gpus: str = "A100,H100"):
+    """make modal-gpu-vs: the same seeds on one container of each GPU, block by block, both GPUs at once per block
+    and the launch order alternating; winner by dollars per study of in-container compute."""
+    import numpy as np
+
+    _launch()
+    names = [_check_gpu(g) for g in gpus.split(",")]
+    print("volume:", fetch_data.remote())
+    hours = sum(blocks * 120 + studies * 1.2 for _ in names) / 3600  # ~2 min start-up per block, ~1.2 s/study
+    _spend(f"GPU comparison {'/'.join(names)}, {studies} studies", hours * max(map(_gpu_rate, names)),
+           f"{hours:.2f} GPU-h x ${max(map(_gpu_rate, names)):.2f}/h")
+    rows = {g: {"compute_s": [], "startup_and_transfer_s": [], "gpu": None} for g in names}
+    features = {g: [] for g in names}
+    for b, shard in enumerate(np.array_split(range(studies), blocks)):
+        order = names if b % 2 == 0 else names[::-1]
+        t0 = time.perf_counter()
+        calls = {g: fleet_shard.with_options(gpu=g).spawn(shard.tolist()) for g in order}
+        for g in order:
+            out = calls[g].get()
+            rows[g]["compute_s"].append(out["compute_s"])
+            rows[g]["startup_and_transfer_s"].append(time.perf_counter() - t0 - out["in_function_s"])
+            rows[g]["gpu"] = out["gpu"]
+            features[g].append(out["features"])
+        print(f"  block {b}: " + ", ".join(f"{g} {rows[g]['compute_s'][-1]:.1f} s" for g in names))
+    for g in names:
+        r = rows[g]
+        r["total_compute_s"] = sum(r["compute_s"])
+        r["s_per_study"] = r["total_compute_s"] / studies
+        r["container_usd_per_hour"] = _gpu_rate(g)
+        r["usd_per_1000_studies"] = r["s_per_study"] * 1000 / 3600 * _gpu_rate(g)
+    ref = np.concatenate(features[names[0]])
+    same = all(np.array_equal(np.concatenate(features[g]), ref, equal_nan=True) for g in names)
+    fastest = min(names, key=lambda g: rows[g]["total_compute_s"])
+    cheapest = min(names, key=lambda g: rows[g]["usd_per_1000_studies"])
+    payload = {"kind": "gpu_vs", "studies": studies, "blocks": blocks, "seeds": [0, studies - 1],
+               "design": "bench/real_cpu.py DESIGN on Charville, per-study GPU kernel (reimage.run)",
+               "rows": rows, "bit_identical_across_gpus": bool(same), "fastest": fastest, "cheapest_per_study": cheapest,
+               "speed_ratio": max(r["total_compute_s"] for r in rows.values()) / rows[fastest]["total_compute_s"],
+               "rates_source": "bench/results/modal-spend.json rates_usd_per_hour",
+               "timing": "compute_s is in-container, after load, adjacency and JIT warm-up; start-up reported apart"}
+    _save("-".join(names), payload)
+    for g in names:
+        print(f"  {g} ({rows[g]['gpu']['model']}): {rows[g]['s_per_study']:.3f} s/study, "
+              f"${rows[g]['usd_per_1000_studies']:.2f} per 1,000 studies")
+    print(f"  fastest {fastest} x{payload['speed_ratio']:.2f}; cheapest per study {cheapest}; bit-identical {same}")

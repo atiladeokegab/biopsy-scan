@@ -1,4 +1,4 @@
-.PHONY: smoke install test data summary demo tissue deploy modal-gpu-tests modal-ladder modal-ab modal-design
+.PHONY: smoke install test data summary demo tissue deploy modal-gpu-tests modal-ladder modal-ab modal-design modal-gpu-vs
 
 install:
 	uv sync --dev
@@ -51,3 +51,6 @@ modal-ab: install
 FLEET ?= 1,2,4,8,16
 modal-design: install
 	uv run modal run gpu/modal_app.py::run_design --gpu $(GPU) --studies 1000 --fleet $(FLEET)
+
+modal-gpu-vs: install
+	uv run modal run gpu/modal_app.py::run_gpu_vs --studies $(STUDIES) --gpus A100,H100

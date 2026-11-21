@@ -36,6 +36,7 @@ def test_functions_and_gpu_parameters_exist(modal_app):
     assert "/data" in modal_app.time_kernel._spec_.volumes
     assert modal_app.ab_screen._spec_.cpu >= 16  # the quiet A/B box
     assert callable(modal_app.run_tests) and callable(modal_app.run_ladder) and callable(modal_app.run_ab)
+    assert callable(modal_app.run_gpu_vs) and callable(modal_app.run_design)
     assert modal_app._check_gpu("H100") == "H100"
     with pytest.raises(SystemExit):
         modal_app._check_gpu("T4")
