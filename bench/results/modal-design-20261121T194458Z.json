@@ -8,7 +8,7 @@
     "outcomes": "SYNTHETIC (atlas/simulation.py at 79a7792)",
     "rates": "ESTIMATE (FWER and power: binomial rates with Wilson 95% intervals)"
   },
-  "headline": "Re-imaging dominates every arm (re-imaging share: lab 64.8%, numba 98.0%, gpu 99.9%, hybrid 99.6%). Wall per evaluated study: lab 0.881 s, numba 0.125 s, gpu 0.756 s, hybrid 0.126 s.",
+  "headline": "Re-imaging dominates every arm (re-imaging share: lab 64.8%, numba 98.0%, gpu 99.9%, hybrid 99.6%). Compute wall per evaluated study (re-imaging and scoring only; load, prep, adjacency, warm-up and the summary excluded): lab 0.881 s, numba 0.125 s, gpu 0.756 s, hybrid 0.126 s.",
   "same_container_class": true,
   "design": {
     "patients": 159,
@@ -52,7 +52,8 @@
         },
         "all": true
       }
-    }
+    },
+    "scope": "against the prior run: X sha256 on every shared study, and z only through each study's maxT (the prior file stores maxT, not z); not full z parity"
   },
   "arms": {
     "lab": {
@@ -85,11 +86,14 @@
       "stages": {
         "prep_s": 163.87864598200002,
         "adjacency_s": 1.4671000002408618e-05,
-        "reimage_cpu_s": 9063.695980053008,
+        "reimage_worker_wall_s": 9063.695980053008,
         "studies_wall_s": 1761.8763195039999,
-        "scoring_and_calibration_cpu_s": 4928.503275639006,
+        "scoring_and_calibration_worker_wall_s": 4928.503275639006,
         "evaluated_studies": 2000,
-        "wall_per_study_s": 0.880938159752
+        "wall_per_study_s": 0.880938159752,
+        "compute_wall_s": 1761.8763195039999,
+        "end_to_end_in_container_s": 1925.838532539,
+        "scope": "compute_wall_s = re-imaging every evaluated study (the pool's wall for CPU-reimaged arms) plus batched scoring; excludes data load, outcome prep, adjacency, warm-up and the local threshold-and-calls summary, which end_to_end_in_container_s adds back (all but the summary)"
       },
       "warm_s": null,
       "workers": 8,
@@ -14128,7 +14132,7 @@
       "split": {
         "reimage_s": 9063.695980053008,
         "scoring_s": 4928.503275639006,
-        "basis": "CPU-seconds summed over the workers (both stages share each worker)",
+        "basis": "worker wall seconds (perf_counter in single-thread workers) summed over studies; not CPU time",
         "reimage_share": 0.6477677893534789,
         "dominant": "re-imaging"
       }
@@ -14173,12 +14177,15 @@
       "stages": {
         "prep_s": 165.60711088300002,
         "adjacency_s": 58.972571875,
-        "reimage_cpu_s": 2936.4288981459995,
+        "reimage_worker_wall_s": 2936.4288981459995,
         "studies_wall_s": 375.25794010699997,
-        "scoring_cpu_s": 58.792462140002186,
+        "scoring_worker_wall_s": 58.792462140002186,
         "calibration_s": "the calibration stream's studies, inside reimage and scoring",
         "evaluated_studies": 3000,
-        "wall_per_study_s": 0.12508598003566665
+        "wall_per_study_s": 0.12508598003566665,
+        "compute_wall_s": 375.25794010699997,
+        "end_to_end_in_container_s": 602.473255481,
+        "scope": "compute_wall_s = re-imaging every evaluated study (the pool's wall for CPU-reimaged arms) plus batched scoring; excludes data load, outcome prep, adjacency, warm-up and the local threshold-and-calls summary, which end_to_end_in_container_s adds back (all but the summary)"
       },
       "warm_s": 2.551965015999997,
       "workers": 8,
@@ -32217,7 +32224,7 @@
       "split": {
         "reimage_s": 2936.4288981459995,
         "scoring_s": 58.792462140002186,
-        "basis": "CPU-seconds summed over the workers (both stages share each worker)",
+        "basis": "worker wall seconds (perf_counter in single-thread workers) summed over studies; not CPU time",
         "reimage_share": 0.9803712463727929,
         "dominant": "re-imaging"
       }
@@ -32262,12 +32269,15 @@
       "stages": {
         "prep_s": 163.749456445,
         "adjacency_s": 62.28376610500001,
-        "reimage_cpu_s": 2265.0625021979977,
+        "reimage_worker_wall_s": 2265.0625021979977,
         "studies_wall_s": 2265.092063303,
         "scoring_wall_s": 1.7583219370003462,
         "calibration_s": "the calibration stream's studies, inside reimage and scoring",
         "evaluated_studies": 3000,
-        "wall_per_study_s": 0.7556167950800001
+        "wall_per_study_s": 0.7556167950800001,
+        "compute_wall_s": 2266.8503852400004,
+        "end_to_end_in_container_s": 2495.3944953170003,
+        "scope": "compute_wall_s = re-imaging every evaluated study (the pool's wall for CPU-reimaged arms) plus batched scoring; excludes data load, outcome prep, adjacency, warm-up and the local threshold-and-calls summary, which end_to_end_in_container_s adds back (all but the summary)"
       },
       "warm_s": 2.431851144999996,
       "workers": 1,
@@ -50306,13 +50316,13 @@
       "split": {
         "reimage_s": 2265.092063303,
         "scoring_s": 1.7583219370003462,
-        "basis": "wall seconds",
+        "basis": "wall seconds of each stage",
         "reimage_share": 0.999224332603312,
         "dominant": "re-imaging"
       },
       "z_vs_numba": {
         "max_rel_diff": 2.3314683517128287e-15,
-        "basis": "every z, prior run"
+        "basis": "every z, prior run (parity.z_max_rel_diff of the three-arm file)"
       }
     },
     "hybrid": {
@@ -50355,12 +50365,15 @@
       "stages": {
         "prep_s": 161.680351707,
         "adjacency_s": 60.574237966,
-        "reimage_cpu_s": 2997.060267925997,
+        "reimage_worker_wall_s": 2997.060267925997,
         "studies_wall_s": 376.03655894499997,
         "scoring_wall_s": 1.6380859050000254,
         "calibration_s": "the calibration stream's studies, inside reimage and scoring",
         "evaluated_studies": 3000,
-        "wall_per_study_s": 0.12589154828333332
+        "wall_per_study_s": 0.12589154828333332,
+        "compute_wall_s": 377.67464485,
+        "end_to_end_in_container_s": 604.7262446520001,
+        "scope": "compute_wall_s = re-imaging every evaluated study (the pool's wall for CPU-reimaged arms) plus batched scoring; excludes data load, outcome prep, adjacency, warm-up and the local threshold-and-calls summary, which end_to_end_in_container_s adds back (all but the summary)"
       },
       "warm_s": 2.6872088000000076,
       "warm_score_s": 2.025790319999942,
@@ -68400,7 +68413,7 @@
       "split": {
         "reimage_s": 376.03655894499997,
         "scoring_s": 1.6380859050000254,
-        "basis": "wall seconds",
+        "basis": "wall seconds of each stage",
         "reimage_share": 0.9956627061749125,
         "dominant": "re-imaging"
       },
@@ -68427,6 +68440,7 @@
       "features": 630,
       "basis": "derived after the run, not recorded by it: core.reimage_ref.reimage(cells, bench.real_cpu.DESIGN, seed) on null study 0 locally returns X of shape (159, 630), sha256 0bf01f9bd6ffab192883fff2bf29aca5710e4592f5b8754f40527c53030541d0, equal to this file's lab record for that study; every study has the same shape (159 patients drawn per study, the v1 grammar's 630 features)"
     },
-    "power_gap": "The lab is per-study conditional (permutation); batched is one unconditional design threshold. They are different procedures, so the power gap is a method difference, not a speed artefact."
+    "power_gap": "The lab is per-study conditional (permutation); batched is one unconditional design threshold. They are different procedures, so the power gap is a method difference, not a speed artefact.",
+    "relabelled_after_review": "Prometheus #113 review, 2026-11-21T20:20Z, by bench.design_batch.complete/split/headline at the commit that adds this note: *_cpu_s stage sums renamed *_worker_wall_s (perf_counter wall in single-thread workers, not CPU time); compute_wall_s, end_to_end_in_container_s and scope derived from recorded stages; parity.scope added. No measured value changed; summary_local_s was not timed in this run."
   }
 }

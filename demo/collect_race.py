@@ -6,7 +6,7 @@ A bench file feeds the race in one of two ways:
   anything else is refused with a message. Either
   0. bench/modal_design.py's four-arm file (arms lab, numba, gpu, hybrid side by side, one container class): fills
      the four lanes lab-cpu, preflight-cpu, gpu-1 and hybrid, only when MEASURED at 1,000 studies per stream with
-     full parity. A file without all four arms (the three-arm run) feeds nothing. There is no 16-GPU lane. Or
+     its parity gate passed (X sha256 on every shared study; z in full for gpu, via per-study maxT for hybrid). A file without all four arms (the three-arm run) feeds nothing. There is no 16-GPU lane. Or
   1. build-modal's "kind": "design_point" file (slots a_lab_all_cores, b_ours_cpu_all_cores, c_ours_1_gpu), or
      It must carry its "scope" (WORKFLOW comparison, EXPLORATORY calibration), which the page prints; GPU lanes
      need e_gpu_parity.exact_all_containers; the threshold-and-calls step is kept apart in "calls_s".
@@ -37,26 +37,29 @@ ARMS = {"lab-cpu": "lab", "preflight-cpu": "numba", "gpu-1": "gpu", "hybrid": "h
 
 
 def four_arms(name, d):
-    """bench/modal_design.py's file: each arm's whole design-point compute, prep and adjacency apart in startup_s."""
+    """bench/modal_design.py's file: each arm's compute_wall_s; load, prep, adjacency and warm-up apart in startup_s."""
     why = ("not MEASURED" if d.get("status") != "MEASURED" else
            "not 1,000 studies per stream" if d.get("design", {}).get("studies_per_stream") != DESIGN_STUDIES else
-           "parity not exact" if d.get("parity", {}).get("all") is not True else
+           "parity gate not passed" if d.get("parity", {}).get("all") is not True else
            "not the four declared arms" if sorted(d["arms"]) != sorted(ARMS.values()) else None)
     if why:
         print(f"{name}: refused for the race: {why}", file=sys.stderr)
         return
     lab = d["labels"]
     yield "scope", {"comparison": f"Compute {lab['compute']} on one container class ({d['arms']['lab']['container_class']}); "
-                                  f"outcomes {lab['outcomes']}; FWER and power are {lab['rates'].split(' ')[0]}",
+                                  f"outcomes {lab['outcomes']}; FWER and power are {lab['rates'].split(' ')[0]}. "
+                                  "Seconds: re-imaging and scoring only; start-up apart; the threshold summary not "
+                                  "counted. Parity: X sha256 on every shared study; z in full for the A100 lane, "
+                                  "through per-study maxT for the hybrid",
                     "calibration": "Lab: 1,000 within-strata shuffles in every study. Preflight lanes: one threshold "
                                    "from 1,000 independent calibration nulls, timed inside their lanes"}
     for rid, a in ARMS.items():
         v = d["arms"][a]
         st, gpu = v["stages"], a in ("gpu", "hybrid")
-        yield rid, {"seconds": round(st["studies_wall_s"] + (st.get("scoring_wall_s") or 0), 2), "label": lab["compute"],
+        yield rid, {"seconds": round(st["compute_wall_s"], 2), "label": lab["compute"],
                     "hardware": v["container_class"], "cores": None if a == "gpu" else v["workers"],
                     "gpu": f"1x {v['host']['gpu'].split(',')[0]}" if gpu else None, "source": name,
-                    "startup_s": round(st["prep_s"] + st["adjacency_s"], 1),
+                    "startup_s": round(st["end_to_end_in_container_s"] - st["compute_wall_s"], 1),
                     "note": f"{st['evaluated_studies']:,} studies; re-imaging {100 * v['split']['reimage_share']:.1f}% of compute"}
 
 

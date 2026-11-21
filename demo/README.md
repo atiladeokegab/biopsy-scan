@@ -120,7 +120,9 @@ from 1,000 simulated studies each, end to end. There is no 16-GPU lane. Never ed
 `python3 -I demo/collect_race.py` (run by `make demo` and by Pages before every deploy) fills rows from
 `bench/results/*.json`. `bench/modal_design.py`'s four-arm file (arms `lab`, `numba`, `gpu`, `hybrid` on one container
 class) fills `lab-cpu`, `preflight-cpu`, `gpu-1` and `hybrid` only when it is MEASURED at 1,000 studies per stream
-with full parity; `seconds` is the arm's whole design-point compute and `startup_s` its outcome prep and adjacency.
+with its parity gate passed (X sha256 on every shared study; z in full for gpu, via per-study maxT for hybrid);
+`seconds` is the arm's `compute_wall_s` (re-imaging and scoring) and `startup_s` its load, outcome prep, adjacency
+and warm-up; the local threshold summary is not counted.
 build-modal's `"kind": "design_point"` file (#75's `gpu/modal_app.py`; slots `a_lab_all_cores`,
 `b_ours_cpu_all_cores`, `c_ours_1_gpu`) can fill the first three rows, only when it
 says `"status": "MEASURED"`, `"studies": 1000` and carries its `scope`; a FAILED run, a 32-study trial or a generic
