@@ -5,7 +5,6 @@ from math import ceil, factorial
 
 import numpy as np
 from scipy.special import ndtr
-from scipy.stats import rankdata
 
 
 def _inputs(X, time, event, strata):
@@ -47,7 +46,7 @@ def _score(X, r, groups):
     centered = np.zeros_like(X)
     V = np.zeros(X.shape[:-2] + (X.shape[-1],), dtype=np.float64)
     for ix in groups:
-        if len(ix) < 2:
+        if len(ix) < 2 or not np.any(r[ix]):
             continue
         # Anchoring keeps constant columns exactly zero and avoids large offsets.
         x = X[..., ix, :] - X[..., ix[:1], :]
@@ -125,8 +124,12 @@ def _components(z):
 
 def _joint_test(rows):
     components = _components(rows)
-    # Inclusive upper tails protect ties. Calibrate selection among all 3 tests.
-    p = rankdata(-components, axis=0, method="max") / len(rows)
+    # Include mathematical ties despite dot-product roundoff after row shuffles.
+    p = np.empty_like(components)
+    for j in range(components.shape[1]):
+        values = components[:, j]
+        tolerance = 16 * np.finfo(np.float64).eps * np.maximum(1, np.abs(values))
+        p[:, j] = (len(rows) - np.searchsorted(np.sort(values), values - tolerance)) / len(rows)
     min_p = p.min(axis=1)
     return {
         "statistics": dict(zip(("maxT", "sum_z2", "HC"), components[0])),

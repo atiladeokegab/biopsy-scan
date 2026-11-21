@@ -132,6 +132,20 @@ def test_omnibus_calibrates_choice_jointly(tiny):
     assert result["statistics"] == {"maxT": 0, "sum_z2": 0, "HC": 0}
 
 
+def test_exact_omnibus_preserves_mathematical_ties_after_row_reorder():
+    X = np.array([[1, 4, 2], [3, 2, 1], [3, 4, 1], [3, 1, 3], [3, 2, 3]])
+    time, event, strata = np.array([1, 0, 0, 2, 4]), np.array([0, 0, 1, 0, 1]), np.zeros(5)
+    result = permutation_test(X, time, event, strata, exact=True)
+    reverse = permutation_test(X[::-1], time[::-1], event[::-1], strata, exact=True)
+    assert result["omnibus"]["p"] == reverse["omnibus"]["p"]
+    assert result["omnibus"]["component_p"] == reverse["omnibus"]["component_p"]
+
+
+def test_event_free_stratum_never_squares_uninformative_features():
+    for value in score([[1e155], [-1e155]], [1, 2], [0, 0], [0, 0]).values():
+        assert_allclose(value, 0, atol=0)
+
+
 @pytest.mark.parametrize("field,value", [
     ("X", [[np.nan]]), ("X", [[np.inf]]), ("X", []),
     ("time", [-1]), ("time", [np.nan]), ("time", [1, 2]),
