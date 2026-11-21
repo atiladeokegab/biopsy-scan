@@ -1,4 +1,4 @@
-.PHONY: smoke install test data summary demo tissue deploy
+.PHONY: smoke install test data summary demo tissue deploy modal-gpu-tests modal-ladder
 
 install:
 	uv sync --dev
@@ -32,3 +32,14 @@ PAGES_URL ?= https://atiladeokegab.github.io/sota-parallelism-nov21/
 deploy:
 	python3 -I demo/check_data.py demo/data
 	@echo "Deployed by .github/workflows/pages.yml on push to integration: $(PAGES_URL)"
+
+# Real GPUs on Modal (docs/GPU.md). Needs `uv run modal setup` once; GPU=A100|H100|L4.
+GPU ?= A100
+CONTAINERS ?= 4
+STUDIES ?= 16
+REPS ?= 5
+modal-gpu-tests: install
+	uv run modal run gpu/modal_app.py::run_tests --gpu $(GPU)
+
+modal-ladder: install
+	uv run modal run gpu/modal_app.py::run_ladder --gpu $(GPU) --reps $(REPS) --containers $(CONTAINERS) --studies $(STUDIES)
