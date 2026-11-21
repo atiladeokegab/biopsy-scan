@@ -48,6 +48,7 @@ def test_control_design_is_a_third_line_at_the_same_points():
     assert svg(res).count("<polyline") == 3 and "control" in svg(res)
     part = compare([row(80, 0.1, 0.0, 0.2), row(300, 0.9, 0.8, 0.95)], META, 630, cohort="charville", control=ctl[:1])
     assert [p["patients"] for p in part["control"]["points"]] == [80]  # a stopped run keeps its finished points
+    assert "1 of 2 points" in svg(part) and "of 2 points" not in svg(res)
     with pytest.raises(ValueError, match="main design's patient counts"):
         compare([row(80, 0.1, 0.0, 0.2)], META, 630, cohort="charville", control=ctl)
 

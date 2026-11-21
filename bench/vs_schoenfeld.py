@@ -147,7 +147,8 @@ def svg(res: dict) -> str:
         out.append(f'<polyline points="{line}" fill="none" stroke="#777" stroke-width="1.5" stroke-dasharray="2 4"/>')
         cd = c["design"]
         labels.append((Y(c["points"][-1]["sim_power"]) + 4, "#666",
-                       ["MEASURED (sim), control", f"{_fov(cd)}, {float(cd['eps']):.0%} mis-called"]))
+                       ["MEASURED (sim), control", f"{_fov(cd)}, {float(cd['eps']):.0%} mis-called"
+                        + (f", {len(c['points'])} of {len(pts)} points" if len(c["points"]) < len(pts) else "")]))
     floor = T - 40
     for y, colour, lines in sorted(labels):  # stack end labels so none overlap
         y = max(y, floor)
