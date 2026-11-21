@@ -11,7 +11,7 @@ skips calibration). Each arm runs in its own A100 container with 8 cores and 64 
 Commit first: the run refuses a dirty tracked tree, so source_commit is the code that ran. A run whose
 ceiling (3 containers x timeout x rate) is over --cap-usd (default 20) is refused before it starts.
 Writes bench/results/modal-design-<utc>.json, MEASURED only with full parity, a clean tree and one
-container class (SMOKE when --cpu-arms-on-cpu put the CPU arms in GPU-less containers), else FAILED; logs the spend in bench/results/modal-spend-design.json before and after the run.
+container class (SMOKE when --cpu-arms-on-cpu put the CPU arms in GPU-less containers), else FAILED; logs the spend in the workspace ledger bench/results/modal-spend.json before and after the run.
 """
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ CLASS = f"Modal {GPU} + {CORES:g} cores + {MEMORY_MIB // 1024} GiB"
 RATES = {"A100": 2.0988, "cpu_core": 0.04716, "memory_gib": 0.007992,
          "source": "bench/results/modal-spend.json on modal-gpu (modal.com/pricing read 2026-11-21T17:36Z)"}
 USD_PER_HOUR = RATES["A100"] + CORES * RATES["cpu_core"] + MEMORY_MIB / 1024 * RATES["memory_gib"]
-SPEND = REPO / "bench" / "results" / "modal-spend-design.json"
+SPEND = REPO / "bench" / "results" / "modal-spend.json"  # the one workspace ledger
 # workqueue: the CPU arms fork workers after the parent's JIT warm-up, and GNU OpenMP aborts a fork
 SINGLE = {"OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1", "MKL_NUM_THREADS": "1", "NUMBA_NUM_THREADS": "1",
           "NUMBA_THREADING_LAYER": "workqueue"}
@@ -116,11 +116,24 @@ def _git(*a):
     return subprocess.run(["git", *a], cwd=REPO, capture_output=True, text=True, check=True).stdout.strip()
 
 
+def _counted(e: dict) -> float:
+    return e.get("actual", {}).get("est_usd", e["est_usd"])
+
+
 def _log_spend(entry: dict) -> None:
-    log = json.loads(SPEND.read_text()) if SPEND.exists() else {
-        "workspace_profile": os.environ.get("MODAL_PROFILE"), "rates_usd_per_hour": RATES, "entries": []}
-    log["entries"] = [e for e in log["entries"] if e["utc"] != entry["utc"]] + [entry]
-    log["running_total_usd"] = round(sum(e.get("actual", {}).get("est_usd", e["est_usd"]) for e in log["entries"]), 3)
+    """One workspace ledger: append the ceiling before a run; after it, swap in the actual and shift later totals."""
+    log = json.loads(SPEND.read_text())
+    es = log["entries"]
+    at = next((k for k, e in enumerate(es) if (e["utc"], e["run"]) == (entry["utc"], entry["run"])), None)
+    if at is None:
+        es.append(dict(entry))  # a copy: the caller adds "actual" to entry later
+        at = len(es) - 1
+        es[at]["running_total_usd"] = round((es[at - 1].get("running_total_usd", 0) if at else 0) + _counted(entry), 3)
+    else:
+        delta = _counted(entry) - _counted(es[at])
+        es[at] = entry | {"running_total_usd": es[at]["running_total_usd"]}
+        for e in es[at:]:
+            e["running_total_usd"] = round(e["running_total_usd"] + delta, 3)
     SPEND.write_text(json.dumps(log, indent=2) + "\n")
 
 
