@@ -49,6 +49,8 @@ def test_control_design_is_a_third_line_at_the_same_points():
     part = compare([row(80, 0.1, 0.0, 0.2), row(300, 0.9, 0.8, 0.95)], META, 630, cohort="charville", control=ctl[:1])
     assert [p["patients"] for p in part["control"]["points"]] == [80]  # a stopped run keeps its finished points
     assert "1 of 2 points" in svg(part) and "of 2 points" not in svg(res)
+    assert svg(part).count('r="4.5" fill="#fff" stroke="#555"') == 1 and svg(res).count('r="4.5" fill="#fff" stroke="#555"') == 2  # visible markers
+    assert "control 0.050 to 0.050 (highest at 80 patients, 95% CI 0.020 to 0.090)" in svg(res)
     with pytest.raises(ValueError, match="main design's patient counts"):
         compare([row(80, 0.1, 0.0, 0.2)], META, 630, cohort="charville", control=ctl)
 
@@ -76,6 +78,7 @@ def test_committed_result_gives_both_powers_per_design_point(path):
                                                                      res["alpha"], res["features_m"]))
     svg_text = path.with_suffix(".svg").read_text()
     assert "ESTIMATE (sim)" in svg_text and "ANALYTIC (formula)" in svg_text
+    assert svg_text == svg(res)  # the committed chart is the one its JSON draws
     if path.name == "vs-schoenfeld-300.json":
         assert res["status"] == "ESTIMATE"
         assert ">ESTIMATE · Textbook" in svg_text

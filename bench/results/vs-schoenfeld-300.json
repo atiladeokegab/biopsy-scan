@@ -172,7 +172,9 @@
     "sim_hi": 0.11281811536048231,
     "sim_n": 300,
     "sim_identification": 0.01,
-    "sim_fwer": 0.06
+    "sim_fwer": 0.06,
+    "sim_fwer_lo": 0.022334886071316368,
+    "sim_fwer_hi": 0.12602993458082296
    },
    {
     "patients": 80,
@@ -181,7 +183,9 @@
     "sim_hi": 0.2569532425409742,
     "sim_n": 300,
     "sim_identification": 0.08,
-    "sim_fwer": 0.11
+    "sim_fwer": 0.11,
+    "sim_fwer_lo": 0.05620702028548746,
+    "sim_fwer_hi": 0.18830113219644257
    },
    {
     "patients": 120,
@@ -190,7 +194,9 @@
     "sim_hi": 0.38292229290809604,
     "sim_n": 300,
     "sim_identification": 0.18,
-    "sim_fwer": 0.07
+    "sim_fwer": 0.07,
+    "sim_fwer_lo": 0.028605288907438704,
+    "sim_fwer_hi": 0.13891972845585732
    },
    {
     "patients": 160,
@@ -199,7 +205,9 @@
     "sim_hi": 0.3656939294152805,
     "sim_n": 300,
     "sim_identification": 0.21,
-    "sim_fwer": 0.02
+    "sim_fwer": 0.02,
+    "sim_fwer_lo": 0.0024313368239425423,
+    "sim_fwer_hi": 0.07038393247107011
    },
    {
     "patients": 200,
@@ -208,7 +216,9 @@
     "sim_hi": 0.6558709649136094,
     "sim_n": 300,
     "sim_identification": 0.48,
-    "sim_fwer": 0.03
+    "sim_fwer": 0.03,
+    "sim_fwer_lo": 0.006229971538306395,
+    "sim_fwer_hi": 0.08517605297428002
    },
    {
     "patients": 240,
@@ -217,7 +227,9 @@
     "sim_hi": 0.7669599073682997,
     "sim_n": 300,
     "sim_identification": 0.5733333333333334,
-    "sim_fwer": 0.1
+    "sim_fwer": 0.1,
+    "sim_fwer_lo": 0.04900468922148595,
+    "sim_fwer_hi": 0.17622259774002266
    },
    {
     "patients": 300,
@@ -226,7 +238,9 @@
     "sim_hi": 0.8972020001688272,
     "sim_n": 300,
     "sim_identification": 0.75,
-    "sim_fwer": 0.07
+    "sim_fwer": 0.07,
+    "sim_fwer_lo": 0.028605288907438704,
+    "sim_fwer_hi": 0.13891972845585732
    }
   ]
  }
