@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from core.grammar import RADII_UM, features
-from core.truth import R, layout, neighbours, region_sums
+from core.grammar import RADII_UM, features, features_v2
+from core.truth import R, layout, neighbours, region_sums, region_sums_v2
 
 
 def confusion_matrix(K: int, eps: float) -> np.ndarray:
@@ -75,6 +75,37 @@ def reimage_region(nbr: dict, xy: np.ndarray, types: np.ndarray, focal: list[int
     return region_sums(reimage_counts(nbr, obs, visible, K), obs, visible, focal, K)
 
 
+def reimage_counts_and_channels(nbr: dict, obs: np.ndarray, visible: np.ndarray,
+                                channels: np.ndarray, K: int):
+    """CSR reference walk accumulating both neighbour counts (n,R,K) and channel sums (n,R,K,M)."""
+    n, M = len(obs), channels.shape[1]
+    row = np.repeat(np.arange(n), np.diff(nbr["ptr"]))
+    j = nbr["idx"]
+    ok = visible[row] & visible[j]
+    row_ok, j_ok = row[ok], j[ok]
+    rbin = np.searchsorted(np.asarray(RADII_UM), nbr["dist"][ok], side="left")
+    obs_j = obs[j_ok]
+    flat = (row_ok * R + rbin) * K + obs_j
+    counts = np.cumsum(np.bincount(flat, minlength=n * R * K).reshape(n, R, K), axis=1)
+    ch_sums = np.zeros((n, R, K, M), dtype=np.float64)
+    np.add.at(ch_sums, (row_ok, rbin, obs_j), np.asarray(channels, dtype=np.float64)[j_ok])
+    return counts, np.cumsum(ch_sums, axis=1)
+
+
+def reimage_region_v2(nbr: dict, xy: np.ndarray, types: np.ndarray, channels: np.ndarray,
+                      focal: list[int], K: int, crop=None, eps: float = 0.0,
+                      M: np.ndarray | None = None, u: np.ndarray | None = None,
+                      rng: np.random.Generator | None = None):
+    """One look at one region -> (S_counts (T,K,R,2), S_expr (T,K,R,C_ch), m (T,))."""
+    M = confusion_matrix(K, eps) if M is None else M
+    if u is None:
+        u = (rng or np.random.default_rng()).random(len(types))
+    obs = miscall(types, M, u)
+    visible = crop_mask(xy, crop)
+    counts, ch_sums = reimage_counts_and_channels(nbr, obs, visible, channels, K)
+    return region_sums_v2(counts, ch_sums, obs, visible, focal, K)
+
+
 def draw(cells: dict, design: dict, seed) -> dict:
     """The study's random draws, in the contract's order: patients, regions, then per look crop and u.
 
@@ -130,3 +161,28 @@ def reimage(cells: dict, design: dict, seed, region_kernel=None) -> np.ndarray:
             S[i] += s_
             m[i] += m_
     return features(S, m)
+
+
+def reimage_v2(cells: dict, design: dict, seed, region_kernel=None) -> np.ndarray:
+    """One simulated v1+v2 study -> X float64 [P', C_v1 + C_expr] using shared draw order."""
+    if "channels" not in cells:
+        raise ValueError("cells must provide channels for reimage_v2")
+    region_kernel = region_kernel or reimage_region_v2
+    L = layout(cells)
+    d = draw(cells, design, seed)
+    M = confusion_matrix(L["K"], float(design.get("eps") or 0.0))
+    T, K, ch_dim = len(L["focal"]), L["K"], L["M"]
+    S_c = np.zeros((len(d["patients"]), T, K, R, 2))
+    S_e = np.zeros((len(d["patients"]), T, K, R, ch_dim))
+    m = np.zeros((len(d["patients"]), T), np.int64)
+    cache = cells.setdefault("_nbr", {})
+    for i, row in enumerate(d["looks"]):
+        for r, crop, u in row:
+            xy, ty, ch = L["xy"](r), L["types"](r), L["channels"](r)
+            if r not in cache:
+                cache[r] = neighbours(xy)
+            sc, se, m_ = region_kernel(cache[r], xy, ty, ch, L["focal"], K, crop=crop, M=M, u=u)
+            S_c[i] += sc
+            S_e[i] += se
+            m[i] += m_
+    return features_v2(S_c, S_e, m)
