@@ -374,7 +374,12 @@ def screen_studies(X, time, event, strata=None, backend="numpy", *, block=128):
         return {"z": z, "maxT": np.abs(z).max(1)}
     from .gpu_score import study_moments
 
-    codes = np.stack([np.unique(row, return_inverse=True)[1].ravel() for row in strata])
+    # as _inputs: a row without a finite stratum is dropped; NaN X takes it out of every risk set
+    base = np.isfinite(strata) if strata.dtype.kind == "f" else np.ones(strata.shape, bool)
+    X = np.where(base[..., None], X, np.nan)
+    codes = np.zeros(strata.shape, np.int64)
+    for s, row in enumerate(strata):
+        codes[s, base[s]] = np.unique(row[base[s]], return_inverse=True)[1].ravel()
     z = np.empty(X.shape[::2])
     for start in range(0, len(X), block):
         part = slice(start, start + block)

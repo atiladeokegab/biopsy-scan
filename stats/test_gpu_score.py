@@ -70,9 +70,13 @@ X[1, :, 4] = np.nan                         # no complete cases in one study
 X[2, :, 5] = np.where(np.arange(n) < 10, 1.0, 2.0)  # constant within each stratum below
 s = np.tile((np.arange(n) >= 10).astype(int), (S, 1))
 s[3] = rng.integers(0, 3, n)                # a study with three strata
+s = s.astype(float)
+s[0, 1:6] = np.nan                          # rows without a finite stratum: screen_batch drops them,
+s[1, 5:9] = np.inf                          # so the GPU must too (each would otherwise form a stratum)
 t = np.round(rng.exponential(size=(S, n)), 1)  # ties
 e = (rng.random((S, n)) < 0.6).astype(float)
 e[4] = 0                                    # a study with no events
+e[:2, 1:9] = 1                              # the dropped rows have events, so keeping them changes z
 cpu = screen_studies(X, t, e, s, backend="numpy")
 gpu = screen_studies(X, t, e, s, backend="gpu", block=2)
 np.testing.assert_allclose(gpu["z"], cpu["z"], rtol=1e-9, atol=1e-9)
