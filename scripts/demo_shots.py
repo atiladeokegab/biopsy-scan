@@ -150,6 +150,8 @@ def _video(browser, url: str, out: Path, route, hold_s: float, tail_s: float, sc
         page.wait_for_function(RACE_DONE, timeout=60_000)
         done_s = time.monotonic() - t0 - ready_s
         _hold(page, tail_s)
+        if cursor:  # nothing more is clicked, and a resting pointer would cover labels in the scroll views
+            page.evaluate("document.getElementById('shots-cursor')?.remove()")
         problems += _scroll(page, scroll, SCROLL_DWELL_S)
         problems += _page_problems(page, "video, after the race")
         webm = Path(page.video.path())
