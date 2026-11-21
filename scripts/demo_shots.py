@@ -7,7 +7,7 @@ Serves demo/ on 127.0.0.1, blocks every off-box request, waits for the page to f
 and writes demo/shots/first-screen-<w>x<h>.png. Exits 1 if the page shows an error or anything goes off-box.
 
 --video records 1280x720 from the moment the page is ready: the first screen for --hold seconds, then "Run the studies", until every timed race
-lane is done, plus --tail seconds (default 10, so the 30 s still exists); then each --scroll target, smoothly
+lane is done (--race-scroll scrolls one element into view as the race starts), plus --tail seconds (default 10, so the 30 s still exists); then each --scroll target, smoothly
 scrolled into view and held 5 s. --cursor draws a pointer that glides to each click target first, so viewers
 see what is clicked. It writes demo.mp4, stills at 0, 10, 20 and 30 s cut from that file, and timeline.json
 to --out (keep video out of git). Needs ffmpeg and ffprobe on PATH.
@@ -127,7 +127,8 @@ def _click(page, selector: str, cursor: bool) -> None:
     target.click()
 
 
-def _video(browser, url: str, out: Path, route, hold_s: float, tail_s: float, scroll: list[str], cursor: bool) -> list[str]:
+def _video(browser, url: str, out: Path, route, hold_s: float, tail_s: float, scroll: list[str], cursor: bool,
+           race_scroll: str | None = None) -> list[str]:
     w, h = SIZES[0]
     with tempfile.TemporaryDirectory() as tmp:
         ctx = browser.new_context(viewport={"width": w, "height": h}, record_video_dir=tmp,
@@ -144,6 +145,8 @@ def _video(browser, url: str, out: Path, route, hold_s: float, tail_s: float, sc
         page.wait_for_timeout(hold_s * 1000)
         _click(page, "#run", cursor)
         click_s = time.monotonic() - t0 - ready_s
+        if race_scroll:  # the race card is taller than 720 px; this keeps every lane in view while it runs
+            problems += _scroll(page, [race_scroll], 0)
         page.wait_for_function(RACE_DONE, timeout=60_000)
         done_s = time.monotonic() - t0 - ready_s
         _hold(page, tail_s)
@@ -184,6 +187,8 @@ def parse_args(argv=None) -> argparse.Namespace:
                     help="after the tail, scroll this element into view and hold it (video only; repeatable, in order)")
     ap.add_argument("--cursor", action="store_true",
                     help="draw a pointer that glides to each click target before clicking (video only)")
+    ap.add_argument("--race-scroll", metavar="SELECTOR",
+                    help="right after the click, smoothly scroll this element into view for the race (video only)")
     return ap.parse_args(argv)
 
 
@@ -211,7 +216,7 @@ def main(argv=None) -> int:
             # froze the race panel (MEASURED: the bars never filled in the recording), so video mode goes without.
             args = [] if a.video else ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"]
             browser = pw.chromium.launch(args=args)
-            problems += _video(browser, url, out, route, a.hold, a.tail, a.scroll, a.cursor) if a.video else _shots(browser, url, out, route)
+            problems += _video(browser, url, out, route, a.hold, a.tail, a.scroll, a.cursor, a.race_scroll) if a.video else _shots(browser, url, out, route)
             browser.close()
     finally:
         server.shutdown()
