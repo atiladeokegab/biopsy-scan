@@ -12,7 +12,8 @@
   "md": "the string with | escaped as \\\\| (inside a Markdown table cell)",
   "median_ratio": "{over, items, group, num, den, pick}: for each group of `over` (by `group`), the median over its `items` of num/den; then the min or max of those medians, then the rule",
   "distinct": "[list path, key]: the number of distinct values of key across the list",
-  "len": "the length of the list at the path"
+  "len": "the length of the list at the path",
+  "sci:N": "scientific notation with N decimals (2.3e-15)"
  },
  "claims": [
   {
@@ -716,6 +717,241 @@
      "text": "Discovery rank {rank} of {of} ({label}, discovery patients only)"
     }
    ]
+  },
+  {
+   "source": "bench/results/modal-design-20261121T194458Z.json",
+   "pr": 113,
+   "label": "MEASURED",
+   "label_path": "labels.compute",
+   "id": "race-lane-walls",
+   "claim": "One design point on real Charville tissue, one A100 + 8-core container class: compute wall (re-imaging and scoring) lab 1761.88 s over 2,000 studies, Preflight Numba 375.26 s, 1 A100 2266.85 s and hybrid 377.67 s over 3,000 each; per evaluated study 0.881 / 0.125 / 0.756 / 0.126 s",
+   "values": [
+    {
+     "name": "lab_wall",
+     "path": "arms.lab.stages.compute_wall_s",
+     "rule": "fixed:2",
+     "expect": "1761.88"
+    },
+    {
+     "name": "lab_per_study",
+     "path": "arms.lab.stages.wall_per_study_s",
+     "rule": "fixed:3",
+     "expect": "0.881"
+    },
+    {
+     "name": "lab_studies",
+     "path": "arms.lab.stages.evaluated_studies",
+     "rule": "comma",
+     "expect": "2,000"
+    },
+    {
+     "name": "numba_wall",
+     "path": "arms.numba.stages.compute_wall_s",
+     "rule": "fixed:2",
+     "expect": "375.26"
+    },
+    {
+     "name": "numba_per_study",
+     "path": "arms.numba.stages.wall_per_study_s",
+     "rule": "fixed:3",
+     "expect": "0.125"
+    },
+    {
+     "name": "numba_studies",
+     "path": "arms.numba.stages.evaluated_studies",
+     "rule": "comma",
+     "expect": "3,000"
+    },
+    {
+     "name": "gpu_wall",
+     "path": "arms.gpu.stages.compute_wall_s",
+     "rule": "fixed:2",
+     "expect": "2266.85"
+    },
+    {
+     "name": "gpu_per_study",
+     "path": "arms.gpu.stages.wall_per_study_s",
+     "rule": "fixed:3",
+     "expect": "0.756"
+    },
+    {
+     "name": "gpu_studies",
+     "path": "arms.gpu.stages.evaluated_studies",
+     "rule": "comma",
+     "expect": "3,000"
+    },
+    {
+     "name": "hybrid_wall",
+     "path": "arms.hybrid.stages.compute_wall_s",
+     "rule": "fixed:2",
+     "expect": "377.67"
+    },
+    {
+     "name": "hybrid_per_study",
+     "path": "arms.hybrid.stages.wall_per_study_s",
+     "rule": "fixed:3",
+     "expect": "0.126"
+    },
+    {
+     "name": "hybrid_studies",
+     "path": "arms.hybrid.stages.evaluated_studies",
+     "rule": "comma",
+     "expect": "3,000"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "demo/data/baseline.json",
+     "path": "rows[id=lab-cpu].seconds",
+     "value": "lab_wall"
+    },
+    {
+     "file": "demo/data/baseline.json",
+     "path": "rows[id=lab-cpu].label",
+     "value": "label"
+    },
+    {
+     "file": "demo/data/baseline.json",
+     "path": "rows[id=preflight-cpu].seconds",
+     "value": "numba_wall"
+    },
+    {
+     "file": "demo/data/baseline.json",
+     "path": "rows[id=preflight-cpu].label",
+     "value": "label"
+    },
+    {
+     "file": "demo/data/baseline.json",
+     "path": "rows[id=gpu-1].seconds",
+     "value": "gpu_wall"
+    },
+    {
+     "file": "demo/data/baseline.json",
+     "path": "rows[id=gpu-1].label",
+     "value": "label"
+    },
+    {
+     "file": "demo/data/baseline.json",
+     "path": "rows[id=hybrid].seconds",
+     "value": "hybrid_wall"
+    },
+    {
+     "file": "demo/data/baseline.json",
+     "path": "rows[id=hybrid].label",
+     "value": "label"
+    }
+   ]
+  },
+  {
+   "source": "bench/results/modal-design-20261121T194458Z.json",
+   "pr": 113,
+   "label": "MEASURED",
+   "label_path": "labels.compute",
+   "id": "race-7.0x",
+   "claim": "Preflight on 8 CPU cores (Numba) is 7.0× faster per evaluated study than the lab way (0.881 s vs 0.125 s); a workflow comparison, since the lab runs a per-study permutation test and Preflight one calibrated threshold",
+   "values": [
+    {
+     "name": "speedup",
+     "ratio": [
+      "arms.lab.stages.wall_per_study_s",
+      "arms.numba.stages.wall_per_study_s"
+     ],
+     "rule": "fixed:1",
+     "expect": "7.0"
+    },
+    {
+     "name": "lab",
+     "path": "arms.lab.stages.wall_per_study_s",
+     "rule": "fixed:3",
+     "expect": "0.881"
+    },
+    {
+     "name": "numba",
+     "path": "arms.numba.stages.wall_per_study_s",
+     "rule": "fixed:3",
+     "expect": "0.125"
+    }
+   ],
+   "quotes": []
+  },
+  {
+   "source": "bench/results/modal-design-20261121T194458Z.json",
+   "pr": 113,
+   "label": "MEASURED",
+   "label_path": "labels.compute",
+   "id": "race-hybrid-tie",
+   "claim": "The hybrid lane (CPU re-imaging feeding A100 scoring) ties Numba on 8 CPU cores: 0.126 s vs 0.125 s per study (ratio 1.01); re-imaging dominates both",
+   "values": [
+    {
+     "name": "ratio",
+     "ratio": [
+      "arms.hybrid.stages.wall_per_study_s",
+      "arms.numba.stages.wall_per_study_s"
+     ],
+     "rule": "fixed:2",
+     "expect": "1.01"
+    },
+    {
+     "name": "hybrid",
+     "path": "arms.hybrid.stages.wall_per_study_s",
+     "rule": "fixed:3",
+     "expect": "0.126"
+    },
+    {
+     "name": "numba",
+     "path": "arms.numba.stages.wall_per_study_s",
+     "rule": "fixed:3",
+     "expect": "0.125"
+    },
+    {
+     "name": "hybrid_share",
+     "path": "arms.hybrid.split.reimage_share",
+     "rule": "pct:1",
+     "expect": "99.6"
+    },
+    {
+     "name": "numba_share",
+     "path": "arms.numba.split.reimage_share",
+     "rule": "pct:1",
+     "expect": "98.0"
+    }
+   ],
+   "quotes": []
+  },
+  {
+   "source": "bench/results/modal-design-20261121T194458Z.json",
+   "pr": 113,
+   "label": "MEASURED",
+   "label_path": "labels.compute",
+   "id": "race-parity-1e-15",
+   "claim": "Numba and A100 scores agree to about 10⁻¹⁵ relative: max relative z difference 2.3e-15 (gpu, every z) and 1.6e-15 (hybrid, per-study maxT); X sha256 matches on every shared study",
+   "values": [
+    {
+     "name": "gpu",
+     "path": "arms.gpu.z_vs_numba.max_rel_diff",
+     "rule": "sci:1",
+     "expect": "2.3e-15"
+    },
+    {
+     "name": "hybrid",
+     "path": "arms.hybrid.z_vs_numba.max_rel_diff",
+     "rule": "sci:1",
+     "expect": "1.6e-15"
+    },
+    {
+     "name": "parity_all",
+     "path": "parity.all",
+     "rule": "eq",
+     "expect": "True"
+    },
+    {
+     "name": "hybrid_prior",
+     "path": "parity.against_prior.hybrid.all",
+     "rule": "eq",
+     "expect": "True"
+    }
+   ],
+   "quotes": []
   }
  ],
  "stale": [
