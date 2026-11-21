@@ -7,7 +7,7 @@ export const fovLabel = (v) => (v === "full" ? "full core" : `${v} µm`);
 const plural = (k) => `${k} region${k > 1 ? "s" : ""}`;
 
 export function drawChart(box, grid, sel) {
-  const W = Math.max(300, box.clientWidth), H = W < 560 ? 280 : 340;
+  const W = Math.max(300, box.clientWidth), H = Math.round(Math.min(340, Math.max(220, W * 0.6)));
   const m = { l: 44, r: W < 560 ? 64 : 90, t: 18, b: 40 };
   const xs = grid.axes.patients, x1 = Math.max(...xs);
   const X = (v) => m.l + (v / x1) * (W - m.l - m.r);
@@ -25,10 +25,10 @@ export function drawChart(box, grid, sel) {
   };
 
   for (const t of [0, 0.25, 0.5, 0.75, 1]) {
-    el("line", { x1: m.l, x2: W - m.r, y1: Y(t), y2: Y(t), style: "stroke:var(--line)" });
+    el("line", { x1: m.l, x2: W - m.r, y1: Y(t), y2: Y(t), style: "stroke:var(--border)" });
     el("text", { x: m.l - 8, y: Y(t) + 4, "text-anchor": "end" }, pct(t));
   }
-  el("line", { x1: m.l, x2: W - m.r, y1: Y(0.8), y2: Y(0.8), style: "stroke:var(--muted)", "stroke-dasharray": "3 4" });
+  el("line", { x1: m.l, x2: W - m.r, y1: Y(0.8), y2: Y(0.8), style: "stroke:var(--text-muted)", "stroke-dasharray": "3 4" });
   el("text", { x: m.l + 4, y: Y(0.8) - 6 }, "80% power");
   for (const t of xs.filter((v, i) => W >= 560 || i % 2 === 1 || v === x1)) {
     el("text", { x: X(t), y: H - m.b + 18, "text-anchor": "middle" }, t);
@@ -44,7 +44,7 @@ export function drawChart(box, grid, sel) {
     const pts = slice(k);
     if (pts.length < 2) return;
     const on = k === sel.regions;
-    const shade = on ? "var(--head)" : "var(--body)";
+    const shade = on ? "var(--text-head)" : "var(--text-body)";
     const alpha = on ? 1 : 0.45 + (0.35 * i) / Math.max(1, ks.length - 1);
     el("polyline", {
       points: pts.map((p) => `${X(p.patients)},${Y(p.power)}`).join(" "),
@@ -63,7 +63,7 @@ export function drawChart(box, grid, sel) {
   }
 
   // The current design first, so the cohort dot stays visible when the two coincide.
-  el("circle", { cx: X(sel.patients), cy: Y(sel.power), r: 7, style: "fill:var(--bg);stroke:var(--head)", "stroke-width": 2.5 });
+  el("circle", { cx: X(sel.patients), cy: Y(sel.power), r: 7, style: "fill:var(--surface);stroke:var(--text-head)", "stroke-width": 2.5 });
   // Our cohort: a vertical marker at its patient count and a dot on its regions line (interpolated).
   const cl = lines.find((l) => l.k === cohort.regions);
   if (cohort.patients <= x1) {
