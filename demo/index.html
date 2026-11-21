@@ -5,20 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Can my study find it? · Preflight</title>
   <meta name="description" content="Preflight simulates thousands of spatial-biology studies on a GPU to show which study designs can find a survival-linked spatial pattern.">
+  <link rel="stylesheet" href="tokens.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="bar">
     <span class="wordmark">Preflight</span>
     <span class="team">Team Dry Lab</span>
+    <span class="tag" id="provenance">SYNTHETIC</span>
   </header>
 
   <main>
     <section class="hero" aria-labelledby="title">
-      <p class="eyebrow">GPU study simulator</p>
       <h1 id="title">Can my study find it?</h1>
       <p class="tagline">Thousands of studies, simulated in seconds, before you image a slide.</p>
-      <p class="badge" id="synthetic" hidden></p>
     </section>
 
     <div class="error" id="error" role="alert" hidden></div>
@@ -27,15 +27,14 @@
       <figure class="tissue">
         <canvas id="tissue" tabindex="0" role="img" aria-label="Tissue from each patient, stacked"></canvas>
         <figcaption>
-          <span class="legend"><i class="t"></i>Tumour <i class="s"></i>Stroma <i class="m"></i>Immune <i class="f"></i>Field of view</span>
-          <span id="tissue-caption"></span>
-          <span class="hint">Drag, or focus and use the arrow keys, to turn it. <button type="button" id="spin" class="link" aria-pressed="false">Pause rotation</button></span>
+          <span class="legend"><span><i class="t"></i>Tumour</span> <span><i class="s"></i>Stroma</span> <span><i class="m"></i>Immune</span> <span><i class="f"></i>Field of view</span></span>
+          <span id="tissue-caption">Preparing tissue slabs...</span>
+          <span class="hint"><span class="hint-text">Drag, or focus and use the arrow keys, to turn it.</span> <button type="button" id="spin" class="link" aria-pressed="false">Pause rotation</button></span>
         </figcaption>
       </figure>
 
       <div class="panel">
-        <h2>Your study design</h2>
-        <form id="design" class="sliders">
+        <form id="design" class="sliders" aria-label="Your study design">
           <div class="slider">
             <label for="patients">Patients</label>
             <output id="patients-out" for="patients">159</output>
@@ -61,7 +60,7 @@
 
         <div class="answer" id="answer" aria-live="polite">
           <p class="power"><span id="power">—</span><small>power</small></p>
-          <p class="verdict" id="verdict"></p>
+          <p class="verdict" id="verdict">Evaluating design...</p>
           <p class="detail"><span id="ident">—</span> also name the right pattern. <span id="snap"></span></p>
         </div>
       </div>
@@ -71,12 +70,12 @@
       <h2 id="race-title">The same <span id="race-n">1,000</span> studies, two ways</h2>
       <div class="lanes">
         <figure class="lane">
-          <figcaption><strong>CPU</strong> one study at a time</figcaption>
+          <figcaption><strong>CPU</strong> (one study at a time)</figcaption>
           <canvas id="cpu" aria-hidden="true"></canvas>
           <p class="count" id="cpu-count"></p>
         </figure>
         <figure class="lane">
-          <figcaption><strong>GPU</strong> thousands at once</figcaption>
+          <figcaption><strong>GPU</strong> (thousands at once)</figcaption>
           <canvas id="gpu" aria-hidden="true"></canvas>
           <p class="count" id="gpu-count"></p>
         </figure>
@@ -93,7 +92,7 @@
     </section>
   </main>
 
-  <footer class="foot">Thousands of studies, simulated in seconds, before you image a slide.</footer>
+  <footer class="foot">Preflight · Team Dry Lab · Thousands of studies, simulated in seconds, before you image a slide.</footer>
   <script type="module" src="app.js"></script>
 </body>
 </html>

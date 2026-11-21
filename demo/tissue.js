@@ -31,8 +31,8 @@ function dotTexture() {
 export function createTissue(canvas, tissue, { reducedMotion }) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  renderer.setClearColor(tok("--canvas-bg"));
-  const BG = new THREE.Color(tok("--bg"));
+  renderer.setClearColor(tok("--bg-canvas"));
+  const BG = new THREE.Color(tok("--bg-canvas"));
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(32, 1, 1, 6000);
   const root = new THREE.Group();
@@ -42,8 +42,8 @@ export function createTissue(canvas, tissue, { reducedMotion }) {
   const base = Object.fromEntries(TYPES.map((t) => [t, new THREE.Color(tok(`--${t}`))]));
   const dot = dotTexture();
   const plateMat = new THREE.MeshBasicMaterial({ color: tok("--surface"), transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false });
-  const edgeMat = new THREE.LineBasicMaterial({ color: tok("--plate-edge") });
-  const fovMat = new THREE.LineDashedMaterial({ color: tok("--head"), dashSize: 5, gapSize: 3.5 });
+  const edgeMat = new THREE.LineBasicMaterial({ color: tok("--border") });
+  const fovMat = new THREE.LineDashedMaterial({ color: tok("--text-head"), dashSize: 5, gapSize: 3.5 });
 
   const slabs = tissue.patients.map((p, i) => {
     const n = p.cells.length;

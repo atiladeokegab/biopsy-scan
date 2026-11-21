@@ -20,20 +20,21 @@ function layout(canvas, n) {
   // Largest square tile (with a 1px gap) such that n tiles fit in w x h.
   let size = Math.floor(Math.sqrt((w * h) / n));
   while (size > 2 && Math.floor(w / size) * Math.floor(h / size) < n) size--;
-  const cols = Math.floor(w / size);
+  // Column by column, so both lanes reveal left to right (docs/design.md, motion 2).
+  const rows = Math.floor(h / size), cols = Math.ceil(n / rows);
   const g = canvas.getContext("2d");
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  return { g, size, cols, ox: (w - cols * size) / 2 };
+  return { g, size, rows, ox: (w - cols * size) / 2, oy: (h - rows * size) / 2 };
 }
 
 function tile(L, i, colour) {
   const gap = L.size > 5 ? 1 : 0.5;
   L.g.fillStyle = colour;
-  L.g.fillRect(L.ox + (i % L.cols) * L.size, Math.floor(i / L.cols) * L.size, L.size - gap, L.size - gap);
+  L.g.fillRect(L.ox + Math.floor(i / L.rows) * L.size, L.oy + (i % L.rows) * L.size, L.size - gap, L.size - gap);
 }
 
 export function createRace(cpuCanvas, gpuCanvas, out) {
-  const HIT = tok("--hit"), MISS = tok("--miss"), EMPTY = tok("--tile-empty");
+  const HIT = tok("--accent"), MISS = tok("--tile-miss"), EMPTY = tok("--surface-elevated");
   let timer = 0;
 
   function run({ studies: n, power, bench, reducedMotion }) {
@@ -59,15 +60,16 @@ export function createRace(cpuCanvas, gpuCanvas, out) {
     out.speed.textContent = measured
       ? `Measured on one design point · GPU: ${bench.gpu}, ${duration(bench.gpu_seconds)} · ` +
         `CPU: all cores of ${bench.cpu}, ${duration(bench.cpu_seconds)} · ${fmt(Math.round(ratio))}× faster`
-      : "Speeds not to scale until the benchmark is measured.";
+      : bench && bench.error ? "Bench timing unavailable; grid power estimates still active."
+      : "Measured CPU/GPU timing pending bench run. Speeds on screen are not to scale.";
 
     const t0 = performance.now();
     let gpuDone = 0, cpuDone = 0;
     const step = (now) => {
       const t = reducedMotion ? Infinity : now - t0;
-      // GPU: studies land in warp-sized batches in a scattered order, all within GPU_SHOW_MS.
+      // GPU: studies land in warp-sized batches of 32, sweeping left to right, all within GPU_SHOW_MS.
       const g = Math.min(n, Math.ceil((t / GPU_SHOW_MS) * n / 32) * 32);
-      for (; gpuDone < g; gpuDone++) { const i = order[(gpuDone * 7919) % n]; tile(gpu, i, found[i] ? HIT : MISS); }
+      for (; gpuDone < g; gpuDone++) tile(gpu, gpuDone, found[gpuDone] ? HIT : MISS);
       // CPU: one study after another; on the GPU's clock slowed by the measured ratio, else a fixed display pace.
       const tc = Math.min(t, CPU_SHOW_MS);
       const c = Math.min(n, Math.floor(measured ? (tc / (GPU_SHOW_MS * ratio)) * n : tc / UNMEASURED_CPU_MS));
@@ -78,8 +80,8 @@ export function createRace(cpuCanvas, gpuCanvas, out) {
         out.cpu.innerHTML = `<b>${fmt(cpuDone)}</b> of ${fmt(n)} studies` +
           (t >= CPU_SHOW_MS && cpuDone < n ? ` · needs ${duration(bench.cpu_seconds)} in all` : "");
       } else {
-        out.gpu.innerHTML = `<b>${fmt(gpuDone)}</b> of ${fmt(n)} studies <span class="unm">UNMEASURED</span>`;
-        out.cpu.innerHTML = `<b>${fmt(cpuDone)}</b> of ${fmt(n)} studies <span class="unm">UNMEASURED</span>`;
+        out.gpu.innerHTML = `<b>${fmt(gpuDone)}</b> of ${fmt(n)} studies <span class="tag">UNMEASURED</span>`;
+        out.cpu.innerHTML = `<b>${fmt(cpuDone)}</b> of ${fmt(n)} studies <span class="tag">UNMEASURED</span>`;
       }
       const more = gpuDone < n || (cpuDone < n && t < CPU_SHOW_MS);
       if (more) timer = requestAnimationFrame(step);

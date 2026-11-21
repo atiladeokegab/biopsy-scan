@@ -86,10 +86,6 @@ function update({ restartRace }) {
   $("ident").textContent = pct(p.identification_rate);
   $("verdict").textContent = verdict(p.power);
   $("snap").textContent = AXES.every((k) => want[k] === p[k]) ? "" : `Nearest grid point: ${describe(p)}.`;
-  if (changed) {
-    const a = $("answer");
-    a.classList.remove("flash"); void a.offsetWidth; a.classList.add("flash");
-  }
   $("chart-title").textContent = drawChart($("chart"), grid, p);
 
   if (restartRace || changed) {
@@ -109,24 +105,24 @@ async function getJSON(path) {
 }
 
 async function main() {
-  try {
-    [grid, tissue] = await Promise.all([getJSON("data/grid.json"), getJSON("data/tissue.json")]);
-  } catch (err) {
+  const [gr, ti] = await Promise.allSettled([getJSON("data/grid.json"), getJSON("data/tissue.json")]);
+  if (gr.status === "rejected" || ti.status === "rejected") {
+    // Opened as a file, both fail: the serve-over-HTTP message is the one that helps.
     $("error").hidden = false;
-    $("error").innerHTML =
-      "Could not read the data files. Browsers block them from a double-clicked file; " +
-      "from the repo root run <code>python3 -m http.server 8000 -d demo</code> and open " +
-      "<code>http://localhost:8000</code>.";
+    $("error").innerHTML = ti.status === "rejected"
+      ? "Cannot load tissue data. Serve over HTTP (<code>python3 -m http.server 8000 -d demo</code>) and reload."
+      : "Cannot read grid.json. Run <code>python3 -I demo/check_data.py</code> and reload.";
+    $("tissue-caption").textContent = "";
+    $("verdict").textContent = "";
     $("run").disabled = true;
     return;
   }
-  bench = await getJSON("data/bench.json").catch(() => null); // absent until bench (#3) runs
+  [grid, tissue] = [gr.value, ti.value];
+  // Absent (404) until bench (#3) runs, which means UNMEASURED; anything else is a broken bench file.
+  bench = await getJSON("data/bench.json").catch((e) => (/HTTP 404/.test(e.message) ? null : { error: true }));
 
-  const synthetic = [tissue.source !== "MEASURED" && "tissue", grid.source !== "MEASURED" && "power grid"].filter(Boolean);
-  if (synthetic.length) {
-    $("synthetic").hidden = false;
-    $("synthetic").textContent = `SYNTHETIC ${synthetic.join(" and ")} · placeholders until the real export lands`;
-  }
+  const prov = (d) => (d.source === "MEASURED" ? "MEASURED" : "SYNTHETIC");
+  $("provenance").textContent = `${prov(tissue)} tissue · ${prov(grid)} grid`;
   $("race-n").textContent = grid.studies_per_point.toLocaleString("en-GB");
   $("note").textContent =
     `HR ${grid.effect_hr_per_sd} per SD planted · ${grid.studies_per_point.toLocaleString("en-GB")} studies per point. ` +
