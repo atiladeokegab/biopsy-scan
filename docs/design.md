@@ -9,7 +9,7 @@ Binding token file: `demo/tokens.css`. Only `docs/design.md` and `demo/tokens.cs
 
 - **Product:** Preflight — Rehearse a spatial-biology study before imaging a single slide.
 - **Audience:** Spatial-biology study leads and hackathon judges watching a 3-minute demonstration.
-- **One job of the page:** Let a user dial study design parameters (`Patients`, `Regions per patient`, `Field of view`, `Mis-call rate`), see how tissue visibility and cell-type mis-calls distort the observed tissue, watch CPU-vs-GPU simulation throughput, and answer **"Can my study find it?"** as power `%` and identification rate on their cohort's atlas.
+- **One job of the page:** Let a user dial study design parameters (`Patients`, `Regions per patient`, `Field of view`, `Mis-call rate`), see how region count, crop size, and cell-type mis-calls affect observed tissue, compare CPU-vs-GPU runtime, and answer **"Can my study find it?"** for the fixed planted-effect scenario in `grid.json` as `Power %` and `Identification %` on their cohort's atlas (conditional on that planted scenario, never a universal adequacy guarantee).
 - **Brand posture:** Precision scientific instrument on a deep slate ground (`#0B1018`). Calm, legible typography in `Inter`, domain-authentic tissue colors (`#FF7A59` tumour, `#F5C451` immune, `#56687A` stroma), and **no dot mark** next to the `Preflight` wordmark.
 
 ---
@@ -19,8 +19,8 @@ Binding token file: `demo/tokens.css`. Only `docs/design.md` and `demo/tokens.cs
 | Window | Visual Proof | What the Judge Sees |
 |---|---|---|
 | 0:00–0:25 | First fold (`1280×633` & `390×757`) | Page title (`Can my study find it?`), 1-line subtitle, dominant **3D Tissue Slabs** canvas, interactive design sliders, primary button, and immediate **Power %** + **Identification %** answer. |
-| 0:25–1:45 | Tissue distortion & CPU-vs-GPU race | Dragging `Regions per patient` or `Field of view` drops `k` dashed FOV squares onto each slab and dims excluded cells; raising `Mis-call rate` recolors cells across tumour/immune/stroma. Clicking **"Can my study find it?"** triggers the **CPU (one study at a time) vs GPU (thousands at once)** study-tile race, lighting found (`#2BD4A4`) vs missed (`#243040`) tiles at measured ratio (or `UNMEASURED` placeholder when `bench` has not run). |
-| 1:45–3:00 | Design Atlas curve | **One chart**: `Power against patients`, one curve per `Regions per patient` setting (`1, 2, 4, 8`) at the active `Field of view` and `Mis-call rate`, with `"our cohort"` (Charville, `P = 159`, `38` events) marked in `#2BD4A4`. |
+| 0:25–1:45 | Tissue distortion & CPU-vs-GPU race | Dragging `Regions per patient` draws up to `k` regions per patient without replacement (capped at each patient's available regions) and places one `Field of view` square crop per sampled region, dimming excluded cells outside the crop; raising `Mis-call rate` recolors cells across tumour/immune/stroma. Clicking **"Can my study find it?"** compares the **all-core CPU baseline vs. measured GPU backend** (both sharing identical per-region `region_kernel` sampling; neutral measured timing with `UNMEASURED` placeholder when `bench` has not run, distinct from the illustrative tile reveal), lighting found (`#2BD4A4`) vs missed (`#243040`) tiles. |
+| 1:45–3:00 | Design Atlas curve | **One chart**: `Power against patients`, plotting one curve per `Regions per patient` setting present in the saved `grid.json` at the active `Field of view`, `Mis-call rate`, and fixed planted-effect scenario, with `"our cohort"` (Charville, `P = 159`, `38` events) marked in `#2BD4A4`. |
 
 ### Hierarchy, Motion, and What Is Cut
 
@@ -50,8 +50,8 @@ flowchart LR
 |---|---|---|
 | Top bar (`48px`) | Plain text wordmark `Preflight` (left), `Team Dry Lab` + data provenance tag (`SYNTHETIC` / `MEASURED`) (right) | Inspect provenance cleanly |
 | Hero & Stage (First Fold) | Page `h1` (`Can my study find it?`), 1-line subtitle, dominant 3D tissue canvas (`#tissue`), legend (`Tumour`, `Stroma`, `Immune`, `Field of view`), design controls (`Patients`, `Regions per patient`, `Field of view`, `Mis-call rate`), primary CTA (`Can my study find it?`), answer (`Power %` + `Identification %`) | Drag/rotate 3D slabs, pause spin, tune 4 sliders, trigger replay |
-| Study Race | Side-by-side 2D study-tile grids: `CPU (one study at a time)` vs `GPU (thousands at once)`, tile counts, measured seconds (or `UNMEASURED` placeholder) | Compare sequential vs parallel throughput |
-| Design Atlas Chart | Single SVG chart: `Power vs. Patients` (curves for `1, 2, 4, 8` regions/patient), vertical/dot markers for current design and `"our cohort"` | See whether adding regions beats adding patients |
+| Study Race | Side-by-side 2D study-tile grids: `CPU (all-core baseline)` vs `GPU (measured backend)`, tile counts, neutral measured seconds (or `UNMEASURED` placeholder) | Compare sequential/CPU baseline vs measured GPU runtime |
+| Design Atlas Chart | Single SVG chart: `Power vs. Patients` (curves for the `Regions per patient` settings saved in `grid.json`), vertical/dot markers for current design, planted scenario caption, and `"our cohort"` | See whether adding regions beats adding patients |
 
 ---
 
@@ -80,20 +80,20 @@ flowchart LR
 
 | Token | Size | Line Height | Usage |
 |---|---|---|---|
-| `--text-2xl` | `48px` (`3rem`) | `1.08` | Desktop `h1` and headline Power `%` (`font-variant-numeric: tabular-nums`) |
-| `--text-xl` | `32px` (`2rem`) | `1.12` | Phone `h1`, Power `%` (390) |
-| `--text-lg` | `20px` (`1.25rem`) | `1.25` | Section titles, tagline |
-| `--text-base` | `16px` (`1rem`) | `1.5` | Body text, slider labels, primary CTA label |
-| `--text-sm` | `14px` (`0.875rem`) | `1.45` | Sub-metrics, identification sentence, race captions |
-| `--text-xs` | `12px` (`0.75rem`) | `1.4` | Chart ticks, legend tags, provenance badge (floor: never `< 12px`) |
+| `--text-2xl` | `48px` (`3rem`) | `1.08` (`--leading-tight`) | Desktop `h1` and headline Power `%` (`font-variant-numeric: tabular-nums`) |
+| `--text-xl` | `32px` (`2rem`) | `1.12` (`--leading-display-sm`) | Phone `h1`, Power `%` (390) |
+| `--text-lg` | `20px` (`1.25rem`) | `1.25` (`--leading-snug`) | Section titles, tagline |
+| `--text-base` | `16px` (`1rem`) | `1.5` (`--leading-normal`) | Body text, slider labels, primary CTA label |
+| `--text-sm` | `14px` (`0.875rem`) | `1.45` (`--leading-meta`) | Sub-metrics, identification sentence, race captions |
+| `--text-xs` | `12px` (`0.75rem`) | `1.4` (`--leading-caption`) | Chart ticks, legend tags, provenance badge (floor: never `< 12px`) |
 
 ### Spacing Scale (8 steps) & Radii (2 steps)
 
 - Spacing (`4px` base): `--space-1` (`4px`), `--space-2` (`8px`), `--space-3` (`12px`), `--space-4` (`16px`), `--space-5` (`20px`), `--space-6` (`24px`), `--space-7` (`32px`), `--space-8` (`48px`).
 - Radii: `--radius-control` (`6px` for buttons, badges, legend keys), `--radius-surface` (`10px` for canvas frames, control panel, race lanes, chart card).
 - Layout Grid:
-  - **Desktop (`1280×633`)**: `max-width: 1232px`, `24px` outer margin, `20px` gutter, first-fold stage height sized so header + title + 3D tissue + CTA + Power `%` stay visible inside `633px`.
-  - **Phone (`390×757`)**: single column (`16px` outer margin, `12px` gap); redrawn compact 3D tissue view (`220px` height) + primary CTA (`>= 44px` tap target) + Power `%` sit inside the first `757px` with zero horizontal scroll (`0px` overflow) and zero text `< 12px`.
+  - **Desktop (`1280×633`)**: `max-width: var(--container-max)` (`1232px`), `24px` outer margin, `20px` gutter, first-fold stage sized so header + title + 3D tissue (`--tissue-height-desktop: 314px`) + CTA + Power `%` stay visible inside `633px`.
+  - **Phone (`390×757`)**: single column (`16px` outer margin, `12px` gap); redrawn compact 3D tissue view (`--tissue-height-mobile: 220px`) + primary CTA (`>= var(--target-min)` `44px`) + Power `%` sit inside the first `757px` with zero horizontal scroll (`0px` overflow) and zero text `< 12px`.
 
 ---
 
@@ -101,7 +101,7 @@ flowchart LR
 
 | Where | Normal | Empty / Unmeasured | Loading | Error (with user recovery) |
 |---|---|---|---|---|
-| 3D Tissue (`#tissue`) | Renders `k` slabs, `FOV` boxes, mis-call tint | `"No cells loaded for this design."` | `"Preparing tissue slabs..."` | `"Cannot load tissue data. Serve over HTTP (python3 -m http.server 8000 -d demo) and reload."` |
+| 3D Tissue (`#tissue`) | Renders distinct patient samples, `k` sampled regions without replacement (capped per patient), one FOV crop per region, mis-call recolor | `"No cells loaded for this design."` | `"Preparing tissue slabs..."` | `"Cannot load tissue data. Serve over HTTP (python3 -m http.server 8000 -d demo) and reload."` |
 | CPU-vs-GPU Race | Lights `1,000` tiles; shows measured `CPU s -> GPU s` | `UNMEASURED`: shows tile simulation with `"Measured CPU/GPU timing pending bench run."` | Animates tiles left-to-right | `"Bench timing unavailable; grid power estimates still active."` |
 | Answer & Chart | Tabular-numeral Power `%` + Identification `%` + cohort curve | `"Select a design point to view power."` | `"Evaluating design..."` | `"Cannot read grid.json. Run python3 -I demo/check_data.py and reload."` |
 
@@ -113,6 +113,6 @@ flowchart LR
 | Primary CTA | `Can my study find it?` |
 | Axis 1 / 2 / 3 / 4 | `Patients`, `Regions per patient`, `Field of view`, `Mis-call rate` |
 | Cell classes | `Tumour`, `Stroma`, `Immune` |
-| Outcome metrics | `Power` (`share where maxT rejects`), `Identification rate` (`top hit matches planted pattern`) |
+| Outcome metrics | `Power` (`share of studies at the active design & fixed planted scenario where maxT rejects at the unconditional threshold`), `Identification rate` (`top-ranked feature matches the planted motif; state numerator/denominator — across all studies or conditional on rejection — explicitly from grid.json`) |
 | Provenance tags | `SYNTHETIC` / `MEASURED` / `UNMEASURED` (never omit; never overclaim) |
 | Cohort marker | `Our cohort` (Charville: `159 patients · 38 events`, `explored already-seen`) |

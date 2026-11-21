@@ -33,7 +33,10 @@
   --text-2xl: 3rem;     /* 48px: page title (1280) & headline power % */
 
   --leading-tight: 1.08;
+  --leading-display-sm: 1.12;
   --leading-snug: 1.25;
+  --leading-caption: 1.4;
+  --leading-meta: 1.45;
   --leading-normal: 1.5;
 
   /* Spacing: 8-step 4px scale */
@@ -55,4 +58,6 @@
   /* Layout */
   --container-max: 1232px;
   --target-min: 44px;
+  --tissue-height-desktop: 314px;
+  --tissue-height-mobile: 220px;
 }
