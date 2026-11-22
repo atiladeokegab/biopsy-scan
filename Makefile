@@ -1,4 +1,4 @@
-.PHONY: smoke install test data summary heldout demo tissue deploy modal-gpu-tests modal-ladder modal-ab modal-gpu-vs
+.PHONY: smoke install test data summary heldout demo tissue race-local deploy modal-gpu-tests modal-ladder modal-ab modal-gpu-vs
 
 install:
 	uv sync --dev
@@ -36,6 +36,11 @@ demo:
 # Regenerate demo/data/tissue.json from real Charville cells (fetches the data first; seeded, so deterministic).
 tissue: data
 	uv run python -I scripts/export_tissue.py
+
+# The race on this machine's CPU (fetches the data first): the lab way vs the Preflight way on a small Charville slice,
+# s/study, ratio and feature parity; MEASURED here, not the Modal figures. RACE_STUDIES and RACE_WORKERS override the defaults.
+race-local: install data
+	uv run python -m bench.race_local $(if $(RACE_STUDIES),--studies $(RACE_STUDIES)) $(if $(RACE_WORKERS),--workers $(RACE_WORKERS))
 
 # The public demo: .github/workflows/pages.yml publishes demo/ to GitHub Pages on every push to
 # integration. This target checks the data the workflow will publish and prints the URL.

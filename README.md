@@ -56,6 +56,8 @@ make demo    # rebuilds and validates demo/data, then serves the demo at http://
 
 A cold `make smoke` took about `7` minutes here (`927` passed, `13` skipped). Expected output that is not an error: `3D view off: no WebGL` (the 3D check runs headless in Node), and `make demo`'s `refused for the race` lines (the collector skipping result files that are not the race's design point).
 
+`make race-local` reruns the race on your own CPU: the lab's per-study permutation test against Preflight's fused kernel on a small Charville slice (8 studies per stream on every core; fetches the data on first use). It prints the CPU, s/study for each, the ratio and feature parity. With the data and dependencies already in place it took about 2 minutes on a shared 8-core Linux VM; a first run also downloads both Zenodo cohorts (about 730 MB, UPMC unused here). Linux or macOS only (its worker pools fork). These are your machine's numbers, not the Modal figures; the slice is too small to set Preflight's threshold, so it times the work, not the decisions.
+
 Real cohort runs additionally fetch the public CODEX datasets into gitignored `data/` (`make data`, Zenodo [`13179600`](https://zenodo.org/records/13179600), [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/); optional `DATA_DIR` overrides `data/`).
 
 ## Repository Layout
