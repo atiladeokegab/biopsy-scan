@@ -20,15 +20,15 @@ export function drawCore(ctx, core, cx, cy, r, mode) {
   const cell = Math.max(0.8, (2 * r) / Math.sqrt(core.cells.length) * (mode === "seg" ? 0.68 : 0.6));
   ctx.globalCompositeOperation = mode === "seg" ? "source-over" : "lighter";
   // additive cells overlap when a small core holds many cells (the 0.8 px floor): dim each by its overlap so the sum never whites out
-  const alpha = 0.85 / Math.max(1, (core.cells.length * cell * cell) / (r * r));
+  const alpha = 1 / Math.max(1, (core.cells.length * cell * cell) / (r * r));
   for (const c of core.cells) {
     const x = cx - r + ox + c[0] * s, y = cy - r + oy + c[1] * s;
     if (mode === "seg") ctx.fillStyle = TYPE_COLORS[c[2]];
     else {
-      // squared intensities keep each cell's strongest channels and let weak ones fall dark, as in a real IF image
+      // a power curve keeps each cell's strongest channels bright and lets weak ones fall dark, as in a real IF image
       let R = 0, G = 0, B = 0;
       for (let k = 0; k < MC.length && 3 + k < c.length; k++) {
-        const w = (c[3 + k] / 255) ** 2 * 0.5;
+        const w = (c[3 + k] / 255) ** 2 * 0.7;
         R += MC[k][0] * w; G += MC[k][1] * w; B += MC[k][2] * w;
       }
       ctx.fillStyle = `rgba(${Math.min(255, R | 0)},${Math.min(255, G | 0)},${Math.min(255, B | 0)},${alpha})`;
@@ -43,7 +43,7 @@ export function glow(cv, ctx, w, h) {
   const copy = document.createElement("canvas");
   copy.width = cv.width; copy.height = cv.height;
   copy.getContext("2d").drawImage(cv, 0, 0);
-  ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.filter = "blur(4px)"; ctx.globalAlpha = 0.45;
+  ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.filter = "blur(3px)"; ctx.globalAlpha = 0.22; // a light halo: more reads as murk
   ctx.drawImage(copy, 0, 0, w, h); ctx.restore();
 }
 
