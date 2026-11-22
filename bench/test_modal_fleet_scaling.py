@@ -7,7 +7,7 @@ from bench.modal_fleet_scaling import MODEL, FLEET, split_batches, summarize, va
 def _parts(batches, n):
     return [
         {"gpu": {"model": MODEL, "count": 1, "uuid": f"GPU-{i}", "modal_task_id": f"task-{i}"},
-         "batches": {mode: {"seeds": seeds, "features": np.array(seeds)[:, None],
+         "batches": {mode: {"seeds": seeds, "features": np.array(seeds)[:, None, None],
                              "compute_s": 5.0, "compute_window": [10 + i, 15 + i]}
                      for mode, seeds in shard.items()}}
         for i, shard in enumerate(split_batches(batches, n))
@@ -39,7 +39,21 @@ def test_efficiency_uses_paired_throughput_baseline():
     repeats = [{str(n): {m: {'studies_per_hour': base * n / divisor, 'compute_span_s': 2}
                          for m in ('strong', 'weak')}
                 for n in FLEET} for base, divisor in ((100, 1), (200, 2))]
-    for repeat in repeats:
-        repeat['1']['strong']['studies_per_hour'] = 100
-        repeat['1']['weak']['studies_per_hour'] = 100
-    assert summarize(repeats)['weak']['16']['efficiency'] == {'median': 1, 'min': 1, 'max': 1}
+    repeats[1]['1']['strong']['studies_per_hour'] = 200
+    repeats[1]['1']['weak']['studies_per_hour'] = 200
+    assert summarize(repeats)['weak']['16']['efficiency'] == {'median': .75, 'min': .5, 'max': 1}
+
+
+def test_validation_accepts_actual_reimage_output():
+    from bench.fleet import synthetic_cohort
+    from reimage import run
+
+    cells, _ = synthetic_cohort(n_patients=2, cells=24)
+    batches = {'strong': [0, 1], 'weak': [0]}
+    parts = _parts(batches, 1)
+    design = {'cells': cells, 'patients': 2, 'regions_per_patient': 2, 'fov_um': 400, 'eps': .1}
+    for mode, seeds in batches.items():
+        parts[0]['batches'][mode]['features'] = run(design, seeds)
+    rows, reference = validate_point(parts, 1, batches)
+    assert reference.shape[:2] == (2, 2)
+    assert rows['weak']['exact_features_vs_one_gpu']

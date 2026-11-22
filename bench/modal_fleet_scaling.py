@@ -88,7 +88,7 @@ def validate_point(parts: list[dict], n: int, expected: dict[str, list[int]], re
         ov = overlap(shards, seeds)
         if not ov["seed_coverage_exact"] or not ov["distinct_task_ids"]:
             raise ValueError(f"{mode} seed coverage or distinct task check failed")
-        if any(s["features"].ndim != 2 or len(s["features"]) != len(s["seeds"]) for s in shards):
+        if any(s["features"].ndim != 3 or len(s["features"]) != len(s["seeds"]) for s in shards):
             raise ValueError(f"invalid {mode} feature shape")
         order = np.argsort([seed for s in shards for seed in s["seeds"]])
         features = np.concatenate([s["features"] for s in shards])[order]
@@ -158,6 +158,7 @@ def scaling(repeats: int = 3, cap_usd: float = 20.0, pilot: bool = False):
               "labels": {"timings": "MEASURED", "study_design": "SIMULATED on measured Charville tissue",
                          "ideal_line": "ANALYTIC perfect scaling", "spend": "ESTIMATE"},
               "scope": "Re-imaging through feature aggregation only. Strong first, then weak using the same prepared device state. "
+                       "Weak starts when each worker finishes its strong batch, so it inherits any start stagger. "
                        "Compute span is first shard start to last shard finish using host clocks (clock skew unmeasured). "
                        "Modal wall measures the whole point, including setup, both batches and transfer. "
                        "Weak efficiency is one-GPU compute span divided by N-GPU compute span for N times the workload.",
