@@ -72,14 +72,15 @@ export function mount(el, data) {
       if (!geo || geo.w !== el.clientWidth) draw();
       const { cv, px, py, r, w, h } = geo;
       cv.style.transition = "none";
-      cv.style.transformOrigin = `${px}px ${py}px`;
-      cv.style.transform = "perspective(900px) rotateX(52deg) rotateZ(-28deg) scale(0.85)";
+      cv.style.transformOrigin = "50% 50%";
+      cv.style.transform = "perspective(900px) rotateX(50deg) rotateZ(-28deg) scale(0.78)";
       ring.style.cssText = `left:${px - r - 4}px;top:${py - r - 4}px;width:${2 * r + 8}px;height:${2 * r + 8}px;opacity:0`;
       void cv.offsetWidth;
       timers.push(setTimeout(() => { cv.style.transition = "transform 1.6s cubic-bezier(.2,.7,.2,1)"; cv.style.transform = "none"; }, 600));
       timers.push(setTimeout(() => { ring.style.opacity = 1; }, 2300));
       timers.push(setTimeout(() => {
         ring.style.opacity = 0;
+        cv.style.transformOrigin = `${px}px ${py}px`; // the grid is flat now, so moving the origin does not jump
         const z = Math.min(w, h) * 0.3 / r; // shortcut: bitmap zoom softens past ~3x; step 2 redraws the core sharp
         cv.style.transition = "transform 1.8s cubic-bezier(.5,0,.2,1)";
         cv.style.transform = `translate(${w / 2 - px}px, ${h / 2 - py}px) scale(${z})`;

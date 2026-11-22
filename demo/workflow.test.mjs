@@ -35,6 +35,13 @@ assert.ok(s2.includes(`maxT p ${ch.maxT.p}`), `step 2 lacks maxT p ${ch.maxT.p}`
 assert.match(s2, /within chance/i);
 assert.ok(ch.exploratory && /exploratory/i.test(s2), "step 2 says exploratory");
 
+// Step 3's promise against reality is the merged comparison at 200 patients, two 400 µm fields, 10% mis-calls.
+const vs = JSON.parse(readFileSync(new URL("../bench/results/vs-schoenfeld-300.json", import.meta.url), "utf8"));
+assert.deepEqual([vs.design.regions_per_patient, vs.design.fov_um, vs.design.eps], [2, 400, 0.1]);
+const at200 = vs.points.find((p) => p.patients === 200), s3 = plain(texts[2][2]);
+for (const s of ["200 patients", "two 400 µm fields", "one cell in ten", `${Math.round(100 * at200.analytic_power)}% power`, `${Math.round(100 * at200.sim_power)}%`])
+  assert.ok(s3.includes(s), `step 3 lacks "${s}": ${s3}`);
+
 // Each step's module exists and exports mount.
 for (const f of ["step1.js", "step2.js", "workflow.js"]) {
   const u = new URL(`./workflow/${f}`, import.meta.url);
