@@ -9,18 +9,35 @@
   <link rel="stylesheet" href="tokens.css">
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body id="top">
   <header class="bar">
-    <span class="wordmark">Preflight</span>
-    <span class="sub">Spatial-biology study design, simulated from real tumour tissue.</span>
-    <span class="team">Team Dry Lab</span>
+    <a class="wordmark" href="#top">Preflight</a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#workflow-app">Workflow</a>
+      <a href="#pattern">Pattern</a>
+      <a href="#reimage-sec">Re-imaging</a>
+      <a href="#results">Results</a>
+      <a href="#preflight">Your study</a>
+      <a href="#explore">Explore</a>
+    </nav>
+    <button type="button" id="tour-btn" class="tour-btn">Start tour</button>
     <span class="tag" id="provenance">SYNTHETIC</span>
   </header>
 
   <div class="error" id="error" role="alert" hidden></div>
 
   <main class="page">
-  <section class="hero" aria-labelledby="title">
+  <section class="wf" id="workflow-app" aria-labelledby="wf-title">
+    <div class="card wf-card">
+      <div class="wf-head">
+        <h2 id="wf-title">The Preflight workflow</h2>
+        <p class="wf-sub">Four steps on real biopsy images: pick a tissue, design the study, simulate it, read the answer.</p>
+      </div>
+      <div id="wf-root" class="wf-root"><p class="wf-empty">The four-step workflow mounts here.</p></div>
+    </div>
+  </section>
+
+  <section class="hero" id="pattern" aria-labelledby="title">
     <div class="promise">
       <h1 id="title">Thousands of studies, simulated in seconds, before you image a slide.</h1>
       <p class="lede">Preflight tells a lab, before it images a single slide, whether its study can find the pattern that decides a patient's treatment.</p>
@@ -65,7 +82,7 @@
     </section>
   </section>
 
-  <section class="reimage" aria-labelledby="reimage-title">
+  <section class="reimage" id="reimage-sec" aria-labelledby="reimage-title">
     <div class="card reimage-card">
       <div class="reimage-text">
         <h2 id="reimage-title">What a study sees: two fields of view, with their mis-calls</h2>
@@ -90,7 +107,7 @@
     </div>
   </section>
 
-  <section class="results" aria-label="What the studies show">
+  <section class="results" id="results" aria-label="What the studies show">
     <article class="card power-card">
       <h2>They plan <span id="pw-n">200</span> patients. Would a study like theirs find a real effect?</h2>
       <div class="vs">
@@ -156,7 +173,8 @@
     </div>
   </section>
 
-  <h2 class="explore-title">Explore a design <span class="tag" id="grid-tag">SYNTHETIC grid</span></h2>
+  <section class="explore" id="explore" aria-labelledby="explore-title">
+  <h2 class="explore-title" id="explore-title">Explore a design <span class="tag" id="grid-tag">SYNTHETIC grid</span></h2>
   <div class="app">
 
     <section class="rail" aria-label="Your study design">
@@ -212,6 +230,7 @@
       <p class="note" id="note"></p>
     </figure>
   </div>
+  </section>
   </main>
 
   <footer class="foot">Preflight, by Team Dry Lab.</footer>

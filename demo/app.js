@@ -8,6 +8,7 @@ import { drawRegion, drawKM } from "./bio.js";
 import { claimTexts, bioTexts, gridTexts, dialRanges } from "./claims.js";
 import { drawChart, pct, fovLabel } from "./chart.js";
 import { panelTexts, chartSVG, scenarioText } from "./preflight.js";
+import { initTour } from "./tour.js";
 
 const $ = (id) => document.getElementById(id);
 const FOV_STEP = 100;
@@ -238,3 +239,17 @@ async function main() {
 main();
 let resizeT;
 addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(drawRegions, 200); });
+
+initTour();
+
+// The nav marks the section in view.
+const navLinks = [...document.querySelectorAll(".nav a")];
+const navObs = new IntersectionObserver((entries) => {
+  for (const e of entries) {
+    if (!e.isIntersecting) continue;
+    for (const a of navLinks) {
+      if (a.hash === `#${e.target.id}`) a.setAttribute("aria-current", "true"); else a.removeAttribute("aria-current");
+    }
+  }
+}, { rootMargin: "-30% 0px -60% 0px" });
+for (const a of navLinks) { const t = document.querySelector(a.hash); if (t) navObs.observe(t); }
