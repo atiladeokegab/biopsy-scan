@@ -327,6 +327,27 @@
       "counted": "actual (container x wall); total recounted at the merge with #115's 20:02-20:10Z entries (was 41.456)"
     },
     {
+      "utc": "2026-11-22T04:38Z",
+      "run": "build-9 external-baseline 25/stream",
+      "containers": 1,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 5.0,
+      "est_usd": 3.98,
+      "basis": "4800 s ceiling x $2.987568/h",
+      "source_commit": "915116392da554a4978dafcd98bb49e5a6979761",
+      "container_class": "Modal A100 + 8 cores + 64 GiB",
+      "actual": {
+        "modal_wall_s": 1245.0,
+        "est_usd": 1.033,
+        "basis": "container x local wall (an upper bound: includes queueing)",
+        "result": "bench/results/external-baseline-20261122T043823Z.json"
+      },
+      "counted": "actual (container x wall)",
+      "running_total_usd": 45.589
+    },
+    {
       "utc": "2026-11-22T04:40Z",
       "run": "build-modal hn-power: UPMC discovery tissue, patients [50, 100, 200, 400, 600], 200 calibration / 100 null / 200 planted per point",
       "containers": 5,
@@ -336,7 +357,7 @@
       "cap_usd": 5.0,
       "est_usd": 4.93,
       "basis": "ceiling: per-point timeouts 500+650+1000+1800+2700 = 6650 s x (A100 $2.0988 + 8 cores x $0.04716 + 24 GiB x $0.007992)/h",
-      "running_total_usd": 49.486,
+      "running_total_usd": 50.519,
       "counted": "est_usd (the pre-run ceiling)",
       "actual": {
         "modal_wall_s": 607.9,
@@ -345,6 +366,27 @@
         "result": "bench/results/modal-hn-power-20261122T042657Z.json"
       },
       "utc_note": "launched 04:26:57Z; entry time is the plan time"
+    },
+    {
+      "utc": "2026-11-22T04:50Z",
+      "run": "build-9 external-baseline 2/stream, squidpy n_jobs=8",
+      "containers": 1,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 5.0,
+      "est_usd": 1.49,
+      "basis": "1800 s ceiling x $2.987568/h",
+      "source_commit": "2955a9de3f3f7adc63aaa8c2d96e431c35ad319a",
+      "container_class": "Modal A100 + 8 cores + 64 GiB",
+      "actual": {
+        "modal_wall_s": 31.7,
+        "est_usd": 0.026,
+        "basis": "container x local wall (an upper bound: includes queueing)",
+        "result": "bench/results/external-baseline-20261122T045024Z.json"
+      },
+      "counted": "actual (container x wall)",
+      "running_total_usd": 50.545
     },
     {
       "utc": "2026-11-22T05:35Z",
@@ -356,7 +398,7 @@
       "cap_usd": 5.0,
       "est_usd": 0.89,
       "basis": "ceiling: 1200 s timeout x $2.668/h (A100 $2.0988 + 8 cores x $0.04716 + 24 GiB x $0.007992)",
-      "running_total_usd": 50.376,
+      "running_total_usd": 51.435,
       "counted": "est_usd (the pre-run ceiling)",
       "actual": {
         "modal_wall_s": 457.6,
