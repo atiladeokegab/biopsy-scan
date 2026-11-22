@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const { miscall, randomCrop, inCrop, heightField, boundaryPoint, timeline, END, FOV_UM, EPS, WINDOWS, TYPES,
-  clock, inView, captureTime, mountReimage, groupMatrix, callFrom, fitView } = await import("./reimage3d.js");
+  clock, inView, captureTime, mountReimage, groupMatrix, callFrom, fitView, drawStudy } = await import("./reimage3d.js");
 const THREE = await import("./vendor/three/three.module.min.js");
 
 // miscall follows core/reimage_ref.py: keep the type with prob 1 - eps, else a uniform other type,
@@ -65,7 +65,7 @@ for (const id of ["speed-race", "speed-interim", "run", "verdict", "tissue-capti
 assert.ok(html.indexOf('id="speed-race"') < html.indexOf('id="reimage"'), "the 3D view sits below the race");
 const label = html.match(/id="reimage-label"[^>]*>([\s\S]*?)<\/p>/)[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ");
 assert.match(label, /Real cell positions and types/);
-assert.match(label, /Charville \(colorectal, not head and neck\)/);
+assert.match(label, /one patient in the Charville cohort \(colorectal, not head and neck\)\./, "the cohort is not the patient");
 assert.match(label, /Imaging simulated by Preflight\./);
 // The steps name the design the code draws.
 const steps = html.match(/id="reimage-steps"[^>]*>([\s\S]*?)<\/ol>/)[1];
@@ -83,7 +83,10 @@ const section = flat(html.match(/<section class="reimage"[\s\S]*?<\/section>/)[0
 assert.doesNotMatch(section, /;/, "no semicolon-joined ideas");
 assert.doesNotMatch(section, /\blook\b|\bcore\b|SIMULATED/, "glossary: region, imaging, SYNTHETIC");
 assert.match(section, /SYNTHETIC imaging/);
-assert.doesNotMatch(html, /id="reimage-tag"[^>]*class|class="tag ok" id="reimage-tag"/, "MEASURED tag off the accent");
+assert.match(html, /<span class="tag measured" id="reimage-tag">MEASURED cells<\/span>/, "MEASURED tag neither accent nor warning");
+assert.doesNotMatch(section, /\bsmall\b/, "no size word the picture can contradict");
+assert.match(html, /<p class="reimage-fallback" id="reimage-fallback" role="status">Loading the region's cells\.<\/p>/, "a loading line until the view starts");
+assert.match(flat(steps), /In this draw it sees all the cells|In this draw it sees [^.]+ cells\./); assert.match(flat(steps), /In this draw that is [^.]+\./);
 assert.match(html, /<h2 id="reimage-title">[^<]*fields[^<]*mis-call/, "the title states the answer");
 assert.match(html, />Replay the fly-through</); assert.match(html, />Pause the fly-through</);
 assert.match(html, /<img id="reimage-still"[^>]*src="img\/reimage-end\.jpg"[^>]*loading="lazy"[^>]*hidden/, "a GPU still waits for the no-WebGL case");
@@ -111,7 +114,7 @@ for (const bad of [null, "", "nope", "NaN", "Infinity", " "]) assert.equal(captu
 assert.equal(captureTime("9.8"), 9.8); assert.equal(captureTime("0"), 0);
 
 // Setup: provenance first, controls only after WebGL starts, an honest fallback without it.
-const fakeEl = () => { const e = { textContent: "", hidden: false, attrs: {}, cls: new Set(["ok"]), on: {}, firstChild: { textContent: "" },
+const fakeEl = () => { const e = { textContent: "", hidden: false, attrs: {}, cls: new Set(["measured"]), on: {}, firstChild: { textContent: "" },
   setAttribute(k, v) { this.attrs[k] = v; }, removeAttribute(k) { delete this.attrs[k]; }, addEventListener(t, f) { this.on[t] = f; } };
   e.classList = { remove: (k) => e.cls.delete(k), add: (k) => e.cls.add(k) }; return e; };
 const page = () => { const els = {}; const $ = (id) => (els[id] ??= fakeEl());
@@ -119,7 +122,7 @@ const page = () => { const els = {}; const $ = (id) => (els[id] ??= fakeEl());
 const synth = { source: "SYNTHETIC", patients: [{ id: "S-1", region: "r1", cells_in_region: 2, cells: [{ x: 0, y: 0, type: "tumour" }, { x: 9, y: 9, type: "stroma" }] }] };
 let $ = page();
 mountReimage($, synth, { reducedMotion: false, search: "", create: () => { throw new Error("no WebGL"); } });
-assert.equal($("reimage-tag").textContent, "SYNTHETIC cells");
+assert.equal($("reimage-tag").textContent, "SYNTHETIC cells"); assert.ok(!$("reimage-tag").cls.has("measured"), "SYNTHETIC wears the warning border");
 assert.ok($("reimage-replay").hidden && $("reimage-pause").hidden, "no dead controls without WebGL");
 assert.ok($("reimage").hidden, "canvas hidden without WebGL");
 assert.doesNotMatch($("reimage-credit").textContent, /WebGL/, "the credit does not repeat the fallback");
@@ -129,11 +132,16 @@ $ = page(); $("reimage-still").hidden = true;
 mountReimage($, tissueJSON, { reducedMotion: false, search: "", create: () => { throw new Error("no WebGL"); } });
 assert.equal($("reimage-still").hidden, false, "measured input without WebGL: the GPU still shows in the well");
 assert.match($("reimage-fallback").textContent, /rendered on a GPU/);
+const study = drawStudy(tissueJSON);
+assert.ok(study.seen > 0 && study.crossed > 0 && study.crossed < study.seen, "the draw sees cells and crosses some groups");
+assert.equal($("reimage-seen").textContent, `${study.seen.toLocaleString("en-GB")} of the ${study.n.toLocaleString("en-GB")}`, "counts shown without WebGL");
+assert.equal($("reimage-crossed").textContent, `${study.crossed.toLocaleString("en-GB")} cells`);
 let got; $ = page();
 mountReimage($, tissueJSON, { reducedMotion: false, search: "?t3d=nope", create: (cv, t, o) => { got = o; return { replay() {}, toggle: () => false }; } });
 assert.equal(got.freezeAt, null, "malformed t3d plays normally");
 assert.match($("reimage-credit").textContent, /Zenodo 13179600/);
 assert.ok(!$("reimage-replay").hidden && !$("reimage-pause").hidden, "controls revealed once WebGL runs");
+assert.ok($("reimage-fallback").hidden, "the loading line goes once WebGL runs");
 $ = page(); mountReimage($, tissueJSON, { reducedMotion: true, search: "", create: () => ({}) });
 assert.ok($("reimage-replay").hidden, "reduced motion: no controls");
 
@@ -156,6 +164,11 @@ for (let g = 0; g < 3; g++) {
   }
   assert.ok(Math.abs(cross - cross15) / 200000 < 0.004, `group ${TYPES[g]}: projected ${cross} vs 15-type ${cross15}`);
 }
+
+// The two fields stand for two different regions, so on the one region drawn here they never overlap.
+const [A, B] = study.crops;
+assert.ok(A[0] + A[2] <= B[0] || B[0] + B[2] <= A[0] || A[1] + A[2] <= B[1] || B[1] + B[2] <= A[1], "fields apart");
+assert.equal(study.seen, study.inside.reduce((a, b) => a + b), "seen counts the cells inside");
 
 // Framing: each shot is fitted to its subject at the canvas's own aspect, so the 390 view is redrawn, not cropped.
 const pts = [...Array(32)].map((_, i) => new THREE.Vector3(300 * Math.cos(i / 5), 20, 300 * Math.sin(i / 5)));
