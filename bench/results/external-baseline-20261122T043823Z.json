@@ -9,7 +9,7 @@
     "rates": "ESTIMATE (binomial rates with Wilson 95% intervals)",
     "ratios": "cross-run, same container class: the lab (0.8809 s, #113) and fused (0.0419 s, #120) times come from other runs on other hosts of this class, not this container"
   },
-  "headline": "Off the shelf (squidpy + lifelines, 8 cores): 24.44 s/study (one study per worker: median 170 s, range 161-183 s); 27.7x the hand-written lab arm (0.8809 s) and 583x the fused path (0.0419 s), cross-run, same container class: the lab (0.8809 s, #113) and fused (0.0419 s, #120) times come from other runs on other hosts of this class, not this container; what a lab would run off the shelf, not Preflight's speedup: squidpy's enrichment z is a permutation z-score and lifelines fits a Wald Cox per feature, different statistics from our enrichment ratio and stratified Cox score z (see agreement_median)",
+  "headline": "Off the shelf (squidpy + lifelines, 8 cores): 21.42 s/study from the worker timers (one study per worker: median 170 s, range 161-183 s; instrumented workflow 24.44 s/study); 24.3x the hand-written lab arm (0.8809 s) and 511x the fused path (0.0419 s), cross-run, same container class: the lab (0.8809 s, #113) and fused (0.0419 s, #120) times come from other runs on other hosts of this class, not this container; what a lab would run off the shelf, not Preflight's speedup: squidpy's enrichment z is a permutation z-score and lifelines fits a Wald Cox per feature, different statistics from our enrichment ratio and stratified Cox score z (see agreement_median)",
   "method": "External baseline: the design point done the way a lab would with off-the-shelf tools (squidpy + lifelines).\n\nPer study, from the same design, seeds and draws as #113 (bench/design_batch.py):\n  cells     the visible, mis-called cells our re-imager sees (core.reimage_ref.draw, crop_mask, miscall), so both\n            pipelines get the same cells; study_cells() is checked bit for bit against core.reimage_ref.reimage.\n  squidpy   per drawn patient, one AnnData of its regions; per radius (25, 50, 100 um)\n            sq.gr.spatial_neighbors(coord_type=\"generic\", radius=r, library_key=\"region\") and\n            sq.gr.nhood_enrichment (default 1,000 permutations). It fills the same 630 slots as our grammar,\n            (tumour type t, neighbour type j, radius, statistic): \"fraction\" = squidpy's edge count share\n            count[t, j] / sum_j count[t, :], \"enrichment\" = its z-score. NaN where the patient has no visible t.\n  lifelines CoxPHFitter per feature, strata = coverslip group, rows with NaN dropped; Bonferroni over all 630:\n            the study is called when min p x 630 <= 0.05.\nTimed per study inside one single-thread pool worker: draw, mis-call, AnnData, squidpy and lifelines. Our own X and\nscore z on the same cells are computed after the timer, for agreement only. Seconds per study = pool wall / N,\nthe basis of the fused path's 0.0419 s (#120: compute_wall_s / 3,000 studies, 8 workers).",
   "design": {
     "patients": 159,
@@ -30,7 +30,10 @@
   },
   "summary": {
     "studies": 50,
-    "seconds_per_study": 24.443413085459998,
+    "seconds_per_study": 21.415533318557507,
+    "seconds_per_study_basis": "summed off-the-shelf worker time (cells, squidpy, lifelines) / workers / studies",
+    "instrumented_workflow_s_per_study": 24.443413085459998,
+    "instrumented_workflow_basis": "pool wall / studies; adds our own reference recount, score and agreement per study, and the pool's tail",
     "pool_wall_s": 1222.1706542729999,
     "workers": 8,
     "worker_study_s": {
@@ -43,11 +46,49 @@
       "squidpy": 0.848342514861135,
       "lifelines": 0.15087563763332124
     },
-    "ratio_vs_fused": 583.3750139727923,
+    "ratio_vs_lab": 24.310969824676476,
+    "lab": {
+      "value": 0.8809,
+      "source": "bench/results/modal-design-20261121T194458Z.json",
+      "basis": "lab compute_wall_s 1,761.88 / 2,000 studies (null and alternative ids 0-999, which include these), 8 single-thread workers (#113)"
+    },
+    "ratio_vs_fused": 511.11058039516723,
     "fused": {
       "value": 0.0419,
       "source": "bench/results/modal-design-20261121T205536Z.json",
       "basis": "fused compute_wall_s 125.73 / 3,000 studies, 8 single-thread workers (#120)"
+    },
+    "ratio_label": "cross-run, same container class: the lab (0.8809 s, #113) and fused (0.0419 s, #120) times come from other runs on other hosts of this class, not this container",
+    "comparison": "what a lab would run off the shelf, not Preflight's speedup: squidpy's enrichment z is a permutation z-score and lifelines fits a Wald Cox per feature, different statistics from our enrichment ratio and stratified Cox score z (see agreement_median)",
+    "gpu": "squidpy and lifelines never touch the GPU; the A100 is only the container class, as in #113 and #120",
+    "settings": {
+      "pool_workers": 8,
+      "squidpy.gr.spatial_neighbors": {
+        "coord_type": "generic",
+        "radius_um": [
+          25.0,
+          50.0,
+          100.0
+        ],
+        "library_key": "region",
+        "delaunay": false
+      },
+      "squidpy.gr.nhood_enrichment": {
+        "n_perms": 1000,
+        "n_jobs": 1,
+        "cluster_key": "type"
+      },
+      "lifelines.CoxPHFitter": {
+        "defaults": true,
+        "strata": [
+          "coverslip group"
+        ],
+        "per_feature": true,
+        "note": "lifelines has no parallel option; one fit per feature"
+      },
+      "correction": "Bonferroni over 630, alpha 0.05",
+      "cores": 8,
+      "n_jobs_note": "squidpy's documented n_jobs=8 path failed on Modal at 2955a9d (bench/results/external-baseline-20261122T045024Z.json): its joblib workers get read-only memmapped uint32 arrays its numba kernel has no signature for; so all 8 cores go to 8 study workers with n_jobs=1, the lab and fused arms' basis"
     },
     "calls": {
       "null": {
@@ -87,47 +128,13 @@
       "z_spearman_abs": 0.6401183067860802,
       "top10_overlap": 4.5
     },
-    "top1_same": 14,
-    "nan_only_squidpy": 396,
-    "nan_only_ours": 0,
-    "ratio_vs_lab": 27.74822691050062,
-    "lab": {
-      "value": 0.8809,
-      "source": "bench/results/modal-design-20261121T194458Z.json",
-      "basis": "lab compute_wall_s 1,761.88 / 2,000 studies (null and alternative ids 0-999, which include these), 8 single-thread workers (#113)"
+    "top1_same": {
+      "k": 14,
+      "of": 50
     },
-    "ratio_label": "cross-run, same container class: the lab (0.8809 s, #113) and fused (0.0419 s, #120) times come from other runs on other hosts of this class, not this container",
-    "comparison": "what a lab would run off the shelf, not Preflight's speedup: squidpy's enrichment z is a permutation z-score and lifelines fits a Wald Cox per feature, different statistics from our enrichment ratio and stratified Cox score z (see agreement_median)",
-    "gpu": "squidpy and lifelines never touch the GPU; the A100 is only the container class, as in #113 and #120",
-    "settings": {
-      "pool_workers": 8,
-      "squidpy.gr.spatial_neighbors": {
-        "coord_type": "generic",
-        "radius_um": [
-          25.0,
-          50.0,
-          100.0
-        ],
-        "library_key": "region",
-        "delaunay": false
-      },
-      "squidpy.gr.nhood_enrichment": {
-        "n_perms": 1000,
-        "n_jobs": 1,
-        "cluster_key": "type"
-      },
-      "lifelines.CoxPHFitter": {
-        "defaults": true,
-        "strata": [
-          "coverslip group"
-        ],
-        "per_feature": true,
-        "note": "lifelines has no parallel option; one fit per feature"
-      },
-      "correction": "Bonferroni over 630, alpha 0.05",
-      "cores": 8,
-      "n_jobs_note": "squidpy's documented n_jobs=8 path failed on Modal at 2955a9d (bench/results/external-baseline-20261122T045024Z.json): its joblib workers get read-only memmapped uint32 arrays its numba kernel has no signature for; so all 8 cores go to 8 study workers with n_jobs=1, the lab and fused arms' basis"
-    }
+    "z_excluded": 0,
+    "nan_only_squidpy": 396,
+    "nan_only_ours": 0
   },
   "records": [
     {
@@ -156,7 +163,8 @@
         "top1_same": false,
         "top10_overlap": 5,
         "top_lifelines": 624,
-        "top_ours": 359
+        "top_ours": 359,
+        "z_excluded": 0
       }
     },
     {
@@ -185,7 +193,8 @@
         "top1_same": false,
         "top10_overlap": 4,
         "top_lifelines": 109,
-        "top_ours": 475
+        "top_ours": 475,
+        "z_excluded": 0
       }
     },
     {
@@ -214,7 +223,8 @@
         "top1_same": false,
         "top10_overlap": 5,
         "top_lifelines": 477,
-        "top_ours": 297
+        "top_ours": 297,
+        "z_excluded": 0
       }
     },
     {
@@ -243,7 +253,8 @@
         "top1_same": true,
         "top10_overlap": 6,
         "top_lifelines": 30,
-        "top_ours": 30
+        "top_ours": 30,
+        "z_excluded": 0
       }
     },
     {
@@ -272,7 +283,8 @@
         "top1_same": false,
         "top10_overlap": 5,
         "top_lifelines": 309,
-        "top_ours": 556
+        "top_ours": 556,
+        "z_excluded": 0
       }
     },
     {
@@ -301,7 +313,8 @@
         "top1_same": false,
         "top10_overlap": 8,
         "top_lifelines": 37,
-        "top_ours": 492
+        "top_ours": 492,
+        "z_excluded": 0
       }
     },
     {
@@ -330,7 +343,8 @@
         "top1_same": false,
         "top10_overlap": 3,
         "top_lifelines": 14,
-        "top_ours": 531
+        "top_ours": 531,
+        "z_excluded": 0
       }
     },
     {
@@ -359,7 +373,8 @@
         "top1_same": false,
         "top10_overlap": 3,
         "top_lifelines": 71,
-        "top_ours": 611
+        "top_ours": 611,
+        "z_excluded": 0
       }
     },
     {
@@ -388,7 +403,8 @@
         "top1_same": false,
         "top10_overlap": 3,
         "top_lifelines": 574,
-        "top_ours": 209
+        "top_ours": 209,
+        "z_excluded": 0
       }
     },
     {
@@ -417,7 +433,8 @@
         "top1_same": true,
         "top10_overlap": 6,
         "top_lifelines": 252,
-        "top_ours": 252
+        "top_ours": 252,
+        "z_excluded": 0
       }
     },
     {
@@ -446,7 +463,8 @@
         "top1_same": false,
         "top10_overlap": 4,
         "top_lifelines": 167,
-        "top_ours": 515
+        "top_ours": 515,
+        "z_excluded": 0
       }
     },
     {
@@ -475,7 +493,8 @@
         "top1_same": false,
         "top10_overlap": 4,
         "top_lifelines": 468,
-        "top_ours": 491
+        "top_ours": 491,
+        "z_excluded": 0
       }
     },
     {
@@ -504,7 +523,8 @@
         "top1_same": false,
         "top10_overlap": 4,
         "top_lifelines": 359,
-        "top_ours": 6
+        "top_ours": 6,
+        "z_excluded": 0
       }
     },
     {
@@ -533,7 +553,8 @@
         "top1_same": false,
         "top10_overlap": 4,
         "top_lifelines": 462,
-        "top_ours": 147
+        "top_ours": 147,
+        "z_excluded": 0
       }
     },
     {
@@ -562,7 +583,8 @@
         "top1_same": false,
         "top10_overlap": 2,
         "top_lifelines": 287,
-        "top_ours": 457
+        "top_ours": 457,
+        "z_excluded": 0
       }
     },
     {
@@ -591,7 +613,8 @@
         "top1_same": false,
         "top10_overlap": 6,
         "top_lifelines": 296,
-        "top_ours": 298
+        "top_ours": 298,
+        "z_excluded": 0
       }
     },
     {
@@ -620,7 +643,8 @@
         "top1_same": false,
         "top10_overlap": 0,
         "top_lifelines": 451,
-        "top_ours": 465
+        "top_ours": 465,
+        "z_excluded": 0
       }
     },
     {
@@ -649,7 +673,8 @@
         "top1_same": false,
         "top10_overlap": 4,
         "top_lifelines": 559,
-        "top_ours": 147
+        "top_ours": 147,
+        "z_excluded": 0
       }
     },
     {
@@ -678,7 +703,8 @@
         "top1_same": false,
         "top10_overlap": 3,
         "top_lifelines": 219,
-        "top_ours": 459
+        "top_ours": 459,
+        "z_excluded": 0
       }
     },
     {
@@ -707,7 +733,8 @@
         "top1_same": true,
         "top10_overlap": 3,
         "top_lifelines": 523,
-        "top_ours": 523
+        "top_ours": 523,
+        "z_excluded": 0
       }
     },
     {
@@ -736,7 +763,8 @@
         "top1_same": false,
         "top10_overlap": 3,
         "top_lifelines": 587,
-        "top_ours": 188
+        "top_ours": 188,
+        "z_excluded": 0
       }
     },
     {
@@ -765,7 +793,8 @@
         "top1_same": true,
         "top10_overlap": 5,
         "top_lifelines": 232,
-        "top_ours": 232
+        "top_ours": 232,
+        "z_excluded": 0
       }
     },
     {
@@ -794,7 +823,8 @@
         "top1_same": false,
         "top10_overlap": 4,
         "top_lifelines": 569,
-        "top_ours": 471
+        "top_ours": 471,
+        "z_excluded": 0
       }
     },
     {
@@ -823,7 +853,8 @@
         "top1_same": true,
         "top10_overlap": 6,
         "top_lifelines": 192,
-        "top_ours": 192
+        "top_ours": 192,
+        "z_excluded": 0
       }
     },
     {
@@ -852,7 +883,8 @@
         "top1_same": false,
         "top10_overlap": 1,
         "top_lifelines": 565,
-        "top_ours": 163
+        "top_ours": 163,
+        "z_excluded": 0
       }
     },
     {
@@ -881,7 +913,8 @@
         "top1_same": true,
         "top10_overlap": 6,
         "top_lifelines": 435,
-        "top_ours": 435
+        "top_ours": 435,
+        "z_excluded": 0
       }
     },
     {
@@ -910,7 +943,8 @@
         "top1_same": true,
         "top10_overlap": 6,
         "top_lifelines": 369,
-        "top_ours": 369
+        "top_ours": 369,
+        "z_excluded": 0
       }
     },
     {
@@ -939,7 +973,8 @@
         "top1_same": true,
         "top10_overlap": 7,
         "top_lifelines": 554,
-        "top_ours": 554
+        "top_ours": 554,
+        "z_excluded": 0
       }
     },
     {
@@ -968,7 +1003,8 @@
         "top1_same": false,
         "top10_overlap": 3,
         "top_lifelines": 378,
-        "top_ours": 515
+        "top_ours": 515,
+        "z_excluded": 0
       }
     },
     {
@@ -997,7 +1033,8 @@
         "top1_same": false,
         "top10_overlap": 2,
         "top_lifelines": 109,
-        "top_ours": 121
+        "top_ours": 121,
+        "z_excluded": 0
       }
     },
     {
@@ -1026,7 +1063,8 @@
         "top1_same": false,
         "top10_overlap": 6,
         "top_lifelines": 490,
-        "top_ours": 486
+        "top_ours": 486,
+        "z_excluded": 0
       }
     },
     {
@@ -1055,7 +1093,8 @@
         "top1_same": true,
         "top10_overlap": 5,
         "top_lifelines": 0,
-        "top_ours": 0
+        "top_ours": 0,
+        "z_excluded": 0
       }
     },
     {
@@ -1084,7 +1123,8 @@
         "top1_same": false,
         "top10_overlap": 9,
         "top_lifelines": 0,
-        "top_ours": 2
+        "top_ours": 2,
+        "z_excluded": 0
       }
     },
     {
@@ -1113,7 +1153,8 @@
         "top1_same": true,
         "top10_overlap": 6,
         "top_lifelines": 6,
-        "top_ours": 6
+        "top_ours": 6,
+        "z_excluded": 0
       }
     },
     {
@@ -1142,7 +1183,8 @@
         "top1_same": false,
         "top10_overlap": 4,
         "top_lifelines": 23,
-        "top_ours": 457
+        "top_ours": 457,
+        "z_excluded": 0
       }
     },
     {
@@ -1171,7 +1213,8 @@
         "top1_same": false,
         "top10_overlap": 5,
         "top_lifelines": 270,
-        "top_ours": 198
+        "top_ours": 198,
+        "z_excluded": 0
       }
     },
     {
@@ -1200,7 +1243,8 @@
         "top1_same": false,
         "top10_overlap": 6,
         "top_lifelines": 450,
-        "top_ours": 2
+        "top_ours": 2,
+        "z_excluded": 0
       }
     },
     {
@@ -1229,7 +1273,8 @@
         "top1_same": false,
         "top10_overlap": 3,
         "top_lifelines": 387,
-        "top_ours": 149
+        "top_ours": 149,
+        "z_excluded": 0
       }
     },
     {
@@ -1258,7 +1303,8 @@
         "top1_same": false,
         "top10_overlap": 6,
         "top_lifelines": 128,
-        "top_ours": 38
+        "top_ours": 38,
+        "z_excluded": 0
       }
     },
     {
@@ -1287,7 +1333,8 @@
         "top1_same": false,
         "top10_overlap": 5,
         "top_lifelines": 25,
-        "top_ours": 0
+        "top_ours": 0,
+        "z_excluded": 0
       }
     },
     {
@@ -1316,7 +1363,8 @@
         "top1_same": true,
         "top10_overlap": 6,
         "top_lifelines": 450,
-        "top_ours": 450
+        "top_ours": 450,
+        "z_excluded": 0
       }
     },
     {
@@ -1345,7 +1393,8 @@
         "top1_same": true,
         "top10_overlap": 3,
         "top_lifelines": 2,
-        "top_ours": 2
+        "top_ours": 2,
+        "z_excluded": 0
       }
     },
     {
@@ -1374,7 +1423,8 @@
         "top1_same": false,
         "top10_overlap": 1,
         "top_lifelines": 129,
-        "top_ours": 0
+        "top_ours": 0,
+        "z_excluded": 0
       }
     },
     {
@@ -1403,7 +1453,8 @@
         "top1_same": true,
         "top10_overlap": 9,
         "top_lifelines": 54,
-        "top_ours": 54
+        "top_ours": 54,
+        "z_excluded": 0
       }
     },
     {
@@ -1432,7 +1483,8 @@
         "top1_same": false,
         "top10_overlap": 3,
         "top_lifelines": 1,
-        "top_ours": 171
+        "top_ours": 171,
+        "z_excluded": 0
       }
     },
     {
@@ -1461,7 +1513,8 @@
         "top1_same": false,
         "top10_overlap": 0,
         "top_lifelines": 323,
-        "top_ours": 486
+        "top_ours": 486,
+        "z_excluded": 0
       }
     },
     {
@@ -1490,7 +1543,8 @@
         "top1_same": false,
         "top10_overlap": 7,
         "top_lifelines": 574,
-        "top_ours": 456
+        "top_ours": 456,
+        "z_excluded": 0
       }
     },
     {
@@ -1519,7 +1573,8 @@
         "top1_same": false,
         "top10_overlap": 6,
         "top_lifelines": 545,
-        "top_ours": 0
+        "top_ours": 0,
+        "z_excluded": 0
       }
     },
     {
@@ -1548,7 +1603,8 @@
         "top1_same": false,
         "top10_overlap": 3,
         "top_lifelines": 85,
-        "top_ours": 86
+        "top_ours": 86,
+        "z_excluded": 0
       }
     },
     {
@@ -1577,7 +1633,8 @@
         "top1_same": true,
         "top10_overlap": 5,
         "top_lifelines": 570,
-        "top_ours": 570
+        "top_ours": 570,
+        "z_excluded": 0
       }
     }
   ],
@@ -1630,7 +1687,7 @@
   },
   "annotated": {
     "by": "build-9",
-    "what": "ratio_vs_lab, ratio_label, comparison, gpu, settings and headline added after the run by bench.external_baseline.ratios() and headline() from the recorded seconds_per_study and worker_study_s; no timing or record changed",
+    "what": "summary and headline recomputed after the run by bench.external_baseline.summarize() and headline() from the recorded per-study records and pool wall (Prometheus's review of #132: headline per study from the worker timers; failed fits excluded from ranks); records[].agreement.z_excluded added by recounting our score z on each study's cells (X sha256 checked against x_sha_ours for all 50) with every lifelines z finite (fitted 630, failed 0); no timing changed",
     "host_note": "the container reported cpu_count 24 and affinity 24 with cpu=8 reserved; the pool used 8 workers"
   }
 }

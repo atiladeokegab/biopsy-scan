@@ -148,13 +148,16 @@ def agreement(Xs: np.ndarray, Xo: np.ndarray, zs: np.ndarray, zo: np.ndarray) ->
         out[f"{name}_spearman"] = float(spearmanr(a[ok], b[ok])[0]) if ok.sum() > 2 else None
     nan_s, nan_o = np.isnan(Xs), np.isnan(Xo)
     out["nan_only_squidpy"], out["nan_only_ours"] = int((nan_s & ~nan_o).sum()), int((nan_o & ~nan_s).sum())
-    ok = np.isfinite(zs) & np.isfinite(zo)
+    ok = np.isfinite(zs) & np.isfinite(zo)  # a failed or skipped fit has no rank: excluded on both sides
+    out["z_excluded"] = int((~ok).sum())
     out["z_spearman_abs"] = float(spearmanr(np.abs(zs[ok]), np.abs(zo[ok]))[0]) if ok.sum() > 2 else None
-    top_s = [int(c) for c in np.argsort(-np.where(np.isfinite(zs), np.abs(zs), -1))[:10]]
-    top_o = [int(c) for c in np.argsort(-np.where(np.isfinite(zo), np.abs(zo), -1))[:10]]
-    out.update(top1_same=top_s[0] == top_o[0], top10_overlap=len(set(top_s) & set(top_o)),
-               top_lifelines=top_s[0], top_ours=top_o[0])
-    return out
+    if not ok.any():
+        return {**out, "top1_same": None, "top10_overlap": None, "top_lifelines": None, "top_ours": None}
+    idx = np.flatnonzero(ok)
+    top_s = idx[np.argsort(-np.abs(zs[idx]), kind="stable")][:10]
+    top_o = idx[np.argsort(-np.abs(zo[idx]), kind="stable")][:10]
+    return {**out, "top1_same": bool(top_s[0] == top_o[0]), "top10_overlap": len(set(top_s) & set(top_o)),
+            "top_lifelines": int(top_s[0]), "top_ours": int(top_o[0])}
 
 
 def prepare(cells: dict, plan: dict) -> dict:
@@ -236,7 +239,8 @@ def ratios(per: float, workers: int, n_jobs: int) -> dict:
 def headline(s: dict) -> str:
     w = s["worker_study_s"]
     return (f"Off the shelf (squidpy + lifelines, {s['settings']['cores']} cores): {s['seconds_per_study']:.2f} s/study "
-            f"(one study per worker: median {w['median']:.0f} s, range {w['min']:.0f}-{w['max']:.0f} s); "
+            f"from the worker timers (one study per worker: median {w['median']:.0f} s, range {w['min']:.0f}-"
+            f"{w['max']:.0f} s; instrumented workflow {s['instrumented_workflow_s_per_study']:.2f} s/study); "
             f"{s['ratio_vs_lab']:.1f}x the hand-written lab arm ({LAB_S_PER_STUDY['value']} s) and "
             f"{s['ratio_vs_fused']:.0f}x the fused path ({FUSED_S_PER_STUDY['value']} s), {CROSS_RUN}; {COMPARISON}")
 
@@ -244,12 +248,17 @@ def headline(s: dict) -> str:
 def summarize(out: dict) -> dict:
     recs, plant = out["records"], out["plant_feature"]
     n = len(recs)
-    per = out["pool_wall_s"] / n
+    per = sum(r["study_s"] for r in recs) / out["workers"] / n  # off-the-shelf work only, from the worker timers
     by = {st: [r for r in recs if r["stream"] == st] for st in ("null", "alternative")}
     ag = [r["agreement"] for r in recs]
     med = lambda k: float(np.nanmedian([a[k] for a in ag if a[k] is not None])) if ag else None
     return {
-        "studies": n, "seconds_per_study": per, "pool_wall_s": out["pool_wall_s"], "workers": out["workers"],
+        "studies": n, "seconds_per_study": per,
+        "seconds_per_study_basis": "summed off-the-shelf worker time (cells, squidpy, lifelines) / workers / studies",
+        "instrumented_workflow_s_per_study": out["pool_wall_s"] / n,
+        "instrumented_workflow_basis": "pool wall / studies; adds our own reference recount, score and agreement "
+                                       "per study, and the pool's tail",
+        "pool_wall_s": out["pool_wall_s"], "workers": out["workers"],
         "worker_study_s": {"median": float(np.median([r["study_s"] for r in recs])),
                            "min": float(min(r["study_s"] for r in recs)), "max": float(max(r["study_s"] for r in recs))},
         "stage_share": {k: float(sum(r[f"{k}_s"] for r in recs) / sum(r["study_s"] for r in recs))
@@ -263,6 +272,7 @@ def summarize(out: dict) -> dict:
         "fits": {"fitted": sum(r["fitted"] for r in recs), "failed": sum(r["failed"] for r in recs)},
         "agreement_median": {k: med(k) for k in ("fraction_pearson", "fraction_spearman", "enrichment_pearson",
                                                    "enrichment_spearman", "z_spearman_abs", "top10_overlap")},
-        "top1_same": sum(a["top1_same"] for a in ag), "nan_only_squidpy": sum(a["nan_only_squidpy"] for a in ag),
+        "top1_same": {"k": sum(bool(a["top1_same"]) for a in ag), "of": sum(a["top1_same"] is not None for a in ag)},
+        "z_excluded": sum(a["z_excluded"] for a in ag), "nan_only_squidpy": sum(a["nan_only_squidpy"] for a in ag),
         "nan_only_ours": sum(a["nan_only_ours"] for a in ag),
     }
