@@ -1,0 +1,58 @@
+{
+  "status": "ESTIMATE",
+  "source_commit": "7afe867f9edd7fb30c8bf18f5bcbdeada4478de7",
+  "prior_project_usd": 71.895,
+  "project_cap_usd": 150.0,
+  "reserved_usd": 5.0,
+  "rates": {
+    "cpu_core_s": 1.31e-05,
+    "memory_gib_s": 2.22e-06,
+    "source": "https://modal.com/pricing",
+    "checked_utc": "2026-11-22"
+  },
+  "basis": "requested CPU and memory at list rates, using function wall plus 60 s retention per success; failed or unresolved jobs retain their $1.25 reservation. Startup, credits and invoices differ.",
+  "entries": [
+    {
+      "kind": "lab-scaling",
+      "repeat": 1,
+      "est_usd": 0.318460135886282,
+      "state": "completed",
+      "call_id": "fc-01M81NT8SQE3EFVKZXF3DFHFR2",
+      "function_wall_s": 1229.938982041
+    },
+    {
+      "kind": "fair",
+      "repeat": 1,
+      "est_usd": 0.18168314336521407,
+      "state": "completed",
+      "call_id": "fc-01M81NT8XTQAA32PRGY09JJANT",
+      "function_wall_s": 675.916815316
+    },
+    {
+      "kind": "fair",
+      "repeat": 2,
+      "est_usd": 0.16330607448776446,
+      "state": "completed",
+      "call_id": "fc-01M81NT91ZKBP2GFQNXF28F3PE",
+      "function_wall_s": 601.479562896
+    },
+    {
+      "kind": "fair",
+      "repeat": 3,
+      "est_usd": 0.17856601539055247,
+      "state": "completed",
+      "call_id": "fc-01M81NT967YB72Y0FXV3A6TPWY",
+      "function_wall_s": 663.2907298709999
+    }
+  ],
+  "running_total_usd": 72.73701536912981,
+  "run_estimated_usd": 0.842015369129813,
+  "modal_app_id": "ap-6gwBkUfCZ3ONVkrFSyWgup",
+  "prior_attempt": {
+    "modal_app_id": "ap-TXmkvZRYPqp9ZNfL3ek6rV",
+    "benchmark_calls": 0,
+    "status": "FAILED image setup",
+    "startup_allowance_usd_estimate": 0.01,
+    "included_in_prior_project_usd": true
+  }
+}
