@@ -13,7 +13,7 @@ const TYPES = ["tumour", "stroma", "immune"]; // CSS tokens --tumour, --stroma, 
 const DIM = 0.14; // how much of a cell's colour survives outside every field of view
 
 // Small deterministic RNG so squares and mis-calls stay put between redraws.
-function rng(seed) {
+export function rng(seed) {
   let s = seed >>> 0;
   return () => ((s = (s + 0x6d2b79f5) >>> 0), (((s ^ (s >>> 15)) * (s | 1)) >>> 0) / 4294967296);
 }
