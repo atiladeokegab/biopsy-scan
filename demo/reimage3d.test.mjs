@@ -115,7 +115,7 @@ assert.match($("reimage-credit").textContent, /WebGL/); assert.match($("reimage-
 let got; $ = page();
 mountReimage($, tissueJSON, { reducedMotion: false, search: "?t3d=nope", create: (cv, t, o) => { got = o; return { replay() {}, toggle: () => false }; } });
 assert.equal(got.freezeAt, null, "malformed t3d plays normally");
-assert.equal($("reimage-tag").textContent, "MEASURED cells"); assert.match($("reimage-credit").textContent, /Zenodo 13179600/);
+assert.ok($("reimage-tag").cls.has("ok") && $("reimage-tag").textContent === "", "MEASURED tag left as the HTML has it"); assert.match($("reimage-credit").textContent, /Zenodo 13179600/);
 assert.ok(!$("reimage-replay").hidden && !$("reimage-pause").hidden, "controls revealed once WebGL runs");
 $ = page(); mountReimage($, tissueJSON, { reducedMotion: true, search: "", create: () => ({}) });
 assert.ok($("reimage-replay").hidden, "reduced motion: no controls");
