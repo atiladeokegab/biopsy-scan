@@ -64,6 +64,29 @@
     </section>
   </section>
 
+  <section class="reimage" aria-labelledby="reimage-title">
+    <div class="card reimage-card">
+      <div class="reimage-text">
+        <h2 id="reimage-title">What one study actually sees</h2>
+        <p class="reimage-label" id="reimage-label">Real cell positions and types from one patient, Charville (colorectal, not head and neck); imaging simulated by Preflight.
+          <span class="tags"><span class="tag ok" id="reimage-tag">MEASURED cells</span> <span class="tag">SIMULATED imaging</span></span></p>
+        <ol class="reimage-steps" id="reimage-steps">
+          <li>A real tumour core: <span id="reimage-n">every cell of one region</span>, each at its measured position.</li>
+          <li>Down to cell level: each dot is one cell, coloured by its measured type. Height is local cell density.</li>
+          <li>The study images two 400 µm fields of view. It never sees the cells outside them.</li>
+          <li>It mis-calls 10% of the cells it does see: they flicker, then keep the wrong colour, ringed.</li>
+        </ol>
+        <p class="legend">
+          <span><i class="t"></i>Tumour</span> <span><i class="s"></i>Stroma</span> <span><i class="m"></i>Immune</span>
+          <span><i class="f"></i>Field of view</span> <span><i class="r"></i>Mis-called</span>
+        </p>
+        <p class="hint"><button type="button" id="reimage-replay" class="link">Replay</button> <button type="button" id="reimage-pause" class="link" aria-pressed="false">Pause</button></p>
+      </div>
+      <canvas id="reimage" role="img" aria-label="A real colorectal tumour core in 3D: two simulated fields of view, the rest dimmed, 10% of the cells in view mis-called"></canvas>
+      <p class="src reimage-credit" id="reimage-credit">Cells: Charville CODEX, Wu et al. 2022 (Zenodo 13179600, CC-BY-4.0).</p>
+    </div>
+  </section>
+
   <section class="results" aria-label="What the studies show">
     <article class="card power-card">
       <h2>They plan <span id="pw-n">200</span> patients. Would a study like theirs find a real effect?</h2>

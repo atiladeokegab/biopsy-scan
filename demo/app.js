@@ -2,6 +2,7 @@
 // then the power and honesty results (claims.json). Below: explore a design (grid.json, tissue.json, four sliders).
 // Every file is local, so a served checkout replays the committed results with no network (schemas in README.md).
 import { createTissue } from "./tissue.js";
+import { createReimage3d } from "./reimage3d.js";
 import { createSpeedRace, workflowHTML } from "./race.js";
 import { drawRegion, drawKM } from "./bio.js";
 import { claimTexts, bioTexts, gridTexts, dialRanges } from "./claims.js";
@@ -156,6 +157,41 @@ async function hero() {
 
 }
 
+// The 3D re-imaging take: one real core, one simulated look. ?t3d=<seconds> holds it at that moment (for stills).
+function reimage(tissue) {
+  const steps = [...$("reimage-steps").children];
+  const at = new URLSearchParams(location.search).get("t3d");
+  let view;
+  try {
+    view = createReimage3d($("reimage"), tissue, {
+      reducedMotion, freezeAt: at === null ? null : Number(at),
+      onStep: (k) => steps.forEach((li, i) => (i === k ? li.setAttribute("aria-current", "step") : li.removeAttribute("aria-current"))),
+    });
+  } catch (err) {
+    $("reimage-credit").textContent = "This browser could not start WebGL, so the 3D view is off. Everything else works.";
+    return;
+  }
+  const p = view.patient, n = p.cells.length;
+  const real = tissue.source === "MEASURED";
+  $("reimage-n").textContent = n === p.cells_in_region
+    ? `all ${n.toLocaleString("en-GB")} cells of one region`
+    : `${n.toLocaleString("en-GB")} of the region's ${p.cells_in_region.toLocaleString("en-GB")} cells`;
+  if (!real) {
+    $("reimage-label").firstChild.textContent = "SYNTHETIC cells: real Charville data is not loaded; imaging simulated by Preflight. ";
+    $("reimage-tag").textContent = "SYNTHETIC cells";
+    $("reimage-tag").classList.remove("ok");
+  }
+  $("reimage-credit").textContent = (real ? `Cells: Charville CODEX, Wu et al. 2022 (Zenodo 13179600, CC-BY-4.0), patient ${p.id}, region ${p.region}. ` : "") +
+    "Fields of view and mis-calls: one simulated look. In the study the two fields fall on two different regions; here both are drawn on one.";
+  if (reducedMotion) { $("reimage-replay").hidden = $("reimage-pause").hidden = true; return; }
+  $("reimage-replay").addEventListener("click", () => { view.replay(); $("reimage-pause").textContent = "Pause"; $("reimage-pause").setAttribute("aria-pressed", "false"); });
+  $("reimage-pause").addEventListener("click", () => {
+    const on = view.toggle();
+    $("reimage-pause").textContent = on ? "Pause" : "Play";
+    $("reimage-pause").setAttribute("aria-pressed", String(!on));
+  });
+}
+
 async function main() {
   hero();
   const [gr, ti] = await Promise.allSettled([getJSON("data/grid.json"), getJSON("data/tissue.json")]);
@@ -189,6 +225,7 @@ async function main() {
   } catch (err) {
     $("tissue-caption").textContent = "This browser could not start WebGL, so the 3D tissue is off. Everything else works.";
   }
+  panel("reimage", () => reimage(tissue));
   for (const id of ["patients", "regions", "fov", "miscall"]) $(id).addEventListener("input", () => update());
   $("design").addEventListener("submit", (e) => e.preventDefault());
 

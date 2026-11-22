@@ -9,10 +9,10 @@ import { rng } from "./tissue.js";
 export const FOV_UM = 400, EPS = 0.1, WINDOWS = 2; // the design the results section reports: 2 x 400 µm, 10% mis-called
 const TYPES = ["tumour", "stroma", "immune"]; // display classes, as tissue.js draws them
 const PATIENT = "CHV-24133"; // every cell of its region (2,846 of 2,846) and a clear tumour-stroma boundary
-const DOT = 8; // µm: about one cell across
-const LIFT = 40; // µm of terrain at the densest point
+const DOT = 10; // µm: about one cell across
+const LIFT = 64; // µm of terrain at the densest point
 const DIM = 0.14; // how much of a cell's colour survives outside every field of view
-const SEED = 11; // the one simulated look shown: window placement and per-cell mis-call draws
+const SEED = 16; // the one simulated look shown: window placement and per-cell mis-call draws
 
 // Preflight's mis-call (core/reimage_ref.py::miscall with confusion_matrix): keep the type with prob 1 - eps,
 // else a uniform other type; the called type is the first k with cumsum(M[type])[k] > u.
@@ -89,15 +89,15 @@ export function boundaryPoint(cells, lo, hi, n, sigma) {
 
 // The scene's script. r: framed radius in core radii; elev/azim: radians; focus: 0 the core centre, 1 the boundary.
 const SHOTS = {
-  whole: { r: 1.05, elev: 1.05, azim: -0.55, focus: 0 },
+  whole: { r: 0.82, elev: 1.0, azim: -0.55, focus: 0 },
   cell: { r: 0.15, elev: 0.62, azim: -0.2, focus: 1 },
-  look: { r: 1.0, elev: 0.88, azim: 0.3, focus: 0 },
-  rest: { r: 0.92, elev: 0.8, azim: 0.6, focus: 0.1 },
+  look: { r: 0.86, elev: 0.86, azim: 0.3, focus: 0 },
+  rest: { r: 0.4, elev: 0.72, azim: 0.75, focus: 1 },
 };
 const MOVES = [[0, 0.8, "whole", "whole"], [0.8, 4.6, "whole", "cell"], [4.6, 6.2, "cell", "cell"],
-  [6.2, 9.0, "cell", "look"], [9.0, 14.5, "look", "rest"]];
-const SWEEP = [9.0, 10.4], DIMS = [10.0, 10.8], FLICK = [11.0, 13.4], STEPS = [0, 4.6, 8.4, 10.8];
-export const END = 14.5;
+  [6.2, 9.0, "cell", "look"], [9.0, 10.6, "look", "look"], [10.6, 12.2, "look", "rest"], [12.2, 15, "rest", "rest"]];
+const SWEEP = [9.0, 10.4], DIMS = [10.0, 10.8], FLICK = [12.2, 14.6], STEPS = [0, 4.6, 8.4, 11.2];
+export const END = 15;
 
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
 const ease = (x) => (x < 0.5 ? 4 * x ** 3 : 1 - (-2 * x + 2) ** 3 / 2);
@@ -128,6 +128,8 @@ function sprite(draw) {
   draw(c.getContext("2d"));
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
+  t.generateMipmaps = false; // mipmaps square off small discs
+  t.minFilter = THREE.LinearFilter;
   return t;
 }
 
@@ -158,30 +160,24 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
   const scene = new THREE.Scene();
   scene.fog = new THREE.Fog(BG, 1, 2);
   const camera = new THREE.PerspectiveCamera(34, 1, 1, 20000);
-  scene.add(new THREE.HemisphereLight(0xb8c7d8, BG, 1.1));
-  const sun = new THREE.DirectionalLight(0xffffff, 1.6);
-  sun.position.set(-0.6, 1, 0.35);
+  scene.add(new THREE.HemisphereLight(0xb8c7d8, BG, 0.7));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.5);
+  sun.position.set(-0.8, 0.7, 0.3); // low, so density relief casts shading
   scene.add(sun);
 
   // World: x right, y up, z = cell y; the core centred on the origin.
   const wx = (x) => x - mid[0], wz = (y) => y - mid[1];
 
-  // Terrain: a slab of tissue whose height is local cell density, fading into the background past the core.
-  const side = RC * 2.6, seg = 128;
-  const tg = new THREE.PlaneGeometry(side, side, seg, seg);
+  // Terrain: the core as a disc of tissue whose height is local cell density.
+  let reach = 0;
+  for (const c of cells) reach = Math.max(reach, Math.hypot(wx(c.x), wz(c.y)));
+  const tg = new THREE.RingGeometry(0.01, reach + DOT * 2, 160, 80);
   tg.rotateX(-Math.PI / 2);
-  const tp = tg.attributes.position, tcol = new Float32Array(tp.count * 3);
-  const ground = new THREE.Color(tok("--surface")).lerp(new THREE.Color(tok("--border")), 0.7);
-  for (let i = 0; i < tp.count; i++) {
-    const x = tp.getX(i) + mid[0], y = tp.getZ(i) + mid[1];
-    tp.setY(i, lift(x, y));
-    const fade = clamp01((Math.hypot(tp.getX(i), tp.getZ(i)) / RC - 1.02) / 0.25);
-    const c = ground.clone().lerp(BG, fade);
-    tcol.set([c.r, c.g, c.b], i * 3);
-  }
-  tg.setAttribute("color", new THREE.BufferAttribute(tcol, 3));
+  const tp = tg.attributes.position;
+  for (let i = 0; i < tp.count; i++) tp.setY(i, lift(tp.getX(i) + mid[0], tp.getZ(i) + mid[1]));
   tg.computeVertexNormals();
-  scene.add(new THREE.Mesh(tg, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0 })));
+  const ground = new THREE.Color(tok("--surface")).lerp(new THREE.Color(tok("--border")), 0.5);
+  scene.add(new THREE.Mesh(tg, new THREE.MeshStandardMaterial({ color: ground, roughness: 0.85, metalness: 0, side: THREE.DoubleSide })));
 
   // Cells: one shaded disc each, sitting on the terrain.
   const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
@@ -191,7 +187,7 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
   geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
   const ball = sprite((g) => {
     const grad = g.createRadialGradient(24, 22, 2, 32, 32, 30);
-    grad.addColorStop(0, "#ffffff"); grad.addColorStop(0.55, "#d8d8d8"); grad.addColorStop(1, "#7c7c7c");
+    grad.addColorStop(0, "#ffffff"); grad.addColorStop(0.6, "#ececec"); grad.addColorStop(1, "#a4a4a4");
     g.fillStyle = grad; g.beginPath(); g.arc(32, 32, 29, 0, Math.PI * 2); g.fill();
   });
   scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ size: DOT, vertexColors: true, map: ball, alphaTest: 0.5 })));
@@ -260,7 +256,7 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
       const e = ease(clamp01((s.windows - i * 0.3) / 0.7));
       wi.g.position.lerpVectors(wi.from, wi.at, e);
       wi.g.visible = e > 0;
-      wi.curtain.material.opacity = 0.09 * e;
+      wi.curtain.material.opacity = 0.05 * e;
     });
     frameMat.opacity = s.windows > 0 ? 1 : 0;
     rings.visible = s.rings;

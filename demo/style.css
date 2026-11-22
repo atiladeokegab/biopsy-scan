@@ -8,6 +8,9 @@
   --lane-h: 132px;
   --lane-h-phone: 120px;
   --key: 12px;             /* legend and race-key swatches */
+  --reimage-h: 480px;
+  --reimage-h-phone: 340px;
+  --reimage-text-w: 320px;
 }
 
 * { box-sizing: border-box; }
@@ -103,6 +106,24 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
 .sr-src { grid-column: 1 / -1; font-size: var(--text-xs); color: var(--text-muted); }
 .speed-note { margin-top: auto; padding-top: var(--space-3); font-size: var(--text-xs); line-height: var(--leading-caption); color: var(--text-muted); }
 
+/* RE-IMAGE 3D: one real core, then one simulated look at it; the steps beside the canvas, the canvas the hero */
+.reimage { padding-top: var(--space-5); }
+.reimage-card {
+  display: grid; padding: 0; overflow: hidden; grid-template-columns: minmax(0, 1fr) var(--reimage-text-w);
+  grid-template-areas: "canvas text" "credit text";
+}
+.reimage-text { grid-area: text; padding: var(--space-5); border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: var(--space-3); }
+.reimage-label { font-size: var(--text-sm); line-height: var(--leading-meta); color: var(--text-body); }
+.reimage-label .tags { display: block; margin-top: var(--space-2); }
+.reimage-steps { margin: 0; padding-left: var(--space-5); display: grid; gap: var(--space-2); font-size: var(--text-sm); line-height: var(--leading-meta); color: var(--text-muted); }
+.reimage-steps li { transition: color 0.3s; }
+.reimage-steps li[aria-current] { color: var(--text-head); }
+.reimage-text .legend { padding: 0; }
+.legend .r { border-radius: 50%; border: 2px solid var(--text-head); }
+.reimage-text .legend .f { border-style: solid; }
+#reimage { grid-area: canvas; display: block; width: 100%; height: var(--reimage-h); background: var(--bg-canvas); }
+.reimage-credit { grid-area: credit; padding: var(--space-2) var(--space-4); line-height: var(--leading-caption); }
+
 /* RESULTS: power against the formula, the honesty strip, the scaling slot */
 .results { display: grid; gap: var(--space-5); grid-template-columns: 1.2fr 1fr 1fr; padding-top: var(--space-5); }
 .results p { margin-top: var(--space-3); }
@@ -184,6 +205,14 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
   .speed-head { flex-direction: column; align-items: stretch; }
   .speed-head .go { width: 100%; }
   .results { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
+  .reimage { padding-top: var(--space-3); }
+  /* Phone: the title and label, then the canvas, then the steps, so the 3D view sits in the first screen of the section. */
+  .reimage-card { display: flex; flex-direction: column; gap: var(--space-3); padding-top: var(--space-4); }
+  .reimage-text { display: contents; }
+  .reimage-text > * { padding: 0 var(--space-4); order: 2; }
+  .reimage-text > h2, .reimage-label { order: 0; }
+  #reimage { order: 1; height: var(--reimage-h-phone); }
+  .reimage-credit { order: 3; }
   .big { font-size: var(--text-xl); }
   .foot { padding: var(--space-6) var(--space-4) var(--space-8); }
   .error { margin: var(--space-3) var(--space-4) 0; }
