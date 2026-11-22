@@ -14,8 +14,9 @@ from matplotlib.ticker import StrMethodFormatter
 
 def measured_points(paths: list[Path]) -> tuple[dict, dict]:
     receipts = [json.loads(p.read_text()) for p in paths]
-    if any(r["status"] not in ("PARTIAL", "MEASURED") for r in receipts):
-        raise ValueError("wait for each receipt to finish")
+    # The runner checkpoints each accepted point while other groups are still in flight.
+    if any(r["status"] not in ("INCOMPLETE", "PARTIAL", "MEASURED") for r in receipts):
+        raise ValueError("unrecognized benchmark receipt state")
     fields = ("reference", "reference_commit", "seed_root", "synthetic_outcome_plan", "hardware_request")
     design = {k: receipts[0][k] for k in fields}
     if any(any(r[k] != v for k, v in design.items()) for r in receipts):
@@ -60,9 +61,9 @@ def plot(paths: list[Path], out: Path) -> None:
         ax.yaxis.set_major_formatter(StrMethodFormatter("{x:,.0f}"))
         ax.grid(axis="y", alpha=.22)
         ax.legend(loc="upper left", fontsize=8)
-    counts = " · ".join(f"{n} GPU: {len(points[n])} runs" for n in sizes)
-    fig.supxlabel(f"{counts}   |   End-to-end includes data load, preparation, transfer and global threshold", fontsize=8)
-    fig.savefig(out)
+    counts = " · ".join(f"{n} ({len(points[n])})" for n in sizes)
+    fig.supxlabel(f"GPU count (verified runs)   {counts}   |   End-to-end includes setup, transfer and global threshold", fontsize=8)
+    fig.savefig(out, dpi=170)
     plt.close(fig)
 
 
