@@ -42,6 +42,8 @@ def test_a_whole_working_take_is_measured(fps):
     (scene(errors=["console: 3D view off: no WebGL"]), take(), "error"),  # WebGL failed, fallback shown
     (scene(), take(seconds=4.0), "duration"),                         # sample cut short
     (scene(), take(seconds=15.5, fps=2), "frames"),                   # the scene stalled
+    (scene(end_controls=["reimage-replay", "reimage-pause"]), take(seconds=15.5, fps=60), "take did not end"),  # Pause still showing
+    (scene(end_controls=[]), take(seconds=15.5, fps=60), "take did not end"),                                    # no controls at all
 ])
 def test_a_broken_scene_is_failed_not_measured(fps, out, ts, why):
     res = fps.result(out, ts, wall=60.0, stamp="20261122T000000Z")
