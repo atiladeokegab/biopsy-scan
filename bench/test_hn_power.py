@@ -178,3 +178,51 @@ def test_the_payload_producer_refuses_tracked_changes(tmp_path):
     (tmp_path / "f.py").write_text("a = 2\n")
     with pytest.raises(RuntimeError, match="tracked changes"):
         h.producer(tmp_path)
+
+
+# --- Zeus ruling on #133 round 2: every copy validated, counts bound to the budget, provenance required
+def _point(ds, n, i=0):
+    return next(p for p in ds[i]["points"] if p["patients"] == n)
+
+
+def test_a_duplicate_with_other_metadata_is_refused_whatever_the_order():
+    for first in (True, False):
+        ds = _receipts()
+        dup = json.loads(json.dumps(_point(ds, 100)))
+        dup["metadata"]["run_id"] = "another run"
+        clean = json.loads(json.dumps(_point(ds, 100)))
+        ds[1]["points"] += [dup, clean] if first else [clean, dup]
+        with pytest.raises(ValueError, match="conflicting"):
+            h.collect(ds)
+
+
+def test_counts_below_the_declared_budget_are_refused_unless_marked_partial():
+    ds = _receipts()
+    row = _point(ds, 200)["rows"][0]
+    row["power_count"], row["power_n"] = 74, 100
+    with pytest.raises(ValueError, match="budget"):
+        h.collect(ds)
+    _point(ds, 200)["status"] = "PARTIAL"
+    pts = h.summarize(*h.collect(ds))["points"]
+    assert next(p for p in pts if p["patients"] == 200)["label"] == "PARTIAL: 100 of 200 planted studies"
+
+
+@pytest.mark.parametrize("field", ["source_hash", "bank_hash"])
+def test_provenance_missing_everywhere_is_refused(field):
+    ds = _receipts()
+    for d in ds:
+        for p in d["points"]:
+            p["rows"][0].pop(field, None)
+            p["metadata"].pop(field, None)
+    with pytest.raises(ValueError, match="missing or null"):
+        h.collect(ds)
+
+
+def test_null_provenance_is_refused():
+    ds = _receipts()
+    for d in ds:
+        for p in d["points"]:
+            p["rows"][0]["grammar_hash"] = None
+            p["metadata"]["grammar_hash"] = None
+    with pytest.raises(ValueError, match="missing or null"):
+        h.collect(ds)

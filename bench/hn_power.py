@@ -157,9 +157,11 @@ def producer(repo: Path) -> str:
 def collect(receipts: list[dict], planned=PLANNED) -> tuple[list[dict], dict, list[int]]:
     """Validated rows, common metadata and the planned points with no result, from launcher receipts.
 
-    Each finished point has exactly one row for its own patient count; a point seen twice must be identical; every
-    row and metadata share one source, grammar, design, seed, budget and bank; unplanned points are refused."""
-    done = {}
+    Every copy of every finished point is checked before any is kept: exactly one row for its own patient count;
+    every provenance field present and non-null, one value across all copies, rows and metadata; counts equal to the
+    declared budget unless the point is marked PARTIAL (its row then carries the real n). Two copies of a point must
+    be identical, whatever their order. Unplanned points are refused."""
+    copies = []
     for d in receipts:
         for p in d["points"]:
             n = p["patients"]
@@ -169,20 +171,34 @@ def collect(receipts: list[dict], planned=PLANNED) -> tuple[list[dict], dict, li
                 continue
             if len(p["rows"]) != 1 or int(p["rows"][0]["patients"]) != n:
                 raise ValueError(f"P={n}: expected one row for P={n}")
-            if n in done and done[n]["rows"] != p["rows"]:
-                raise ValueError(f"P={n}: conflicting duplicate results")
-            done[n] = p
-    if not done:
+            copies.append(p)
+    if not copies:
         raise ValueError("no finished point")
     for k in PROVENANCE:
-        seen = {json.dumps(p["rows"][0].get(k)) for p in done.values()}
-        seen |= {json.dumps(p["metadata"][k]) for p in done.values() if k in p["metadata"]}
-        if len(seen) != 1:
-            raise ValueError(f"points disagree on {k}: {sorted(seen)}")
-    if len({json.dumps(p["metadata"]["budget"], sort_keys=True) for p in done.values()}) != 1:
-        raise ValueError("points disagree on budget")
-    meta = next(iter(done.values()))["metadata"]
-    return [done[n]["rows"][0] for n in sorted(done)], meta, [n for n in planned if n not in done]
+        vals = [c["rows"][0].get(k) for c in copies] + [c["metadata"][k] for c in copies if k in c["metadata"]]
+        if any(v is None for v in vals):
+            raise ValueError(f"provenance {k} missing or null")
+        if len({json.dumps(v) for v in vals}) != 1:
+            raise ValueError(f"points disagree on {k}: {sorted({json.dumps(v) for v in vals})}")
+    budgets = {json.dumps(c["metadata"].get("budget"), sort_keys=True) for c in copies}
+    if len(budgets) != 1 or None in [c["metadata"].get("budget") for c in copies]:
+        raise ValueError("points disagree on budget, or it is missing")
+    budget = copies[0]["metadata"]["budget"]
+    done, rows = {}, {}
+    for c in copies:
+        n, r = c["patients"], dict(c["rows"][0])
+        short = [(f, int(r[f]), budget[b]) for f, b in (("power_n", "alternative"), ("fwer_n", "null"),
+                                                          ("calibration_n", "calibration")) if int(r[f]) != budget[b]]
+        if short and c.get("status") != "PARTIAL":
+            raise ValueError(f"P={n}: counts below the declared budget and not marked PARTIAL: {short}")
+        if short:
+            r["partial"] = f"PARTIAL: {r['power_n']} of {budget['alternative']} planted studies"
+        key = json.dumps({"rows": c["rows"], "metadata": c["metadata"], "status": c.get("status")}, sort_keys=True,
+                         default=str)
+        if n in done and done[n] != key:
+            raise ValueError(f"P={n}: conflicting duplicate results")
+        done[n], rows[n] = key, r
+    return [rows[n] for n in sorted(rows)], copies[0]["metadata"], [n for n in planned if n not in rows]
 
 
 def validate(summary: dict) -> dict:
@@ -215,7 +231,8 @@ def summarize(rows: list[dict], meta: dict, missing: list[int] = ()) -> dict:
                        "planted_studies": n, "rejections": k, "fwer": float(r["fwer"]),
                        "fwer_count": int(r["fwer_count"]), "fwer_n": int(r["fwer_n"]),
                        "fwer_lo": float(r["fwer_lo"]), "fwer_hi": float(r["fwer_hi"]),
-                       "mean_events": float(r["alternative_mean_events"]), "threshold": float(r["threshold"])})
+                       "mean_events": float(r["alternative_mean_events"]), "threshold": float(r["threshold"]),
+                       **({"label": r["partial"]} if "partial" in r else {})})
     return {"label": LABEL, "outcomes": "SYNTHETIC", "source": "simulated cohorts of 50-600 resampled with replacement from 34 UPMC discovery patients' tissue",
             "interval": "per point: Clopper-Pearson 95% on rejections / planted studies (200 per point on Modal)",
             "cohort": "UPMC head and neck, discovery split only", "caveats": CAVEATS, "points": points,
