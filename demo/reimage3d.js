@@ -260,16 +260,16 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
   const rings = new THREE.Points(rgeo, new THREE.PointsMaterial({ size: DOT * 2.4, map: ringTex, color: tok("--text-head"), alphaTest: 0.5 }));
   scene.add(rings);
 
-  // Fields of view: a thin square frame, labelled with its size, over a faint curtain of light down to the tissue.
+  // Fields of view: a thin square frame, labelled with its size outside its near edge.
   const H = LIFT + 34;
   const frameMat = new THREE.MeshBasicMaterial({ color: tok("--text-body"), side: THREE.DoubleSide, transparent: true });
   const labels = [], labelTex = (() => {
     // A pill on the canvas ground, so the label reads over dots and frame edges.
-    const cv = document.createElement("canvas"); cv.width = 256; cv.height = 72;
+    const cv = document.createElement("canvas"); cv.width = 512; cv.height = 144; // 2x: sharp at dpr 2
     const g = cv.getContext("2d");
-    g.fillStyle = tok("--bg-canvas"); g.globalAlpha = 0.85; g.beginPath(); g.roundRect(28, 6, 200, 60, 12); g.fill(); g.globalAlpha = 1;
-    g.font = `600 36px ${tok("--font-sans") || "sans-serif"}`; g.fillStyle = tok("--text-head"); g.textAlign = "center"; g.textBaseline = "middle";
-    g.fillText(`${FOV_UM} µm`, 128, 38);
+    g.font = `600 72px ${tok("--font-sans") || "sans-serif"}`; g.textAlign = "center"; g.textBaseline = "middle";
+    g.lineJoin = "round"; g.lineWidth = 14; g.strokeStyle = tok("--bg-canvas"); g.strokeText(`${FOV_UM} µm`, 256, 76); // a halo, not a plate
+    g.fillStyle = tok("--text-head"); g.fillText(`${FOV_UM} µm`, 256, 76);
     const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace; return tx;
   })();
   const wins = crops.filter(Boolean).map((cr, i) => {
@@ -277,19 +277,15 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
     const frame = new THREE.Mesh(new THREE.RingGeometry(half * Math.SQRT2 - 1.2, half * Math.SQRT2 + 1.2, 4, 1), frameMat);
     frame.rotation.set(-Math.PI / 2, 0, Math.PI / 4);
     frame.position.y = H;
-    const curtain = new THREE.Mesh(new THREE.CylinderGeometry(half * Math.SQRT2, half * Math.SQRT2, H, 4, 1, true),
-      new THREE.MeshBasicMaterial({ color: tok("--text-head"), transparent: true, opacity: 0, side: THREE.DoubleSide,
-        depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
-    curtain.rotation.y = Math.PI / 4;
-    curtain.position.y = H / 2;
     const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex, transparent: true, depthTest: false, sizeAttenuation: false }));
     labels.push(label);
-    label.position.set(0, H, half + 14);
+    label.position.set(0, H, half * Math.SQRT2 + 4); // the frame is turned 45°: its near corner
+    label.center.set(0.5, 1); // hangs below the near edge on screen: outside the box, off the field's cells
     label.renderOrder = 2;
-    g.add(frame, curtain, label);
+    g.add(frame, label);
     const at = new THREE.Vector3(wx(cr[0] + half), 0, wz(cr[1] + half));
     scene.add(g);
-    return { g, curtain, label, at, from: new THREE.Vector3(at.x + (i ? -1 : 1) * RC * 1.6, 160, at.z) };
+    return { g, label, at, from: new THREE.Vector3(at.x + (i ? -1 : 1) * RC * 1.6, 160, at.z) };
   });
 
   // What each fitted shot must keep in frame: the region's rim (ground to peak), and the fields' corners (ground to frame).
@@ -322,7 +318,7 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
     camera.aspect = w / h;
     // Labels a fixed 26 css px tall: unattenuated sprites span scale.y / (2 tan(fov/2)) of the canvas height.
     const ly = (26 / h) * 2 * Math.tan((camera.fov * Math.PI) / 360);
-    for (const l of labels) l.scale.set(ly * (256 / 72), ly, 1);
+    for (const l of labels) l.scale.set(ly * (512 / 144), ly, 1);
     const s = timeline(t), k = s.camera, az = k.azim;
     // Each end of the move fitted at the current angle, so the phone's aspect stays framed too.
     const half = (camera.fov * Math.PI) / 360, fit = Math.min(half, Math.atan(Math.tan(half) * camera.aspect));
@@ -333,7 +329,9 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
     const A = view(k.from), B = k.to === k.from ? A : view(k.to);
     const dist = Math.exp(Math.log(A.dist) + (Math.log(B.dist) - Math.log(A.dist)) * k.e);
     target.lerpVectors(A.target, B.target, k.e);
-    dots.size = DOT * (1 + 0.3 * clamp01((k.r - 0.15) / 0.7)); // a touch larger from afar, true size at cell level
+    const perPx = (2 * dist * Math.tan((camera.fov * Math.PI) / 360)) / h; // µm per css px at the target
+    dots.size = Math.max(DOT * (1 + 0.3 * clamp01((k.r - 0.15) / 0.7)), 3 * perPx); // at least 3 css px, so a phone shows cells
+    rings.material.size = Math.max(DOT * 2.4, 9 * perPx); // a ring at least 9 css px, so step 4 reads at 390
     camera.position.set(target.x + dist * Math.cos(k.elev) * Math.sin(az), target.y + dist * Math.sin(k.elev),
       target.z + dist * Math.cos(k.elev) * Math.cos(az));
     camera.near = Math.max(1, dist * 0.05);
@@ -344,7 +342,6 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
       const e = ease(clamp01((s.windows - i * 0.3) / 0.7));
       wi.g.position.lerpVectors(wi.from, wi.at, e);
       wi.g.visible = e > 0;
-      wi.curtain.material.opacity = 0.05 * e;
       wi.label.material.opacity = e;
     });
     frameMat.opacity = s.windows > 0 ? 1 : 0;
@@ -388,6 +385,7 @@ export function mountReimage($, tissue, { reducedMotion, search, create = create
   const fmt = (v) => v.toLocaleString("en-GB");
   $("reimage-seen").textContent = `${study.perField.map(fmt).join(" and ")} of its ${fmt(n)} cells`;
   $("reimage-crossed").textContent = `${fmt(study.crossed)} cells`;
+  $("reimage-size").textContent = `${fmt(Math.round(study.hi[0] - study.lo[0]))} × ${fmt(Math.round(study.hi[1] - study.lo[1]))} µm`;
   $("reimage-n").textContent = n === p.cells_in_region
     ? `all ${n.toLocaleString("en-GB")} cells`
     : `${n.toLocaleString("en-GB")} of its ${p.cells_in_region.toLocaleString("en-GB")} cells`;
