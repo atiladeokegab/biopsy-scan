@@ -2,6 +2,7 @@
 import argparse
 import json
 from collections import defaultdict
+from math import isclose, isfinite
 from pathlib import Path
 from statistics import median
 
@@ -10,6 +11,28 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.ticker import StrMethodFormatter
+
+GPU_COUNTS = (1, 2, 4, 8)
+
+
+def verified_timing(point: dict, size: int, total: int, seen_tasks: set[str]) -> dict:
+    workers = point["workers"]
+    tasks = {w["gpu"]["modal_task_id"] for w in workers}
+    if (size not in GPU_COUNTS or point["gpus"] != size or len(workers) != size
+            or len(tasks) != size or not all(tasks) or not seen_tasks.isdisjoint(tasks)):
+        raise ValueError(f"missing or duplicate worker task IDs for {size} GPUs")
+    starts, ends = zip(*(w["compute_window"] for w in workers), strict=True)
+    span, overlap = max(ends) - min(starts), min(ends) - max(starts)
+    wall = point["end_to_end_wall_s"]
+    if not all(isfinite(t) and t > 0 for t in (*starts, *ends, overlap, span, wall)) or span > wall:
+        raise ValueError(f"invalid compute windows or wall time for {size} GPUs")
+    throughput = total * 3600 / span
+    expected = {"compute_span_s": span, "common_overlap_s": overlap,
+                "wall_s_per_evaluated_study": wall / total, "studies_per_hour_compute_span": throughput}
+    if any(not isclose(point[key], value, rel_tol=1e-9) for key, value in expected.items()):
+        raise ValueError(f"recorded timing disagrees with worker windows for {size} GPUs")
+    seen_tasks.update(tasks)
+    return point | expected
 
 
 def measured_points(paths: list[Path]) -> tuple[dict, dict]:
@@ -24,6 +47,7 @@ def measured_points(paths: list[Path]) -> tuple[dict, dict]:
     plan = design["synthetic_outcome_plan"]
     total = sum(plan.values())
     points = defaultdict(list)
+    seen_tasks = set()
     for r in receipts:
         for repeat in r["repeats"]:
             for size, point in repeat.items():
@@ -33,18 +57,24 @@ def measured_points(paths: list[Path]) -> tuple[dict, dict]:
                         or parity["studies_compared"] != total or not 0 <= parity["max_abs_maxT_delta"] <= 1e-9
                         or not all(point[k] for k in ("all_overlapped", "seed_coverage_exact", "distinct_task_ids"))):
                     raise ValueError(f"invalid measured point for {size} GPUs")
-                points[int(size)].append(point)
+                n = int(size)
+                points[n].append(verified_timing(point, n, total, seen_tasks))
     if not points:
         raise ValueError("no measured points")
     return plan, points
 
 
-def plot(paths: list[Path], out: Path) -> None:
+def plot(paths: list[Path], out: Path, subtitle: str = "") -> None:
     plan, points = measured_points(paths)
     sizes = sorted(points)
-    ticks = [1, 2, 4, 8]
+    ticks = GPU_COUNTS
     fig, axes = plt.subplots(1, 2, figsize=(10, 4.3), layout="constrained")
-    fig.suptitle(f"Fixed Charville design on Modal H100s · {sum(plan.values()):,} evaluations", fontweight="bold")
+    title = f"Fixed Charville design on Modal H100s · {sum(plan.values()):,} evaluations"
+    if subtitle:
+        title += f"\n{subtitle}"
+    elif len(paths) > 1:
+        title += "\nCross-launch observations"
+    fig.suptitle(title, fontweight="bold")
     for ax, field, title, unit in (
         (axes[0], "studies_per_hour_compute_span", "Compute throughput", "Evaluations per hour"),
         (axes[1], "end_to_end_wall_s", "End-to-end time", "Wall seconds"),
@@ -71,5 +101,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("receipts", nargs="+", type=Path)
     parser.add_argument("--out", required=True, type=Path)
+    parser.add_argument("--subtitle", default="")
     args = parser.parse_args()
-    plot(args.receipts, args.out)
+    plot(args.receipts, args.out, args.subtitle)
