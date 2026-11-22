@@ -11,13 +11,13 @@ export const TEMPLATE = `<div class="wf" id="flow" role="region" aria-labelledby
     <div class="wf-text" data-step="0"><h3>Start from real tumour tissue</h3><p>Biopsy cores from the Charville cohort, imaged in 40 channels per cell. Every point is a measured cell, glowing in the colours of its own marker signal.</p></div>
     <div class="wf-text" data-step="1" hidden><h3>Read every cell, then test every pattern</h3><p>A scan turns the signal into 15 cell types, and the screen tests each neighbourhood pattern against survival. Exploratory result: the best pattern scores z 3.46, maxT p 0.1275, within chance.</p></div>
     <div class="wf-text" data-step="2" hidden><h3>Stress-test the design before the trial</h3><p>A hospital images two 400 µm fields and mis-calls one cell in ten. For 200 patients the textbook formula promises 80% power; simulated on this tissue, it is 27%.</p></div>
-    <div class="wf-text" data-step="3" hidden><h3>Down to one or two routine stains</h3><p>The core separates into its marker channels, then becomes the brown stains a hospital lab already runs, so the test can travel.</p></div>
+    <div class="wf-text" data-step="3" hidden><h3>Aim: one or two routine stains</h3><p>The core separates into six of its measured marker channels. The aim is the one or two routine stains a lab already runs; the brown cores are real stains from other patients, shown for comparison. No marker pair has been chosen on outcomes yet.</p></div>
   </div>
   <div class="wf-stage">
     <div class="wf-vis" data-step="0"><p class="wf-label"><span class="tag measured">MEASURED cells</span> <span class="tag">SYNTHETIC imaging</span></p></div> <!-- /vis -->
     <div class="wf-vis" data-step="1" hidden><p class="wf-label"><span class="tag measured">MEASURED cells</span> <span class="tag">SYNTHETIC imaging</span></p><div class="wf-result" hidden><b>Screen result, exploratory</b><span>Best pattern z 3.46 · maxT p 0.1275</span><span>Within chance: no pattern passes the 0.05 cutoff.</span></div></div> <!-- /vis -->
-    <div class="wf-vis" data-step="2" hidden><p class="wf-label"><span class="tag measured">MEASURED cells</span> <span class="tag">SYNTHETIC imaging</span></p></div> <!-- /vis -->
-    <div class="wf-vis" data-step="3" hidden><p class="wf-label"><span class="tag measured">MEASURED cells</span> <span class="tag">SIMULATED IHC</span></p></div> <!-- /vis -->
+    <div class="wf-vis" data-step="2" hidden><p class="wf-label"><span class="tag measured">MEASURED cells</span> <span class="tag">SIMULATED fields and mis-calls</span> <span class="tag">ANALYTIC formula</span> <span class="tag">ESTIMATE simulation</span></p></div> <!-- /vis -->
+    <div class="wf-vis" data-step="3" hidden><p class="wf-label"><span class="tag measured">MEASURED channels</span> <span class="tag">ILLUSTRATION marker search</span> <span class="tag measured">REAL IHC, other patients</span></p><p class="wf-credit wf-credit-in">IHC cores: Human Protein Atlas (proteinatlas.org), head and neck cancer, CC BY-SA 3.0</p></div> <!-- /vis -->
     <p class="wf-credit">Charville CODEX, Wu et al. 2022, Zenodo 13179600, CC-BY-4.0</p>
   </div>
   <ol class="wf-steps">

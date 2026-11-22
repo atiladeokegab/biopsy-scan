@@ -21,9 +21,17 @@ assert.deepEqual(steps.map((m) => [m[1], plain(m[2]).replace(/^0\d /, "")]),
 
 const vis = [...wf.matchAll(/<div class="wf-vis" data-step="(\d)"[^>]*>([\s\S]*?)<\/div>\s*<!-- \/vis -->/g)];
 assert.equal(vis.length, 4, "four visuals");
-const LABELS = /MEASURED cells|SYNTHETIC imaging|SIMULATED IHC/;
+const LABELS = /MEASURED (cells|channels)|SYNTHETIC imaging|SIMULATED|REAL IHC/;
 for (const [, i, body] of vis) assert.match(body, LABELS, `visual ${i} has no label`);
-assert.match(plain(wf), /Charville CODEX, Wu et al\. 2022, Zenodo 13179600, CC-BY-4\.0/);
+// The cells' credit is the one tma.json carries; step 3 names every kind of number it shows; step 4 credits HPA.
+const tma = JSON.parse(readFileSync(new URL("./data/tma.json", import.meta.url), "utf8"));
+const credit = tma.note.split(";")[0];
+assert.equal(credit, "Charville CODEX, Wu et al. 2022, Zenodo 13179600, CC-BY-4.0");
+assert.ok(plain(wf).includes(credit), "the Charville credit");
+for (const t of ["SIMULATED fields and mis-calls", "ANALYTIC formula", "ESTIMATE simulation"]) assert.ok(plain(vis[2][2]).includes(t), `step 3 lacks ${t}`);
+assert.match(plain(vis[3][2]), /ILLUSTRATION/);
+assert.match(plain(vis[3][2]), /Human Protein Atlas.*CC BY-SA 3\.0/);
+assert.doesNotMatch(plain(wf), /clinical practice|ready for (pathology|the clinic)/i);
 const texts = [...wf.matchAll(/<div class="wf-text" data-step="(\d)"[^>]*>([\s\S]*?)<\/div>/g)];
 assert.equal(texts.length, 4, "four step texts");
 
