@@ -1,7 +1,9 @@
 """Measure the legacy Charville v2 permutation screen on one H100.
 
 DATA_DIR=<prepared Charville directory> MODAL_PROFILE=fhl-08 \
-    uv run --with modal modal run bench/modal_charville_v2_gpu.py --project-spent-usd <estimate>
+    uv run --with modal modal run bench/modal_charville_v2_gpu.py --project-spent-usd <estimate excluding this task>
+
+The launcher adds prior Charville replay receipts in this checkout to that project baseline.
 """
 from __future__ import annotations
 
@@ -166,18 +168,21 @@ def write(path, value):
 def main(project_spent_usd: float):
     if git("status", "--porcelain", "--untracked-files=no"):
         raise SystemExit("commit tracked changes before launching")
-    if not math.isfinite(project_spent_usd) or not 0 <= project_spent_usd <= 150 - RESERVATION_USD:
-        raise SystemExit("project spend plus the H100 reservation must fit the $150 ceiling")
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
     ledger_path = ROOT / "bench" / "results" / f"modal-spend-charville-v2-gpu-{stamp}.json"
     receipt = ROOT / "results" / f"charville-v2-gpu-{stamp}.json"
     prior = sum(json.loads(p.read_text())["run_estimated_usd"] for p in ledger_path.parent.glob("modal-spend-charville-v2-gpu-*.json"))
     if prior + RESERVATION_USD > 5:
         raise SystemExit("Charville H100 task spend plus reservation exceeds $5")
+    if (not math.isfinite(project_spent_usd) or project_spent_usd < 0 or
+            project_spent_usd + prior + RESERVATION_USD > 150):
+        raise SystemExit("project baseline, prior Charville receipts and reservation must fit the $150 ceiling")
     source = git("rev-parse", "HEAD")
     ledger = {"label": "ESTIMATE", "source_commit": source, "state": "reserved", "rates": RATES,
               "run_estimated_usd": RESERVATION_USD, "task_cap_usd": 5.0, "project_cap_usd": 150.0,
               "prior_task_estimate_usd": prior, "prior_project_estimate_usd": project_spent_usd,
+              "prior_project_estimate_scope": "Project baseline excluding Charville replay receipts in this ledger.",
+              "running_project_estimate_usd": project_spent_usd + prior + RESERVATION_USD,
               "reservation_usd": RESERVATION_USD, "timeout_s": TIMEOUT,
               "basis": "GPU plus capped CPU and memory list rates, charged for measured function wall plus retention. "
                        "An unresolved or failed call retains its reservation. Startup and credits can differ."}
@@ -195,7 +200,7 @@ def main(project_spent_usd: float):
     result.update(source_commit=source, spend_receipt=str(ledger_path.relative_to(ROOT)))
     ledger.update(state="completed", function_wall_s=result["function_wall_s"],
                   run_estimated_usd=(result["function_wall_s"] + RETENTION_S) * USD_S)
-    ledger["running_project_estimate_usd"] = project_spent_usd + ledger["run_estimated_usd"]
+    ledger["running_project_estimate_usd"] = project_spent_usd + prior + ledger["run_estimated_usd"]
     write(receipt, result)
     write(ledger_path, ledger)
     print(f"Saved {receipt.name} and {ledger_path.name}", flush=True)
