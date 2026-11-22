@@ -18,10 +18,11 @@ def test_data_json_matches_the_sources():
 
 def test_race_numbers_follow_the_founder_ruling():
     r, cur, ours = DATA["race"], DATA["current"], DATA["ours"]
-    assert DATA["studies"] == 1000 and cur["workers"] == ours["workers"] == 8
-    assert round(DATA["ratio"]) == 583
+    assert DATA["studies"] == 1000 and cur["workers"] == 8 and ours["gpus"] == 1
+    assert ours["source"] == "bench/results/gpu-fused-h100-20261122T141815Z.json" and ours["source"] in DATA["sources"]
+    assert abs(ours["s_per_study"] - 0.0020690) < 1e-6 and 2.0 < ours["total_s"] < 2.2  # about 2.1 s for 1,000 on one H100
     assert abs(DATA["studies"] * ours["s_per_study"] * r["race_s_per_real_s"] - r["ours_finish_s"]) < 1e-9
-    assert 20 <= r["current_studies_at_end"] <= 30  # about 25 of 1,000 by 10 s
+    assert r["current_studies_at_end"] == 1  # about 1 of 1,000 by 10 s
     assert 6 * 3600 + 40 * 60 < cur["total_s"] < 6 * 3600 + 50 * 60  # about 6 h 47 m
     assert set(DATA["kept"]) <= set(DATA["markers"])
 
@@ -31,7 +32,7 @@ def forbidden():
     nums = {c["patients"], c["events"], c["regions"], c["cores_shown"], DATA["studies"], DATA["race"]["current_studies_at_end"],
             round(DATA["ratio"])}
     words = set(DATA["markers"]) | {p["gene"] for p in DATA["ihc"]} | {c["name"]}
-    pats = [rf"(?<![\w.]){n:,}(?![\w.])".replace(",", ",?") for n in nums]
+    pats = [rf"(?<![\w.]){n:,}(?![\w.])".replace(",", ",?") for n in nums if n >= 10]  # 1 and the like are not tell-tales
     pats += [rf"(?<![\w.]){re.escape(f'{v:.4g}')}" for v in (DATA["current"]["s_per_study"], DATA["ours"]["s_per_study"])]
     pats += [rf"(?i)\b{re.escape(w)}\b" for w in words]
     return pats
