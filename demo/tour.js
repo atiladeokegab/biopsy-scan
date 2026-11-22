@@ -4,7 +4,7 @@
 export const SEEN_KEY = "preflight-tour-v1";
 
 export const STEPS = [
-  { target: "#flow", title: "Start here: the Preflight workflow",
+  { target: "#workflow-app", title: "Start here: the Preflight workflow",
     text: "Four steps on real tumour tissue: the tissue, decoding it, stress-testing the study design, and the routine stains it comes down to. Each step labels its numbers as measured or simulated." },
   { target: ".bio", title: "The pattern",
     text: "A spatial pattern found in real Charville tumour tissue, with the survival curves it splits. It is exploratory: the cutoff was chosen on the same cohort, so no p-value is claimed." },
@@ -86,7 +86,7 @@ function close() {
   cancelAnimationFrame(raf);
   document.body.classList.remove("touring");
   ui?.spot.remove(); ui?.card.remove(); ui = null;
-  removeEventListener("keydown", onKey);
+  removeEventListener("keydown", onKey, true);
   try { localStorage.setItem(SEEN_KEY, "1"); } catch { /* private mode: the tour just shows again */ }
   opener?.focus({ preventScroll: true });
 }
@@ -104,14 +104,16 @@ function go(move) {
 
 function onKey(e) {
   if (at < 0) return;
-  if (e.key === "Escape") { e.preventDefault(); go("skip"); }
-  else if (e.key === "ArrowRight") { e.preventDefault(); go("next"); }
-  else if (e.key === "ArrowLeft") { e.preventDefault(); go("back"); }
+  const move = { Escape: "skip", ArrowRight: "next", ArrowLeft: "back" }[e.key];
+  if (!move) return;
+  // While the tour is open its keys win over the workflow's arrow-key stepping.
+  e.preventDefault(); e.stopImmediatePropagation();
+  go(move);
 }
 
 export function startTour(from = null) {
   opener = from;
-  if (at < 0) { addEventListener("keydown", onKey); raf = requestAnimationFrame(loop); }
+  if (at < 0) { addEventListener("keydown", onKey, true); raf = requestAnimationFrame(loop); }
   at = -1;
   go("next");
 }
