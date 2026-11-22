@@ -6,9 +6,13 @@ import { readFileSync, existsSync } from "node:fs";
 
 const html = readFileSync(new URL("./index.html", import.meta.url), "utf8");
 const plain = (s) => s.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-const wf = html.match(/<section class="wf" id="flow"[^>]*>([\s\S]*?)<\/section>/)?.[1] ?? "";
-assert.ok(wf, "no Preflight workflow section");
-assert.ok(html.indexOf('id="flow"') < html.indexOf('class="hero"'), "the workflow is the page's top section");
+// The page holds one mount point; the section itself is workflow/main.js's TEMPLATE, rendered into #wf-root.
+assert.match(html, /<section id="workflow-app"[^>]*><div id="wf-root"><\/div><\/section>/, "no #wf-root mount point");
+assert.match(html, /<script type="module" src="workflow\/main\.js"><\/script>/);
+assert.ok(html.indexOf('id="workflow-app"') < html.indexOf('class="hero"'), "the workflow is the page's top section");
+const { TEMPLATE: wf, start } = await import("./workflow/main.js");
+assert.equal(typeof start, "function");
+assert.match(wf, /^<div class="wf" id="flow"/);
 assert.match(plain(wf), /Preflight workflow/);
 
 const steps = [...wf.matchAll(/<button type="button" class="wf-node"[^>]*data-step="(\d)"[^>]*>([\s\S]*?)<\/button>/g)];
@@ -43,9 +47,9 @@ for (const s of ["200 patients", "two 400 µm fields", "one cell in ten", `${Mat
   assert.ok(s3.includes(s), `step 3 lacks "${s}": ${s3}`);
 
 // Each step's module exists and exports mount.
-for (const f of ["step1.js", "step2.js", "workflow.js"]) {
+for (const f of ["step1.js", "step2.js", "step3.js", "step4.js", "main.js"]) {
   const u = new URL(`./workflow/${f}`, import.meta.url);
   assert.ok(existsSync(u), `missing workflow/${f}`);
 }
-for (const f of ["step1.js", "step2.js"]) assert.match(readFileSync(new URL(`./workflow/${f}`, import.meta.url), "utf8"), /export function mount\(el, data\)/);
+for (const f of ["step1.js", "step2.js", "step3.js", "step4.js"]) assert.match(readFileSync(new URL(`./workflow/${f}`, import.meta.url), "utf8"), /export function mount\(el, data\)/);
 console.log("workflow.test.mjs: ok");

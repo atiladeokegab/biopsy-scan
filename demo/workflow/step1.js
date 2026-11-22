@@ -43,9 +43,9 @@ export function glow(cv, ctx, w, h) {
   ctx.drawImage(copy, 0, 0, w, h); ctx.restore();
 }
 
-export function sizeCanvas(el) {
+export function sizeCanvas(el, oversample = 1) {
   const cv = el.querySelector("canvas") ?? el.insertBefore(document.createElement("canvas"), el.firstChild);
-  const w = el.clientWidth, h = el.clientHeight, d = devicePixelRatio || 1;
+  const w = el.clientWidth, h = el.clientHeight, d = (devicePixelRatio || 1) * oversample;
   cv.width = Math.round(w * d); cv.height = Math.round(h * d);
   const ctx = cv.getContext("2d");
   ctx.setTransform(d, 0, 0, d, 0, 0);
@@ -56,7 +56,7 @@ export function mount(el, data) {
   const { tma } = data, n = Math.ceil(Math.sqrt(tma.cores.length));
   let timers = [], geo = null;
   const draw = () => {
-    const { cv, ctx, w, h } = sizeCanvas(el);
+    const { cv, ctx, w, h } = sizeCanvas(el, 2.5); // oversampled so the zoomed core stays sharp
     const side = Math.min(w, h) * 0.92, cell = side / n, r = cell * 0.44;
     const x0 = (w - side) / 2, y0 = (h - side) / 2;
     tma.cores.forEach((c, i) => drawCore(ctx, c, x0 + cell * (i % n + 0.5), y0 + cell * (Math.floor(i / n) + 0.5), r, "fluor"));
@@ -82,7 +82,7 @@ export function mount(el, data) {
       timers.push(setTimeout(() => {
         ring.style.opacity = 0;
         cv.style.transformOrigin = `${px}px ${py}px`; // the grid is flat now, so moving the origin does not jump
-        const z = Math.min(w, h) * 0.3 / r; // shortcut: bitmap zoom softens past ~3x; step 2 redraws the core sharp
+        const z = Math.min(w, h) * 0.38 / r;
         cv.style.transition = "transform 1.8s cubic-bezier(.5,0,.2,1)";
         cv.style.transform = `translate(${w / 2 - px}px, ${h / 2 - py}px) scale(${z})`;
       }, 3300));

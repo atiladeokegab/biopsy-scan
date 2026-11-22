@@ -306,8 +306,10 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
 @media (max-width: 600px) { .sr-group { grid-template-columns: minmax(0, 1fr); } }
 
 /* PREFLIGHT WORKFLOW: copy left, the large animated visual right, a four-node stepper beneath (workflow/). */
-.wf {
-  display: grid; gap: var(--space-5) var(--space-7); padding-top: var(--space-7); align-items: center;
+#workflow-app { scroll-margin-top: 0; }
+.wf { /* one screen: the walkthrough fills the viewport under the bar, like an app */
+  min-height: calc(100svh - var(--bar-h)); align-content: center;
+  display: grid; gap: var(--space-5) var(--space-7); padding: var(--space-6) 0; align-items: center;
   grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.6fr); grid-template-areas: "copy stage" "steps steps";
 }
 .wf-copy { grid-area: copy; }
@@ -316,6 +318,9 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
 .wf-text h3 { margin: var(--space-6) 0 0; color: var(--text-head); font-size: var(--text-lg); line-height: var(--leading-snug); }
 .wf-text p { margin-top: var(--space-2); color: var(--text-body); font-size: var(--text-sm); line-height: var(--leading-meta); max-width: 42ch; }
 .wf-stage { grid-area: stage; }
+@keyframes wf-in { from { opacity: 0; transform: translateY(8px) scale(0.985); } }
+.wf-text:not([hidden]), .wf-vis:not([hidden]) { animation: wf-in 0.6s cubic-bezier(.2, .7, .2, 1); }
+@media (prefers-reduced-motion: reduce) { .wf-text:not([hidden]), .wf-vis:not([hidden]) { animation: none; } }
 .wf-vis {
   position: relative; aspect-ratio: 16 / 10; overflow: hidden; border-radius: var(--radius-surface);
   background: radial-gradient(ellipse at 70% 80%, rgba(43, 212, 164, 0.08), transparent 60%), var(--bg-canvas);

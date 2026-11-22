@@ -24,9 +24,9 @@ def test_remote_url_scan_flags_a_url_and_skips_namespaces():
 
 
 def test_demo_sources_name_no_remote_url():
-    files = [p for ext in ("html", "js", "css") for p in DEMO.glob(f"*.{ext}")]
+    files = [p for ext in ("html", "js", "css") for p in DEMO.glob(f"*.{ext}")] + list(DEMO.glob("workflow/*.js"))
     assert files
-    found = {p.name: remote_urls(p.read_text(encoding="utf-8")) for p in files}
+    found = {str(p.relative_to(DEMO)): remote_urls(p.read_text(encoding="utf-8")) for p in files}
     assert not {k: v for k, v in found.items() if v}
 
 
