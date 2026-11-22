@@ -21,8 +21,9 @@ from gpu.modal_app import _charville, app, gpu_function, gpu_info, overlap
 
 FLEET = (1, 2, 4, 8, 16)
 STRONG, WEAK_PER_GPU = 256, 16
-MODEL = "NVIDIA A100-SXM4-40GB"
-RATE = 2.0988 + 8 * 0.04716 + 32 * 0.007992  # archived Modal list rates, USD/h
+GPU = "A100-80GB"
+MODEL = "NVIDIA A100-SXM4-80GB"
+RATE = 2.4984 + 8 * 0.04716 + 32 * 0.007992  # Modal list rates, USD/h, 2026-11-22
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -55,7 +56,8 @@ def wait_for_fleet(ready, mode: str, count: int, uuid: str, expected_ready: int)
     return time.perf_counter() - start
 
 
-@app.function(**(gpu_function | {"timeout": 400}), single_use_containers=True, max_containers=16, retries=0)
+@app.function(**(gpu_function | {"gpu": GPU, "timeout": 400}),
+              single_use_containers=True, max_containers=16, retries=0)
 def scaling_shard(batches: dict[str, list[int]], ready, count: int) -> dict:
     from bench.real_cpu import DESIGN
     from reimage import gpu, run
@@ -177,7 +179,7 @@ def scaling(repeats: int = 3, cap_usd: float = 20.0, pilot: bool = False):
               "worker_time_reservation_usd": ceiling, "points": [],
               "basis": "Recorded Modal list rates. Estimates from measured function runtime; excludes platform overhead and is not an invoice."}
     report = {"status": "INCOMPLETE", "source_commit": commit, "pilot": pilot,
-              "hardware_request": {"gpu": "A100-40GB", "cpu_cores": 8, "memory_gib": 32},
+              "hardware_request": {"gpu": GPU, "cpu_cores": 8, "memory_gib": 32},
               "labels": {"timings": "MEASURED", "study_design": "SIMULATED on measured Charville tissue",
                          "ideal_line": "ANALYTIC perfect scaling", "spend": "ESTIMATE"},
               "scope": "Re-imaging through feature aggregation only. Strong first, then weak using the same prepared device state. "
