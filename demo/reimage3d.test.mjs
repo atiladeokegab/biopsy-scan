@@ -61,6 +61,7 @@ assert.ok(flips / 2 / (t1 - t0) <= 3, `flash rate ${flips / 2 / (t1 - t0)} per s
 // The page: the section and its labels exist, and the proof take's anchors are untouched.
 const html = readFileSync(new URL("./index.html", import.meta.url), "utf8");
 const app = readFileSync(new URL("./app.js", import.meta.url), "utf8"), src = readFileSync(new URL("./reimage3d.js", import.meta.url), "utf8");
+assert.match(html, /<link rel="icon" href="data:,">/, "declares an icon, so Chrome asks for no /favicon.ico and logs no 404 (L4 run 10 FAILED on it)");
 for (const id of ["speed-race", "speed-interim", "run", "verdict", "tissue-caption", "reimage", "reimage-steps"])
   assert.equal(html.split(`id="${id}"`).length, 2, `exactly one #${id}`);
 assert.ok(html.indexOf('id="speed-race"') < html.indexOf('id="reimage"'), "the 3D view sits below the race");
