@@ -98,8 +98,44 @@
     "basis": "67.1 s local wall x $1.116/h",
     "result": "bench/results/fps-l4-20261122T054212Z.json"
    }
+  },
+  {
+   "utc": "2026-11-22T05:58Z",
+   "run": "gpu/fps_l4.py on head 9cfc774 (judge round 2); outputs discarded: the 390 stills had desktop scrollbars, rerun with a mobile context",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": 65.3,
+    "est_usd": 0.02,
+    "basis": "65.3 s local wall x $1.116/h",
+    "result": "not kept (median 59.9, p5 59.9 fps)"
+   }
+  },
+  {
+   "utc": "2026-11-22T06:00Z",
+   "run": "gpu/fps_l4.py on head 9cfc774 + mobile context for the 390 stills: fps at 1280x720, end-of-take and control checks, GPU stills, no-WebGL end-frame still",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": 73.2,
+    "est_usd": 0.023,
+    "basis": "73.2 s local wall x $1.116/h",
+    "result": "bench/results/fps-l4-20261122T060038Z.json"
+   }
   }
  ],
- "running_total_usd": 0.116,
+ "running_total_usd": 0.159,
  "running_total_basis": "sum of the two actuals; ESTIMATE, not billing"
 }

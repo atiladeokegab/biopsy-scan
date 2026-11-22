@@ -99,7 +99,8 @@ def measure() -> dict:
         # Stills on the GPU at each camera height, both sizes.
         out["stills"] = {}
         for name, vp, dpr in (("1280x720", (1280, 720), 1), ("390x844", (390, 844), 2)):
-            ctx = browser.new_context(viewport={"width": vp[0], "height": vp[1]}, device_scale_factor=dpr)
+            # The phone context is a mobile device (overlay scrollbars, touch), as a real phone would be.
+            ctx = browser.new_context(viewport={"width": vp[0], "height": vp[1]}, device_scale_factor=dpr, is_mobile=dpr > 1, has_touch=dpr > 1)
             for t in (0, 2.6, 5.4, 9.8, 12.6, 13, 15):
                 pg = ctx.new_page()
                 pg.goto(f"http://localhost:8000/?t3d={t}", wait_until="networkidle")
