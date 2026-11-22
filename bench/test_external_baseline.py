@@ -124,11 +124,15 @@ def _rec(agreement, study_s=1.0):
             "agreement": agreement}
 
 
-def test_same_host_summary_takes_median_and_range_per_arm_and_ratio_per_repeat():
-    s = eb.same_host_summary([{"external_s_per_study": 24.0, "fused_s_per_study": 0.04},
-                              {"external_s_per_study": 30.0, "fused_s_per_study": 0.05},
-                              {"external_s_per_study": 20.0, "fused_s_per_study": 0.02}])
-    assert s["external_s_per_study"] == {"median": 24.0, "min": 20.0, "max": 30.0, "n": 3}
-    assert s["fused_s_per_study"] == {"median": 0.04, "min": 0.02, "max": 0.05, "n": 3}
-    assert s["ratio_per_repeat"] == pytest.approx([600.0, 600.0, 1000.0])  # per repeat, not median / median
-    assert s["ratio"]["median"] == pytest.approx(600.0) and s["ratio"]["max"] == pytest.approx(1000.0)
+def test_same_host_summary_takes_median_and_range_per_column_and_ratio_per_repeat():
+    rows = [(24.0, 30.0, 0.04, 0.08), (30.0, 33.0, 0.05, 0.06), (20.0, 22.0, 0.02, 0.04)]
+    s = eb.same_host_summary([{"external_pipeline_s_per_study": a, "external_with_checks_s_per_study": b,
+                               "fused_full_s_per_study": c, "fused_matched_s_per_study": d} for a, b, c, d in rows])
+    assert s["external_pipeline_s_per_study"] == {"median": 24.0, "min": 20.0, "max": 30.0, "n": 3}
+    assert s["fused_full_s_per_study"] == {"median": 0.04, "min": 0.02, "max": 0.05, "n": 3}
+    assert set(s["ratios"]) == {"external_pipeline_vs_fused_full", "external_pipeline_vs_fused_matched",
+                                "external_with_checks_vs_fused_full", "external_with_checks_vs_fused_matched"}
+    r = s["ratios"]["external_pipeline_vs_fused_full"]
+    assert r["per_repeat"] == pytest.approx([600.0, 600.0, 1000.0])  # per repeat, not median / median
+    assert (r["median"], r["min"], r["max"]) == pytest.approx((600.0, 600.0, 1000.0))
+    assert s["ratios"]["external_with_checks_vs_fused_matched"]["per_repeat"] == pytest.approx([375.0, 550.0, 550.0])
