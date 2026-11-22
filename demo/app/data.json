@@ -3,7 +3,7 @@
  "sources": [
   "results/charville-v2.json",
   "bench/results/external-baseline-20261122T043823Z.json",
-  "bench/results/modal-design-20261121T205536Z.json",
+  "bench/results/gpu-fused-h100-20261122T141815Z.json",
   "demo/data/grid.json",
   "demo/workflow/img/hpa_manifest.json",
   "demo/app/cells.json"
@@ -19,8 +19,8 @@
  "race": {
   "seconds": 10.0,
   "ours_finish_s": 0.7,
-  "race_s_per_real_s": 0.016702160714192924,
-  "current_studies_at_end": 24
+  "race_s_per_real_s": 0.3383237184307558,
+  "current_studies_at_end": 1
  },
  "current": {
   "s_per_study": 24.443413085459998,
@@ -29,11 +29,13 @@
   "total_s": 24443.413085459997
  },
  "ours": {
-  "s_per_study": 0.04191074508133333,
-  "workers": 8,
-  "total_s": 41.91074508133333
+  "s_per_study": 0.0020690243156666764,
+  "gpus": 1,
+  "gpu": "NVIDIA H100 80GB HBM3, 81559 MiB, 620.70.06",
+  "source": "bench/results/gpu-fused-h100-20261122T141815Z.json",
+  "total_s": 2.0690243156666766
  },
- "ratio": 583.2254482239418,
+ "ratio": 11813.980580302603,
  "markers": [
   "DAPI",
   "PanCK",
