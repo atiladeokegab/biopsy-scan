@@ -107,7 +107,8 @@ def measure() -> dict:
                 pg.wait_for_timeout(1500)
                 out["stills"][f"{name}-t{t}"] = pg.screenshot()
                 if name == "1280x720" and t == 15:  # the no-WebGL fallback's still: the canvas alone, last frame
-                    out["end_jpg"] = pg.locator("#reimage").screenshot(type="jpeg", quality=82)
+                    b = pg.locator("#reimage").bounding_box()  # 2 px off the top: the card's border sits on that edge
+                    out["end_jpg"] = pg.screenshot(type="jpeg", quality=82, clip={"x": b["x"], "y": b["y"] + 2, "width": b["width"], "height": b["height"] - 2})
                 pg.close()
             ctx.close()
         browser.close()
