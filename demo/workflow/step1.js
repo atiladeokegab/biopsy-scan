@@ -45,7 +45,7 @@ export function glow(cv, ctx, w, h) {
 
 export function sizeCanvas(el, oversample = 1) {
   const cv = el.querySelector("canvas") ?? el.insertBefore(document.createElement("canvas"), el.firstChild);
-  const w = el.clientWidth, h = el.clientHeight, d = (devicePixelRatio || 1) * oversample;
+  const w = el.clientWidth, h = el.clientHeight, d = Math.min(4, (devicePixelRatio || 1) * oversample); // capped: a 4x bitmap of the grid is ~40 MB
   cv.width = Math.round(w * d); cv.height = Math.round(h * d);
   const ctx = cv.getContext("2d");
   ctx.setTransform(d, 0, 0, d, 0, 0);
