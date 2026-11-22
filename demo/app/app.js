@@ -119,7 +119,7 @@ const num = (n) => n.toLocaleString("en-US");
 function lane(id, s, total) {
   const real = t / D.race.race_s_per_real_s, done = Math.min(D.studies, Math.floor(real / s + 1e-9)), el = $(id);
   el.querySelector("[data-n]").textContent = `${num(done)} / ${num(D.studies)}`;
-  el.querySelector("[data-time]").textContent = `${fmt(Math.min(real, total))} / ${fmt(total)}`;
+  el.querySelector("[data-time]").textContent = `${fmt(Math.min(real, total))} / ${fmt(total)} projected`;
   el.querySelector("[data-bar]").style.width = (100 * done / D.studies) + "%";
   return { real, done };
 }
@@ -261,7 +261,11 @@ async function start() {
   markerRGB = D.marker_colors.map(rgb);
   const used = {}; typeRGB = C.type_groups.map((grp) => rgb(FAMILY[grp][(used[grp] = (used[grp] ?? -1) + 1) % FAMILY[grp].length]));
   $("run").textContent = `Run ${D.race.seconds}s Speed Race`;
-  for (const id of ["current", "ours"]) document.querySelector(`#${id} canvas`).title = D.cells_credit;
+  for (const id of ["current", "ours"]) {
+    document.querySelector(`#${id} canvas`).title = D.cells_credit;
+    const src = document.querySelector(`#${id} [data-src]`);
+    src.textContent = `${D[id].basis} · ${D[id].source.split("/").pop()}`; src.title = D[id].source;
+  }
   $("stack").title = D.cells_credit; $("ihc").title = D.ihc.map((p) => `${p.gene}: ${p.credit}`).join("\n");
   $("tab-1").onclick = () => show(1); $("tab-2").onclick = () => unlocked && show(2); $("to-ihc").onclick = () => show(2);
   $("run").onclick = run; $("reset").onclick = reset;

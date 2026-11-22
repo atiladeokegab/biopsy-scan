@@ -25,6 +25,8 @@
  "current": {
   "s_per_study": 22.345451116541668,
   "workers": 8,
+  "source": "bench/results/same-host-20261122T140908Z.json",
+  "basis": "Projected from 48 measured studies, 8 CPU workers, same host",
   "worker_s_per_study": 174.46732260899998,
   "total_s": 22345.451116541666
  },
@@ -33,6 +35,7 @@
   "gpus": 1,
   "gpu": "NVIDIA H100 80GB HBM3, 81559 MiB, 620.70.06",
   "source": "bench/results/gpu-fused-h100-20261122T141815Z.json",
+  "basis": "Projected from 3,000 measured evaluations, one H100",
   "total_s": 2.0690243156666766
  },
  "ratio": 10799.994445372946,

@@ -42,6 +42,8 @@
     .bar { height: 6px; background: var(--hair); border-radius: 3px; overflow: hidden; }
     .bar i { display: block; height: 100%; width: 0; background: var(--coral); }
     #ours .bar i { background: var(--emerald); }
+    .replay { padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(43,212,164,.4); font: 12px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--emerald); white-space: nowrap; }
+    .src { margin: 0; font: 11px var(--mono); color: var(--muted); }
     .stage { position: relative; flex: 1; min-height: 0; border-radius: 10px; background: var(--scope); overflow: hidden; }
     .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
     .readout { align-items: baseline; }
@@ -65,6 +67,7 @@
       <button type="button" role="tab" id="tab-1" aria-selected="true" aria-controls="step-1">1. Speed Race</button>
       <button type="button" role="tab" id="tab-2" aria-selected="false" aria-controls="step-2" disabled>2. Routine IHC</button>
     </div>
+    <span class="replay" title="Elapsed time and studies done are replayed from measured per-study rates; the totals are projections">Throughput replay</span>
     <span class="clock" id="clock" aria-live="off">0.0s / 10.0s</span>
     <button type="button" id="run" disabled>Run 10s Speed Race</button>
     <button type="button" id="reset">Reset</button>
@@ -76,11 +79,13 @@
       <article class="panel" id="current">
         <div class="head"><h2>Current</h2><div class="readout"><b data-n></b><span data-time></span></div></div>
         <div class="bar"><i data-bar></i></div>
+        <p class="src" data-src></p>
         <div class="stage"><canvas data-canvas></canvas></div>
       </article>
       <article class="panel" id="ours">
         <div class="head"><h2>Ours</h2><div class="readout"><b data-n></b><span data-time></span><button type="button" id="to-ihc" hidden>View Routine IHC</button></div></div>
         <div class="bar"><i data-bar></i></div>
+        <p class="src" data-src></p>
         <div class="stage"><canvas data-canvas></canvas></div>
       </article>
     </section>
