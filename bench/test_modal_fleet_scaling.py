@@ -8,7 +8,7 @@ def _parts(batches, n):
     return [
         {"gpu": {"model": MODEL, "count": 1, "uuid": f"GPU-{i}", "modal_task_id": f"task-{i}"},
          "batches": {mode: {"seeds": seeds, "features": np.array(seeds)[:, None, None],
-                             "compute_s": 5.0, "compute_window": [10 + i, 15 + i]}
+                             "compute_s": 5.0, "compute_window": [10 + i / 10, 15 + i / 10]}
                      for mode, seeds in shard.items()}}
         for i, shard in enumerate(split_batches(batches, n))
     ]
@@ -21,7 +21,7 @@ def test_strong_weak_shares_only_identical_work_and_checks_all_features():
     parts = _parts(full, 16)
     rows, _ = validate_point(parts, 16, full, reference)
     assert rows['weak']['shared_with_strong'] and rows['strong']['studies'] == 256
-    assert rows['strong']['compute_span_s'] == 20  # includes stagger between workers
+    assert rows['strong']['compute_span_s'] == 6.5  # includes stagger between workers
 
     small = workload(4, 0)
     shards = _parts(small, 4)
@@ -33,6 +33,11 @@ def test_strong_weak_shares_only_identical_work_and_checks_all_features():
     parts[1]['gpu']['uuid'] = parts[0]['gpu']['uuid']
     with pytest.raises(ValueError, match="distinct"):
         validate_point(parts, 16, full, reference)
+
+    shards = _parts(small, 4)
+    shards[-1]['batches']['strong']['compute_window'] = [16, 21]
+    with pytest.raises(ValueError, match="common overlap"):
+        validate_point(shards, 4, small, reference)
 
 
 def test_efficiency_uses_paired_throughput_baseline():
