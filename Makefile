@@ -11,6 +11,7 @@ smoke: install test
 	python3 -I demo/check_data.py demo/data
 	node demo/race.test.mjs
 	node demo/copy.test.mjs
+	node demo/reimage3d.test.mjs
 	python3 -I demo/collect_preflight.py --check
 	node demo/preflight.test.mjs
 

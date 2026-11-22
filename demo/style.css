@@ -8,10 +8,15 @@
   --lane-h: 132px;
   --lane-h-phone: 120px;
   --key: 12px;             /* legend and race-key swatches */
+  --reimage-h: 480px;
+  --reimage-h-phone: 290px;
+  --reimage-text-w: 384px;
 }
 
 * { box-sizing: border-box; }
-html { background: var(--bg); }
+/* Inter served with the page (OFL, fonts/OFL.txt; Latin subset), so no visitor gets the system fallback. */
+@font-face { font-family: "Inter"; src: url("fonts/InterVariable.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+html { background: var(--bg); scrollbar-color: var(--border) var(--bg); }
 body {
   margin: 0; background: var(--bg); color: var(--text-body);
   font: var(--text-base)/var(--leading-normal) var(--font-sans); -webkit-font-smoothing: antialiased;
@@ -102,6 +107,34 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
 .workflow:empty { display: none; }
 .sr-src { grid-column: 1 / -1; font-size: var(--text-xs); color: var(--text-muted); }
 .speed-note { margin-top: auto; padding-top: var(--space-3); font-size: var(--text-xs); line-height: var(--leading-caption); color: var(--text-muted); }
+
+/* RE-IMAGE 3D: one real core, then one simulated look at it; the steps beside the canvas, the canvas the hero */
+.reimage { padding-top: var(--space-5); }
+.reimage-card {
+  display: grid; padding: 0; overflow: hidden; grid-template-columns: minmax(0, 1fr) var(--reimage-text-w);
+  grid-template-areas: "canvas text" "fallback text" "credit text"; grid-template-rows: 1fr auto auto;
+}
+.reimage-text { grid-area: text; padding: var(--space-3) var(--space-5); border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: var(--space-2); }
+.reimage-label { font-size: var(--text-sm); line-height: var(--leading-meta); color: var(--text-body); }
+.reimage-label .tags { display: block; margin-top: var(--space-2); }
+.reimage-steps { margin: 0; padding-left: var(--space-5); display: grid; gap: var(--space-1); font-size: var(--text-sm); line-height: var(--leading-meta); color: var(--text-muted); }
+.reimage-steps li { transition: color 0.3s; }
+.reimage-steps li[aria-current] { color: var(--text-head); }
+.reimage-text .legend { padding: 0; }
+.legend .r { border-radius: 50%; border: 2px solid var(--text-head); }
+.reimage-text .legend .f { border: 1px solid var(--text-body); border-radius: 0; background: rgba(185, 198, 212, 0.14); } /* the field: a lit square, not a checkbox */
+.tag.measured { border-color: var(--text-muted); } /* MEASURED is no warning: the amber border is for SYNTHETIC and UNMEASURED */
+.reimage-card .num { font-variant-numeric: tabular-nums; color: inherit; }
+.reimage-card ::selection { background: rgba(185, 198, 212, 0.3); color: var(--text-head); }
+.reimage-text .hint { display: flex; flex-wrap: wrap; gap: 0 var(--space-4); }
+.reimage-text .hint .link { min-height: var(--target-min); }
+#reimage { grid-area: canvas; display: block; width: 100%; height: 100%; min-height: var(--reimage-h); background: var(--bg-canvas); }
+.reimage-still { grid-area: canvas; display: block; width: 100%; height: 100%; min-height: var(--reimage-h); object-fit: contain; background: var(--bg-canvas); }
+.reimage-fallback { grid-area: fallback; margin: 0; padding: var(--space-3) var(--space-4) 0; max-width: 75ch; font-size: var(--text-sm); line-height: var(--leading-meta); color: var(--text-body); }
+.reimage-still-pic { display: contents; }
+.reimage-still-pic:has(> img:not([hidden])) ~ .reimage-fallback { grid-area: canvas; align-self: start; position: relative; z-index: 1; max-width: none; padding: var(--space-3) var(--space-4); background: var(--bg-canvas); } /* over the still: read before it */
+#reimage[hidden] ~ .reimage-still-pic:has(> img[hidden]) ~ .reimage-fallback { grid-area: canvas; align-self: stretch; display: flex; align-items: center; max-width: none; padding: var(--space-4); background: var(--bg-canvas); } /* nothing drawn: the message fills the well */
+.reimage-credit { grid-area: credit; max-width: 62ch; /* about 75 characters at 12px */ padding: var(--space-2) var(--space-4); line-height: var(--leading-caption); }
 
 /* RESULTS: power against the formula, the honesty strip, the scaling slot */
 .results { display: grid; gap: var(--space-5); grid-template-columns: 1.2fr 1fr 1fr; padding-top: var(--space-5); }
@@ -205,7 +238,7 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
 #tissue:active { cursor: grabbing; }
 #tissue:focus-visible { outline-offset: calc(-2 * var(--focus-offset)); } /* inside: the card clips overflow */
 .hint { font-size: var(--text-xs); }
-.link { background: none; border: 0; padding: 0; color: var(--text-body); font: inherit; text-decoration: underline; cursor: pointer; }
+.link { background: none; border: 0; padding: 0; color: var(--text-body); font: inherit; text-decoration: underline; text-underline-offset: 0.2em; text-decoration-thickness: 1px; cursor: pointer; }
 .legend {
   display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-4);
   padding: var(--space-2) var(--space-4); font-size: var(--text-xs); color: var(--text-body);
@@ -214,6 +247,7 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
 .legend i { display: inline-block; width: var(--key); height: var(--key); border-radius: var(--radius-control); }
 .legend .t { background: var(--tumour); } .legend .s { background: var(--stroma); } .legend .m { background: var(--immune); }
 .legend .f { border-radius: 2px; border: 1.5px dashed var(--text-head); }
+.legend .br { flex-basis: 100%; height: 0; } /* colour keys on one line, marks on the next */
 #miscall-key { color: var(--text-muted); white-space: normal; }
 
 /* The one chart */
@@ -237,6 +271,22 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
   .speed-head { flex-direction: column; align-items: stretch; }
   .speed-head .go { width: 100%; }
   .results { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
+  .reimage { padding-top: var(--space-3); }
+  /* Phone: the title and label, then the canvas, then the steps, so the 3D view sits in the first screen of the section. */
+  .reimage-card { display: flex; flex-direction: column; gap: var(--space-3); padding-top: var(--space-4); }
+  .reimage-text { display: contents; }
+  .reimage-text > * { padding: 0 var(--space-4); order: 2; }
+  .reimage-text > h2, .reimage-label { order: 0; }
+  .reimage-text > .reimage-steps { padding-left: calc(var(--space-4) + var(--space-5)); }
+  .reimage-text > .legend { padding: 0 var(--space-4); }
+  #reimage, .reimage-still { order: 1; }
+  .reimage-fallback { order: 0; } /* after the label, above the still */
+  .reimage-still-pic:has(> img:not([hidden])) ~ .reimage-fallback { margin-bottom: calc(-1 * var(--space-3)); } /* one band with the still */
+  #reimage, .reimage-still { height: var(--reimage-h-phone); min-height: 0; }
+  /* While it plays, only the current step sits under the canvas; the rest stay in the accessibility tree. */
+  .reimage-steps li[aria-current] { order: -1; } /* at rest the current step stays first under the canvas; the others follow */
+  .reimage-steps.playing li:not([aria-current]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .reimage-credit { order: 3; }
   .big { font-size: var(--text-xl); }
   .foot { padding: var(--space-6) var(--space-4) var(--space-8); }
   .error { margin: var(--space-3) var(--space-4) 0; }

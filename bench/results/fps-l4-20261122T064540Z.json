@@ -1,0 +1,56 @@
+{
+ "status": "FAILED",
+ "reason": "page or console error: ['console: Failed to load resource: the server responded with a status of 404 (File not found)']",
+ "utc": "20261122T064540Z",
+ "modal_wall_s": 64.2,
+ "declared_ms": 15500,
+ "min_frames": 300,
+ "gpu": "NVIDIA L4, 610.57.04",
+ "nvidia_lib_dir": "/usr/lib/x86_64-linux-gnu",
+ "icd_present": {
+  "egl": [
+   "/usr/share/glvnd/egl_vendor.d/50_mesa.json",
+   "/usr/share/glvnd/egl_vendor.d/10_nvidia.json"
+  ],
+  "vk": [
+   "/etc/vulkan/icd.d/nvidia_icd.json"
+  ],
+  "vk_usr": [
+   "/usr/share/vulkan/icd.d/lvp_icd.x86_64.json",
+   "/usr/share/vulkan/icd.d/virtio_icd.x86_64.json",
+   "/usr/share/vulkan/icd.d/intel_hasvk_icd.x86_64.json",
+   "/usr/share/vulkan/icd.d/intel_icd.x86_64.json",
+   "/usr/share/vulkan/icd.d/radeon_icd.x86_64.json"
+  ]
+ },
+ "tried": [
+  [
+   [
+    "--use-angle=vulkan",
+    "--enable-features=Vulkan,VulkanFromANGLE,DefaultANGLEVulkan",
+    "--disable-vulkan-surface"
+   ],
+   "ANGLE (NVIDIA, Vulkan 1.4.341 (NVIDIA NVIDIA L4 (0x000027B8)), NVIDIA)"
+  ]
+ ],
+ "renderer": "ANGLE (NVIDIA, Vulkan 1.4.341 (NVIDIA NVIDIA L4 (0x000027B8)), NVIDIA)",
+ "flags": [
+  "--headless=new",
+  "--ignore-gpu-blocklist",
+  "--enable-gpu",
+  "--no-sandbox",
+  "--disable-dev-shm-usage",
+  "--disable-background-timer-throttling",
+  "--disable-renderer-backgrounding",
+  "--use-angle=vulkan",
+  "--enable-features=Vulkan,VulkanFromANGLE,DefaultANGLEVulkan",
+  "--disable-vulkan-surface"
+ ],
+ "last_step": 3,
+ "end_controls": [
+  "reimage-replay"
+ ],
+ "errors": [
+  "console: Failed to load resource: the server responded with a status of 404 (File not found)"
+ ]
+}

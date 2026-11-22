@@ -1,0 +1,267 @@
+{
+ "workspace_profile": "fhl-08",
+ "cap_usd": 1.5,
+ "note": "build-demo's L4 frame-rate run for the 3D re-imaging view (PR #131), in modal-spend.json's format; kept apart so branches do not collide. USD figures are ESTIMATES from wall x list rate, not billing.",
+ "rates_usd_per_hour": {
+  "L4": 0.7992,
+  "cpu_core": 0.04716,
+  "memory_gib": 0.007992,
+  "source": "bench/results/modal-spend.json (modal.com/pricing read 2026-11-21T17:36Z)"
+ },
+ "entries": [
+  {
+   "utc": "2026-11-22T04:59Z",
+   "run": "gpu/fps_l4.py: headless Chrome on 1 x L4, fps over the 3D script at 1280x720 plus GPU stills",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": 120,
+    "est_usd": 0.037,
+    "basis": "upper bound: launch to local exit, about 120 s, includes the CPU image build, x $1.116/h",
+    "result": "failed before Chrome: OSError, /usr/share/glvnd is read-only on Modal"
+   }
+  },
+  {
+   "utc": "2026-11-22T05:10Z",
+   "run": "gpu/fps_l4.py rerun with ICDs in /tmp: headless Chrome on 1 x L4, fps at 1280x720 plus GPU stills",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": 69.8,
+    "est_usd": 0.022,
+    "basis": "69.8 s local wall x $1.116/h",
+    "result": "bench/results/fps-l4-20261122T051007Z.json"
+   }
+  },
+  {
+   "utc": "2026-11-22T05:15Z",
+   "run": "gpu/fps_l4.py on head 6925889 (review fixes): fps at 1280x720, end-of-take and control checks, GPU stills",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": 59.0,
+    "est_usd": 0.018,
+    "basis": "59.0 s local wall x $1.116/h",
+    "result": "bench/results/fps-l4-20261122T051548Z.json"
+   }
+  },
+  {
+   "utc": "2026-11-22T05:21Z",
+   "run": "gpu/fps_l4.py on head 4ddb1ad (layout fix): fps at 1280x720, end-of-take and control checks, GPU stills",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": 58.8,
+    "est_usd": 0.018,
+    "basis": "58.8 s local wall x $1.116/h",
+    "result": "bench/results/fps-l4-20261122T052132Z.json"
+   }
+  },
+  {
+   "utc": "2026-11-22T05:42Z",
+   "run": "gpu/fps_l4.py on head a92b445 (finish-check round): fps at 1280x720, end-of-take and control checks, GPU stills incl. t12.6, no-WebGL end-frame still",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": 67.1,
+    "est_usd": 0.021,
+    "basis": "67.1 s local wall x $1.116/h",
+    "result": "bench/results/fps-l4-20261122T054212Z.json"
+   }
+  },
+  {
+   "utc": "2026-11-22T05:58Z",
+   "run": "gpu/fps_l4.py on head 9cfc774 (judge round 2); outputs discarded: the 390 stills had desktop scrollbars, rerun with a mobile context",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": 65.3,
+    "est_usd": 0.02,
+    "basis": "65.3 s local wall x $1.116/h",
+    "result": "not kept (median 59.9, p5 59.9 fps)"
+   }
+  },
+  {
+   "utc": "2026-11-22T06:00Z",
+   "run": "gpu/fps_l4.py on head 9cfc774 + mobile context for the 390 stills: fps at 1280x720, end-of-take and control checks, GPU stills, no-WebGL end-frame still",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": 73.2,
+    "est_usd": 0.023,
+    "basis": "73.2 s local wall x $1.116/h",
+    "result": "bench/results/fps-l4-20261122T060038Z.json"
+   }
+  },
+  {
+   "utc": "2026-11-22T06:14Z",
+   "run": "gpu/fps_l4.py on head 570562d (round 3): fps at 1280x720, end-of-take controls (Replay only), GPU stills, end-frame stills for desktop and phone",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": 66.7,
+    "est_usd": 0.021,
+    "basis": "66.7 s local wall x $1.116/h",
+    "result": "bench/results/fps-l4-20261122T061416Z.json"
+   }
+  },
+  {
+   "utc": "2026-11-22T06:31Z",
+   "run": "gpu/fps_l4.py on head 84107ae (judge round 4): GPU stills for the new captures, end-of-take checks; its cadence is not cited (run 8 stands)",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": 67.4,
+    "est_usd": 0.021,
+    "basis": "67.4 s local wall x $1.116/h",
+    "result": "bench/results/fps-l4-20261122T063114Z.json"
+   }
+  },
+  {
+   "utc": "2026-11-22T06:45Z",
+   "run": "gpu/fps_l4.py on head 9ace5a4 (judge round 5 fixes): written FAILED by the writer, a favicon.ico 404 in full Chrome; no stills, no cadence",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": 68.0,
+    "est_usd": 0.021,
+    "basis": "68 s local wall x $1.116/h",
+    "result": "bench/results/fps-l4-20261122T064540Z.json"
+   }
+  },
+  {
+   "utc": "2026-11-22T06:48Z",
+   "run": "gpu/fps_l4.py on head 4a55c1e (judge round 5 fixes): GPU stills for the round-6 captures; the image rebuilt, so the wall is long; its cadence is not cited (run 8 stands)",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": 466.7,
+    "est_usd": 0.145,
+    "basis": "466.7 s local wall x $1.116/h",
+    "result": "bench/results/fps-l4-20261122T064801Z.json"
+   }
+  },
+  {
+   "utc": "2026-11-22T07:06Z",
+   "run": "gpu/fps_l4.py on head 1bec602 (judge round 6 fixes): GPU stills and end stills; its cadence is not cited (run 8 stands)",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": 305.0,
+    "est_usd": 0.095,
+    "basis": "305 s local wall x $1.116/h",
+    "result": "bench/results/fps-l4-20261122T070557Z.json"
+   }
+  },
+  {
+   "utc": "2026-11-22T07:32Z",
+   "run": "gpu/fps_l4.py on head 7b3e308 (judge round 8 fixes): GPU stills and end stills; its cadence is not cited (run 8 stands)",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": 69.2,
+    "est_usd": 0.021,
+    "basis": "69.2 s local wall x $1.116/h",
+    "result": "bench/results/fps-l4-20261122T073155Z.json"
+   }
+  },
+  {
+   "utc": "2026-11-22T07:44Z",
+   "run": "gpu/fps_l4.py on head ab39c8b (judge round 9 fix): GPU stills and end stills; its cadence is not cited (run 8 stands)",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": 64.6,
+    "est_usd": 0.02,
+    "basis": "64.6 s local wall x $1.116/h",
+    "result": "bench/results/fps-l4-20261122T074434Z.json"
+   }
+  }
+ ],
+ "running_total_usd": 0.503,
+ "running_total_basis": "sum of the two actuals; ESTIMATE, not billing"
+}

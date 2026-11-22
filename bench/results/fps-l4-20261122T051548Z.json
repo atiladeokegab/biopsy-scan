@@ -1,0 +1,58 @@
+{
+ "status": "MEASURED",
+ "label": "MEASURED (L4, headless Chrome); a data-centre L4, not a laptop GPU",
+ "what": "rAF frame intervals over the 3D re-imaging script (fly-in, windows, flicker), 1280x720, whole page live",
+ "utc": "20261122T051548Z",
+ "modal_wall_s": 59.0,
+ "gpu": "NVIDIA L4, 610.57.04",
+ "nvidia_lib_dir": "/usr/lib/x86_64-linux-gnu",
+ "icd_present": {
+  "egl": [
+   "/usr/share/glvnd/egl_vendor.d/50_mesa.json",
+   "/usr/share/glvnd/egl_vendor.d/10_nvidia.json"
+  ],
+  "vk": [
+   "/etc/vulkan/icd.d/nvidia_icd.json"
+  ],
+  "vk_usr": [
+   "/usr/share/vulkan/icd.d/intel_icd.x86_64.json",
+   "/usr/share/vulkan/icd.d/lvp_icd.x86_64.json",
+   "/usr/share/vulkan/icd.d/intel_hasvk_icd.x86_64.json",
+   "/usr/share/vulkan/icd.d/radeon_icd.x86_64.json",
+   "/usr/share/vulkan/icd.d/virtio_icd.x86_64.json"
+  ]
+ },
+ "tried": [
+  [
+   [
+    "--use-angle=vulkan",
+    "--enable-features=Vulkan,VulkanFromANGLE,DefaultANGLEVulkan",
+    "--disable-vulkan-surface"
+   ],
+   "ANGLE (NVIDIA, Vulkan 1.4.341 (NVIDIA NVIDIA L4 (0x000027B8)), NVIDIA)"
+  ]
+ ],
+ "renderer": "ANGLE (NVIDIA, Vulkan 1.4.341 (NVIDIA NVIDIA L4 (0x000027B8)), NVIDIA)",
+ "flags": [
+  "--headless=new",
+  "--ignore-gpu-blocklist",
+  "--enable-gpu",
+  "--no-sandbox",
+  "--disable-dev-shm-usage",
+  "--disable-background-timer-throttling",
+  "--disable-renderer-backgrounding",
+  "--use-angle=vulkan",
+  "--enable-features=Vulkan,VulkanFromANGLE,DefaultANGLEVulkan",
+  "--disable-vulkan-surface"
+ ],
+ "last_step": 3,
+ "controls_shown": true,
+ "errors": [],
+ "frames": 926,
+ "span_s": 15.5,
+ "median_fps": 59.9,
+ "p5_fps": 59.5,
+ "median_frame_ms": 16.7,
+ "p95_frame_ms": 16.8,
+ "max_frame_ms": 50.0
+}
