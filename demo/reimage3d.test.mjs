@@ -60,6 +60,7 @@ assert.ok(flips / 2 / (t1 - t0) <= 3, `flash rate ${flips / 2 / (t1 - t0)} per s
 
 // The page: the section and its labels exist, and the proof take's anchors are untouched.
 const html = readFileSync(new URL("./index.html", import.meta.url), "utf8");
+const css = readFileSync(new URL("./style.css", import.meta.url), "utf8");
 const app = readFileSync(new URL("./app.js", import.meta.url), "utf8"), src = readFileSync(new URL("./reimage3d.js", import.meta.url), "utf8");
 assert.match(html, /<link rel="icon" href="data:,">/, "declares an icon, so Chrome asks for no /favicon.ico and logs no 404 (L4 run 10 FAILED on it)");
 const title = html.match(/<h2 id="reimage-title">([^<]+)<\/h2>/)[1];
@@ -142,6 +143,9 @@ assert.ok(study.seen > 0 && study.crossed > 0 && study.crossed < study.seen, "th
 assert.equal($("reimage-seen").textContent, `${study.perField.map((v) => v.toLocaleString("en-GB")).join(" and ")} of its ${study.n.toLocaleString("en-GB")} cells`, "each field's count, shown without WebGL");
 assert.equal($("reimage-size").textContent, `${Math.round(study.hi[0] - study.lo[0])} × ${Math.round(study.hi[1] - study.lo[1])} µm`, "the region's measured size gives the reason they overlap");
 assert.equal($("reimage-crossed").textContent, `${study.crossed.toLocaleString("en-GB")} cells`);
+for (const id of ["reimage-n", "reimage-seen", "reimage-size", "reimage-crossed"]) // loading and data-fail show the page's static text beside a still of this draw
+  assert.equal(html.match(new RegExp(`id="${id}">([^<]*)<`))[1], $(id).textContent, `${id}: the static text is this draw's count, not a vague stand-in (round-7 T7)`);
+assert.match(css, /\.link\s*\{[^}]*text-underline-offset/, "the text buttons' underline clears the descenders (round-7 B12)");
 let got; $ = page();
 mountReimage($, tissueJSON, { reducedMotion: false, search: "?t3d=nope", create: (cv, t, o) => { got = o; return { replay() {}, toggle: () => false }; } });
 assert.equal(got.freezeAt, null, "malformed t3d plays normally");
