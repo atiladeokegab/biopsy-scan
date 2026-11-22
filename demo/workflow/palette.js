@@ -1,9 +1,28 @@
-// Preflight workflow palette, by tma.json type_names index and type_groups: tumour in coral tints (#FF7A59), immune in
-// amber/gold (#F5C451), stroma and other in slate (#56687A); emerald (--accent) is kept for highlights. Lightness varies
-// within each family so neighbouring types stay apart. Marker channels keep the pseudo-fluorescence colours.
+// Preflight workflow palette, in the design system's families (tokens.css): tumour types are coral tints of --tumour
+// #FF7A59, immune types amber/gold tints of --immune #F5C451, stroma/vessel/other slate tints of --stroma #56687A,
+// told apart within a family by lightness and saturation. Emerald --accent #2BD4A4 is for highlights only: never a
+// cell type. Index = tma.json type_names index.
 export const TYPE_COLORS = [
-  "#F5C451", "#9AAFC2", "#FFE08A", "#D99A1E", "#FFB347", "#A87A1F", "#56687A", "#6F8599", // B, vessel, CD4, CD8, gran, mac, other, stroma
-  "#FF7A59", "#FFB39E", "#D94B33", "#FF5E6C", "#F28C7E", "#B83A2A", "#FFD0C2"];          // tumour 1-7
-export const MARKER_COLORS = ["#3d7bff", "#2bff88", "#ff3df0", "#ffd23d", "#ff5a3d", "#3dfff2"];
+  "#FFE3A1", // B cell            immune: pale gold
+  "#8FA3B8", // Blood vessel      stroma: light slate
+  "#F5C451", // CD4 T cell        immune: --immune
+  "#E39B1F", // CD8 T cell        immune: deep amber
+  "#FFD27A", // Granulocyte       immune: soft gold
+  "#C98A2E", // Macrophage        immune: dark ochre
+  "#56687A", // Other             stroma: --stroma
+  "#71859A", // Stroma            stroma: mid slate
+  "#FF7A59", // Tumor 1           tumour: --tumour
+  "#FF4F2B", // Tumor 2 (Ki67)    tumour: saturated coral (proliferating)
+  "#FFA58E", // Tumor 3           tumour: light coral
+  "#E2603F", // Tumor 4           tumour: deep coral
+  "#FFC6B6", // Tumor 5           tumour: pale coral
+  "#FF8F6B", // Tumor 6 / DC      tumour: warm coral
+  "#C9553A", // Tumor 7           tumour: brick coral
+];
+// Channels, tma.json markers order: DAPI, PanCK, CD8, CD68, aSMA, CD20. DAPI is pale ink #F3EFE6 at ~35% alpha,
+// pre-multiplied on the black ground (the views add channels with "lighter", so this equals the alpha) and kept as
+// 6-digit hex because the views parse and suffix these strings.
+export const DAPI_INK = "#F3EFE6", DAPI_ALPHA = 0.35;
+export const MARKER_COLORS = ["#555450", "#FF7A59", "#F5C451", "#E39B1F", "#8FA3B8", "#FFE3A1"];
 export const DAB = "#8b5a2b";          // simulated brown DAB
 export const HAEMATOXYLIN = "#5a6fb0"; // simulated blue counterstain

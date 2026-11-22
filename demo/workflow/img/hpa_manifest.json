@@ -1,28 +1,30 @@
 [
  {
-  "file": "hpa_CD8A_01.webp",
-  "gene": "CD8A",
-  "antibody": "CAB075722",
-  "tissue": "head and neck cancer",
-  "staining_level": "not detected",
-  "page_url": "https://www.proteinatlas.org/ENSG00000153563-CD8A/cancer/head+and+neck+cancer",
-  "image_url": "https://images.proteinatlas.org/75722/159177_A_2_7.jpg",
+  "file": "hpa_best_01_KRT5.webp",
+  "gene": "KRT5",
+  "kind": "real brightfield IHC (DAB) TMA core image, cropped to the core and resized to 1600 px",
+  "tissue": "head and neck cancer (HPA cancer tissue section)",
+  "page_url": "https://www.proteinatlas.org/ENSG00000186081-KRT5/cancer/head+and+neck+cancer",
+  "image_url": "https://images.proteinatlas.org/27/155110_A_2_3.jpg",
   "licence": "CC BY-SA 3.0",
   "attribution": "Human Protein Atlas, proteinatlas.org (Uhlen et al.)",
-  "sha256": "39c8681bbc23b0979789d6c6e3581afff4f6842278d88e0b9469c1526bc35723",
-  "note": "resized to 560 px wide for the demo; sha256 is of the fetched original"
+  "sha256": "116d19d2f4360703cfbc60f791951c2cd16211e616829978fe5fff9ad3ed5895",
+  "antibody": "CAB000027",
+  "antibody_source": "real-biopsy MANIFEST.json (image_url id)",
+  "note": "resized to 800 px for the demo; sha256 is of the 1600 px source"
  },
  {
-  "file": "hpa_KRT5_02.webp",
-  "gene": "KRT5",
-  "antibody": "CAB000027",
-  "tissue": "head and neck cancer",
-  "staining_level": "high",
-  "page_url": "https://www.proteinatlas.org/ENSG00000186081-KRT5/cancer/head+and+neck+cancer",
-  "image_url": "https://images.proteinatlas.org/27/155110_A_2_1.jpg",
+  "file": "hpa_best_12_CD8A.webp",
+  "gene": "CD8A",
+  "kind": "real brightfield IHC (DAB) TMA core image, cropped to the core and resized to 1600 px",
+  "tissue": "head and neck cancer (HPA cancer tissue section)",
+  "page_url": "https://www.proteinatlas.org/ENSG00000153563-CD8A/cancer/head+and+neck+cancer",
+  "image_url": "https://images.proteinatlas.org/12/1334_A_2_3.jpg",
   "licence": "CC BY-SA 3.0",
   "attribution": "Human Protein Atlas, proteinatlas.org (Uhlen et al.)",
-  "sha256": "304a20571df7967009186f7615dbf22127def8d1717dd8dfbafd74a9390a4168",
-  "note": "resized to 560 px wide for the demo; sha256 is of the fetched original"
+  "sha256": "82172a5a581ba7d1e95bec8101ae63729b8d3c6255fa8838a88294215d3eb847",
+  "antibody": "CAB000012",
+  "antibody_source": "real-biopsy MANIFEST.json (image_url id)",
+  "note": "resized to 800 px for the demo; sha256 is of the 1600 px source"
  }
 ]
