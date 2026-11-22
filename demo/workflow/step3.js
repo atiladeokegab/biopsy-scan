@@ -1,92 +1,104 @@
-// Workflow step 3, "Stress-test before the trial": the hero core (real Charville cells) with the 3D view's one
-// simulated look drawn over it (two 400 µm fields, 10% of the cells in view mis-called: they flicker, then keep the
-// wrong colour, ringed), then textbook power vs simulated power at 200 patients, both read from preflight.json.
-import { drawStudy, TYPES, FOV_UM, EPS, WINDOWS } from "../reimage3d.js";
-import { loadData, makeCanvas, color, glow, background, chip, credit, font, span, player, clamp01 } from "./common.js";
+// Workflow step 3, "Stress-test before the trial": the pick core (real Charville cells, coloured by type), two
+// 400 µm fields of view land on it, 10% of the cells they see flicker to another type's colour (Preflight's mis-call:
+// keep the type with prob 1 - eps, else a uniform other type), then the formula's power against the simulated power
+// at 200 patients, both read from preflight.json. The shell draws the labels and the credit.
+import { TYPE_COLORS } from "./palette.js";
 
-export const END = 10; // seconds
-export const AT = 200; // patients: the comparison the brief and the results section quote
+export const FOV_UM = 400, EPS = 0.1, WINDOWS = 2, AT = 200, SEED = 16;
+const SETTLE = 5; // seconds
 
-// The two numbers, straight from the merged file.
-export function powerAt(preflight, n = AT) {
-  const sim = preflight.designs.find((d) => d.id === "cropped");
-  const pt = sim.points.find((p) => p.patients === n);
-  return { analytic: preflight.formula.power[String(n)], analyticLabel: preflight.formula.label,
-    sim: pt.power, lo: pt.lo, hi: pt.hi, simLabel: sim.label, window: sim.window, miscall: sim.miscall };
+export function rng(seed) { // same generator as demo/tissue.js
+  let s = seed >>> 0;
+  return () => ((s = (s + 0x6d2b79f5) >>> 0), (((s ^ (s >>> 15)) * (s | 1)) >>> 0) / 4294967296);
 }
 
-export function mount(el, data, { onDone } = {}) {
-  const { g, size } = makeCanvas(el);
-  let ready = loadData(data).then((d) => setup(d)), render = () => {};
-  const hue = () => TYPES.map((t) => color(`--${t}`));
+// The two numbers, from the file: the textbook formula's and the simulated 2 x 400 µm, 10% mis-called design's.
+export function powerAt(preflight, n = AT) {
+  const sim = preflight.designs.find((d) => d.id === "cropped"), pt = sim.points.find((p) => p.patients === n);
+  return { analytic: preflight.formula.power[String(n)], analyticLabel: preflight.formula.label, sim: pt.power, simLabel: sim.label };
+}
 
-  function setup(d) {
-    const s = drawStudy(d.tissue), P = powerAt(d.preflight);
-    const cx = (s.lo[0] + s.hi[0]) / 2, cy = (s.lo[1] + s.hi[1]) / 2, half = Math.max(s.hi[0] - s.lo[0], s.hi[1] - s.lo[1]) / 2;
-    const keep = s.cells.map((c) => Math.hypot(c.x - cx, c.y - cy) <= half); // a round core, as cut for a TMA
-    const phase = s.cells.map((_, j) => (j * 0.618) % 1);
-    render = (t) => {
-      const { W, H, narrow } = size(), cols = hue();
-      background(g, W, H);
-      const R = narrow ? W * 0.4 : Math.min(H * 0.4, W * 0.3), ox = narrow ? W / 2 : W * 0.34, oy = narrow ? 40 + R : H * 0.5;
-      const k = R / half, X = (x) => ox + (x - cx) * k, Y = (y) => oy + (y - cy) * k;
-      const appear = span(t, 0, 1.2), fov = span(t, 1.3, 2.4), flick = t > 2.6 && t < 4.8, settled = t >= 4.8;
-      const dot = Math.max(2.2, R / 75);
-      g.save(); g.globalCompositeOperation = "lighter";
-      s.cells.forEach((c, j) => {
-        if (!keep[j]) return;
-        const wrong = s.inside[j] && s.obs[j] !== s.type[j];
-        let ty = s.type[j];
-        if (wrong && (settled || (flick && Math.sin((t * 9 + phase[j] * 6.28) * 2) > 0))) ty = s.obs[j];
-        g.globalAlpha = appear * (s.inside[j] ? 1 : 1 - fov * 0.82);
-        g.drawImage(glow(cols[ty], 6), X(c.x) - dot * 1.6, Y(c.y) - dot * 1.6, dot * 3.2, dot * 3.2);
-      });
-      g.restore();
-      // Rings round the cells whose call crossed colour groups, as in the 3D view.
-      if (t > 2.6) {
-        g.save(); g.strokeStyle = color("--text-head"); g.lineWidth = 1; g.globalAlpha = span(t, 2.6, 3.4) * 0.9;
-        s.cells.forEach((c, j) => { if (keep[j] && s.inside[j] && s.obs[j] !== s.type[j]) { g.beginPath(); g.arc(X(c.x), Y(c.y), dot * 1.5, 0, 6.29); g.stroke(); } });
-        g.restore();
-      }
-      // The two fields of view: they drop in from slightly larger and settle.
-      s.crops.forEach((cr, i) => {
-        if (!cr) return;
-        const f = clamp01(span(t, 1.3 + i * 0.3, 2.2 + i * 0.3)), grow = 1 + (1 - f) * 0.25;
-        const w = cr[2] * k * grow, x = X(cr[0] + cr[2] / 2) - w / 2, y = Y(cr[1] + cr[2] / 2) - w / 2;
-        g.save(); g.globalAlpha = f; g.strokeStyle = color("--accent"); g.lineWidth = 1.5;
-        g.shadowColor = color("--accent"); g.shadowBlur = 10; g.strokeRect(x, y, w, w);
-        g.shadowBlur = 0; font(g, 12, 600); g.fillStyle = color("--accent"); g.fillText(`${FOV_UM} µm`, x + 6, y + 16);
-        g.restore();
-      });
-      chip(g, 12, 12, "MEASURED cells", color("--text-body"), appear);
-      chip(g, 12, 40, `SIMULATED: ${WINDOWS} × ${FOV_UM} µm fields, ${Math.round(EPS * 100)}% mis-called`, color("--accent"), fov);
-      // The result: two bars, the formula's answer and the simulation's.
-      const r = span(t, 5.2, 6.4);
-      if (r > 0) {
-        const px = narrow ? 16 : W * 0.66, py = narrow ? oy + R + 28 : H * 0.3, pw = narrow ? W - 32 : W * 0.3;
-        g.save(); g.globalAlpha = r; g.translate(0, (1 - r) * 12);
-        font(g, 14, 600); g.fillStyle = color("--text-head"); g.fillText(`Power at ${AT} patients`, px, py);
-        const rows = [[P.analyticLabel, P.analytic, color("--text-body"), "assumes the whole core, measured exactly"],
-          [P.simLabel, P.sim, color("--tumour"), `${P.window.replace("um", " µm")} fields, ${Math.round(P.miscall * 100)}% mis-called`]];
-        rows.forEach(([label, v, c, note], i) => {
-          const y = py + 22 + i * (narrow ? 70 : 116), grow = span(t, 6.0 + i * 0.9, 7.2 + i * 0.9);
-          chip(g, px, y, label, c);
-          font(g, narrow ? 28 : 34, 700); g.fillStyle = c; g.fillText(`${Math.round(v * 100 * grow)}%`, px, y + (narrow ? 56 : 64));
-          const bx = px + (narrow ? 90 : 0), by = y + (narrow ? 40 : 76), bw = pw - (narrow ? 90 : 0);
-          g.fillStyle = "#22303F"; g.fillRect(bx, by, bw, 6);
-          g.fillStyle = c; g.fillRect(bx, by, bw * v * grow, 6);
-          font(g, 12, 400); g.fillStyle = color("--text-muted"); g.fillText(note, bx, by + 20, bw);
-        });
-        g.restore();
-      }
-      credit(g, W, H);
-    };
+// One simulated look: WINDOWS square fields placed uniformly in the core's box, then a mis-call draw per cell.
+export function look(core, K = TYPE_COLORS.length) {
+  const r = rng(SEED), [w, h] = core.size_um;
+  const crops = Array.from({ length: WINDOWS }, () => [r() * Math.max(w - FOV_UM, 0), r() * Math.max(h - FOV_UM, 0)]);
+  const inside = core.cells.map(([x, y]) => crops.some(([cx, cy]) => x >= cx && x < cx + FOV_UM && y >= cy && y < cy + FOV_UM));
+  const called = core.cells.map(([, , t], j) => {
+    const u = r();
+    if (!inside[j] || u >= EPS) return t;
+    return (t + 1 + Math.floor((u / EPS) * (K - 1))) % K; // uniform over the K - 1 other types
+  });
+  return { crops, inside, called };
+}
+
+const sprites = new Map();
+function glow(hex) {
+  if (!sprites.has(hex)) {
+    const c = document.createElement("canvas"); c.width = c.height = 32;
+    const x = c.getContext("2d"), g = x.createRadialGradient(16, 16, 0, 16, 16, 16);
+    g.addColorStop(0, "#ffffff"); g.addColorStop(0.2, hex); g.addColorStop(0.55, hex + "55"); g.addColorStop(1, hex + "00");
+    x.fillStyle = g; x.fillRect(0, 0, 32, 32); sprites.set(hex, c);
   }
+  return sprites.get(hex);
+}
+const ease = (t, a, b) => { const x = Math.max(0, Math.min(1, (t - a) / (b - a))); return x < 0.5 ? 4 * x ** 3 : 1 - (-2 * x + 2) ** 3 / 2; };
 
-  const p = player((t) => render(t), END, onDone);
+export function mount(el, data) {
+  const cv = document.createElement("canvas"), g = cv.getContext("2d");
+  cv.style.cssText = "display:block;width:100%;height:100%";
+  el.appendChild(cv);
+  const core = data.tma.cores[data.tma.pick], P = powerAt(data.preflight), L = look(core);
+  const [w, h] = core.size_um, half = Math.max(w, h) / 2;
+  const round = core.cells.map(([x, y]) => Math.hypot(x - w / 2, y - h / 2) <= half); // a round core, as cut for a TMA
+  const head = getComputedStyle(document.documentElement).getPropertyValue("--text-head").trim() || "#F4F7FA";
+  const muted = getComputedStyle(document.documentElement).getPropertyValue("--text-muted").trim() || "#8898AA";
+  const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#2BD4A4";
+  const warn = getComputedStyle(document.documentElement).getPropertyValue("--tumour").trim() || "#FF7A59";
+  let raf = 0, t0 = 0, last = SETTLE;
+
+  function draw(t) {
+    const W = el.clientWidth || 720, H = el.clientHeight || 450, d = window.devicePixelRatio || 1;
+    if (cv.width !== Math.round(W * d) || cv.height !== Math.round(H * d)) { cv.width = Math.round(W * d); cv.height = Math.round(H * d); }
+    g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, W, H);
+    const R = Math.min(H * 0.44, W * 0.3), ox = W * 0.32, oy = H / 2, k = R / half;
+    const X = (x) => ox + (x - w / 2) * k, Y = (y) => oy + (y - h / 2) * k, dot = Math.max(1.2, R / 75);
+    const appear = ease(t, 0, 0.8), fov = ease(t, 0.8, 1.6), settled = t >= 3.4;
+    g.save(); g.globalCompositeOperation = "lighter";
+    core.cells.forEach(([x, y, ty], j) => {
+      if (!round[j]) return;
+      const wrong = L.called[j] !== ty;
+      const flick = t > 1.8 && !settled && Math.sin(t * 18 + j) > 0;
+      g.globalAlpha = appear * (L.inside[j] ? 1 : 1 - fov * 0.8);
+      g.drawImage(glow(TYPE_COLORS[wrong && (settled || flick) ? L.called[j] : ty]), X(x) - dot * 1.6, Y(y) - dot * 1.6, dot * 3.2, dot * 3.2);
+    });
+    g.restore();
+    g.save(); g.strokeStyle = head; g.lineWidth = dot < 2 ? 0.6 : 1; g.globalAlpha = ease(t, 1.8, 2.4) * (dot < 2 ? 0.6 : 0.85); // ring the mis-called cells
+    core.cells.forEach(([x, y, ty], j) => { if (round[j] && L.called[j] !== ty) { g.beginPath(); g.arc(X(x), Y(y), dot * 1.5, 0, 6.29); g.stroke(); } });
+    g.restore();
+    L.crops.forEach(([cx, cy], i) => { // the fields drop in from slightly larger and settle
+      const f = ease(t, 0.8 + i * 0.25, 1.6 + i * 0.25), s = FOV_UM * k * (1 + (1 - f) * 0.25);
+      g.save(); g.globalAlpha = f; g.strokeStyle = accent; g.lineWidth = 1.5; g.shadowColor = accent; g.shadowBlur = 10;
+      g.strokeRect(X(cx + FOV_UM / 2) - s / 2, Y(cy + FOV_UM / 2) - s / 2, s, s); g.restore();
+    });
+    // Formula vs simulation at 200 patients: two bars that grow to the file's values.
+    const px = W * 0.65, pw = W * 0.32, big = Math.max(22, Math.min(40, W * 0.05)), font = getComputedStyle(document.body).fontFamily || "sans-serif";
+    [[P.analytic, P.analyticLabel, head], [P.sim, P.simLabel, warn]].forEach(([v, label, c], i) => {
+      const a = ease(t, 2.4 + i * 0.6, 3.6 + i * 0.6); if (a <= 0) return;
+      const y = H * 0.3 + i * H * 0.32;
+      g.save(); g.globalAlpha = Math.min(1, a * 2);
+      g.font = `600 12px ${font}`; g.fillStyle = muted; g.fillText(W < 560 ? label : `${label}, ${AT} patients`, px, y, pw);
+      g.font = `700 ${big}px ${font}`; g.fillStyle = c; g.fillText(`${Math.round(v * 100 * a)}%`, px, y + big + 4);
+      g.fillStyle = "#22303F"; g.fillRect(px, y + big + 14, pw, 5); g.fillStyle = c; g.fillRect(px, y + big + 14, pw * v * a, 5);
+      g.restore();
+    });
+  }
+  const frame = (now) => { last = Math.min((now - t0) / 1000, SETTLE); draw(last); if (last < SETTLE) raf = requestAnimationFrame(frame); };
+  const ro = new ResizeObserver(() => { if (!raf || last >= SETTLE) draw(last); });
+  ro.observe(el);
+  draw(0);
   return {
-    play: () => ready.then(p.play),
-    stop: p.stop,
-    renderAt: (t) => ready.then(() => render(t)), // stills for screenshots
+    play() { cancelAnimationFrame(raf); t0 = performance.now(); raf = requestAnimationFrame(frame); },
+    stop() { cancelAnimationFrame(raf); raf = 0; },
+    renderAt(t) { last = t; draw(t); }, // stills for screenshots
   };
 }
