@@ -114,10 +114,10 @@ def run(studies: int) -> dict:
     F = gf.Fused(cells, db.design(), st=st)
     chunks = [seeds[k:k + 125] for k in range(0, n, 125)]
 
-    def gpu(keep_X=False):
+    def gpu(keep_X=False, timed=False):
         t = perf_counter()
         pl = gf.merge(list(planners.map(h._plan_part, chunks)))
-        if not keep_X:
+        if timed:  # only the timed launch carries the arm marker, not the warm-up
             at("gpu_fused", "device")
         out = F.evaluate(pl, time_, event, strata, keep_X=keep_X)
         return out, perf_counter() - t
@@ -129,7 +129,7 @@ def run(studies: int) -> dict:
     x_same = [db.sha(X) == r["x_sha"] for X, r in zip(ref.pop("X"), recs)]
     sleep(1.0)  # a second of idle samples before the timed launch
     at("gpu_fused", "host_plan")
-    out, gpu_wall = gpu()
+    out, gpu_wall = gpu(timed=True)
     at("setup", "after")
     sleep(0.5)
     at("done", "done")
