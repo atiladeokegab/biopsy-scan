@@ -2,8 +2,8 @@
  "status": "MEASURED",
  "label": "observed frame cadence on an L4, headless, vsync-capped, with video capture on (MEASURED); not the cited figure: run 8 (fps-l4-20261122T061416Z.json) stands",
  "what": "rAF frame intervals over the 3D re-imaging script (fly-in, windows, flicker), 1280x720, whole page live",
- "utc": "20261122T080914Z",
- "modal_wall_s": 79.0,
+ "utc": "20261122T092716Z",
+ "modal_wall_s": 180.3,
  "declared_ms": 15500,
  "min_frames": 300,
  "gpu": "NVIDIA L4, 610.57.04",
@@ -17,11 +17,11 @@
    "/etc/vulkan/icd.d/nvidia_icd.json"
   ],
   "vk_usr": [
-   "/usr/share/vulkan/icd.d/virtio_icd.x86_64.json",
-   "/usr/share/vulkan/icd.d/intel_hasvk_icd.x86_64.json",
    "/usr/share/vulkan/icd.d/intel_icd.x86_64.json",
    "/usr/share/vulkan/icd.d/radeon_icd.x86_64.json",
-   "/usr/share/vulkan/icd.d/lvp_icd.x86_64.json"
+   "/usr/share/vulkan/icd.d/virtio_icd.x86_64.json",
+   "/usr/share/vulkan/icd.d/lvp_icd.x86_64.json",
+   "/usr/share/vulkan/icd.d/intel_hasvk_icd.x86_64.json"
   ]
  },
  "tried": [
@@ -52,12 +52,34 @@
   "reimage-replay"
  ],
  "errors": [],
+ "window": {
+  "sizes": [
+   1280,
+   720,
+   1280,
+   720
+  ],
+  "before": {
+   "left": 10,
+   "top": 10,
+   "width": 1280,
+   "height": 720,
+   "windowState": "normal"
+  },
+  "after": {
+   "left": 10,
+   "top": 10,
+   "width": 1280,
+   "height": 807,
+   "windowState": "normal"
+  }
+ },
  "frames": 924,
  "span_s": 15.5,
  "median_fps": 59.9,
  "p5_fps": 59.5,
  "median_frame_ms": 16.7,
  "p95_frame_ms": 16.8,
- "max_frame_ms": 66.7,
+ "max_frame_ms": 66.6,
  "recorded": "Playwright screencast of this timed context; the cadence is with recording on"
 }
