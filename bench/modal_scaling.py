@@ -119,7 +119,7 @@ def class_name(cores: int) -> str:
 
 
 @app.local_entrypoint()
-def main(studies: int = 1000, cores: str = ",".join(map(str, scaling.CORES))):
+def main(studies: int = 1000, cores: str = ",".join(map(str, scaling.CORES)), cap_usd: float = scaling.CAP_USD):
     counts = scaling.parse_cores(cores)
     if studies < 1:
         raise SystemExit("--studies must be at least 1")
@@ -128,12 +128,12 @@ def main(studies: int = 1000, cores: str = ",".join(map(str, scaling.CORES))):
         raise SystemExit("commit tracked changes first: source_commit must be the code that runs")
     commit = _git("rev-parse", "HEAD")
     spent = _ledger()
-    ceiling = scaling.check_cap(counts, studies, spent)
+    ceiling = scaling.check_cap(counts, studies, spent, cap_usd)  # a higher cap is the lead's call, per task
     start = datetime.now(timezone.utc)
     _ledger(new={"utc": start.strftime("%Y-%m-%dT%H:%MZ"), "run": f"modal-scaling {studies} null studies, cores {list(counts)}",
                  "containers": len(counts), "est_usd": ceiling, "source_commit": commit,
                  "basis": "single-attempt estimate (not a billing ceiling): each container's timeout x (cores x $0.0000131 + GiB x $0.00000222) per s; "
-                          f"task cap ${scaling.CAP_USD}, ${round(spent, 2)} spent before"})
+                          f"task cap ${cap_usd}, ${round(spent, 2)} spent before"})
     calls = {c: point.with_options(cpu=(float(c), float(c)), memory=scaling.memory_gib(c) * 1024,
                                    timeout=scaling.timeout_s(c, studies)).spawn(c, studies) for c in counts}
     points, errors = {}, {}
