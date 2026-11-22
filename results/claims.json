@@ -1464,6 +1464,14 @@
     {
      "file": "README.md",
      "text": "| **GPU fleet, repeats** (`1,000` Charville studies, `8` vs `1` A100-SXM4-40GB, same GPU model, #134) | Compute-span ratio `{med}×`, median of `{n}` fresh repeats (range `{lo}–{hi}×`); `{failed}` attempt failed the same-GPU-model check and is excluded. Each fleet bit-equal to its own 1-container run; median and min–max of the fresh repeats: descriptive, not a confidence interval (**{label}**) | [`bench/results/sweep-repeats.json`](bench/results/sweep-repeats.json) |"
+    },
+    {
+     "file": "docs/JUDGING.md",
+     "text": "fleet timing {label}: 8 A100s against 1, compute span {med}×, median of {n} fresh repeats (range {lo}–{hi}×, same GPU model, A100-SXM4-40GB); {failed} attempt failed the same-model check and is excluded; {bit} (`bench/results/sweep-repeats.json` `fleet`, #134). Median and min–max of the fresh repeats: descriptive, not a confidence interval. Superseded: #75's single sweep, 843.7 s on 1 A100 against 128.2 s on 8, 6.6× (`bench/results/modal-a100-20261121T183709Z.json` `fleet.runs`) |"
+    },
+    {
+     "file": "docs/SUBMISSION.md",
+     "text": "fleet timing: 8 A100s against 1, {med}× compute span, median of {n} fresh repeats (range {lo}–{hi}×, same GPU model; {failed} attempt failed the same-model check and is excluded; `bench/results/sweep-repeats.json`, #134), superseding #75's single sweep (6.6×) | TESTED; fleet {label} |"
     }
    ]
   },
@@ -1514,6 +1522,14 @@
     {
      "file": "README.md",
      "text": "**Superseded** by the repeats row above (`{med}×`; this sweep lies above its range)"
+    },
+    {
+     "file": "docs/JUDGING.md",
+     "text": "| CPU strong scaling, Numba arm (#135): the same 1,000 Charville studies as #115, at 1 and 64 Modal cores, three fresh repeats | {med}× from 1 to 64 cores, median of {n} repeats (range {lo}–{hi}×). #115's single sweep gave 38.2×, above that range, and is superseded. Every core count's features bitwise and maxT within 1e-9 of the #115 sweep's 1-core run. Median and min–max of the fresh repeats: descriptive, not a confidence interval | `bench/results/sweep-repeats.json` `scaling` (#135) | {label} |"
+    },
+    {
+     "file": "docs/SUBMISSION.md",
+     "text": "CPU strong scaling (#135): {med}× from 1 to 64 cores, median of {n} repeats (range {lo}–{hi}×); #115's single sweep (38.2×) is superseded."
     }
    ]
   },
@@ -1612,6 +1628,18 @@
     {
      "file": "README.md",
      "text": "**Superseded** by the repeats row above (`{med}×`). Matched workflow"
+    },
+    {
+     "file": "docs/JUDGING.md",
+     "text": "| Matched workflow comparison through scoring, repeats (#134; Numba arm): as in #123 below, the lab way on 1 core against Preflight on 8 single-thread workers, with the same exclusions | {med}×, median of {n} fresh repeats (range {lo}–{hi}×); {setup}× with setup. One lab core against eight Preflight cores, running different procedures. Calls agree on {agree0} of {of0} in every repeat. Supersedes #123's single sweep (42.1×, next row). Median and min–max of the fresh repeats: descriptive, not a confidence interval | `bench/results/sweep-repeats.json` `matched` (#134) | {label}; outcomes {outcomes} |"
+    },
+    {
+     "file": "docs/JUDGING.md",
+     "text": "| Superseded by the repeats row above ({med}×). Lab 8.818 s per study"
+    },
+    {
+     "file": "docs/SUBMISSION.md",
+     "text": "Matched workflow comparison through scoring (#134, `bench/results/sweep-repeats.json`; Numba arm; excludes data load, the threshold calculation and the final calls): {med}×, median of {n} fresh repeats (range {lo}–{hi}×), {setup}× with setup; 1 lab core against 8 Preflight cores; calls agree on {agree0} of {of0} in every repeat; supersedes #123's single sweep (42.1×)."
     }
    ]
   },
@@ -1706,6 +1734,14 @@
     {
      "file": "README.md",
      "text": "| **Fair, 8 vs 8** (lab and Preflight each on `8` workers, Numba arm, #134) | Through scoring: `{med}×`, median of `{n}` fresh repeats (range `{lo}–{hi}×`); `{setup}×` with setup. Decisions agree {agree0} of {of0} in every repeat. The Numba kernel, not the fused kernel behind the `21.0×` row; different procedures; median and min–max of the fresh repeats: descriptive, not a confidence interval (timings **{label}**, outcomes **{outcomes}**) | [`bench/results/sweep-repeats.json`](bench/results/sweep-repeats.json) |"
+    },
+    {
+     "file": "docs/JUDGING.md",
+     "text": "| Fair, 8 against 8 (#134; Numba arm): the lab way and Preflight each on 8 workers, compute through scoring | {med}×, median of {n} fresh repeats (range {lo}–{hi}×); {setup}× with setup. Calls agree on {agree0} of {of0} in every repeat. This is the Numba kernel, not the fused kernel behind 21× (#120); different procedures. Median and min–max of the fresh repeats: descriptive, not a confidence interval | `bench/results/sweep-repeats.json` `fair` (#134) | {label}; outcomes {outcomes} |"
+    },
+    {
+     "file": "docs/SUBMISSION.md",
+     "text": "Fair, 8 against 8 (#134, Numba arm, not the fused kernel behind 21×): {med}× (range {lo}–{hi}×), {setup}× with setup; calls agree on {agree0} of {of0}."
     }
    ]
   },
@@ -1794,6 +1830,14 @@
     {
      "file": "README.md",
      "text": "| **Off-the-shelf ladder** (squidpy + lifelines on `{workers}` cores, the race's Charville design point, `{studies}` studies, #132) | `{s} s/study` (**{label}**: pool wall over studies; instrumented, so it includes our reference recount and agreement checks). Against the hand-written lab arm `{lab} s` (#113) and the fused kernel `{fused} s` (#120): `{vlab}×` and `{vfused}×`, {cross}, same container class (the lab and fused times come from other runs on other hosts of this class). What a lab would run off the shelf, not Preflight's speedup: different statistics, and the top pattern matches in `{k}/{of}` studies (outcomes **{out}**) | [`bench/results/external-baseline-20261122T043823Z.json`](bench/results/external-baseline-20261122T043823Z.json) |"
+    },
+    {
+     "file": "docs/JUDGING.md",
+     "text": "| Off-the-shelf ladder (#132): the race's Charville design point done with squidpy + lifelines on {workers} cores, {studies} studies | {s} s per study (pool wall over studies; instrumented, so it includes our reference recount and agreement checks). Against the hand-written lab arm {lab} s (#113) and the fused kernel {fused} s (#120): {vlab}× and {vfused}×, {cross}, same container class (the lab and fused times come from other runs on other hosts of this class). What a lab would run off the shelf, not Preflight's speedup: different statistics, and the top pattern matches in {k} of {of} studies | `bench/results/external-baseline-20261122T043823Z.json` `summary` (#132) | {label} (timing); ratios {cross}; outcomes {out} |"
+    },
+    {
+     "file": "docs/SUBMISSION.md",
+     "text": "Off the shelf (#132, `bench/results/external-baseline-20261122T043823Z.json`): squidpy + lifelines on {workers} cores {s} s per study ({label}); {vlab}× and {vfused}× against the lab and fused arms, {cross}, same container class; what a lab would run off the shelf, not Preflight's speedup: different statistics, and the top pattern matches in {k} of {of} studies."
     }
    ]
   },
@@ -1852,6 +1896,14 @@
     {
      "file": "README.md",
      "text": "| **Head and neck sample size** (UPMC tissue, simulated cohorts of `50–600` resampled from `{src}` discovery patients, HR `2` per source SD, #133) | About `{n80}` patients reach `80%` power (linear interpolation of simulated power between simulated sizes). The pointwise 95% bounds cross `80%` at `{lo}` and `{hi}`: pointwise, not a confidence interval for n. Not comparable with Charville's `524`: a different source cohort (`{src}` patients reused up to `600`), censoring and grammar (**{lab}**, outcomes **{out}**) | [`bench/results/hn-power-upmc-discovery.json`](bench/results/hn-power-upmc-discovery.json) |"
+    },
+    {
+     "file": "docs/JUDGING.md",
+     "text": "| Head and neck sample size (#133): about {n80} patients reach 80% power (interpolated; the pointwise 95% bounds cross 80% at {lo} and {hi}, {pointwise}), on simulated cohorts resampled from {src} UPMC discovery patients' tissue, HR 2 per source SD. Not comparable with Charville's 524: a different source cohort ({src} patients reused up to 600), censoring and grammar | `bench/results/hn-power-upmc-discovery.json` `answer` (#133) | {lab}; outcomes {out} |"
+    },
+    {
+     "file": "docs/SUBMISSION.md",
+     "text": "head and neck: about {n80} patients for 80% (pointwise 95% bounds cross 80% at {lo} and {hi}, {pointwise}; resampled from {src} UPMC discovery patients; not comparable with Charville's 524; `bench/results/hn-power-upmc-discovery.json`, #133)"
     }
    ]
   }
