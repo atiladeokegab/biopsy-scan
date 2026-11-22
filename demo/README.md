@@ -200,6 +200,23 @@ shows `km.label` ("exploratory, cutoff chosen on the same cohort, no p-value") b
 region's counts. `check_data.py` refuses a file without `exploratory: true`, with a p-value, or without "no
 p-value" in its label. The hit cannot be tested in our second cohort (UPMC has no PD1 stain), and the page says so; it never says "not replicated".
 
+## `data/preflight.json` (`preflight-panel/2`): "Preflight your study", built by `collect_preflight.py`
+
+Built only from `bench/results/power-at-scale.json` (two 400 µm fields, 10% mis-called, 40 to 1,000 patients) and
+`bench/results/vs-schoenfeld-300.json` (the whole-core, no-mis-call control from 40 to 300 patients, plus the
+Schoenfeld inputs); each source's sha256 is recorded, with the fixed scenario (cohort, source patients and events, HR
+per SD, features, alpha, null-study count, method, resampling) and each point's power and false-alarm rate with their
+intervals. The collector refuses, rather than writes, a source whose design is not exactly the one the panel offers,
+whose cohort, HR, alpha or simulation model differs between the two files, or whose series is empty, unordered, has a
+non-finite rate, a value outside its interval or a non-positive study count (`tests/test_collect_preflight.py`). The
+formula is evaluated at every slider stop (50 to 600 in 10s) and must reproduce that file's own `analytic_power` at its
+7 points. The page (`preflight.js`) shows a simulated point as stored, with its file's label and its pointwise 95% Monte
+Carlo interval; between two points it joins value and bounds linearly and labels the value `ESTIMATE (interpolated)`,
+which is not a validated 95% interval; outside a design's range, or for a window and mis-call pair that was never
+simulated, it shows `NOT SIMULATED` and no number. A design with a point whose false-alarm interval lies above alpha
+carries that caveat whenever it is chosen. `make smoke` and the Pages workflow run `collect_preflight.py --check`;
+`make smoke` also runs `preflight.test.mjs`.
+
 ## How the page picks a grid point
 
 The slider ranges are:

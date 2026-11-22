@@ -143,6 +143,59 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
 .explore-title { padding-top: var(--space-8); font-size: var(--text-lg); color: var(--text-head); }
 .explore-title .tag { vertical-align: middle; margin-left: var(--space-2); }
 
+/* PREFLIGHT YOUR STUDY: three controls, two numbers, one chart (data/preflight.json) */
+.pf { padding-top: var(--space-5); }
+.pf-card { display: grid; gap: var(--space-4) var(--space-6); grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1.5fr);
+  grid-template-areas: "head head head" "controls out chart" "src src src"; }
+.pf-head { grid-area: head; }
+.pf-sub, .pf-scenario { margin-top: var(--space-1); color: var(--text-body); font-size: var(--text-sm); line-height: var(--leading-meta); }
+.pf-scenario .tag { vertical-align: 1px; margin-right: var(--space-1); }
+.pf-controls { grid-area: controls; display: grid; gap: var(--space-4); align-content: start; }
+.seg { margin: 0; padding: 0; border: 0; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+.seg legend { padding: 0; margin-bottom: var(--space-2); color: var(--text-body); }
+.seg label { position: relative; }
+.seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.seg span { display: flex; align-items: center; justify-content: center; min-height: var(--target-min); padding: 0 var(--space-2);
+  border: 1px solid var(--border); border-radius: var(--radius-control); color: var(--text-body); font-size: var(--text-sm); text-align: center; }
+.seg input:checked + span { border-color: var(--text-head); color: var(--text-head); background: var(--surface-elevated); font-weight: 600; }
+.seg input:focus-visible + span { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+.pf-out { grid-area: out; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3) var(--space-4); align-content: start; }
+.pf-out small { display: block; color: var(--text-body); font-size: var(--text-sm); margin-top: var(--space-1); }
+.pf-sim .big { color: var(--accent); }
+.pf-formula .big { color: var(--text-muted); }
+.pf-caveat { grid-column: 1 / -1; color: var(--text-body); font-size: var(--text-sm); line-height: var(--leading-meta); }
+.pf-gap { grid-column: 1 / -1; color: var(--text-head); font-size: var(--text-base); line-height: var(--leading-snug); font-weight: 600; }
+.pf-chart { grid-area: chart; }
+.pf-chart svg { display: block; width: 100%; height: auto; }
+#pf-chart text { font-family: var(--font-sans); fill: var(--text-muted); font-size: 12px; }
+#pf-chart .grid { stroke: var(--border); }
+#pf-chart .target { stroke: var(--text-muted); stroke-dasharray: 3 4; }
+#pf-chart .formula { fill: none; stroke: var(--text-muted); stroke-width: 2; }
+#pf-chart .band { fill: var(--accent); fill-opacity: 0.16; }
+#pf-chart .sim { fill: none; stroke: var(--accent); stroke-width: 2.5; }
+#pf-chart .pt { fill: var(--accent); }
+#pf-chart .cursor { stroke: var(--text-head); stroke-opacity: 0.5; }
+#pf-chart .fdot { fill: var(--text-muted); stroke: var(--bg); stroke-width: 2; }
+#pf-chart .sdot { fill: var(--accent); stroke: var(--bg); stroke-width: 2; }
+#pf-chart .sdot.interp { fill: var(--bg); stroke: var(--accent); stroke-width: 2.5; }
+.pf-key { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); margin-top: var(--space-1); color: var(--text-muted); font-size: var(--text-xs); }
+.pf-key i { display: inline-block; width: 14px; height: 3px; margin-right: var(--space-1); vertical-align: middle; }
+.pf-key .k-sim { background: var(--accent); box-shadow: 0 -4px 0 rgba(43, 212, 164, 0.2), 0 4px 0 rgba(43, 212, 164, 0.2); }
+.pf-key .k-pt, .pf-key .k-ring { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.pf-key .k-ring { background: none; border: 2px solid var(--accent); box-sizing: border-box; }
+.pf-key .k-pt + .k-sim { margin-left: var(--space-2); }
+.pf-key .k-ring { margin-left: var(--space-3); }
+.pf-key .k-formula { background: var(--text-muted); }
+.pf-key .k-target { background: repeating-linear-gradient(90deg, var(--text-muted) 0 3px, transparent 3px 7px); }
+.pf-card > .src { grid-area: src; }
+@media (max-width: 1100px) {
+  .pf-card { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "head head" "controls out" "chart chart" "src src"; }
+}
+@media (max-width: 900px) {
+  .pf { padding-top: var(--space-3); }
+  .pf-card { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "out" "controls" "chart" "src"; gap: var(--space-4); }
+}
+
 /* Explore a design: sliders, then the answer */
 .rail { grid-area: rail; padding: var(--space-5); }
 .sliders { display: grid; gap: var(--space-3); }
