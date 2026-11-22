@@ -249,16 +249,29 @@ def test_scaling_ledger_entries_are_single_attempt_estimates_not_upper_bounds():
     assert "billed again" not in text
 
 
-def test_the_cli_cap_defaults_to_five_dollars_which_refuses_a_repeat_after_the_first_sweep():
-    import ast
-    from pathlib import Path
+def test_the_cli_cap_defaults_to_five_dollars_which_refuses_a_repeat_after_the_first_sweep(monkeypatch, tmp_path):
+    from bench import modal_scaling as ms
 
-    tree = ast.parse((Path(__file__).parent / "modal_scaling.py").read_text())
-    main = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "main")
-    names = [a.arg for a in main.args.args]
-    default = main.args.defaults[names.index("cap_usd") - (len(names) - len(main.args.defaults))]
-    assert ast.unparse(default) == "scaling.CAP_USD" and scaling.CAP_USD == 5.0
-    spent = 3.06  # the ledger's modal-scaling lines before the repeats
+    ledger = tmp_path / "spend.json"  # the first sweep's $3.06 is already spent
+    ledger.write_text(json.dumps({"entries": [{"utc": "x", "run": "modal-scaling first sweep", "est_usd": 3.06,
+                                                "running_total_usd": 3.06}]}))
+    monkeypatch.setattr(ms, "SPEND", ledger)
+    monkeypatch.setattr(ms, "_git", lambda *a: "abc1234" if a[0] == "rev-parse" else "")
+    dispatched = []
+
+    class Dispatched(Exception):
+        pass
+
+    def with_options(**k):  # the paid boundary: record it and stop
+        dispatched.append(k)
+        raise Dispatched
+
+    monkeypatch.setattr(ms.point, "with_options", with_options)
     with pytest.raises(SystemExit, match="ask the lead"):
-        scaling.check_cap(scaling.CORES, 1000, spent_usd=spent)
-    assert scaling.check_cap(scaling.CORES, 1000, spent_usd=spent, cap_usd=6.0) <= 6.0 - spent
+        ms.main()  # main's own defaults: 1,000 studies, every core count, cap_usd = scaling.CAP_USD ($5)
+    assert not dispatched and len(json.loads(ledger.read_text())["entries"]) == 1
+    with pytest.raises(Dispatched):
+        ms.main(cap_usd=6.0)
+    entries = json.loads(ledger.read_text())["entries"]
+    assert len(dispatched) == 1 and len(entries) == 2
+    assert entries[-1]["est_usd"] <= 6.0 - 3.06 and "task cap $6.0" in entries[-1]["basis"]
