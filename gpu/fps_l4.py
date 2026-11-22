@@ -142,6 +142,7 @@ def result(out: dict, ts: list[float], wall: float, stamp: str) -> dict:
         (bool(out.get("errors")), f"page or console error: {out.get('errors')}"),
         (span < DURATION_MS - 100, f"sample shorter than the declared duration ({span:.0f} of {DURATION_MS} ms)"),
         (len(ts) - 1 < MIN_FRAMES, f"too few frames ({max(len(ts) - 1, 0)} of at least {MIN_FRAMES})"),
+        (out.get("end_controls") != ["reimage-replay"], f"take did not end: end controls were {out.get('end_controls')}"),
     ) if bad]
     base = {"utc": stamp, "modal_wall_s": round(wall, 1), "declared_ms": DURATION_MS, "min_frames": MIN_FRAMES, **out}
     if why:
