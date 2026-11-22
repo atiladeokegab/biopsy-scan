@@ -69,14 +69,16 @@ def _jsonable(x):
 
 
 @app.local_entrypoint()
-def run():
+def run(patients: str = "", timeout_s: int = 0):
+    """All points by default; --patients 600 --timeout-s 4000 reruns one point (raw file only)."""
     import pandas as pd
 
     from bench import hn_power as h
 
     summary_path, stamp = h.RESULT, datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     raw_path = REPO / "bench" / "results" / f"modal-hn-power-{stamp}.json"
-    if summary_path.exists() or raw_path.exists():
+    rerun = {int(p): timeout_s or TIMEOUT_S[int(p)] for p in patients.split(",")} if patients else None
+    if raw_path.exists() or (rerun is None and summary_path.exists()):
         raise SystemExit(f"refusing to overwrite {summary_path.name} or {raw_path.name}")
     cells = h.source(Path(os.environ["DATA_DIR"]))
     case = [cells["patient_names"][i] for i in cells["patient_of_region"]]
@@ -84,7 +86,7 @@ def run():
     assert len(cells["patient_names"]) == 34 and len(cells["region_names"]) == 125, "not the 34 discovery patients"
     commit = subprocess.run(["git", "-C", str(REPO), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
     t0 = time.perf_counter()
-    calls = {p: power_point.with_options(timeout=t).spawn(cells, p) for p, t in TIMEOUT_S.items()}
+    calls = {p: power_point.with_options(timeout=t).spawn(cells, p) for p, t in (rerun or TIMEOUT_S).items()}
     points, rows, meta = [], [], {}
     for p, call in calls.items():
         try:
@@ -97,10 +99,10 @@ def run():
         print(json.dumps({"patients": p, "power": (points[-1].get("rows") or [{}])[0].get("power"),
                           "error": points[-1].get("error"), "wall_s": round(time.perf_counter() - t0, 1)}), flush=True)
     raw_path.write_text(json.dumps({"schema": "preflight-modal-hn-power/1", "status": "MEASURED", "runner": "modal",
-                                    "commit": commit, "utc": stamp, "timeouts_s": TIMEOUT_S,
+                                    "commit": commit, "utc": stamp, "timeouts_s": rerun or TIMEOUT_S,
                                     "modal_wall_s_total": time.perf_counter() - t0, "points": points},
                                    indent=1, default=_jsonable) + "\n")
-    if rows:
+    if rows and rerun is None:
         result = h.summarize(rows, meta)
         result.update(raw=f"bench/results/{raw_path.name}", commit=commit, planted_studies_per_point=ALTERNATIVE)
         summary_path.write_text(json.dumps(result, indent=1, default=_jsonable) + "\n")

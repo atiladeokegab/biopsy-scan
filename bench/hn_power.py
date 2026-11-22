@@ -142,16 +142,17 @@ def summarize(rows: list[dict], meta: dict) -> dict:
                                                     "budget", "hr_per_source_sd", "seed", "backend", "bank_draws")}}
 
 
-def from_raw(raw: Path) -> dict:
-    """The summary re-derived from a gpu/hn_power.py raw file (its rows are the measured record)."""
-    d = json.loads(Path(raw).read_text())
-    ok = [p for p in d["points"] if "rows" in p]
-    out = summarize([r for p in ok for r in p["rows"]], ok[0]["metadata"])
-    return {**out, "raw": f"bench/results/{Path(raw).name}", "commit": d["commit"]}
+def from_raw(*raws: Path) -> dict:
+    """The summary re-derived from gpu/hn_power.py raw files (their rows are the measured record); a rerun's
+    point replaces a failed one."""
+    ds = [json.loads(Path(r).read_text()) for r in raws]
+    ok = {p["patients"]: p for d in ds for p in d["points"] if "rows" in p}
+    out = summarize([r for p in ok.values() for r in p["rows"]], next(iter(ok.values()))["metadata"])
+    return {**out, "raw": [f"bench/results/{Path(r).name}" for r in raws], "commit": [d["commit"] for d in ds]}
 
 
 if __name__ == "__main__" and sys.argv[1] == "--from-raw":
-    print(json.dumps(from_raw(Path(sys.argv[2])), indent=1))
+    print(json.dumps(from_raw(*map(Path, sys.argv[2:])), indent=1))
 elif __name__ == "__main__":
     out = Path(sys.argv[1])
     run(out, out / "cache", source(Path(__import__("os").environ["DATA_DIR"])), extra=sys.argv[2:])
