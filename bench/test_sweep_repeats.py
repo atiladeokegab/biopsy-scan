@@ -45,6 +45,19 @@ def lab_p(d):
     d["per_study"][3]["lab_p"] += 0.01
 
 
+def maxT_far(d):
+    d["per_study"][3]["preflight_maxT"] += 1e-6
+
+
+def test_preflight_maxT_may_differ_by_rounding_across_hosts_but_no_more():
+    d = repeat("matched", 0)
+    d["per_study"][3]["preflight_maxT"] += 2e-15  # what a fresh host gave (fair runs, 1.8e-15)
+    s.matched(d, s.load_prior("matched"), "matched")
+    maxT_far(d)
+    with pytest.raises(s.Bad, match="differs from the prior"):
+        s.matched(d, s.load_prior("matched"), "matched")
+
+
 def fleet_bits(d):
     d["fleet"]["runs"]["8"]["bit_identical_to_1"] = False
 
@@ -75,6 +88,7 @@ def missing_lab_study(d):
 
 @pytest.mark.parametrize("kind,edit,why", [
     ("matched", lab_p, "differs from the prior"),
+    ("matched", maxT_far, "differs from the prior"),
     ("matched", nan_wall, "positive and finite"),
     ("matched", other_class, "container class"),
     ("matched", missing_lab_study, "exactly once"),

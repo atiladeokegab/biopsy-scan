@@ -134,7 +134,8 @@ def test_the_committed_result_is_matched_and_its_numbers_follow_from_its_fields(
     assert not any("_cpu_s" in k for a in r["arms"].values() for k in a["stages"])
     assert r["status"] == "MEASURED" and r["parity"]["x_bitwise"] and r["parity"]["x_compared"] == w["studies"]["lab"]
     lab = r["arms"]["lab"]
-    assert lab["workers"] in (1, r["arms"]["preflight"]["workers"]) and len(lab["affinity"]) == lab["workers"]
+    assert lab["workers"] in (1, r["arms"]["preflight"]["workers"])
+    assert len(lab["affinity"]) == 1 if lab["workers"] == 1 else lab["affinity"] == r["host"]["affinity"]
     assert w["ratio"] == pytest.approx(w["lab_s_per_study"] / w["preflight_s_per_decided_study"])
     assert sum(x["agree"] for x in r["per_study"]) == r["decisions"]["agree"]
     assert r["projection"]["status"] == "ANALYTIC"

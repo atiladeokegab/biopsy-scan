@@ -59,7 +59,8 @@ def matched(doc: dict, prior: dict, kind: str) -> dict:
     need(doc["status"] == "MEASURED" and doc["parity"]["x_bitwise"], "status or feature parity is not MEASURED/bitwise")
     need({k: doc["modal"].get(k) for k in MATCHED_CLASS} == MATCHED_CLASS, f"container class {doc['modal']}")
     lab, pre = doc["arms"]["lab"], doc["arms"]["preflight"]
-    need(pre["workers"] == 8 and lab["workers"] == lw and len(lab["affinity"]) == lw, f"workers {lab['workers']}")
+    pinned = len(lab["affinity"]) == 1 if lw == 1 else lab["affinity"] == doc["host"]["affinity"]  # 8: unpinned, as Preflight
+    need(pre["workers"] == 8 and lab["workers"] == lw and pinned, f"lab workers {lab['workers']}, affinity {lab['affinity']}")
     need(doc["plan"]["preflight"] == prior["plan"]["preflight"], "Preflight plan differs from the prior's")
     want = {(s, i) for s, n in doc["plan"]["lab"].items() for i in range(n)}
     ids = [(r["stream"], r["i"]) for r in doc["per_study"]]
@@ -71,20 +72,23 @@ def matched(doc: dict, prior: dict, kind: str) -> dict:
          "a timing is not positive and finite")
     need(math.isclose(w["ratio"], w["lab_s_per_study"] / w["preflight_s_per_decided_study"], rel_tol=1e-12),
          "ratio does not follow from its walls")
-    need(doc["threshold"] == prior["threshold"], f"threshold {doc['threshold']} != prior {prior['threshold']}")
+    near = lambda a, b: abs(a - b) <= Z_TOL * max(1, abs(b))  # noqa: E731 - scores to rounding, as bench/scaling.py
+    need(near(doc["threshold"], prior["threshold"]), f"threshold {doc['threshold']} != prior {prior['threshold']}")
     old = {(r["stream"], r["i"]): r for r in prior["per_study"]}
     shared = [r for r in doc["per_study"] if (r["stream"], r["i"]) in old]
     need(len(shared) == len(old), f"{len(shared)} of the prior's {len(old)} studies shared")
     for r in shared:
         o = old[(r["stream"], r["i"])]
-        need(r["x_sha"] == o["x_sha"] and r["lab_p"] == o["lab_p"] and r["preflight_maxT"] == o["preflight_maxT"],
+        need(r["x_sha"] == o["x_sha"] and r["lab_p"] == o["lab_p"] and near(r["preflight_maxT"], o["preflight_maxT"])
+             and (r["lab_call"], r["preflight_call"]) == (o["lab_call"], o["preflight_call"]),
              f"study {r['stream']} {r['i']} differs from the prior run")
     return {"run_id": doc["host"]["modal_task_id"], "source_commit": doc["source_commit"],
             "values": {"ratio": w["ratio"], "ratio_with_setup": w["with_setup"]["ratio"],
                        "lab_s_per_study": w["lab_s_per_study"],
                        "preflight_s_per_decided_study": w["preflight_s_per_decided_study"]},
             "decisions_agree": [doc["decisions"]["agree"], doc["decisions"]["compared"]],
-            "parity_vs_prior": f"{len(shared)} shared studies: features, lab p and Preflight maxT identical; same threshold"}
+            "parity_vs_prior": f"{len(shared)} shared studies: features bitwise, lab p identical, Preflight maxT and the "
+                               f"threshold within {Z_TOL} relative, both arms' calls identical"}
 
 
 def fleet(doc: dict, prior: dict, kind: str) -> dict:
