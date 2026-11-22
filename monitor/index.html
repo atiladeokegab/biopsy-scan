@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Preflight · Usage Monitor</title>
+  <link rel="icon" href="data:,">
+  <style>
+    @font-face { font-family: "Inter"; src: url("fonts/InterVariable.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+    @font-face { font-family: "Instrument Serif"; src: url("fonts/InstrumentSerif-400-latin.woff2") format("woff2"); font-display: swap; }
+    @font-face { font-family: "JetBrains Mono"; src: url("fonts/JetBrainsMono-400-latin.woff2") format("woff2"); font-display: swap; }
+    :root { --bg: #0A0E14; --panel: #111823; --well: #070A0F; --ink: #F3EFE6; --body: #B8C0CC; --muted: #7D8796;
+      --hair: rgba(243,239,230,.12); --emerald: #2BD4A4; --coral: #E86F51;
+      --serif: "Instrument Serif", Georgia, serif; --sans: "Inter", system-ui, sans-serif; --mono: "JetBrains Mono", ui-monospace, monospace; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--body); font: 15px/1.4 var(--sans); }
+    body { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100dvh; overflow: hidden; }
+    header { display: flex; align-items: center; gap: 14px; padding: 12px 24px; border-bottom: 1px solid var(--hair); }
+    h1 { margin: 0 auto 0 0; font: 30px/1 var(--serif); color: var(--ink); font-weight: 400; }
+    h1 span { font: 12px var(--mono); color: var(--emerald); text-transform: uppercase; letter-spacing: .08em; margin-left: 10px; }
+    #clock { font: 15px var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+    button { all: unset; cursor: pointer; padding: 8px 20px; border-radius: 999px; font: 600 14px var(--sans); }
+    #run { background: var(--emerald); color: var(--bg); }
+    #run:disabled { opacity: .45; cursor: default; }
+    #reset { color: var(--ink); box-shadow: inset 0 0 0 1px var(--hair); }
+    button:focus-visible { outline: 2px solid var(--emerald); outline-offset: 2px; }
+    main { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; padding: 18px 24px; min-height: 0; }
+    .lane { --c: var(--emerald); display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 14px; min-height: 0;
+      padding: 16px 18px 18px; border-radius: 12px; background: var(--panel); box-shadow: 0 0 0 1px var(--hair); }
+    .lane.current { --c: var(--coral); }
+    .head { display: flex; align-items: baseline; gap: 12px; }
+    h2 { margin: 0; font: 30px/1 var(--serif); font-weight: 400; color: var(--c); }
+    .name { font: 12px var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-right: auto; }
+    .read { font: 13px var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .read + .read { margin-left: 14px; }
+    .gauges { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .gauge { position: relative; aspect-ratio: 2 / 1.25; max-height: 30vh; justify-self: center; width: 100%; background: var(--well); border-radius: 10px; }
+    .gauge canvas, .spark canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .spark { position: relative; min-height: 80px; background: var(--well); border-radius: 10px; }
+    @media (max-width: 900px) {
+      body { height: auto; min-height: 100dvh; overflow: auto; }
+      header { flex-wrap: wrap; padding: 12px 16px; } main { grid-template-columns: minmax(0, 1fr); padding: 16px; }
+      .spark { height: 160px; } .head { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Preflight <span>Usage Monitor</span></h1>
+    <span id="clock"></span>
+    <button type="button" id="run" disabled>Start</button>
+    <button type="button" id="reset">Reset</button>
+  </header>
+  <main>
+    <section class="lane current" id="current" aria-label="Current">
+      <div class="head"><h2>Current</h2><span class="name" data-name></span><span class="read" data-studies></span><span class="read" data-time></span></div>
+      <div class="gauges"><div class="gauge"><canvas data-cpu aria-hidden="true"></canvas></div><div class="gauge"><canvas data-gpu aria-hidden="true"></canvas></div></div>
+      <div class="spark"><canvas aria-hidden="true"></canvas></div>
+    </section>
+    <section class="lane" id="ours" aria-label="Ours">
+      <div class="head"><h2>Ours</h2><span class="name" data-name></span><span class="read" data-studies></span><span class="read" data-time></span></div>
+      <div class="gauges"><div class="gauge"><canvas data-cpu aria-hidden="true"></canvas></div><div class="gauge"><canvas data-gpu aria-hidden="true"></canvas></div></div>
+      <div class="spark"><canvas aria-hidden="true"></canvas></div>
+    </section>
+  </main>
+  <script src="monitor.js"></script>
+</body>
+</html>
