@@ -12,6 +12,10 @@ COMMIT = {"fleet": "commit", "matched": "source_commit", "scaling": "source_comm
 
 def repeat(kind, k, edit=None):
     d = copy.deepcopy(s.load_prior(kind))
+    if kind == "fleet":  # what integration's stats.screen gives on this synthetic null (the prior pinned 8add7f9)
+        for b in d["screen"]["backends"].values():
+            if isinstance(b, dict):
+                b["p"] = s.SCREEN_P_AT_HEAD
     TASK[kind](d)["modal_task_id"] = f"ta-{k}"
     d[COMMIT[kind]] = "c0ffee"
     if edit:
@@ -30,12 +34,12 @@ def raw(tmp_path, kind, docs):
 @pytest.mark.parametrize("kind", ["fleet", "scaling", "matched"])
 def test_three_clean_repeats_of_the_prior_reduce_to_its_own_numbers(tmp_path, kind):
     out = s.reduce(kind, sorted((raw(tmp_path, kind, [repeat(kind, k) for k in range(3)]) / kind).glob("*")), "c0ffee")
-    prior = s.REDUCE[kind](s.load_prior(kind), s.load_prior(kind), kind)["values"]
+    prior = s.REDUCE[kind](repeat(kind, 9), s.load_prior(kind), kind)["values"]
     assert {k: v["median"] for k, v in out["spread"].items()} == prior
 
 
 def test_headlines_match_the_single_sweeps_they_repeat():
-    v = {k: s.REDUCE[k](s.load_prior(k), s.load_prior(k), k)["values"] for k in ("fleet", "scaling", "matched")}
+    v = {k: s.REDUCE[k](repeat(k, 0), s.load_prior(k), k)["values"] for k in ("fleet", "scaling", "matched")}
     assert round(v["fleet"]["speedup_compute_span"], 1) == 6.6
     assert round(v["scaling"]["speedup_64_cores"], 1) == 38.2
     assert round(v["matched"]["ratio"], 1) == 42.1
@@ -56,6 +60,10 @@ def test_preflight_maxT_may_differ_by_rounding_across_hosts_but_no_more():
     maxT_far(d)
     with pytest.raises(s.Bad, match="differs from the prior"):
         s.matched(d, s.load_prior("matched"), "matched")
+
+
+def screen_old_p(d):
+    d["screen"]["backends"]["cupy"]["p"] = 0.789
 
 
 def fleet_bits(d):
@@ -93,6 +101,7 @@ def missing_lab_study(d):
     ("matched", other_class, "container class"),
     ("matched", missing_lab_study, "exactly once"),
     ("fleet", fleet_bits, "a check failed"),
+    ("fleet", screen_old_p, "screen hook's p"),
     ("fleet", fewer_containers, "a check failed"),
     ("scaling", scaling_x, "differs from the prior"),
     ("scaling", scaling_dup, "exactly once"),

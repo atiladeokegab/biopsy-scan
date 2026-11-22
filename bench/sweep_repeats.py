@@ -27,6 +27,10 @@ PRIORS["fair"] = PRIORS["matched"]  # same design and seeds; parity on the 100 s
 LAB_WORKERS = {"matched": 1, "fair": 8}
 MATCHED_CLASS = {"cpu": 8.0, "memory_mib": 65536, "gpu": None}
 FLEET = ("1", "8")
+# The screen hook's p is a 999-resample count: #80 (7660440) changed stats.screen's resample streams after the prior
+# ran (it used the pinned 8add7f9 file). Locally on CPU, numpy backend: 8add7f9 gives p 0.789 (the prior's), 3647816
+# gives 0.769; maxT 3.0589389780934853 at both. So maxT is checked against the prior, p against the current code.
+SCREEN_P_AT_HEAD = 0.769
 Z_TOL = 1e-9  # bench/scaling.Z_TOL: features bitwise, scores to rounding
 
 
@@ -106,15 +110,18 @@ def fleet(doc: dict, prior: dict, kind: str) -> dict:
     k, pk = doc["kernel"], prior["kernel"]
     need(k["parity_exact"] and k["seeds"] == pk["seeds"], "kernel parity or seeds differ")
     s, ps = doc["screen"]["backends"], prior["screen"]["backends"]
-    need((s["numpy"]["maxT"], s["numpy"]["p"]) == (ps["numpy"]["maxT"], ps["numpy"]["p"]),
-         "screen hook's numpy maxT/p differs from the prior run")
+    ran = [b for b in s.values() if isinstance(b, dict)]
+    need(s["numpy"]["maxT"] == ps["numpy"]["maxT"] and all(abs(b["maxT"] - ps["numpy"]["maxT"]) <= Z_TOL for b in ran),
+         "screen hook's maxT differs from the prior run")
+    need(all(b["p"] == SCREEN_P_AT_HEAD for b in ran), f"screen hook's p is not {SCREEN_P_AT_HEAD} on every backend")
     one, eight = f["runs"]["1"], f["runs"]["8"]
     return {"run_id": doc["kernel"]["gpu"]["modal_task_id"], "source_commit": doc["commit"],
             "values": {"speedup_compute_span": one["compute_span_s"] / eight["compute_span_s"],
                        "speedup_modal_wall": one["modal_wall_s"] / eight["modal_wall_s"],
                        "compute_span_1_s": one["compute_span_s"], "compute_span_8_s": eight["compute_span_s"]},
             "parity_vs_prior": "same studies, seeds and design; each fleet bit-identical to its own 1-container run; "
-                               "kernel parity exact on the prior's seeds; screen hook maxT and p identical "
+                               "kernel parity exact on the prior's seeds; screen hook maxT identical to the prior's, its p "
+                               f"{SCREEN_P_AT_HEAD} on every backend (the current code's; see SCREEN_P_AT_HEAD) "
                                "(the prior file stores no per-study fleet outputs to compare)"}
 
 
