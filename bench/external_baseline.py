@@ -33,6 +33,11 @@ LAB_S_PER_STUDY = {"value": 0.8809, "source": "bench/results/modal-design-202611
 COMPARISON = ("what a lab would run off the shelf, not Preflight's speedup: squidpy's enrichment z is a permutation "
               "z-score and lifelines fits a Wald Cox per feature, different statistics from our enrichment ratio and "
               "stratified Cox score z (see agreement_median)")
+CROSS_RUN = ("cross-run, same container class: the lab (0.8809 s, #113) and fused (0.0419 s, #120) times come from "
+             "other runs on other hosts of this class, not this container")
+NJOBS_FAILED = ("squidpy's documented n_jobs=8 path failed on Modal at 2955a9d (bench/results/external-baseline-"
+                "20261122T045024Z.json): its joblib workers get read-only memmapped uint32 arrays its numba kernel has "
+                "no signature for; so all 8 cores go to 8 study workers with n_jobs=1, the lab and fused arms' basis")
 GPU_NOTE = "squidpy and lifelines never touch the GPU; the A100 is only the container class, as in #113 and #120"
 
 _S: dict = {}
@@ -220,6 +225,22 @@ def settings(workers: int, n_jobs: int) -> dict:
             "correction": "Bonferroni over 630, alpha 0.05", "cores": workers * n_jobs}
 
 
+def ratios(per: float, workers: int, n_jobs: int) -> dict:
+    """Seconds per study against the lab and fused arms, labelled cross-run, with every setting."""
+    return {"ratio_vs_lab": per / LAB_S_PER_STUDY["value"], "lab": LAB_S_PER_STUDY,
+            "ratio_vs_fused": per / FUSED_S_PER_STUDY["value"], "fused": FUSED_S_PER_STUDY,
+            "ratio_label": CROSS_RUN, "comparison": COMPARISON, "gpu": GPU_NOTE,
+            "settings": {**settings(workers, n_jobs), "n_jobs_note": NJOBS_FAILED}}
+
+
+def headline(s: dict) -> str:
+    w = s["worker_study_s"]
+    return (f"Off the shelf (squidpy + lifelines, {s['settings']['cores']} cores): {s['seconds_per_study']:.2f} s/study "
+            f"(one study per worker: median {w['median']:.0f} s, range {w['min']:.0f}-{w['max']:.0f} s); "
+            f"{s['ratio_vs_lab']:.1f}x the hand-written lab arm ({LAB_S_PER_STUDY['value']} s) and "
+            f"{s['ratio_vs_fused']:.0f}x the fused path ({FUSED_S_PER_STUDY['value']} s), {CROSS_RUN}; {COMPARISON}")
+
+
 def summarize(out: dict) -> dict:
     recs, plant = out["records"], out["plant_feature"]
     n = len(recs)
@@ -233,10 +254,7 @@ def summarize(out: dict) -> dict:
                            "min": float(min(r["study_s"] for r in recs)), "max": float(max(r["study_s"] for r in recs))},
         "stage_share": {k: float(sum(r[f"{k}_s"] for r in recs) / sum(r["study_s"] for r in recs))
                         for k in ("cells", "squidpy", "lifelines")},
-        "ratio_vs_lab": per / LAB_S_PER_STUDY["value"], "lab": LAB_S_PER_STUDY,
-        "ratio_vs_fused": per / FUSED_S_PER_STUDY["value"], "fused": FUSED_S_PER_STUDY,
-        "comparison": COMPARISON, "gpu": GPU_NOTE,
-        "settings": settings(out["workers"], out.get("n_jobs", 1)),
+        **ratios(per, out["workers"], out.get("n_jobs", 1)),
         "calls": {st: db.rate([r["lab_call"] for r in rs]) for st, rs in by.items() if rs},
         "planted_feature": plant,
         "top_is_planted": {"lifelines": sum(r["lab_top"] == plant for r in by["alternative"]),

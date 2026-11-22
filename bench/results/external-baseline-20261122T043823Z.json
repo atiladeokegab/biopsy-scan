@@ -6,9 +6,10 @@
     "timing": "MEASURED",
     "outcomes": "SYNTHETIC (atlas/simulation.py, as #113)",
     "agreement": "MEASURED (same re-imaged cells in both pipelines)",
-    "rates": "ESTIMATE (binomial rates with Wilson 95% intervals)"
+    "rates": "ESTIMATE (binomial rates with Wilson 95% intervals)",
+    "ratios": "cross-run, same container class: the lab (0.8809 s, #113) and fused (0.0419 s, #120) times come from other runs on other hosts of this class, not this container"
   },
-  "headline": "squidpy + lifelines 24.44 s/study vs fused 0.0419 s/study: 583x, 8 workers each",
+  "headline": "Off the shelf (squidpy + lifelines, 8 cores): 24.44 s/study (one study per worker: median 170 s, range 161-183 s); 27.7x the hand-written lab arm (0.8809 s) and 583x the fused path (0.0419 s), cross-run, same container class: the lab (0.8809 s, #113) and fused (0.0419 s, #120) times come from other runs on other hosts of this class, not this container; what a lab would run off the shelf, not Preflight's speedup: squidpy's enrichment z is a permutation z-score and lifelines fits a Wald Cox per feature, different statistics from our enrichment ratio and stratified Cox score z (see agreement_median)",
   "method": "External baseline: the design point done the way a lab would with off-the-shelf tools (squidpy + lifelines).\n\nPer study, from the same design, seeds and draws as #113 (bench/design_batch.py):\n  cells     the visible, mis-called cells our re-imager sees (core.reimage_ref.draw, crop_mask, miscall), so both\n            pipelines get the same cells; study_cells() is checked bit for bit against core.reimage_ref.reimage.\n  squidpy   per drawn patient, one AnnData of its regions; per radius (25, 50, 100 um)\n            sq.gr.spatial_neighbors(coord_type=\"generic\", radius=r, library_key=\"region\") and\n            sq.gr.nhood_enrichment (default 1,000 permutations). It fills the same 630 slots as our grammar,\n            (tumour type t, neighbour type j, radius, statistic): \"fraction\" = squidpy's edge count share\n            count[t, j] / sum_j count[t, :], \"enrichment\" = its z-score. NaN where the patient has no visible t.\n  lifelines CoxPHFitter per feature, strata = coverslip group, rows with NaN dropped; Bonferroni over all 630:\n            the study is called when min p x 630 <= 0.05.\nTimed per study inside one single-thread pool worker: draw, mis-call, AnnData, squidpy and lifelines. Our own X and\nscore z on the same cells are computed after the timer, for agreement only. Seconds per study = pool wall / N,\nthe basis of the fused path's 0.0419 s (#120: compute_wall_s / 3,000 studies, 8 workers).",
   "design": {
     "patients": 159,
@@ -88,7 +89,45 @@
     },
     "top1_same": 14,
     "nan_only_squidpy": 396,
-    "nan_only_ours": 0
+    "nan_only_ours": 0,
+    "ratio_vs_lab": 27.74822691050062,
+    "lab": {
+      "value": 0.8809,
+      "source": "bench/results/modal-design-20261121T194458Z.json",
+      "basis": "lab compute_wall_s 1,761.88 / 2,000 studies (null and alternative ids 0-999, which include these), 8 single-thread workers (#113)"
+    },
+    "ratio_label": "cross-run, same container class: the lab (0.8809 s, #113) and fused (0.0419 s, #120) times come from other runs on other hosts of this class, not this container",
+    "comparison": "what a lab would run off the shelf, not Preflight's speedup: squidpy's enrichment z is a permutation z-score and lifelines fits a Wald Cox per feature, different statistics from our enrichment ratio and stratified Cox score z (see agreement_median)",
+    "gpu": "squidpy and lifelines never touch the GPU; the A100 is only the container class, as in #113 and #120",
+    "settings": {
+      "pool_workers": 8,
+      "squidpy.gr.spatial_neighbors": {
+        "coord_type": "generic",
+        "radius_um": [
+          25.0,
+          50.0,
+          100.0
+        ],
+        "library_key": "region",
+        "delaunay": false
+      },
+      "squidpy.gr.nhood_enrichment": {
+        "n_perms": 1000,
+        "n_jobs": 1,
+        "cluster_key": "type"
+      },
+      "lifelines.CoxPHFitter": {
+        "defaults": true,
+        "strata": [
+          "coverslip group"
+        ],
+        "per_feature": true,
+        "note": "lifelines has no parallel option; one fit per feature"
+      },
+      "correction": "Bonferroni over 630, alpha 0.05",
+      "cores": 8,
+      "n_jobs_note": "squidpy's documented n_jobs=8 path failed on Modal at 2955a9d (bench/results/external-baseline-20261122T045024Z.json): its joblib workers get read-only memmapped uint32 arrays its numba kernel has no signature for; so all 8 cores go to 8 study workers with n_jobs=1, the lab and fused arms' basis"
+    }
   },
   "records": [
     {
@@ -1588,5 +1627,10 @@
     "finished_utc": "2026-11-22T04:59:08.819094+00:00",
     "wall_s": 1244.97643,
     "note": "wall_s includes container start and image pull; pool_wall_s is inside the container"
+  },
+  "annotated": {
+    "by": "build-9",
+    "what": "ratio_vs_lab, ratio_label, comparison, gpu, settings and headline added after the run by bench.external_baseline.ratios() and headline() from the recorded seconds_per_study and worker_study_s; no timing or record changed",
+    "host_note": "the container reported cpu_count 24 and affinity 24 with cpu=8 reserved; the pool used 8 workers"
   }
 }

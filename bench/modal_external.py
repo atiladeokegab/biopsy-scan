@@ -108,10 +108,7 @@ def main(studies: int = 25, cap_usd: float = 5.0, timeout_s: int = 3600, n_jobs:
         "labels": {"timing": "MEASURED", "outcomes": f"SYNTHETIC (atlas/simulation.py, as #113)",
                    "agreement": "MEASURED (same re-imaged cells in both pipelines)",
                    "rates": "ESTIMATE (binomial rates with Wilson 95% intervals)"},
-        "headline": s and (f"Off the shelf (squidpy + lifelines, {s['settings']['cores']} cores): "
-                           f"{s['seconds_per_study']:.2f} s/study, {s['ratio_vs_lab']:.0f}x the hand-written lab arm "
-                           f"({eb.LAB_S_PER_STUDY['value']} s) and {s['ratio_vs_fused']:.0f}x the fused path "
-                           f"({eb.FUSED_S_PER_STUDY['value']} s); {eb.COMPARISON}"),
+        "headline": s and eb.headline(s),
         "method": eb.__doc__.strip(),
         "design": {**db.design(), "cohort": "charville", "alpha": eb.ALPHA, "n_perms": eb.N_PERMS,
                    "studies_per_stream": studies, "streams": {k: db.STREAMS[k] for k in plan}, "root_seed": db.ROOT,

@@ -79,3 +79,11 @@ def test_lifelines_screen_finds_a_planted_feature_and_skips_constant_columns():
     event = (rng.random(n) < 0.8).astype(float)
     out = eb.lifelines_screen(X, time, event, np.repeat([0, 1], n // 2))
     assert out["z"][0] > 4 and abs(out["z"][1]) < 4 and np.isnan(out["p"][2]) and out["fitted"] == 2
+
+
+def test_ratios_carry_both_arms_the_cross_run_label_and_the_different_statistic_wording():
+    r = eb.ratios(eb.LAB_S_PER_STUDY["value"], 8, 1)
+    assert r["ratio_vs_lab"] == pytest.approx(1) and r["ratio_vs_fused"] == pytest.approx(0.8809 / 0.0419)
+    assert r["settings"]["cores"] == 8 and r["settings"]["squidpy.gr.nhood_enrichment"]["n_perms"] == 1000
+    h = eb.headline({**r, "seconds_per_study": 0.8809, "worker_study_s": {"median": 7, "min": 6, "max": 9}})
+    assert "cross-run, same container class" in h and "not Preflight's speedup" in h and "range 6-9 s" in h
