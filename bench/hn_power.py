@@ -51,16 +51,30 @@ CAVEATS = {
 def discovery_patients(data_dir: Path) -> pd.DataFrame:
     """Discovery regions with a verified case number: region_id, case, group. Reads no outcome column."""
     lock = json.loads(LOCK.read_text())
-    lab = pd.read_csv(Path(data_dir) / "upmc_labels.csv", usecols=LABEL_COLUMNS, dtype=str, keep_default_na=False)
-    assert set(lab.columns) == set(LABEL_COLUMNS) and not OUTCOME_COLUMNS & set(lab.columns), "outcome column read"
-    case = lab.sample_label_visualizer.where(lab.sample_label_visualizer != "NA", "").str.split(" ").str[0]
-    out = pd.DataFrame({"region_id": lab.region_id, "case": case})
+    out = case_of_region(data_dir)
     out = out[(out.case != "") & ~out.region_id.isin(set(lock["locked_regions"]))].reset_index(drop=True)
     out["group"] = (out.region_id.str.split("_").str[1].str[1:].astype(int) >= 4).astype(int)  # core.cohorts._group
     check_disjoint(out, lock)
     if (out.groupby("case").group.nunique() > 1).any():
         raise ValueError("a discovery patient spans both coverslip groups")
     return out
+
+
+def case_of_region(data_dir: Path) -> pd.DataFrame:
+    """region_id -> case number ("" for NA), from the two identity columns only."""
+    lab = pd.read_csv(Path(data_dir) / "upmc_labels.csv", usecols=LABEL_COLUMNS, dtype=str, keep_default_na=False)
+    assert set(lab.columns) == set(LABEL_COLUMNS) and not OUTCOME_COLUMNS & set(lab.columns), "outcome column read"
+    case = lab.sample_label_visualizer.where(lab.sample_label_visualizer != "NA", "").str.split(" ").str[0]
+    return pd.DataFrame({"region_id": lab.region_id, "case": case})
+
+
+def check_cache(data_dir: Path) -> None:
+    """The discovery cell cache on disk holds no locked region and no locked patient's cells."""
+    lock = json.loads(LOCK.read_text())
+    with np.load(Path(data_dir) / "upmc_cells.discovery.npz", allow_pickle=False) as z:
+        ids = pd.DataFrame({"region_id": z["region_ids"].astype(str)})
+    ids["case"] = ids.region_id.map(case_of_region(data_dir).set_index("region_id").case).fillna("")
+    check_disjoint(ids, lock)
 
 
 def check_disjoint(regions: pd.DataFrame, lock: dict) -> None:
@@ -79,6 +93,8 @@ def source(data_dir: Path) -> dict:
     names = sorted(reg.case.unique())
     pidx = {p: i for i, p in enumerate(names)}
     c = load_cells("upmc", list(reg.region_id), Path(data_dir), "discovery")
+    check_cache(data_dir)
+    assert list(c["region_ids"]) == list(reg.region_id), "cells beyond the 34 patients' regions"
     rid = np.repeat(np.arange(len(reg), dtype=np.int32), np.diff(c["region_ptr"]))
     n = len(names)
     return {"cell_type": c["cell_type"].astype(np.int8), "x": c["xy_um"][:, 0].astype(np.float32),

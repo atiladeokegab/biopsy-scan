@@ -47,6 +47,30 @@ def test_a_locked_patient_on_the_discovery_side_is_refused(labels):
                          json.loads(h.LOCK.read_text()))
 
 
+def _cache(where, regions):
+    np.savez(where / "upmc_cells.discovery.npz", region_ids=np.array(regions, dtype=str))
+
+
+def test_a_cache_of_discovery_regions_passes(labels):
+    _cache(labels, [REGIONS[0], REGIONS[1], REGIONS[2], REGIONS[4]])  # the unlabelled region is discovery, not locked
+    h.check_cache(labels)
+
+
+def test_a_cache_holding_a_locked_region_is_refused(labels):
+    _cache(labels, REGIONS)
+    with pytest.raises(PermissionError):
+        h.check_cache(labels)
+
+
+def test_a_cache_holding_a_locked_patients_region_is_refused(labels):
+    """A region of a locked patient that the region list missed is still caught by its case number."""
+    lock = json.loads(h.LOCK.read_text())
+    h.LOCK.write_text(json.dumps({**lock, "locked_patients": ["LOCK9", "HN2"]}))
+    _cache(labels, REGIONS[:3])
+    with pytest.raises(PermissionError):
+        h.check_cache(labels)
+
+
 def test_a_lock_that_names_a_discovery_case_is_refused(labels):
     h.LOCK.write_text(json.dumps({"locked_regions": [REGIONS[3]], "locked_patients": ["LOCK9", "HN2"]}))
     with pytest.raises(PermissionError):
@@ -72,3 +96,5 @@ def test_real_discovery_side_is_34_patients_disjoint_from_the_lock():
     assert reg.case.nunique() == 34 and len(reg) == 125
     assert not set(reg.region_id) & set(lock["locked_regions"])
     assert not set(reg.case) & set(map(str, lock["locked_patients"]))
+    if (UPMC.parent / "upmc_cells.discovery.npz").exists():
+        h.check_cache(UPMC.parent)
