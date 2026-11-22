@@ -31,7 +31,7 @@ export function step(i, move, n = STEPS.length) {
   return j >= n ? -1 : Math.max(0, j);
 }
 
-let ui = null, at = -1, raf = 0, opener = null;
+let ui = null, at = -1, raf = 0, opener = null, autoT = 0;
 
 function els() {
   if (ui) return ui;
@@ -82,6 +82,7 @@ function show(i) {
 }
 
 function close() {
+  clearTimeout(autoT);
   at = -1;
   cancelAnimationFrame(raf);
   document.body.classList.remove("touring");
@@ -106,12 +107,15 @@ function onKey(e) {
   if (at < 0) return;
   const move = { Escape: "skip", ArrowRight: "next", ArrowLeft: "back" }[e.key];
   if (!move) return;
+  // A focused slider, field or select keeps its own arrow keys.
+  if (move !== "skip" && e.target.closest?.("input, select, textarea, [contenteditable]")) return;
   // While the tour is open its keys win over the workflow's arrow-key stepping.
   e.preventDefault(); e.stopImmediatePropagation();
   go(move);
 }
 
 export function startTour(from = null) {
+  clearTimeout(autoT); // a manual start replaces the pending first-visit start
   opener = from;
   if (at < 0) { addEventListener("keydown", onKey, true); raf = requestAnimationFrame(loop); }
   at = -1;
@@ -124,5 +128,5 @@ export function initTour() {
   const q = new URLSearchParams(location.search).get("tour");
   let seen = false;
   try { seen = localStorage.getItem(SEEN_KEY) === "1"; } catch { /* no storage: treat as first visit */ }
-  if (q === "1" || (q !== "0" && !seen && !navigator.webdriver)) setTimeout(() => startTour(btn), 600);
+  if (q === "1" || (q !== "0" && !seen && !navigator.webdriver)) autoT = setTimeout(() => startTour(btn), 600);
 }
