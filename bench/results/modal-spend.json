@@ -325,6 +325,27 @@
       },
       "running_total_usd": 44.556,
       "counted": "actual (container x wall); total recounted at the merge with #115's 20:02-20:10Z entries (was 41.456)"
+    },
+    {
+      "utc": "2026-11-22T04:38Z",
+      "run": "build-9 external-baseline 25/stream",
+      "containers": 1,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 5.0,
+      "est_usd": 3.98,
+      "basis": "4800 s ceiling x $2.987568/h",
+      "source_commit": "915116392da554a4978dafcd98bb49e5a6979761",
+      "container_class": "Modal A100 + 8 cores + 64 GiB",
+      "actual": {
+        "modal_wall_s": 1245.0,
+        "est_usd": 1.033,
+        "basis": "container x local wall (an upper bound: includes queueing)",
+        "result": "bench/results/external-baseline-20261122T043823Z.json"
+      },
+      "counted": "actual (container x wall)",
+      "running_total_usd": 45.589
     }
   ],
   "container_usd_per_hour_H100": 4.58,
