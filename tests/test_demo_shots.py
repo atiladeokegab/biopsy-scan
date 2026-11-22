@@ -25,8 +25,9 @@ class FakePage:
     def __init__(self, present):
         self.present, self.calls = present, []
 
-    def evaluate(self, js, sel):
-        self.calls.append(("scroll", sel))
+    def evaluate(self, js, arg):
+        sel, block = arg
+        self.calls.append(("scroll", sel, block))
         return sel in self.present
 
     def screenshot(self):
@@ -103,3 +104,13 @@ def test_click_with_cursor_on_a_hidden_target_stops_with_a_clear_message():
 def test_race_scroll_is_off_by_default_and_takes_one_target():
     assert ds.parse_args([]).race_scroll is None
     assert ds.parse_args(["--race-scroll", "#speed-interim"]).race_scroll == "#speed-interim"
+
+
+def test_race_scroll_aligns_the_bottom_so_the_last_lane_caption_is_never_cut():
+    # proof-v6 FAILED its framecheck: block 'start' put #speed-race (757 px) at the top and cut lane 5's caption at y=720
+    page = FakePage({"#speed-race"})
+    assert ds._scroll(page, ["#speed-race"], 0, block="end") == []
+    assert ("scroll", "#speed-race", "end") in page.calls
+    assert ds._scroll(FakePage({"#power"}), ["#power"], 0) == []  # the after-race scrolls still align the top
+    src = (ROOT / "scripts" / "demo_shots.py").read_text()
+    assert '_scroll(page, [race_scroll], 0, block="end")' in src

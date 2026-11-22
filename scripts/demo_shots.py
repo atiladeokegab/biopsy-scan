@@ -104,11 +104,11 @@ def _hold(page, seconds: float) -> None:
         page.wait_for_timeout(500)
 
 
-def _scroll(page, selectors: list[str], dwell_s: float) -> list[str]:
+def _scroll(page, selectors: list[str], dwell_s: float, block: str = "start") -> list[str]:
     problems = []
     for sel in selectors:
-        found = page.evaluate("(s) => { const e = document.querySelector(s); "
-                              "if (e) e.scrollIntoView({behavior: 'smooth', block: 'start'}); return !!e; }", sel)
+        found = page.evaluate("([s, b]) => { const e = document.querySelector(s); "
+                              "if (e) e.scrollIntoView({behavior: 'smooth', block: b}); return !!e; }", [sel, block])
         if not found:
             problems.append(f"scroll target not found: {sel}")
             continue
@@ -145,8 +145,8 @@ def _video(browser, url: str, out: Path, route, hold_s: float, tail_s: float, sc
         page.wait_for_timeout(hold_s * 1000)
         _click(page, "#run", cursor)
         click_s = time.monotonic() - t0 - ready_s
-        if race_scroll:  # the race card is taller than 720 px; this keeps every lane in view while it runs
-            problems += _scroll(page, [race_scroll], 0)
+        if race_scroll:  # bottom-aligned: the last lane's caption ends at the frame's edge; if the target is taller
+            problems += _scroll(page, [race_scroll], 0, block="end")  # than 720 px, its top text is what scrolls off
         page.wait_for_function(RACE_DONE, timeout=60_000)
         done_s = time.monotonic() - t0 - ready_s
         _hold(page, tail_s)
@@ -190,7 +190,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     ap.add_argument("--cursor", action="store_true",
                     help="draw a pointer that glides to each click target before clicking (video only)")
     ap.add_argument("--race-scroll", metavar="SELECTOR",
-                    help="right after the click, smoothly scroll this element into view for the race (video only)")
+                    help="right after the click, smoothly scroll this element's bottom to the frame's bottom for the race (video only)")
     return ap.parse_args(argv)
 
 
