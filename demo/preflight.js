@@ -2,7 +2,7 @@
 // Pure, so preflight.test.mjs checks every number before it reaches the page. No network, no simulation: a simulated
 // point is shown as stored; between two points it is linear in patients and labelled ESTIMATE (interpolated);
 // outside a design's simulated range, or for a window and mis-call pair nobody simulated, there is no number.
-const pct = (v) => `${Math.round(v * 100)}%`;
+const pct = (v) => (v >= 0.995 && v < 1 ? ">99%" : `${Math.round(v * 100)}%`); // never round a near-certainty up to 100%
 
 export function design(data, window, miscall) {
   return data.designs.find((d) => d.window === window && d.miscall === miscall) ?? null;
@@ -44,4 +44,38 @@ export function panelTexts(data, { patients, window, miscall }) {
       : "The formula and the simulation agree here.",
     src: d ? `${d.source} · ${data.formula.source}` : data.formula.source,
   };
+}
+
+// The panel's chart as SVG markup, numbers only: the formula's curve, the chosen design's simulated points joined
+// straight (the interpolation the panel uses) inside their interval band, and a cursor at the chosen patients.
+export function chartSVG(data, { patients, window, miscall }, W = 560, H = 220) {
+  const L = 40, R = 12, T = 12, B = 34, X0 = 50, X1 = 600;
+  const x = (n) => L + ((n - X0) / (X1 - X0)) * (W - L - R), y = (p) => T + (1 - p) * (H - T - B);
+  const f = (v) => v.toFixed(1), line = (pts) => pts.map(([a, b], i) => `${i ? "L" : "M"}${f(x(a))},${f(y(b))}`).join("");
+  const out = [];
+  for (const p of [0, 0.5, 0.8, 1]) {
+    out.push(`<line class="grid${p === 0.8 ? " target" : ""}" x1="${L}" x2="${W - R}" y1="${f(y(p))}" y2="${f(y(p))}"/>`,
+      `<text x="${L - 6}" y="${f(y(p) + 4)}" text-anchor="end">${p * 100}%</text>`);
+  }
+  for (const n of [50, 200, 400, 600]) out.push(`<text x="${f(x(n))}" y="${H - 14}" text-anchor="middle">${n}</text>`);
+  out.push(`<text x="${f((L + W - R) / 2)}" y="${H - 1}" text-anchor="middle">patients</text>`);
+  const fx = Object.entries(data.formula.power).map(([n, p]) => [+n, p]);
+  out.push(`<path class="formula" d="${line(fx)}"/>`);
+  const d = design(data, window, miscall);
+  if (d) {
+    // Clip to the slider's 50 to 600 with the same straight lines the panel interpolates on.
+    const inside = d.points.filter((p) => p.patients > X0 && p.patients < X1).map((p) => p.patients);
+    const ends = [X0, X1].filter((n) => n >= d.points[0].patients && n <= d.points.at(-1).patients);
+    const ns = [...new Set([...ends, ...inside])].sort((a, b) => a - b), es = ns.map((n) => [n, estimate(d, n)]);
+    out.push(`<path class="band" d="${line(es.map(([n, e]) => [n, e.hi]))}${line(es.map(([n, e]) => [n, e.lo]).reverse()).replace("M", "L")}Z"/>`,
+      `<path class="sim" d="${line(es.map(([n, e]) => [n, e.power]))}"/>`);
+    for (const p of d.points.filter((q) => q.patients >= X0 && q.patients <= X1)) {
+      out.push(`<circle class="pt" cx="${f(x(p.patients))}" cy="${f(y(p.power))}" r="3"/>`);
+    }
+  }
+  const e = estimate(d, patients), fp = data.formula.power[String(patients)];
+  out.push(`<line class="cursor" x1="${f(x(patients))}" x2="${f(x(patients))}" y1="${T}" y2="${H - B}"/>`,
+    `<circle class="fdot" cx="${f(x(patients))}" cy="${f(y(fp))}" r="5"/>`);
+  if (!e.missing) out.push(`<circle class="sdot" cx="${f(x(patients))}" cy="${f(y(e.power))}" r="5"/>`);
+  return out.join("");
 }

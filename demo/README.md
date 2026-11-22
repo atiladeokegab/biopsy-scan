@@ -200,6 +200,16 @@ shows `km.label` ("exploratory, cutoff chosen on the same cohort, no p-value") b
 region's counts. `check_data.py` refuses a file without `exploratory: true`, with a p-value, or without "no
 p-value" in its label. The hit cannot be tested in our second cohort (UPMC has no PD1 stain), and the page says so; it never says "not replicated".
 
+## `data/preflight.json` (`preflight-panel/1`): "Preflight your study", built by `collect_preflight.py`
+
+Built only from `bench/results/power-at-scale.json` (two 400 µm fields, 10% mis-called, 40 to 1,000 patients) and
+`bench/results/vs-schoenfeld-300.json` (the whole-core, no-mis-call control from 40 to 300 patients, plus the
+Schoenfeld inputs); each source's sha256 is recorded. The formula is evaluated at every slider stop (50 to 600 in 10s)
+and must reproduce that file's own `analytic_power` at its 7 points. The page (`preflight.js`) shows a simulated point as
+stored, with its file's label; between two points it draws a straight line and labels the value
+`ESTIMATE (interpolated)`; outside a design's range, or for a window and mis-call pair that was never simulated, it
+shows `NOT SIMULATED` and no number. `make smoke` runs `collect_preflight.py --check` and `preflight.test.mjs`.
+
 ## How the page picks a grid point
 
 The slider ranges are:

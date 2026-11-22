@@ -92,6 +92,42 @@
     </article>
   </section>
 
+  <section class="pf" id="preflight" aria-labelledby="pf-title">
+    <div class="card pf-card">
+      <div class="pf-head">
+        <h2 id="pf-title">Preflight your study</h2>
+        <p class="pf-sub">Set the design; the power appears at once. Every number comes from studies already simulated on real Charville tissue, so nothing runs here.</p>
+      </div>
+      <form class="pf-controls" id="pf-form" aria-label="Your study design">
+        <div class="slider">
+          <label for="pf-patients">Patients</label>
+          <output id="pf-patients-out" for="pf-patients">200</output>
+          <input id="pf-patients" type="range" min="50" max="600" step="10" value="200">
+        </div>
+        <fieldset class="seg">
+          <legend>Imaged window</legend>
+          <label><input type="radio" name="pf-window" value="400um" checked><span>Two 400 µm fields</span></label>
+          <label><input type="radio" name="pf-window" value="core"><span>Whole core</span></label>
+        </fieldset>
+        <fieldset class="seg">
+          <legend>Mis-call rate</legend>
+          <label><input type="radio" name="pf-miscall" value="0.1" checked><span>10%</span></label>
+          <label><input type="radio" name="pf-miscall" value="0"><span>0%</span></label>
+        </fieldset>
+      </form>
+      <div class="pf-out" aria-live="polite">
+        <p class="pf-sim"><span class="big" id="pf-sim">—</span><small>simulated power <span class="tag" id="pf-sim-tag"></span></small><span class="ci" id="pf-sim-note"></span></p>
+        <p class="pf-formula"><span class="big" id="pf-formula">—</span><small>the textbook formula <span class="tag" id="pf-formula-tag"></span></small><span class="ci">Schoenfeld events formula: it ignores the window and the mis-calls</span></p>
+        <p class="pf-gap" id="pf-gap"></p>
+      </div>
+      <figure class="pf-chart">
+        <svg id="pf-chart" viewBox="0 0 560 220" role="img" aria-label="Power against patients: the formula's curve and the simulated curve for the chosen design"></svg>
+        <figcaption class="pf-key"><span><i class="k-sim"></i>simulated, 95% interval band</span> <span><i class="k-formula"></i>formula</span> <span><i class="k-target"></i>80% target</span></figcaption>
+      </figure>
+      <p class="src" id="pf-src"></p>
+    </div>
+  </section>
+
   <h2 class="explore-title">Explore a design <span class="tag" id="grid-tag">SYNTHETIC grid</span></h2>
   <div class="app">
 

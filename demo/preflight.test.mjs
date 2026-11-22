@@ -2,7 +2,7 @@
 // stored point of the two committed power files, a labelled interpolation between two of them, or nothing.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { design, estimate, panelTexts } from "./preflight.js";
+import { chartSVG, design, estimate, panelTexts } from "./preflight.js";
 
 const read = (p) => JSON.parse(readFileSync(new URL(p, import.meta.url), "utf8"));
 const data = read("./data/preflight.json");
@@ -61,6 +61,17 @@ const c200 = panelTexts(data, { patients: 200, window: "core", miscall: 0 });
 assert.deepEqual([c200.sim, c200.simTag, c200.gap],
   ["60%", "ESTIMATE (sim), control design", "The formula overstates power by 20 points here."]);
 
+// Near-certainty is never rounded up to 100%.
+assert.equal(panelTexts(data, { patients: 600, window: "400um", miscall: 0.1 }).formula, ">99%");
+
 // A slider stop with no formula value is a data error, not a blank.
 assert.throws(() => panelTexts(data, { patients: 55, window: "400um", miscall: 0.1 }), /no formula value/);
 console.log("preflight.test.mjs: ok");
+
+// The chart carries both dots while a design is simulated at n, and only the formula's where it is not.
+const svg = chartSVG(data, { patients: 200, window: "400um", miscall: 0.1 });
+assert.equal((svg.match(/class="sdot"/g) ?? []).length, 1);
+assert.equal((svg.match(/class="pt"/g) ?? []).length, crop.points.filter((p) => p.patients >= 50 && p.patients <= 600).length);
+assert.ok(!/NaN|undefined/.test(svg));
+assert.equal((chartSVG(data, { patients: 400, window: "core", miscall: 0 }).match(/class="sdot"/g) ?? []).length, 0);
+console.log("preflight.test.mjs: chart ok");
