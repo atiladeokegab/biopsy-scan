@@ -39,7 +39,8 @@ export function mount(el, data) {
   cv.style.cssText = "display:block;width:100%;height:100%";
   el.appendChild(cv);
   const core = data.tma.cores[data.tma.pick], P = powerAt(data.preflight), L = look(core);
-  const S = Math.max(...[core.size_um].flat()); // drawCore maps [0, S] onto the disc's diameter
+  const [cw, ch = cw] = [core.size_um].flat(), S = Math.max(cw, ch); // drawCore maps [0, S] onto the disc's diameter
+  const dx = (S - cw) / 2, dy = (S - ch) / 2; // centre the region in the disc
   const css = (n, f) => getComputedStyle(document.documentElement).getPropertyValue(n).trim() || f;
   const head = css("--text-head", "#F4F7FA"), muted = css("--text-muted", "#8898AA"), accent = css("--accent", "#2BD4A4"), warn = css("--tumour", "#FF7A59");
   let raf = 0, t0 = 0, last = SETTLE;
@@ -49,10 +50,10 @@ export function mount(el, data) {
     if (cv.width !== Math.round(W * d) || cv.height !== Math.round(H * d)) { cv.width = Math.round(W * d); cv.height = Math.round(H * d); }
     g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, W, H);
     const R = Math.min(H * 0.44, W * 0.3), ox = W * 0.32, oy = H / 2, k = (2 * R) / S;
-    const X = (x) => ox - R + x * k, Y = (y) => oy - R + y * k;
+    const X = (x) => ox - R + (x + dx) * k, Y = (y) => oy - R + (y + dy) * k;
     const appear = ease(t, 0, 0.8), fov = ease(t, 0.8, 1.6), settled = t >= 3.4;
     // The core as steps 1-2 draw it, with each mis-called cell flickering to (then keeping) its called type.
-    const cells = core.cells.map((c, j) => (L.called[j] !== c[2] && (settled || (t > 1.8 && Math.sin(t * 18 + j) > 0)) ? [c[0], c[1], L.called[j]] : c));
+    const cells = core.cells.map((c, j) => (L.called[j] !== c[2] && (settled || (t > 1.8 && Math.sin(t * 18 + j) > 0)) ? [c[0] + dx, c[1] + dy, L.called[j]] : [c[0] + dx, c[1] + dy, c[2]]));
     g.globalAlpha = appear; drawCore(g, { ...core, size_um: S, cells }, ox, oy, R, "seg"); g.globalAlpha = 1;
     // Dim everything outside the two fields of view.
     const m = mask.getContext("2d"); mask.width = cv.width; mask.height = cv.height; m.setTransform(d, 0, 0, d, 0, 0);
