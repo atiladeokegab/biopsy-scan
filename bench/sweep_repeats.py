@@ -178,6 +178,12 @@ def scaling(doc: dict, prior: dict, kind: str) -> dict:
             need(r["x_sha"] == o["x_sha"] and abs(r["maxT"] - o["maxT"]) <= Z_TOL * max(1, abs(o["maxT"])),
                  f"{c} cores, study {r['i']}: differs from the prior's 1-core run")
     need(all(pos(r["studies_wall_s"]) for r in curve.values()), "a timing is not positive and finite")
+    for c, r in curve.items():  # the curve is a summary: each row must be its point's own wall, never edited apart from it
+        p = doc["points"][str(c)]
+        need(r["studies_wall_s"] == p["studies_wall_s"] and r["workers"] == p["workers"] and r["studies"] == n
+             and math.isclose(r["wall_per_study_s"], r["studies_wall_s"] / n, rel_tol=1e-12)
+             and math.isclose(r["speedup_vs_1_core"], curve[1]["studies_wall_s"] / r["studies_wall_s"], rel_tol=1e-12),
+             f"{c} cores: the curve row does not follow from its point's studies_wall_s")
     top = max(curve)
     return {"run_id": tasks[0], "source_commit": doc["source_commit"],
             "values": {f"speedup_{top}_cores": curve[1]["studies_wall_s"] / curve[top]["studies_wall_s"],
