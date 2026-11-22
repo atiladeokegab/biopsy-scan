@@ -5,7 +5,7 @@ const Q = new URLSearchParams(location.search);
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const INK = "#F3EFE6", MUTED = "#7D8796", HAIR = "rgba(243,239,230,.12)";
 const WINDOW_RACE_S = 3; // sparkline span, in race seconds
-let D, lanes = [], t = 0, t0 = 0, running = false, raf = 0, lastDrawn = -1, ymax = 1;
+let D, lanes = [], t = 0, t0 = 0, raf = 0, lastDrawn = -1, ymax = 1;
 
 const fmt = (s) => s < 60 ? `${s.toFixed(1)} s` : s < 3600 ? `${Math.floor(s / 60)} m ${String(Math.floor(s % 60)).padStart(2, "0")} s`
   : `${Math.floor(s / 3600)} h ${String(Math.floor((s % 3600) / 60)).padStart(2, "0")} m`;
@@ -75,22 +75,17 @@ function render() {
   }
 }
 
+const HOLD_S = 1; // pause on the last frame before the loop restarts
 function frame(now) {
-  if (running) {
-    t = Math.min(D.race.seconds, Math.max(0, now - t0) / 1e3);
-    if (t >= D.race.seconds) { running = false; $("run").disabled = false; }
-  }
-  if (!REDUCED || !running || Math.floor(t) !== lastDrawn) { lastDrawn = Math.floor(t); render(); } // reduced motion: 1 update/s
-  if (running) raf = requestAnimationFrame(frame);
+  const el = Math.max(0, now - t0) / 1e3; // rAF time can precede t0, so clamp at 0
+  if (el >= D.race.seconds + HOLD_S) { t0 = now; return frame(now); }
+  t = Math.min(D.race.seconds, el);
+  if (!REDUCED || Math.floor(t) !== lastDrawn) { lastDrawn = Math.floor(t); render(); } // reduced motion: 1 update/s
+  raf = requestAnimationFrame(frame);
 }
-function start() {
-  if (!D || running) return;
-  cancelAnimationFrame(raf); running = true; t = 0; lastDrawn = -1; $("run").disabled = true;
-  t0 = performance.now(); raf = requestAnimationFrame(frame);
-}
-function reset() {
-  if (!D) return;
-  cancelAnimationFrame(raf); running = false; t = 0; $("run").disabled = false; render();
+function restart() {
+  if (!D || Q.has("t")) return;
+  cancelAnimationFrame(raf); t = 0; lastDrawn = -1; t0 = performance.now(); raf = requestAnimationFrame(frame);
 }
 
 fetch("data.json").then((r) => r.json()).then((d) => {
@@ -103,16 +98,9 @@ fetch("data.json").then((r) => r.json()).then((d) => {
     lanes.push({ d, color: getComputedStyle(el).getPropertyValue("--c").trim(), cpu: q("[data-cpu]"), gpu: q("[data-gpu]"),
       spark: q(".spark canvas"), time: q("[data-time]"), endT: Math.max(d.cpu.at(-1)[0], d.gpu_util.at(-1)[0]) });
   }
-  $("run").disabled = false;
-  if (Q.has("t")) { t = Math.min(D.race.seconds, +Q.get("t")); render(); return; }
-  render();
-  if (Q.get("autostart") === "1") start();
+  if (Q.has("t")) { t = Math.min(D.race.seconds, +Q.get("t")); render(); return; } // frozen frame for screenshots
+  restart();
 });
-$("run").addEventListener("click", (e) => { e.stopPropagation(); start(); });
-$("reset").addEventListener("click", (e) => { e.stopPropagation(); reset(); });
-document.querySelector("main").addEventListener("click", start);
-addEventListener("keydown", (e) => {
-  if (e.code === "Space") { e.preventDefault(); start(); }
-  else if (e.key === "r" || e.key === "R") reset();
-});
+$("reset").addEventListener("click", restart);
+addEventListener("keydown", (e) => { if (e.key === "r" || e.key === "R") restart(); });
 addEventListener("resize", () => D && render());
