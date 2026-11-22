@@ -19,5 +19,7 @@
   "basis": "GPU plus capped CPU and memory list rates, charged for measured function wall plus retention. An unresolved or failed call retains its reservation. Startup and credits can differ.",
   "call_id": "fc-01M81QP3JP6170K9WGEWAPKC2W",
   "failure_reason": "Modal loaded the runner from /root and the historical receipt path resolved outside the repository mount. No permutation scoring ran.",
-  "run_estimate_scope": "Conservative reservation retained because function wall was unavailable."
+  "run_estimate_scope": "Conservative reservation retained because function wall was unavailable.",
+  "prior_project_estimate_scope": "Conservative pre-task project baseline, excluding both Charville H100 calls.",
+  "running_project_estimate_usd": 102.5
 }
