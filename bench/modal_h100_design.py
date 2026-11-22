@@ -11,8 +11,6 @@ import json
 import math
 import subprocess
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from contextvars import copy_context
 from datetime import datetime, timezone
 from pathlib import Path
 from statistics import median
@@ -75,16 +73,23 @@ def _device() -> dict:
     return info
 
 
-def _rendezvous(ready, uuid: str, count: int) -> float:
+def _rendezvous(ready, uuid: str, count: int, *, prepared: bool) -> float:
     if count == 1:
         return 0.0
     begun = time.perf_counter()
-    ready[uuid] = True
-    while ready.len() < count:
+    phase = "prepared" if prepared else "allocated"
+    target = count * (2 if prepared else 1)
+    ready[f"{phase}:{uuid}"] = True
+    while True:
+        if ready.get("aborted", False):
+            raise TimeoutError(f"H100 group failed its {phase} gate")
+        arrived = ready.len()
+        if arrived >= target:
+            return time.perf_counter() - begun
         if time.perf_counter() - begun > 100:
-            raise TimeoutError(f"only {ready.len()} of {count} H100s reached the start gate")
+            ready["aborted"] = True
+            raise TimeoutError(f"only {arrived - (count if prepared else 0)} of {count} H100s reached the {phase} gate")
         time.sleep(.5)
-    return time.perf_counter() - begun
 
 
 @app.function(**(gpu_function | {"gpu": "H100!", "timeout": TIMEOUTS[1]}),
@@ -95,12 +100,13 @@ def evaluate_shard(jobs: list[tuple[str, int]], ready, count: int) -> dict:
 
     entered = time.perf_counter()
     device = _device()
+    allocation_wait = _rendezvous(ready, device["uuid"], count, prepared=False)
     t = time.perf_counter()
     cells = load("charville")
     load_s = time.perf_counter() - t
     prep = db.prepare("gpu", cells, PLAN)
     warm = db.warm("gpu")
-    wait = _rendezvous(ready, device["uuid"], count)
+    wait = _rendezvous(ready, device["uuid"], count, prepared=True)
     start = time.time()
     ref_ns = time.perf_counter()
     records, reimage_s, scoring_s = [], 0.0, 0.0
@@ -122,7 +128,8 @@ def evaluate_shard(jobs: list[tuple[str, int]], ready, count: int) -> dict:
     return {"records": records, "gpu": device, "compute_window": [start, time.time()],
             "reimage_wall_s": reimage_s, "scoring_wall_s": scoring_s, "compute_wall_s": compute,
             "setup_s": {"load": load_s, "outcome_prep": prep["prep_s"], "adjacency_upload": prep["adjacency_s"],
-                        "warm_up": warm, "rendezvous": wait}, "plant_feature": prep["plant_feature"],
+                        "warm_up": warm, "allocation_gate": allocation_wait, "rendezvous": wait},
+            "plant_feature": prep["plant_feature"],
             "in_function_s": time.perf_counter() - entered}
 
 
@@ -169,7 +176,7 @@ def spread(samples: list[float]) -> dict:
 
 
 @app.local_entrypoint()
-def run_h100(prior_project_usd: float, cap_usd: float = 25.0, repeats: int = 2):
+def run_h100(prior_project_usd: float, cap_usd: float = 25.0, repeats: int = 2, gpu_count: int = 0):
     def git(*args):
         return subprocess.check_output(["git", *args], cwd=ROOT, text=True).strip()
 
@@ -178,6 +185,9 @@ def run_h100(prior_project_usd: float, cap_usd: float = 25.0, repeats: int = 2):
     if (not math.isfinite(prior_project_usd) or not math.isfinite(cap_usd) or not 0 <= prior_project_usd <= 150
             or not 0 < cap_usd <= 25 or prior_project_usd + cap_usd > 150 or repeats not in (1, 2)):
         raise SystemExit("invalid project or task reservation")
+    if gpu_count not in (0, *COUNTS):
+        raise SystemExit("gpu-count must be 1, 2, 4 or 8 (default 0 runs all sizes)")
+    counts = (gpu_count,) if gpu_count else COUNTS
     prior = json.loads(ARCHIVE.read_text())
     reference = archived_reference(prior)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -188,6 +198,7 @@ def run_h100(prior_project_usd: float, cap_usd: float = 25.0, repeats: int = 2):
               "reference_commit": prior["source_commit"], "synthetic_outcome_plan": PLAN, "seed_root": db.ROOT,
               "labels": {"timings": "MEASURED", "outcomes": "SIMULATED", "rates_and_costs": "ESTIMATE"},
               "hardware_request": {"gpu": "H100!", "cpus": 8, "memory_gib": 32},
+              "gpu_counts": list(counts),
               "scope": "Each H100 worker loads staged Charville inputs, prepares draws and warms up. Compute spans "
                        "re-imaging and GPU scoring across shard windows (host clock skew unmeasured). End-to-end wall "
                        "includes Modal call, setup, transfer and one driver threshold/calls summary. Parity checks separate.",
@@ -199,35 +210,27 @@ def run_h100(prior_project_usd: float, cap_usd: float = 25.0, repeats: int = 2):
     for repeat in range(1, repeats + 1):
         points = {}
         report["repeats"].append(points)
-        reserved = 0.0
-        with ThreadPoolExecutor(max_workers=len(COUNTS)) as executor:
-            active = {}
-            for n in COUNTS:
-                ceiling = n * TIMEOUTS[n] * USD_PER_SECOND
-                if used + reserved + ceiling > cap_usd:
-                    report["failures"].append({"repeat": repeat, "gpus": n, "reason": "task allocation"})
-                    continue
-                entry = {"repeat": repeat, "gpus": n, "reserved_usd": ceiling, "status": "SUBMITTED"}
-                reserved += ceiling
-                ledger["entries"].append(entry)
-                save(spend, ledger)
-                active[executor.submit(copy_context().run, measure, n, reference)] = entry
-                print(f"repeat {repeat} {n} H100s reserved ${ceiling:.2f}", flush=True)
-            for future in as_completed(active):
-                entry = active[future]
-                n = entry["gpus"]
-                try:
-                    points[str(n)], est = future.result()
-                    entry.update(status="MEASURED", estimated_usd=est)
-                    used += est
-                    print(f"repeat {repeat} {n} H100s wall {points[str(n)]['end_to_end_wall_s']:.2f} s", flush=True)
-                except Exception as exc:
-                    entry.update(status="UNMEASURED", error=str(exc))
-                    used += entry["reserved_usd"]
-                    report["failures"].append({"repeat": repeat, "gpus": n, "reason": str(exc)})
-                ledger.update(task_estimated_and_retained_usd=used, running_total_usd=prior_project_usd + used)
-                save(spend, ledger)
-                save(path, report)
+        for n in counts:
+            ceiling = n * TIMEOUTS[n] * USD_PER_SECOND
+            if used + ceiling > cap_usd:
+                report["failures"].append({"repeat": repeat, "gpus": n, "reason": "task allocation"})
+                continue
+            entry = {"repeat": repeat, "gpus": n, "reserved_usd": ceiling, "status": "SUBMITTED"}
+            ledger["entries"].append(entry)
+            save(spend, ledger)
+            print(f"repeat {repeat} {n} H100s reserved ${ceiling:.2f}", flush=True)
+            try:
+                points[str(n)], est = measure(n, reference)
+                entry.update(status="MEASURED", estimated_usd=est)
+                used += est
+                print(f"repeat {repeat} {n} H100s wall {points[str(n)]['end_to_end_wall_s']:.2f} s", flush=True)
+            except Exception as exc:
+                entry.update(status="UNMEASURED", error=str(exc))
+                used += entry["reserved_usd"]
+                report["failures"].append({"repeat": repeat, "gpus": n, "reason": str(exc)})
+            ledger.update(task_estimated_and_retained_usd=used, running_total_usd=prior_project_usd + used)
+            save(spend, ledger)
+            save(path, report)
     report["status"] = "PARTIAL" if report["failures"] else "MEASURED"
     report["spread"] = {}
     for n in COUNTS:
