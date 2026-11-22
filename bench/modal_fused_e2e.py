@@ -42,9 +42,10 @@ def ignore_untracked(rel):
 
 image = (modal.Image.debian_slim(python_version="3.11").apt_install("libgomp1")
          .uv_sync(str(REPO)).env({"PYTHONPATH": "/root/preflight"})
-         .workdir("/root/preflight").add_local_dir(REPO, "/root/preflight", ignore=ignore_untracked))
+         .workdir("/root/preflight"))
 for name in DATA_FILES:
     image = image.add_local_file(LOCAL_DATA / name, f"/data/{name}", copy=True)
+image = image.add_local_dir(REPO, "/root/preflight", ignore=ignore_untracked)
 app = modal.App("preflight-fused-e2e")
 
 
