@@ -1,4 +1,4 @@
-.PHONY: smoke install test data summary heldout demo tissue deploy modal-gpu-tests modal-ladder modal-ab modal-gpu-vs
+.PHONY: smoke install test data summary heldout demo tissue tma deploy modal-gpu-tests modal-ladder modal-ab modal-gpu-vs
 
 install:
 	uv sync --dev
@@ -36,6 +36,10 @@ demo:
 # Regenerate demo/data/tissue.json from real Charville cells (fetches the data first; seeded, so deterministic).
 tissue: data
 	uv run python -I scripts/export_tissue.py
+
+# Regenerate demo/data/tma.json (the Preflight workflow section) from real Charville cores; seeded, so deterministic.
+tma: data
+	uv run python -I demo/collect_tma.py
 
 # The public demo: .github/workflows/pages.yml publishes demo/ to GitHub Pages on every push to
 # integration. This target checks the data the workflow will publish and prints the URL.

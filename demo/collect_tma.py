@@ -1,6 +1,6 @@
 """Fill demo/data/tma.json (preflight-tma/1, the Preflight workflow section) with real Charville cores.
 
-Run from the repo root: DATA_DIR=<dir with charville_labels.csv, charville_raw_data.zip> uv run python -I demo/collect_tma.py [out]
+Run from the repo root: make tma (fetches the data into data/ first; DATA_DIR overrides, as in core/cohorts.py)
 36 cores, one per patient: the hero Charville_c003_v001_r001_reg112 (CHV-24133, the 3D view's region, kept at
 full resolution and named by `pick`) plus 35 patients drawn with a seed, each patient's largest region, uniformly
 subsampled to at most 1,200 cells. Cell row: [x, y, type, m0..m5], x and y integer microns from the region's
@@ -8,7 +8,6 @@ bounding-box min, type indexing type_names, markers 0-255 between each marker's 
 whole export (the source's own normalised intensities; lo/hi in meta). Charville only; UPMC is never read.
 """
 import json
-import os
 import sys
 import zipfile
 from pathlib import Path
@@ -16,7 +15,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))  # python -I drops the cwd
 sys.path.insert(0, str(ROOT / "scripts"))
-os.environ.setdefault("DATA_DIR", "/home/atilade/code/sota-parallelism-nov21/.worktrees/1-spine/data")
 
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
