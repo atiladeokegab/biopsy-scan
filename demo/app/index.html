@@ -67,8 +67,7 @@
     .risk.on { transform: none; opacity: 1; }
     .risk h2 { font: 30px/1.1 var(--serif); color: var(--ink); margin: 0; }
     .demo-tag { align-self: flex-start; font: 11px var(--mono); color: var(--gold); border: 1px solid var(--gold); border-radius: 4px; padding: 3px 7px; }
-    .score { display: flex; gap: 6px; } .score i { flex: 1; height: 10px; border-radius: 2px; background: var(--hair); }
-    .score i.f { background: var(--coral); }
+    .withheld { font: 15px/1.4 var(--sans); color: var(--ink); margin: 6px 0 0; }
     .stains { display: flex; gap: 8px; } .stains b { font: 500 16px var(--mono); color: var(--ink); border: 1px solid var(--hair); border-radius: 6px; padding: 6px 12px; }
     .dl { margin-top: 6px; text-align: center; padding: 10px; border-radius: 999px; border: 1px solid var(--emerald); color: var(--emerald); text-decoration: none; font-weight: 600; font-size: 14px; }
     footer { padding: 10px 24px; border-top: 1px solid var(--hair); font-size: 12px; color: var(--muted); }
@@ -128,14 +127,13 @@
     <div class="side">
       <div class="legend"><span style="--c:var(--coral)">DAB-positive</span><span style="--c:var(--emerald)">Nuclei (haematoxylin)</span></div>
       <aside class="risk" id="risk" aria-live="polite" hidden>
-        <span class="demo-tag">DEMO · illustration, not a clinical result</span>
+        <span class="demo-tag">MEASURED · Exploratory Charville survival screen, results/charville-v2.json</span>
         <h2>Risk analysis</h2>
-        <div><div class="label">Risk of outcome event</div>
-          <div class="score" aria-label="Illustrative risk band: elevated"><i class="f"></i><i class="f"></i><i class="f"></i><i></i><i></i></div>
-          <div class="results" style="margin-top:6px">Band: elevated (illustration)</div></div>
+        <div><div class="label">Overall survival</div>
+          <p class="withheld">No validated risk score issued. None of the 3,780 features passed the 0.05 threshold (maxT p = 0.0981). Preflight withholds a score rather than guess.</p></div>
         <div><div class="label">Example routine stains</div>
           <div class="stains" style="margin-top:8px"><b>KRT5</b><b>CD8A</b></div></div>
-        <p class="caption" style="margin:0">Illustration only. This photo was not scored by the Preflight pipeline; no clinical claim is made.</p>
+        <p class="caption" style="margin:0">The stains are an example. This photo was not scored by the Preflight pipeline; no clinical claim is made.</p>
         <a class="dl" href="report.pdf" download>Download report (PDF)</a>
       </aside>
       <p class="caption">Replay of measured runs: 24.443 s (off-the-shelf squidpy + lifelines) vs 0.0419 s (Preflight) per study, 8 workers each, 583×; cross-run, same container class (<a style="color:inherit" href="https://github.com/atiladeokegab/sota-parallelism-nov21/blob/integration/bench/results/external-baseline-20261122T043823Z.json">bench/results/external-baseline-20261122T043823Z.json</a>)</p>

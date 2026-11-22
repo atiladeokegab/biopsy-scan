@@ -21,15 +21,12 @@ shows this command instead.
    - The field-of-view squares drop onto each slab, one per region per patient. Cells outside
      every square dim.
    - The mis-call slider recolours that fraction of cells at random, so you can see the noise.
-2. **The race.** The same N studies run on the CPU (one at a time) and on the GPU (all at once).
-   Each tile is one study: green if it found the pattern, grey if it missed. The share of green
-   tiles is the grid point's power.
-   - Timing comes only from `bench.json`. Without a MEASURED bench, both lanes still play at a
-     fixed display pace that is not to scale, both say UNMEASURED, and no seconds or ratio are
-     shown.
-   - With one, both lanes run on one clock: the GPU lane finishes in 1.4 s on screen, and the CPU
-     lane is slowed by the measured ratio. The line under the lanes names the hardware from
-     `bench.json` ("GPU: <gpu>, 4.2 s · CPU: all cores of <cpu>, 1 h · 857× faster").
+2. **Live demo (`demo/app/`).** One screen, side by side on the same real biopsy photo: off-the-shelf
+   squidpy + lifelines on the left, Preflight on the right, 8 CPU cores each. One Run starts both;
+   each paints a stain overlay computed in the browser at its replay pace. Preflight finishes in
+   1.0 s while the left crawls at the measured 583× ratio (24.4 s vs 0.042 s per study, cross-run,
+   same container class, `bench/results/external-baseline-20261122T043823Z.json`), with
+   "Skip to end".
 3. **The answer.** Power and identification rate for the grid point nearest the sliders, and the
    one chart: power against patients, one line per regions value. The chart marks the current
    design (white ring) and our cohort (green).
