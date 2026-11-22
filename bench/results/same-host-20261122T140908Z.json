@@ -1,0 +1,478 @@
+{
+  "status": "MEASURED",
+  "errors": [],
+  "source_commit": "a23f43e47e60a1d74a83ef07a0c65b43f6483c4b",
+  "clean_tree": true,
+  "labels": {
+    "timing": "MEASURED",
+    "outcomes": "SYNTHETIC (atlas/simulation.py, as #113)",
+    "ratio": "MEASURED, same host: every column from each container, ratios per repeat"
+  },
+  "headline_column": "ratios.external_pipeline_vs_fused_full",
+  "headline": "Same host, 3 fresh containers, 8 workers per arm: off the shelf (squidpy + lifelines, pipeline only) 22.35 (range 21.78-27.25) s/study over 48 studies; fused 0.0426 (range 0.0408-0.0510) s per evaluated study over 3000; ratio 534 (range 511-547)x. With our reference checks in the external time: 547 (range 524-560)x. On the identical 48 studies: fused 0.0816 (range 0.0691-0.0873) s/study, ratio 312 (range 267-324)x. what a lab would run off the shelf, not Preflight's speedup: squidpy's enrichment z is a permutation z-score and lifelines fits a Wald Cox per feature, different statistics from our enrichment ratio and stratified Cox score z (see agreement_median)",
+  "summary": {
+    "external_pipeline_s_per_study": {
+      "median": 22.345451116541668,
+      "min": 21.775440875395834,
+      "max": 27.252820221916664,
+      "n": 3
+    },
+    "external_with_checks_s_per_study": {
+      "median": 22.8632669270625,
+      "min": 22.3109899739375,
+      "max": 27.91296765164583,
+      "n": 3
+    },
+    "fused_full_s_per_study": {
+      "median": 0.042584317759666666,
+      "min": 0.04084299278533331,
+      "max": 0.051002695447,
+      "n": 3
+    },
+    "fused_matched_s_per_study": {
+      "median": 0.08159268193749962,
+      "min": 0.06907381168749775,
+      "max": 0.08730509029166693,
+      "n": 3
+    },
+    "ratios": {
+      "external_pipeline_vs_fused_full": {
+        "median": 534.3407830324718,
+        "min": 511.3488256003067,
+        "max": 547.1061152150903,
+        "n": 3,
+        "per_repeat": [
+          534.3407830324718,
+          547.1061152150903,
+          511.3488256003067
+        ]
+      },
+      "external_pipeline_vs_fused_matched": {
+        "median": 312.1561426816127,
+        "min": 266.8798274344741,
+        "max": 323.50105735638965,
+        "n": 3,
+        "per_repeat": [
+          312.1561426816127,
+          323.50105735638965,
+          266.8798274344741
+        ]
+      },
+      "external_with_checks_vs_fused_full": {
+        "median": 547.284166199645,
+        "min": 523.9250303328598,
+        "max": 559.7843196072714,
+        "n": 3,
+        "per_repeat": [
+          547.284166199645,
+          559.7843196072714,
+          523.9250303328598
+        ]
+      },
+      "external_with_checks_vs_fused_matched": {
+        "median": 319.7175280203571,
+        "min": 273.44351777807503,
+        "max": 330.9976149933639,
+        "n": 3,
+        "per_repeat": [
+          319.7175280203571,
+          330.9976149933639,
+          273.44351777807503
+        ]
+      }
+    }
+  },
+  "checks": {
+    "distinct_containers": true,
+    "same_cells_both_arms": true,
+    "same_cells_basis": "per matched study, the fused arm's X sha256 equals the external checks' recount of the cells the pipeline gave squidpy"
+  },
+  "basis": {
+    "external_pipeline": "pipeline pool wall / studies: cells, squidpy, lifelines and the Bonferroni call only",
+    "external_with_checks": "pipeline pool wall + checks pool wall (our recount, score and agreement on the same cells, a second pool) / studies; the external-baseline runs' 24.443 basis ran both in one pool",
+    "fused_full": "compute_wall_s / 3000 evaluated studies (calibration, null, alternative), as #120's 0.0419",
+    "fused_matched": "compute_wall_s / the same 48 studies the external arm ran; its pool start-up weighs more on so few studies",
+    "excluded": "container start, data load, outcome prep, adjacency and warm-up in every column"
+  },
+  "design": {
+    "patients": 159,
+    "regions_per_patient": 2,
+    "fov_um": 400.0,
+    "eps": 0.1,
+    "seed": 0,
+    "cohort": "charville",
+    "studies_per_stream": 24,
+    "full_studies_per_stream": 1000,
+    "streams": {
+      "calibration": 101,
+      "null": 202,
+      "alternative": 303
+    },
+    "root_seed": 20261121,
+    "n_perms": 1000
+  },
+  "repeats": [
+    {
+      "source_commit": "a23f43e47e60a1d74a83ef07a0c65b43f6483c4b",
+      "host": {
+        "cpu_model": "unknown",
+        "cpu_count": 24,
+        "affinity_size": 24,
+        "cgroup_cpu_max": null,
+        "cgroup_memory_max": null,
+        "host_mem_total_bytes": 1083568484352,
+        "modal_task_id": "ta-01M81SEJ7SH4TMBCKS8HAD610R",
+        "modal_region": "us-west",
+        "load_average_start": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1",
+          "NUMBA_NUM_THREADS": "1",
+          "NUMBA_THREADING_LAYER": "workqueue"
+        },
+        "versions": {
+          "squidpy": "1.8.2",
+          "lifelines": "0.30.3",
+          "pandas": "2.3.3",
+          "numpy": "2.4.6",
+          "numba": "0.68.1"
+        },
+        "load_average_end": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "order": [
+        "fused",
+        "external"
+      ],
+      "arms": {
+        "fused_full": {
+          "s_per_study": 0.051002695447,
+          "stages": {
+            "prep_s": 157.254180673,
+            "adjacency_s": 63.027354968,
+            "reimage_worker_wall_s": 1137.0755878570048,
+            "studies_wall_s": 153.008086341,
+            "scoring_worker_wall_s": 82.09775433799976,
+            "calibration_s": "the calibration stream's studies, inside reimage and scoring",
+            "evaluated_studies": 3000,
+            "compute_wall_s": 153.008086341,
+            "wall_per_study_s": 0.051002695447,
+            "end_to_end_in_container_s": 377.416288495,
+            "scope": "compute_wall_s = re-imaging every evaluated study (the pool's wall for CPU-reimaged arms) plus batched scoring; excludes data load, outcome prep, adjacency, warm-up and the local threshold-and-calls summary, which end_to_end_in_container_s adds back (all but the summary)"
+          },
+          "warm_s": 4.1266665130000035,
+          "workers": 8,
+          "plan": {
+            "calibration": 1000,
+            "null": 1000,
+            "alternative": 1000
+          },
+          "started_utc": "2026-11-22T14:09:39.311145+00:00",
+          "finished_utc": "2026-11-22T14:15:57.291313+00:00"
+        },
+        "fused_matched": {
+          "s_per_study": 0.08730509029166693,
+          "stages": {
+            "prep_s": 11.271138046000033,
+            "adjacency_s": 63.38837814799996,
+            "reimage_worker_wall_s": 18.041307426999992,
+            "studies_wall_s": 4.190644334000012,
+            "scoring_worker_wall_s": 10.549843074999842,
+            "calibration_s": "the calibration stream's studies, inside reimage and scoring",
+            "evaluated_studies": 48,
+            "compute_wall_s": 4.190644334000012,
+            "wall_per_study_s": 0.08730509029166693,
+            "end_to_end_in_container_s": 79.21793250299999,
+            "scope": "compute_wall_s = re-imaging every evaluated study (the pool's wall for CPU-reimaged arms) plus batched scoring; excludes data load, outcome prep, adjacency, warm-up and the local threshold-and-calls summary, which end_to_end_in_container_s adds back (all but the summary)"
+          },
+          "warm_s": 0.3677719749999824,
+          "workers": 8,
+          "plan": {
+            "null": 24,
+            "alternative": 24
+          },
+          "started_utc": "2026-11-22T14:15:57.291487+00:00",
+          "finished_utc": "2026-11-22T14:17:16.587755+00:00"
+        },
+        "external": {
+          "pipeline_s_per_study": 27.252820221916664,
+          "with_checks_s_per_study": 27.91296765164583,
+          "pipeline_wall_s": 1308.135370652,
+          "checks_wall_s": 31.687076626999897,
+          "studies": 48,
+          "warm_s": 8.241270281000027,
+          "prep_s": 11.924896808000028,
+          "workers": 8,
+          "started_utc": "2026-11-22T14:17:16.587862+00:00",
+          "worker_study_s": {
+            "median": 211.497241627,
+            "min": 201.63330583500004,
+            "max": 229.53803359,
+            "n": 48
+          },
+          "worker_checks_s": {
+            "median": 4.924691136499973,
+            "min": 4.462352253000063,
+            "max": 5.642281224000044,
+            "n": 48
+          },
+          "finished_utc": "2026-11-22T14:39:56.740967+00:00"
+        }
+      },
+      "started_utc": "2026-11-22T14:09:38.604695+00:00",
+      "finished_utc": "2026-11-22T14:39:56.741295+00:00"
+    },
+    {
+      "source_commit": "a23f43e47e60a1d74a83ef07a0c65b43f6483c4b",
+      "host": {
+        "cpu_model": "unknown",
+        "cpu_count": 24,
+        "affinity_size": 24,
+        "cgroup_cpu_max": null,
+        "cgroup_memory_max": null,
+        "host_mem_total_bytes": 1099511627776,
+        "modal_task_id": "ta-01M81SWS2KQKV0C0SAXPQR7B3R",
+        "modal_region": "us-west",
+        "load_average_start": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1",
+          "NUMBA_NUM_THREADS": "1",
+          "NUMBA_THREADING_LAYER": "workqueue"
+        },
+        "versions": {
+          "squidpy": "1.8.2",
+          "lifelines": "0.30.3",
+          "pandas": "2.3.3",
+          "numpy": "2.4.6",
+          "numba": "0.68.1"
+        },
+        "load_average_end": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "order": [
+        "external",
+        "fused"
+      ],
+      "arms": {
+        "external": {
+          "pipeline_s_per_study": 22.345451116541668,
+          "with_checks_s_per_study": 22.8632669270625,
+          "pipeline_wall_s": 1072.581653594,
+          "checks_wall_s": 24.855158905000053,
+          "studies": 48,
+          "warm_s": 8.188907758,
+          "prep_s": 12.670057368,
+          "workers": 8,
+          "started_utc": "2026-11-22T14:17:25.056851+00:00",
+          "worker_study_s": {
+            "median": 174.46732260899998,
+            "min": 164.676498912,
+            "max": 185.167157106,
+            "n": 48
+          },
+          "worker_checks_s": {
+            "median": 3.937006287000031,
+            "min": 3.60082393100015,
+            "max": 4.431118218999927,
+            "n": 48
+          },
+          "finished_utc": "2026-11-22T14:36:03.864420+00:00"
+        },
+        "fused_full": {
+          "s_per_study": 0.04084299278533331,
+          "stages": {
+            "prep_s": 161.3845950309999,
+            "adjacency_s": 59.75040336899997,
+            "reimage_worker_wall_s": 921.2971458420031,
+            "studies_wall_s": 122.52897835599993,
+            "scoring_worker_wall_s": 53.427609895001524,
+            "calibration_s": "the calibration stream's studies, inside reimage and scoring",
+            "evaluated_studies": 3000,
+            "compute_wall_s": 122.52897835599993,
+            "wall_per_study_s": 0.04084299278533331,
+            "end_to_end_in_container_s": 347.32054737099975,
+            "scope": "compute_wall_s = re-imaging every evaluated study (the pool's wall for CPU-reimaged arms) plus batched scoring; excludes data load, outcome prep, adjacency, warm-up and the local threshold-and-calls summary, which end_to_end_in_container_s adds back (all but the summary)"
+          },
+          "warm_s": 3.656570614999964,
+          "workers": 8,
+          "plan": {
+            "calibration": 1000,
+            "null": 1000,
+            "alternative": 1000
+          },
+          "started_utc": "2026-11-22T14:36:03.864488+00:00",
+          "finished_utc": "2026-11-22T14:41:51.269760+00:00"
+        },
+        "fused_matched": {
+          "s_per_study": 0.06907381168749775,
+          "stages": {
+            "prep_s": 10.179579297999908,
+            "adjacency_s": 58.497126348000165,
+            "reimage_worker_wall_s": 16.542694308000364,
+            "studies_wall_s": 3.315542960999892,
+            "scoring_worker_wall_s": 2.6786800620006943,
+            "calibration_s": "the calibration stream's studies, inside reimage and scoring",
+            "evaluated_studies": 48,
+            "compute_wall_s": 3.315542960999892,
+            "wall_per_study_s": 0.06907381168749775,
+            "end_to_end_in_container_s": 72.31022102700013,
+            "scope": "compute_wall_s = re-imaging every evaluated study (the pool's wall for CPU-reimaged arms) plus batched scoring; excludes data load, outcome prep, adjacency, warm-up and the local threshold-and-calls summary, which end_to_end_in_container_s adds back (all but the summary)"
+          },
+          "warm_s": 0.3179724200001601,
+          "workers": 8,
+          "plan": {
+            "null": 24,
+            "alternative": 24
+          },
+          "started_utc": "2026-11-22T14:41:51.270000+00:00",
+          "finished_utc": "2026-11-22T14:43:03.637244+00:00"
+        }
+      },
+      "started_utc": "2026-11-22T14:17:24.372760+00:00",
+      "finished_utc": "2026-11-22T14:43:03.643666+00:00"
+    },
+    {
+      "source_commit": "a23f43e47e60a1d74a83ef07a0c65b43f6483c4b",
+      "host": {
+        "cpu_model": "unknown",
+        "cpu_count": 24,
+        "affinity_size": 24,
+        "cgroup_cpu_max": null,
+        "cgroup_memory_max": null,
+        "host_mem_total_bytes": 1099511627776,
+        "modal_task_id": "ta-01M81SWS2KX7XXCZ6W16QQ5RER",
+        "modal_region": "us-west",
+        "load_average_start": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1",
+          "NUMBA_NUM_THREADS": "1",
+          "NUMBA_THREADING_LAYER": "workqueue"
+        },
+        "versions": {
+          "squidpy": "1.8.2",
+          "lifelines": "0.30.3",
+          "pandas": "2.3.3",
+          "numpy": "2.4.6",
+          "numba": "0.68.1"
+        },
+        "load_average_end": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "order": [
+        "fused",
+        "external"
+      ],
+      "arms": {
+        "fused_full": {
+          "s_per_study": 0.042584317759666666,
+          "stages": {
+            "prep_s": 160.938014744,
+            "adjacency_s": 59.023753072999995,
+            "reimage_worker_wall_s": 950.1646263990033,
+            "studies_wall_s": 127.752953279,
+            "scoring_worker_wall_s": 66.91655421600029,
+            "calibration_s": "the calibration stream's studies, inside reimage and scoring",
+            "evaluated_studies": 3000,
+            "compute_wall_s": 127.752953279,
+            "wall_per_study_s": 0.042584317759666666,
+            "end_to_end_in_container_s": 351.7747398759999,
+            "scope": "compute_wall_s = re-imaging every evaluated study (the pool's wall for CPU-reimaged arms) plus batched scoring; excludes data load, outcome prep, adjacency, warm-up and the local threshold-and-calls summary, which end_to_end_in_container_s adds back (all but the summary)"
+          },
+          "warm_s": 4.060018779999979,
+          "workers": 8,
+          "plan": {
+            "calibration": 1000,
+            "null": 1000,
+            "alternative": 1000
+          },
+          "started_utc": "2026-11-22T14:17:25.110797+00:00",
+          "finished_utc": "2026-11-22T14:23:17.316981+00:00"
+        },
+        "fused_matched": {
+          "s_per_study": 0.08159268193749962,
+          "stages": {
+            "prep_s": 10.016230507000046,
+            "adjacency_s": 61.091763499000024,
+            "reimage_worker_wall_s": 15.842516276000254,
+            "studies_wall_s": 3.9164487329999815,
+            "scoring_worker_wall_s": 10.987348474000044,
+            "calibration_s": "the calibration stream's studies, inside reimage and scoring",
+            "evaluated_studies": 48,
+            "compute_wall_s": 3.9164487329999815,
+            "wall_per_study_s": 0.08159268193749962,
+            "end_to_end_in_container_s": 75.36428199400007,
+            "scope": "compute_wall_s = re-imaging every evaluated study (the pool's wall for CPU-reimaged arms) plus batched scoring; excludes data load, outcome prep, adjacency, warm-up and the local threshold-and-calls summary, which end_to_end_in_container_s adds back (all but the summary)"
+          },
+          "warm_s": 0.33983925500001533,
+          "workers": 8,
+          "plan": {
+            "null": 24,
+            "alternative": 24
+          },
+          "started_utc": "2026-11-22T14:23:17.317107+00:00",
+          "finished_utc": "2026-11-22T14:24:32.748292+00:00"
+        },
+        "external": {
+          "pipeline_s_per_study": 21.775440875395834,
+          "with_checks_s_per_study": 22.3109899739375,
+          "pipeline_wall_s": 1045.221162019,
+          "checks_wall_s": 25.706356729999925,
+          "studies": 48,
+          "warm_s": 7.565938571999993,
+          "prep_s": 10.661199568999962,
+          "workers": 8,
+          "started_utc": "2026-11-22T14:24:32.748444+00:00",
+          "worker_study_s": {
+            "median": 169.225492963,
+            "min": 161.355180481,
+            "max": 184.366696912,
+            "n": 48
+          },
+          "worker_checks_s": {
+            "median": 3.957661175499993,
+            "min": 3.700041449999844,
+            "max": 4.667553871999871,
+            "n": 48
+          },
+          "finished_utc": "2026-11-22T14:42:42.039292+00:00"
+        }
+      },
+      "started_utc": "2026-11-22T14:17:24.427504+00:00",
+      "finished_utc": "2026-11-22T14:42:42.039984+00:00"
+    }
+  ],
+  "modal": {
+    "app": "preflight-same-host",
+    "class": "Modal A100 + 8 cores + 64 GiB",
+    "started_utc": "2026-11-22T14:09:08.159842+00:00",
+    "finished_utc": "2026-11-22T14:43:05.316979+00:00",
+    "wall_s": 2037.157137,
+    "note": "repeats run concurrently, one per fresh container; wall_s includes start and image pull"
+  }
+}
