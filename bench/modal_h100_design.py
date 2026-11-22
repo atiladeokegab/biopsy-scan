@@ -78,17 +78,18 @@ def _rendezvous(ready, uuid: str, count: int, *, prepared: bool) -> float:
         return 0.0
     begun = time.perf_counter()
     phase = "prepared" if prepared else "allocated"
-    target = count * (2 if prepared else 1)
-    ready[f"{phase}:{uuid}"] = True
+    prefix = f"{phase}:"
+    ready[f"{prefix}{uuid}"] = True
     while True:
-        if ready.get("aborted", False):
+        keys = set(ready.keys())
+        if "aborted" in keys:
             raise TimeoutError(f"H100 group failed its {phase} gate")
-        arrived = ready.len()
-        if arrived >= target:
+        arrived = sum(key.startswith(prefix) for key in keys)
+        if arrived == count:
             return time.perf_counter() - begun
         if time.perf_counter() - begun > 100:
             ready["aborted"] = True
-            raise TimeoutError(f"only {arrived - (count if prepared else 0)} of {count} H100s reached the {phase} gate")
+            raise TimeoutError(f"only {arrived} of {count} H100s reached the {phase} gate")
         time.sleep(.5)
 
 
