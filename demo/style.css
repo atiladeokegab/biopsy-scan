@@ -323,17 +323,6 @@ html { scroll-padding-top: calc(var(--bar-h) + var(--space-3)); }
 .tour-btn:hover { background: var(--accent); color: var(--accent-ink); }
 .explore .app { max-width: none; padding-left: 0; padding-right: 0; }
 
-/* The Preflight workflow's place: first section; build-demo mounts into #wf-root */
-.wf { padding-top: var(--space-5); }
-.wf-card { padding: var(--space-5); }
-.wf-head h2 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-weight: 800; letter-spacing: -0.02em; }
-.wf-sub { margin-top: var(--space-2); color: var(--text-body); font-size: var(--text-lg); line-height: var(--leading-snug); max-width: 62ch; }
-.wf-root { margin-top: var(--space-4); }
-.wf-empty {
-  display: grid; place-items: center; min-height: 160px; border: 1px dashed var(--border); border-radius: var(--radius-surface);
-  color: var(--text-muted); font-size: var(--text-sm);
-}
-
 /* The tour: a spotlight on the feature, a coach card pinned to the bottom of the screen */
 .tour-spot {
   position: fixed; z-index: 30; pointer-events: none; border-radius: var(--radius-surface);
@@ -362,9 +351,6 @@ html { scroll-padding-top: calc(var(--bar-h) + var(--space-3)); }
   .bar { gap: var(--space-2); }
   .nav a { padding: var(--space-1) var(--space-2); }
   .bar .tag { margin-left: 0; }
-  .wf-card { padding: var(--space-4); }
-  .wf-head h2 { font-size: var(--text-lg); }
-  .wf-sub { font-size: var(--text-base); }
   .explore .app { padding-left: 0; padding-right: 0; }
   .tour-card { bottom: var(--space-3); padding: var(--space-4); }
 }

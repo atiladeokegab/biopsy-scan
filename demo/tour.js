@@ -4,8 +4,8 @@
 export const SEEN_KEY = "preflight-tour-v1";
 
 export const STEPS = [
-  { target: "#workflow-app", title: "Start here: the Preflight workflow",
-    text: "Four steps on real biopsy images: pick a tissue, design the study, simulate it, read the answer. Each step says whether its numbers are measured or simulated." },
+  { target: "#flow", title: "Start here: the Preflight workflow",
+    text: "Four steps on real tumour tissue: the tissue, decoding it, stress-testing the study design, and the routine stains it comes down to. Each step labels its numbers as measured or simulated." },
   { target: ".bio", title: "The pattern",
     text: "A spatial pattern found in real Charville tumour tissue, with the survival curves it splits. It is exploratory: the cutoff was chosen on the same cohort, so no p-value is claimed." },
   { target: ".speed", title: "Run the studies",
@@ -91,8 +91,14 @@ function close() {
   opener?.focus({ preventScroll: true });
 }
 
+// A stop whose section is not on the page is passed over in the direction of travel.
 function go(move) {
-  const j = step(at, move);
+  let j = step(at, move);
+  while (j >= 0 && !document.querySelector(STEPS[j].target)) {
+    const k = step(j, move === "back" ? "back" : "next");
+    if (k === j) { j = at; break; }
+    j = k;
+  }
   if (j < 0) close(); else show(j);
 }
 
@@ -106,7 +112,8 @@ function onKey(e) {
 export function startTour(from = null) {
   opener = from;
   if (at < 0) { addEventListener("keydown", onKey); raf = requestAnimationFrame(loop); }
-  show(0);
+  at = -1;
+  go("next");
 }
 
 export function initTour() {
