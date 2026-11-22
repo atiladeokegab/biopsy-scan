@@ -82,7 +82,7 @@
         </p>
         <p class="hint"><button type="button" id="reimage-replay" class="link" hidden>Replay the fly-through</button> <button type="button" id="reimage-pause" class="link" aria-pressed="false" hidden>Pause the fly-through</button></p>
       </div>
-      <canvas id="reimage" role="img" aria-label="A real colorectal tumour region in 3D. Two simulated fields of view, the rest dimmed. Each cell in view has a 10% chance of a mis-call. Those that cross colour groups are ringed."></canvas>
+      <canvas id="reimage" hidden role="img" aria-label="A real colorectal tumour region in 3D. Two simulated fields of view, the rest dimmed. Each cell in view has a 10% chance of a mis-call. Those that cross colour groups are ringed."></canvas>
       <picture class="reimage-still-pic"><source media="(max-width: 900px)" srcset="img/reimage-end-phone.jpg"><img id="reimage-still" class="reimage-still" src="img/reimage-end.jpg" loading="lazy" alt="The last frame of the 3D view, rendered on a GPU: two 400 µm fields of view over the real region, mis-called cells ringed." hidden></picture>
       <p class="reimage-fallback" id="reimage-fallback" role="status">Loading the region's cells.</p>
       <p class="src reimage-credit" id="reimage-credit">Cells: Charville CODEX, Wu et al. 2022 (Zenodo 13179600, CC-BY-4.0).</p>

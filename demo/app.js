@@ -198,7 +198,8 @@ async function main() {
     $("tissue-caption").textContent = "";
     $("verdict").textContent = "";
     $("reimage").hidden = true;
-    $("reimage-fallback").innerHTML = `<span>The 3D view is off: the page could not load its data. ${fix}</span>`; // the fix in place, not a pointer to it
+    $("reimage-still").hidden = false;
+    $("reimage-fallback").innerHTML = `<span>The 3D view is off: the page could not load its data. ${fix} Below: the last frame, rendered on a GPU.</span>`; // the fix in place, not a pointer to it
     return;
   }
   [grid, tissue] = [gr.value, ti.value];

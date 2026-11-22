@@ -114,10 +114,10 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
   display: grid; padding: 0; overflow: hidden; grid-template-columns: minmax(0, 1fr) var(--reimage-text-w);
   grid-template-areas: "canvas text" "fallback text" "credit text"; grid-template-rows: 1fr auto auto;
 }
-.reimage-text { grid-area: text; padding: var(--space-4) var(--space-5); border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: var(--space-3); }
+.reimage-text { grid-area: text; padding: var(--space-3) var(--space-5); border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: var(--space-2); }
 .reimage-label { font-size: var(--text-sm); line-height: var(--leading-meta); color: var(--text-body); }
 .reimage-label .tags { display: block; margin-top: var(--space-2); }
-.reimage-steps { margin: 0; padding-left: var(--space-5); display: grid; gap: var(--space-2); font-size: var(--text-sm); line-height: var(--leading-meta); color: var(--text-muted); }
+.reimage-steps { margin: 0; padding-left: var(--space-5); display: grid; gap: var(--space-1); font-size: var(--text-sm); line-height: var(--leading-meta); color: var(--text-muted); }
 .reimage-steps li { transition: color 0.3s; }
 .reimage-steps li[aria-current] { color: var(--text-head); }
 .reimage-text .legend { padding: 0; }
@@ -132,6 +132,7 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
 .reimage-still { grid-area: canvas; display: block; width: 100%; height: 100%; min-height: var(--reimage-h); object-fit: contain; background: var(--bg-canvas); }
 .reimage-fallback { grid-area: fallback; margin: 0; padding: var(--space-3) var(--space-4) 0; max-width: 75ch; font-size: var(--text-sm); line-height: var(--leading-meta); color: var(--text-body); }
 .reimage-still-pic { display: contents; }
+.reimage-still-pic:has(> img:not([hidden])) ~ .reimage-fallback { grid-area: canvas; align-self: start; position: relative; z-index: 1; max-width: none; padding: var(--space-3) var(--space-4); background: var(--bg-canvas); } /* over the still: read before it */
 #reimage[hidden] ~ .reimage-still-pic:has(> img[hidden]) ~ .reimage-fallback { grid-area: canvas; align-self: stretch; display: flex; align-items: center; max-width: none; padding: var(--space-4); background: var(--bg-canvas); } /* nothing drawn: the message fills the well */
 .reimage-credit { grid-area: credit; max-width: 62ch; /* about 75 characters at 12px */ padding: var(--space-2) var(--space-4); line-height: var(--leading-caption); }
 
@@ -278,7 +279,9 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
   .reimage-text > h2, .reimage-label { order: 0; }
   .reimage-text > .reimage-steps { padding-left: calc(var(--space-4) + var(--space-5)); }
   .reimage-text > .legend { padding: 0 var(--space-4); }
-  #reimage, .reimage-still, .reimage-fallback { order: 1; }
+  #reimage, .reimage-still { order: 1; }
+  .reimage-fallback { order: 0; } /* after the label, above the still */
+  .reimage-still-pic:has(> img:not([hidden])) ~ .reimage-fallback { margin-bottom: calc(-1 * var(--space-3)); } /* one band with the still */
   #reimage, .reimage-still { height: var(--reimage-h-phone); min-height: 0; }
   /* While it plays, only the current step sits under the canvas; the rest stay in the accessibility tree. */
   .reimage-steps.playing li:not([aria-current]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

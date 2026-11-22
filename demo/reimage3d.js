@@ -362,7 +362,7 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
     const t = clk.t();
     const s = draw(t);
     if (s.step !== step) onStep((step = s.step));
-    if (t >= END && clk.playing && !ended) { ended = true; onEnd(); }
+    if (t >= END && !ended) { ended = true; onEnd(); } // a still held at the end shows the end state too
     if (clk.playing && onScreen && t < END) raf = requestAnimationFrame(frame); // the take ends still: no motion without a Pause
   }
   const kick = () => { if (raf === null) raf = requestAnimationFrame(frame); };
@@ -402,9 +402,10 @@ export function mountReimage($, tissue, { reducedMotion, search, create = create
   const steps = [...$("reimage-steps").children];
   let view;
   try {
+    $("reimage").hidden = false; // hidden while the data loads, so the well holds no blank canvas
     view = create($("reimage"), tissue, {
       reducedMotion, freezeAt: captureTime(new URLSearchParams(search).get("t3d")),
-      onEnd: () => { $("reimage-pause").hidden = true; }, // the take is over: only Replay is offered
+      onEnd: () => { $("reimage-pause").hidden = true; $("reimage-steps").classList.remove("playing"); }, // the take is over: only Replay, every step
       onStep: (k) => steps.forEach((li, i) => (i === k ? li.setAttribute("aria-current", "step") : li.removeAttribute("aria-current"))),
     });
   } catch (e) {
@@ -413,7 +414,7 @@ export function mountReimage($, tissue, { reducedMotion, search, create = create
     $("reimage-still").hidden = !real; // the still is of the real region: never shown over synthetic cells
     $("reimage-fallback").hidden = false;
     $("reimage-fallback").textContent = `The 3D view needs WebGL, which this browser has off. Turn on hardware acceleration in its settings, or open the page in another browser. ${
-      real ? "Above: the last frame, rendered on a GPU." : "The steps still describe the SYNTHETIC cells."}`;
+      real ? "Below: the last frame, rendered on a GPU." : "The steps still describe the SYNTHETIC cells."}`;
     return;
   }
   $("reimage-fallback").hidden = true;
@@ -421,10 +422,11 @@ export function mountReimage($, tissue, { reducedMotion, search, create = create
   $("reimage-steps").classList.add("playing");
   const pause = $("reimage-pause");
   $("reimage-replay").hidden = pause.hidden = false;
-  $("reimage-replay").addEventListener("click", () => { view.replay(); pause.hidden = false; pause.textContent = "Pause the fly-through"; pause.setAttribute("aria-pressed", "false"); });
+  $("reimage-replay").addEventListener("click", () => { view.replay(); pause.hidden = false; $("reimage-steps").classList.add("playing"); pause.textContent = "Pause the fly-through"; pause.setAttribute("aria-pressed", "false"); });
   pause.addEventListener("click", () => {
     const on = view.toggle();
     pause.textContent = on ? "Pause the fly-through" : "Play the fly-through";
+    $("reimage-steps").classList.toggle("playing", on); // paused, the phone shows every step
     pause.setAttribute("aria-pressed", String(!on));
   });
 }
