@@ -51,7 +51,7 @@ All real-data results are exploratory: the outcomes have already been seen.
 
 ## 3. Speed-up against a credible baseline
 
-Headline, all on 8 CPU cores (the fused kernel is not a GPU kernel): 583× against off-the-shelf squidpy + lifelines (24.4 s against 0.042 s per study, 8 workers each; cross-run, same container class, until the same-host rerun lands); 21× against an optimised lab-method rewrite; 5.5× fair 8 against 8 on the Numba kernel. Each is a row below, with its source and label.
+Headline, all on 8 CPU cores (the fused kernel is not a GPU kernel): 583× against off-the-shelf squidpy + lifelines (24.4 s against 0.042 s per study, 8 workers each; cross-run, same container class, until the same-host rerun lands; instrumented, so it includes our reference recount and agreement checks; different statistics, top pattern the same in 14 of 50 studies); 21× against an optimised lab-method rewrite (per evaluated study, cross-run; 14.0× per whole design point; the fused kernel re-images, scoring and the cutoff are a separate step, and the cutoff and calls are outside the timing); 5.5× fair 8 against 8 on the Numba kernel (compute per decided study, calibration charged). Each is a row below, with its source and label.
 
 | Workload | Result | Source | Label |
 |---|---|---|---|
