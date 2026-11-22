@@ -94,8 +94,11 @@ console.log("workflow.test.mjs: ok");
 // Atlas's review of 152ac1f.
 {
   const src = (f) => readFileSync(new URL(`./workflow/${f}`, import.meta.url), "utf8");
-  const RENDER = "Rendered from real Charville CODEX cells: positions and types REAL, imaging noise SIMULATED";
-  for (const k of [0, 1]) assert.ok(plain(vis[k][2]).includes(RENDER), `step ${k + 1} lacks the rendering label`);
+  // Step 1 shows real HPA biopsy photos (other patients); step 2's picture is a rendering of real cell positions.
+  assert.ok(plain(vis[0][2]).includes("Real head and neck biopsies · Human Protein Atlas · other patients · our analysis runs on the Charville cell tables"), "step 1 lacks the HPA label");
+  assert.match(src("biopsy.js"), /HPA_CREDIT/, "step 1 lacks the HPA credit");
+  assert.doesNotMatch(src("biopsy.js"), /canvas/, "nothing is drawn over the step 1 photos");
+  assert.ok(plain(vis[1][2]).includes("Rendered from real cell positions (Charville CODEX): types REAL, imaging noise SIMULATED"), "step 2 lacks the rendering label");
   // When the HPA images fail to decode, the badge and the copy that say REAL IHC switch to SIMULATED.
   const sims = [...wf.matchAll(/data-sim="([^"]*)"[^>]*>([^<]*)</g)];
   assert.ok(sims.some(([, s, t]) => /REAL IHC/.test(t) && /SIMULATED/.test(s)), "REAL IHC badge has no SIMULATED fallback");

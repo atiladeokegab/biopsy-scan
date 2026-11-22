@@ -463,3 +463,11 @@ html { scroll-padding-top: calc(var(--bar-h) + var(--space-3)); }
   .tour-card #tour-text { font-size: var(--text-sm); line-height: var(--leading-snug); }
   .tour-actions { margin-top: var(--space-2); }
 }
+/* Step 1: real HPA biopsy photos, no overlays; labels sit under each photo. */
+.wf-hpa { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(3, 1fr); align-content: center; gap: var(--space-2); padding: var(--space-3); }
+.wf-hpa figure { margin: 0; min-width: 0; }
+.wf-hpa img { display: block; width: 100%; height: auto; max-height: 26vh; object-fit: contain; border-radius: 6px; }
+.wf-hpa figcaption { margin-top: var(--space-1); font-size: var(--text-xs); color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wf-hpa figcaption b { color: var(--text-head); font-family: var(--font-mono); font-weight: 500; }
+.wf-hpa-credit { grid-column: 1 / -1; margin: 0; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-muted); }
+@media (max-width: 900px) { .wf-hpa { position: static; } .wf-canvas:has(.wf-hpa) { aspect-ratio: auto; } }

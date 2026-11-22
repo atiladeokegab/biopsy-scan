@@ -9,7 +9,7 @@ export const STEPS = [
   { target: ".wf-steps", title: "Four steps, any order",
     text: "Tissue context, Decode the tumour, Stress-test, Routine stains. Click a step to jump to it; once the tour is closed, the arrow keys step too." },
   { target: ".wf-stage", title: "Every picture says what is real",
-    text: "The tags above each picture say what is measured and what is simulated, analytic, an estimate or an illustration. The cell maps are real Charville CODEX cells; the brown stains in step 4 are real HPA IHC from other patients." },
+    text: "The tags above each picture say what is measured and what is simulated, analytic, an estimate or an illustration. The biopsy photos in steps 1 and 4 are real HPA IHC from other patients; the cell maps are rendered from real Charville CODEX cell positions." },
   { target: ".bio", title: "The pattern",
     text: "A spatial pattern found in real Charville tumour tissue, with the survival curves it splits. It is exploratory: the cutoff was chosen on the same cohort, so no p-value is claimed." },
   { target: ".speed", title: "Run the studies",
