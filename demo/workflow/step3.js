@@ -16,7 +16,8 @@ export function rng(seed) { // same generator as demo/tissue.js
 // The two numbers, from the file: the textbook formula's and the simulated 2 x 400 µm, 10% mis-called design's.
 export function powerAt(preflight, n = AT) {
   const sim = preflight.designs.find((d) => d.id === "cropped"), pt = sim.points.find((p) => p.patients === n);
-  return { analytic: preflight.formula.power[String(n)], analyticLabel: preflight.formula.label, sim: pt.power, simLabel: sim.label };
+  return { analytic: preflight.formula.power[String(n)], analyticLabel: preflight.formula.label, sim: pt.power, simLabel: sim.label,
+    hr: preflight.scenario.hr_per_sd, studies: pt.n };
 }
 
 // One simulated look: WINDOWS square fields placed uniformly in the core's box, then a mis-call draw per cell.
@@ -73,15 +74,23 @@ export function mount(el, data) {
     // Formula vs simulation at 200 patients: two bars that grow to the file's values.
     const px = W * 0.65, pw = W * 0.32, big = Math.max(22, Math.min(40, W * 0.05)), font = getComputedStyle(document.body).fontFamily || "sans-serif",
       serif = getComputedStyle(el).getPropertyValue("--font-serif").trim() || "Georgia, serif";
+    const y0 = Math.max(H * 0.3, (el.querySelector(".wf-label")?.offsetHeight || 0) + 28); // below wrapped badges
     [[P.analytic, P.analyticLabel, head], [P.sim, P.simLabel, warn]].forEach(([v, label, c], i) => {
       const a = ease(t, 2.4 + i * 0.6, 3.6 + i * 0.6); if (a <= 0) return;
-      const y = H * 0.3 + i * H * 0.32;
+      const y = y0 + i * H * 0.32;
       g.save(); g.globalAlpha = Math.min(1, a * 2);
       g.font = `600 12px ${font}`; g.fillStyle = muted; g.fillText(W < 560 ? label : `${label}, ${AT} patients`, px, y, pw);
       g.font = `400 ${Math.round(big * 1.3)}px ${serif}`; g.fillStyle = c; g.fillText(`${Math.round(v * 100 * a)}%`, px, y + big + 4);
       g.fillStyle = "#22303F"; g.fillRect(px, y + big + 14, pw, 5); g.fillStyle = c; g.fillRect(px, y + big + 14, pw * v * a, 5);
       g.restore();
     });
+    const q = ease(t, 3.6, 4.4);
+    if (q > 0) {
+      const mono = getComputedStyle(el).getPropertyValue("--font-mono").trim() || "monospace";
+      g.save(); g.globalAlpha = q; g.font = `400 11px ${mono}`; g.fillStyle = muted;
+      g.fillText(`HR ${P.hr} per SD · ${P.studies} simulated studies`, px, y0 + H * 0.32 + big + 36, pw);
+      g.restore();
+    }
   }
   const frame = (now) => { last = Math.min((now - t0) / 1000, SETTLE); draw(last); if (last < SETTLE) raf = requestAnimationFrame(frame); };
   new ResizeObserver(() => { if (!raf || last >= SETTLE) draw(last); }).observe(el);

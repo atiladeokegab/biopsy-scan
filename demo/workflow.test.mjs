@@ -89,3 +89,17 @@ console.log("workflow.test.mjs: ok");
   assert.match(css, /\.wf-head\s*\{[^}]*var\(--font-serif\)/, "headline not in the serif");
   assert.match(css, /\.wf-eyebrow\s*\{[^}]*var\(--font-mono\)/, "kicker not in the mono");
 }
+
+// Atlas's review of 152ac1f.
+{
+  const src = (f) => readFileSync(new URL(`./workflow/${f}`, import.meta.url), "utf8");
+  const RENDER = "Rendered from real Charville CODEX cells: positions and types REAL, imaging noise SIMULATED";
+  for (const k of [0, 1]) assert.ok(plain(vis[k][2]).includes(RENDER), `step ${k + 1} lacks the rendering label`);
+  // When the HPA images fail to decode, the badge and the copy that say REAL IHC switch to SIMULATED.
+  const sims = [...wf.matchAll(/data-sim="([^"]*)"[^>]*>([^<]*)</g)];
+  assert.ok(sims.some(([, s, t]) => /REAL IHC/.test(t) && /SIMULATED/.test(s)), "REAL IHC badge has no SIMULATED fallback");
+  assert.ok(sims.some(([, s, t]) => /real stains/.test(t) && /simulated/i.test(s)), "step 4 copy has no SIMULATED fallback");
+  assert.match(src("step4.js"), /real === false[\s\S]{0,200}dataset\.sim/, "step 4 never applies the fallback text");
+  assert.match(src("step3.js"), /per SD · \$\{[^}]+\} simulated studies/, "80%/27% lack their qualifiers");
+  assert.match(src("main.js"), /ArrowLeft[\s\S]*?clearTimeout\(timer\)[\s\S]*?next >= 0/, "an arrow key must stop autoplay before the range guard");
+}

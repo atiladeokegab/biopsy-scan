@@ -5,7 +5,7 @@ import { drawCore, glow, sizeCanvas } from "./step1.js";
 
 const SCAN_MS = 2600;
 // wide: the core sits right, leaving the left for the result card and the legend; narrow: centred (legend hidden)
-const cxOf = (w, h) => (w >= 560 ? w - Math.min(w, h) * 0.42 - 24 : w / 2);
+const cxOf = (w) => w / 2; // centred; the result card sits top-right, the legend bottom-left
 
 export function mount(el, data) {
   const core = data.tma.cores[data.tma.pick];

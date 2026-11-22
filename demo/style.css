@@ -331,10 +331,11 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
   background: radial-gradient(ellipse at 70% 80%, rgba(43, 212, 164, 0.08), transparent 60%), var(--bg-canvas);
 }
 .wf-vis canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; will-change: transform; }
-.wf-label { position: absolute; left: var(--space-3); top: var(--space-3); z-index: 2; }
+.wf-label { position: absolute; left: var(--space-3); right: var(--space-3); top: var(--space-3); z-index: 2; margin: 0; }
+.wf-label .tag { white-space: normal; }
 .wf-ring { position: absolute; z-index: 1; border: 2px solid var(--text-head); border-radius: 50%; box-shadow: 0 0 18px var(--accent); transition: opacity 0.4s; pointer-events: none; }
 .wf-result {
-  position: absolute; left: var(--space-3); top: 3rem; z-index: 2; display: grid; gap: var(--space-1); max-width: 15rem;
+  position: absolute; right: var(--space-3); bottom: var(--space-3); z-index: 2; display: grid; gap: var(--space-1); max-width: 13rem;
   padding: var(--space-3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-surface);
   color: var(--text-body); font-size: var(--text-xs); line-height: var(--leading-caption);
 }

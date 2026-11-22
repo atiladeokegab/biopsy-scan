@@ -24,7 +24,7 @@ export function drawCore(ctx, core, cx, cy, r, mode) {
       // squared intensities keep each cell's strongest channels and let weak ones fall dark, as in a real IF image
       let R = 0, G = 0, B = 0;
       for (let k = 0; k < MC.length && 3 + k < c.length; k++) {
-        const w = (c[3 + k] / 255) ** 2 * 0.7;
+        const w = (c[3 + k] / 255) ** 2 * 0.45; // six warm channels add up; keep the zoomed core from blowing out
         R += MC[k][0] * w; G += MC[k][1] * w; B += MC[k][2] * w;
       }
       ctx.fillStyle = `rgba(${Math.min(255, R | 0)},${Math.min(255, G | 0)},${Math.min(255, B | 0)},0.85)`;

@@ -41,7 +41,8 @@ export function mount(el, data) {
   const head = css("--text-head", "#F4F7FA"), body = css("--text-body", "#B9C6D4"), muted = css("--text-muted", "#8898AA");
   let raf = 0, t0 = 0, last = SETTLE, real = null; // real: true once both HPA images decode, false if either fails
   const imgs = IHC.map((c) => Object.assign(new Image(), { src: new URL(`./img/${c.file}`, import.meta.url).href }));
-  Promise.all(imgs.map((i) => i.decode())).then(() => { real = true; }, () => { real = false; }).then(() => { if (!raf) draw(last); });
+  Promise.all(imgs.map((i) => i.decode())).then(() => { real = true; }, () => { real = false; })
+    .then(() => { if (real === false) el.closest("#flow")?.querySelectorAll("[data-sim]").forEach((n) => { n.textContent = n.dataset.sim; n.classList.remove("measured"); }); }).then(() => { if (!raf) draw(last); });
 
   function draw(t) {
     const W = el.clientWidth || 720, H = el.clientHeight || 450, d = window.devicePixelRatio || 1, narrow = W < 560;
@@ -93,7 +94,8 @@ export function mount(el, data) {
     }
     // Two routine-stain cores: real HPA IHC when the images load, else simulated DAB on haematoxylin (labelled).
     if (ihc > 0) {
-      const r2 = Math.min(W * 0.2, H * 0.34), y2 = H * 0.47;
+      const top = (el.querySelector(".wf-label")?.offsetHeight || 0) + 12; // badges wrap on narrow screens
+      const r2 = Math.min(W * 0.2, H * 0.34, (H - top - 30 - 42) / 2), y2 = Math.max(H * 0.47, top + 30 + r2);
       IHC.forEach((c, k) => {
         const x2 = W / 2 + (k - 0.5) * r2 * 2.5;
         g.save(); g.globalAlpha = ihc; g.translate(0, (1 - ihc) * 14);
@@ -110,7 +112,7 @@ export function mount(el, data) {
         g.restore();
         g.save(); g.globalAlpha = ihc; g.textAlign = "center";
         g.font = `600 13px ${font}`; g.fillStyle = head; g.fillText(real ? c.gene : `${c.channel} (simulated)`, x2, y2 - r2 - 22);
-        g.font = `500 11px ${font}`; g.fillStyle = muted; g.fillText(real ? `${c.note} · ${c.antibody}` : c.note, x2, y2 - r2 - 8);
+        g.font = `500 11px ${font}`; g.fillStyle = muted; g.fillText(real ? `${c.note} · ${c.antibody}` : c.note, x2, y2 - r2 - 8, r2 * 2.4); // squeeze, never overlap the neighbour
         g.restore();
       });
       g.save(); g.globalAlpha = ihc; g.font = `600 11px ${font}`; g.fillStyle = body; g.textAlign = "center";
