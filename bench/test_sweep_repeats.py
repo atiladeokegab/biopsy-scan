@@ -16,6 +16,9 @@ def repeat(kind, k, edit=None):
         for b in d["screen"]["backends"].values():
             if isinstance(b, dict):
                 b["p"] = s.SCREEN_P_AT_HEAD
+        d["gpu_requested"] = s.GPU_REQUESTED  # the prior asked for any A100 and recorded no per-container models
+        for n in s.FLEET:
+            d["fleet"]["runs"][n].update(gpus=[s.GPU_MODEL], gpu_models=[s.GPU_MODEL] * int(n), same_gpu_model=True)
     TASK[kind](d)["modal_task_id"] = f"ta-{k}"
     d[COMMIT[kind]] = "c0ffee"
     if edit:
@@ -88,7 +91,52 @@ def scaling_dup(d):
 
 
 def nan_wall(d):
-    d["wall"]["lab_s_per_study"] = float("nan")
+    d["arms"]["lab"]["stages"]["studies_wall_s"] = float("nan")
+
+
+# Atlas's review of #134: each claim must follow from the rows and operands, not from cached totals or flags
+def all_agree(d):
+    d["decisions"]["agree"] = d["decisions"]["compared"]
+
+
+def setup_ratio_99(d):
+    d["wall"]["with_setup"]["ratio"] = 99.0
+
+
+def ratio_cached(d):
+    d["wall"]["ratio"] *= 2
+    d["wall"]["lab_s_per_study"] *= 2
+
+
+def features_differ(d):
+    d["per_study"][-1]["x_equal"] = False
+
+
+def call_not_from_p(d):
+    r = d["per_study"][0]
+    r["lab_call"] = not r["lab_call"]
+
+
+def mixed_gpus(d):
+    r = d["fleet"]["runs"]["8"]
+    r.update(same_gpu_model=False, gpu_models=["NVIDIA A100-SXM4-40GB"] * 7 + ["NVIDIA A100-SXM4-80GB"],
+             gpus=["NVIDIA A100-SXM4-40GB", "NVIDIA A100-SXM4-80GB"])
+
+
+def other_gpu_request(d):
+    d["gpu_requested"] = "A100"
+
+
+def scaling_empty(d):
+    d["studies_by_cores"] = {}
+
+
+def scaling_point_missing(d):
+    d["points"].pop("64")
+
+
+def scaling_curve_dup(d):
+    d["curve"].append(d["curve"][0])
 
 
 def other_class(d):
@@ -114,6 +162,16 @@ def missing_lab_study(d):
     ("fleet", fewer_containers, "a check failed"),
     ("scaling", scaling_x, "differs from the prior"),
     ("scaling", scaling_dup, "exactly once"),
+    ("matched", all_agree, "decision totals"),
+    ("matched", setup_ratio_99, "does not follow"),
+    ("matched", ratio_cached, "does not follow"),
+    ("matched", features_differ, "features differ"),
+    ("matched", call_not_from_p, "do not follow from its p"),
+    ("fleet", mixed_gpus, "GPUs"),
+    ("fleet", other_gpu_request, "GPUs"),
+    ("scaling", scaling_empty, "one per core count"),
+    ("scaling", scaling_point_missing, "one per core count"),
+    ("scaling", scaling_curve_dup, "cores"),
 ])
 def test_a_bad_repeat_fails_closed_and_writes_no_file(tmp_path, capsys, kind, edit, why):
     d = raw(tmp_path, kind, [repeat(kind, 0), repeat(kind, 1), repeat(kind, 2, edit)])
@@ -149,6 +207,13 @@ def test_a_failed_attempt_is_listed_with_its_reason_and_kept_out_of_the_spread(t
 def test_the_fair_run_must_be_the_declared_8_lab_workers():
     d = repeat("matched", 0)
     with pytest.raises(s.Bad, match="workers"):
+        s.matched(d, s.load_prior("matched"), "fair")
+
+
+def test_a_fair_receipt_must_carry_the_declared_400_lab_studies():
+    d = repeat("matched", 0)  # 100 lab studies, relabelled as an 8-worker run
+    d["arms"]["lab"]["workers"], d["arms"]["lab"]["affinity"] = 8, d["host"]["affinity"]
+    with pytest.raises(s.Bad, match="not the declared"):
         s.matched(d, s.load_prior("matched"), "fair")
 
 

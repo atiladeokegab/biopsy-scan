@@ -25,12 +25,15 @@ PRIORS = {  # the single sweeps the task repeats, pinned by content
 }
 PRIORS["fair"] = PRIORS["matched"]  # same design and seeds; parity on the 100 studies both lab samples share
 LAB_WORKERS = {"matched": 1, "fair": 8}
+LAB_PLAN = {"matched": {"null": 50, "alternative": 50}, "fair": {"null": 200, "alternative": 200}}  # as launched
+ALPHA = 0.05  # bench/b9_design_batch.ALPHA: the lab calls p <= ALPHA
 MATCHED_CLASS = {"cpu": 8.0, "memory_mib": 65536, "gpu": None}
 FLEET = ("1", "8")
 # The screen hook's p is a 999-resample count: #80 (7660440) changed stats.screen's resample streams after the prior
 # ran (it used the pinned 8add7f9 file). Locally on CPU, numpy backend: 8add7f9 gives p 0.789 (the prior's), 3647816
 # gives 0.769; maxT 3.0589389780934853 at both. So maxT is checked against the prior (to rounding), p against the code.
 SCREEN_P_AT_HEAD = 0.769
+GPU_REQUESTED, GPU_MODEL = "A100-40GB", "NVIDIA A100-SXM4-40GB"  # the pinned request, and the one model it may yield
 Z_TOL = 1e-9  # bench/scaling.Z_TOL: features bitwise, scores to rounding
 
 
@@ -66,18 +69,44 @@ def matched(doc: dict, prior: dict, kind: str) -> dict:
     pinned = len(lab["affinity"]) == 1 if lw == 1 else lab["affinity"] == doc["host"]["affinity"]  # 8: unpinned, as Preflight
     need(pre["workers"] == 8 and lab["workers"] == lw and pinned, f"lab workers {lab['workers']}, affinity {lab['affinity']}")
     need(doc["plan"]["preflight"] == prior["plan"]["preflight"], "Preflight plan differs from the prior's")
-    want = {(s, i) for s, n in doc["plan"]["lab"].items() for i in range(n)}
-    ids = [(r["stream"], r["i"]) for r in doc["per_study"]]
+    need(doc["plan"]["lab"] == LAB_PLAN[kind], f"lab plan {doc['plan']['lab']} is not the declared {LAB_PLAN[kind]}")
+    want = {(s, i) for s, n in LAB_PLAN[kind].items() for i in range(n)}
+    rows = doc["per_study"]
+    ids = [(r["stream"], r["i"]) for r in rows]
     need(len(ids) == len(set(ids)) and set(ids) == want, "lab studies are not the plan, exactly once")
-    w = doc["wall"]
-    need(w["studies"]["lab"] == len(ids) and w["studies"]["preflight_evaluated"] == sum(doc["plan"]["preflight"].values()),
-         "study counts do not match the plan")
-    need(pos(w["lab_s_per_study"], w["preflight_s_per_decided_study"], w["ratio"], w["with_setup"]["ratio"]),
+    need(all(r["x_equal"] is True for r in rows) and doc["parity"]["x_compared"] == len(rows),
+         "a study's features differ between the arms")
+    # every claim is rebuilt from the rows and the arms' own operands, never from cached ratios or totals
+    cut = doc["threshold"]
+    need(pos(cut) and all(r["lab_call"] == (r["lab_p"] <= ALPHA) and r["preflight_call"] == (r["preflight_maxT"] > cut)
+                          and r["agree"] == (r["lab_call"] == r["preflight_call"]) for r in rows),
+         "a study's calls or agreement do not follow from its p, maxT and the threshold")
+    calls = {st: {"lab": sum(r["lab_call"] for r in rows if r["stream"] == st),
+                  "preflight": sum(r["preflight_call"] for r in rows if r["stream"] == st),
+                  "n": sum(r["stream"] == st for r in rows)} for st in ("null", "alternative")}
+    decisions = {"agree": sum(r["agree"] for r in rows), "compared": len(rows), "calls": calls}
+    need(doc["decisions"] == decisions, f"decision totals {doc['decisions']} are not the rows' {decisions}")
+    n_lab, n_pre = len(rows), sum(doc["plan"]["preflight"].values())
+    decided = n_pre - doc["plan"]["preflight"]["calibration"]
+    need(lab["stages"]["evaluated_studies"] == n_lab and pre["stages"]["evaluated_studies"] == n_pre,
+         "an arm's evaluated studies do not match the plan")
+    lab_wall, pre_wall = lab["stages"]["studies_wall_s"], pre["stages"]["studies_wall_s"]
+    setup = lambda o: o["setup"]["prep_s"] + o["setup"]["adjacency_s"] + (o["warm_s"] or 0)  # noqa: E731 - as compare()
+    need(pos(lab_wall, pre_wall) and all(v >= 0 and math.isfinite(v) for v in (setup(lab), setup(pre))),
          "a timing is not positive and finite")
-    need(math.isclose(w["ratio"], w["lab_s_per_study"] / w["preflight_s_per_decided_study"], rel_tol=1e-12),
-         "ratio does not follow from its walls")
+    lab_s = lab_wall / n_lab
+    ws = {"lab_s_per_study": (lab_wall + setup(lab)) / n_lab, "preflight_s_per_decided_study": (pre_wall + setup(pre)) / decided}
+    ws["ratio"] = ws["lab_s_per_study"] / ws["preflight_s_per_decided_study"]
+    w = {"lab_s_per_study": lab_s, "preflight_s_per_decided_study": pre_wall / decided,
+         "ratio": lab_s / (pre_wall / decided), "with_setup": ws}
+    rec = doc["wall"]
+    need(all(math.isclose(rec[k], w[k], rel_tol=1e-12) for k in ("lab_s_per_study", "preflight_s_per_decided_study", "ratio"))
+         and all(math.isclose(rec["with_setup"][k], ws[k], rel_tol=1e-12) for k in ws)
+         and rec["studies"] == {"lab": n_lab, "preflight_evaluated": n_pre, "preflight_decided": decided,
+                                "preflight_calibration": n_pre - decided},
+         "a recorded wall or ratio does not follow from the arms' walls, setup and study counts")
     near = lambda a, b: abs(a - b) <= Z_TOL * max(1, abs(b))  # noqa: E731 - scores to rounding, as bench/scaling.py
-    need(near(doc["threshold"], prior["threshold"]), f"threshold {doc['threshold']} != prior {prior['threshold']}")
+    need(near(cut, prior["threshold"]), f"threshold {cut} != prior {prior['threshold']}")
     old = {(r["stream"], r["i"]): r for r in prior["per_study"]}
     shared = [r for r in doc["per_study"] if (r["stream"], r["i"]) in old]
     need(len(shared) == len(old), f"{len(shared)} of the prior's {len(old)} studies shared")
@@ -90,7 +119,7 @@ def matched(doc: dict, prior: dict, kind: str) -> dict:
             "values": {"ratio": w["ratio"], "ratio_with_setup": w["with_setup"]["ratio"],
                        "lab_s_per_study": w["lab_s_per_study"],
                        "preflight_s_per_decided_study": w["preflight_s_per_decided_study"]},
-            "decisions_agree": [doc["decisions"]["agree"], doc["decisions"]["compared"]],
+            "decisions_agree": [decisions["agree"], decisions["compared"]],
             "parity_vs_prior": f"{len(shared)} shared studies: features bitwise, lab p identical, Preflight maxT and the "
                                f"threshold within {Z_TOL} relative, both arms' calls identical"}
 
@@ -106,7 +135,9 @@ def fleet(doc: dict, prior: dict, kind: str) -> dict:
              and r["distinct_task_ids"] and r["bit_identical_to_1"] and r["all_overlapped"], f"fleet {n}: a check failed")
         need(sum(r["studies_per_container"]) == f["studies"], f"fleet {n}: studies not covered")
         need(pos(r["compute_span_s"], r["modal_wall_s"]), f"fleet {n}: a timing is not positive and finite")
-        need(all(g.startswith("NVIDIA A100") for g in r["gpus"]), f"fleet {n}: GPUs {r['gpus']}")
+        models = r.get("gpu_models", [])
+        need(r.get("same_gpu_model") is True and len(models) == int(n) and set(models) == set(r["gpus"]) == {GPU_MODEL}
+             and doc["gpu_requested"] == GPU_REQUESTED, f"fleet {n}: GPUs {models or r['gpus']}, not {n} x {GPU_MODEL}")
     k, pk = doc["kernel"], prior["kernel"]
     need(k["parity_exact"] and k["seeds"] == pk["seeds"], "kernel parity or seeds differ")
     s, ps = doc["screen"]["backends"], prior["screen"]["backends"]
@@ -132,7 +163,10 @@ def scaling(doc: dict, prior: dict, kind: str) -> dict:
          "workload (studies, seeds, design) differs from the prior's")
     need(doc["container_class"] == prior["container_class"], "container classes differ from the prior's")
     curve = {r["cores"]: r for r in doc["curve"]}
-    need(sorted(curve) == sorted(r["cores"] for r in prior["curve"]), f"cores {sorted(curve)}")
+    cores = sorted(r["cores"] for r in prior["curve"])
+    need(len(doc["curve"]) == len(curve) and sorted(curve) == cores, f"cores {[r['cores'] for r in doc['curve']]}")
+    need(set(doc["points"]) == set(doc["studies_by_cores"]) == {str(c) for c in cores},
+         f"points {sorted(doc['points'])} or study lists {sorted(doc['studies_by_cores'])} are not one per core count {cores}")
     tasks = [p["host"]["modal_task_id"] for p in doc["points"].values()]
     need(all(tasks) and len(set(tasks)) == len(tasks), "point task ids missing or repeated")
     n = doc["workload"]["studies"]
