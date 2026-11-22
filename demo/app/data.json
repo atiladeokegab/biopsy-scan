@@ -1,0 +1,82 @@
+{
+ "schema": "preflight-race-ihc/1",
+ "sources": [
+  "results/charville-v2.json",
+  "bench/results/external-baseline-20261122T043823Z.json",
+  "bench/results/modal-design-20261121T205536Z.json",
+  "demo/data/grid.json",
+  "demo/workflow/img/hpa_manifest.json",
+  "demo/app/cells.json"
+ ],
+ "cohort": {
+  "name": "charville",
+  "patients": 159,
+  "events": 38,
+  "regions": 286,
+  "cores_shown": 36
+ },
+ "studies": 1000,
+ "race": {
+  "seconds": 10.0,
+  "ours_finish_s": 0.7,
+  "race_s_per_real_s": 0.016702160714192924,
+  "current_studies_at_end": 24
+ },
+ "current": {
+  "s_per_study": 24.443413085459998,
+  "workers": 8,
+  "worker_s_per_study": 170.3515378875,
+  "total_s": 24443.413085459997
+ },
+ "ours": {
+  "s_per_study": 0.04191074508133333,
+  "workers": 8,
+  "total_s": 41.91074508133333
+ },
+ "ratio": 583.2254482239418,
+ "markers": [
+  "DAPI",
+  "PanCK",
+  "CD8",
+  "CD68",
+  "aSMA",
+  "CD20"
+ ],
+ "marker_colors": [
+  "#3f6dff",
+  "#ff5f4f",
+  "#7dff4a",
+  "#ffc23c",
+  "#1fa37a",
+  "#ea4fe0"
+ ],
+ "nuclear": [
+  true,
+  false,
+  false,
+  false,
+  false,
+  false
+ ],
+ "kept": [
+  "PanCK",
+  "CD8"
+ ],
+ "ihc": [
+  {
+   "gene": "KRT5",
+   "marker": "PanCK",
+   "photo": "../workflow/img/hpa_best_01_KRT5.webp",
+   "page": "https://www.proteinatlas.org/ENSG00000186081-KRT5/cancer/head+and+neck+cancer",
+   "credit": "Human Protein Atlas, proteinatlas.org (Uhlen et al.), CC BY-SA 3.0"
+  },
+  {
+   "gene": "CD8A",
+   "marker": "CD8",
+   "photo": "../workflow/img/hpa_best_12_CD8A.webp",
+   "page": "https://www.proteinatlas.org/ENSG00000153563-CD8A/cancer/head+and+neck+cancer",
+   "credit": "Human Protein Atlas, proteinatlas.org (Uhlen et al.), CC BY-SA 3.0"
+  }
+ ],
+ "cells_credit": "Charville CODEX, Wu et al. 2022, Zenodo 13179600, CC-BY-4.0; real cells, every cell of each region"
+}
