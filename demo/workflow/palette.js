@@ -4,13 +4,13 @@
 // cell type. Index = tma.json type_names index.
 export const TYPE_COLORS = [
   "#FFE3A1", // B cell            immune: pale gold
-  "#8FA3B8", // Blood vessel      stroma: light slate
+  "#C3D3E4", // Blood vessel      stroma: lightest slate
   "#F5C451", // CD4 T cell        immune: --immune
   "#E39B1F", // CD8 T cell        immune: deep amber
   "#FFD27A", // Granulocyte       immune: soft gold
   "#C98A2E", // Macrophage        immune: dark ochre
-  "#56687A", // Other             stroma: --stroma
-  "#71859A", // Stroma            stroma: mid slate
+  "#7D93AB", // Other             stroma: bright slate (reads on the #05070B ground)
+  "#9DB2C8", // Stroma            stroma: pale slate
   "#FF7A59", // Tumor 1           tumour: --tumour
   "#FF4F2B", // Tumor 2 (Ki67)    tumour: saturated coral (proliferating)
   "#FFA58E", // Tumor 3           tumour: light coral
