@@ -7,8 +7,8 @@ import { MARKER_COLORS, DAB, HAEMATOXYLIN } from "./palette.js";
 export const SEARCH_LABEL = "ILLUSTRATION · search not yet run on real outcomes";
 export const HPA_CREDIT = "Human Protein Atlas (proteinatlas.org), head and neck cancer, CC BY-SA 3.0";
 export const IHC = [ // real cores: file, gene, antibody (img/hpa_manifest.json), the CODEX channel it stands next to
-  { file: "hpa_KRT5_02.webp", gene: "KRT5", antibody: "CAB000027", channel: "PanCK", note: "tumour cells (keratin)" },
-  { file: "hpa_CD8A_01.webp", gene: "CD8A", antibody: "CAB075722", channel: "CD8", note: "cytotoxic T cells" },
+  { file: "hpa_best_01_KRT5.webp", gene: "KRT5", antibody: "CAB000027", channel: "PanCK", note: "tumour cells (keratin)" },
+  { file: "hpa_best_12_CD8A.webp", gene: "CD8A", antibody: "CAB000012", channel: "CD8", note: "cytotoxic T cells" },
 ];
 // For the shell's caption: the two routine stains shown, their source and licence.
 export const PICKED = { markers: IHC.map((c) => c.gene), antibodies: IHC.map((c) => c.antibody), caption: "REAL IHC, other patients",
@@ -98,7 +98,7 @@ export function mount(el, data) {
         const x2 = W / 2 + (k - 0.5) * r2 * 2.5;
         g.save(); g.globalAlpha = ihc; g.translate(0, (1 - ihc) * 14);
         g.beginPath(); g.arc(x2, y2, r2, 0, 6.29); g.fillStyle = "#EEE8F1"; g.fill(); g.clip();
-        if (real) g.drawImage(imgs[k], x2 - r2 * 1.25, y2 - r2 * 1.25, r2 * 2.5, r2 * 2.5); // the core fills ~80% of the HPA frame
+        if (real) g.drawImage(imgs[k], x2 - r2 * 1.03, y2 - r2 * 1.03, r2 * 2.06, r2 * 2.06); // hpa_best frames are cropped to the core
         else {
           const mi = markers.indexOf(c.channel), s = r2 / 80;
           for (const q of cells) {
