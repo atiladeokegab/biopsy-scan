@@ -62,3 +62,19 @@ for (const f of ["step1.js", "step2.js", "step3.js", "step4.js", "main.js"]) {
 }
 for (const f of ["step1.js", "step2.js", "step3.js", "step4.js"]) assert.match(readFileSync(new URL(`./workflow/${f}`, import.meta.url), "utf8"), /export function mount\(el, data\)/);
 console.log("workflow.test.mjs: ok");
+
+// Cell colours sit on the token families: tumour in coral, immune in amber/gold, stroma/other in slate; emerald is kept for highlights.
+{
+  const { TYPE_COLORS } = await import("./workflow/palette.js");
+  const hue = (hex) => { const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255), mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+    if (!d) return null; const h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; return (h * 60 + 360) % 360; };
+  const sat = (hex) => { const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)); return Math.max(r, g, b) - Math.min(r, g, b); };
+  const fam = { tumour: [345, 25], immune: [30, 55], stroma: [190, 230] };
+  tma.type_groups.forEach((g, i) => {
+    const c = TYPE_COLORS[i], h = hue(c), [lo, hi] = fam[g];
+    assert.ok(h !== null && (lo < hi ? h >= lo && h <= hi : h >= lo || h <= hi), `${tma.type_names[i]} (${g}) ${c} hue ${h} off its family`);
+    if (g === "stroma") assert.ok(sat(c) < 90, `${tma.type_names[i]} ${c} is not slate`);
+  });
+  assert.equal(new Set(TYPE_COLORS.map((c) => c.toLowerCase())).size, TYPE_COLORS.length, "every type has its own colour");
+  assert.ok(!TYPE_COLORS.some((c) => c.toLowerCase() === "#2bd4a4"), "emerald is for highlights only");
+}
