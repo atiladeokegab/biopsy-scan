@@ -143,7 +143,7 @@ async function hero() {
     const arm = (n) => b.km.arms.find((a) => a.name === n);
     drawKM($("km"), { high: { steps: arm("high").curve }, low: { steps: arm("low").curve } });
     $("km-note").textContent = b.km.label.replace(/^exploratory,\s*/, "");
-    for (const n of ["high", "low"]) $(`km-${n.slice(0, 2)}`).textContent = `${arm(n).events} of ${arm(n).n} died`;
+    for (const n of ["high", "low"]) $(`km-${n.slice(0, 2)}`).textContent = `${arm(n).events} of ${arm(n).n} had an event`;
     for (const [id, v] of Object.entries(texts)) $(id).textContent = v;
     tagOf($("bio-tag"), b.source);
     biomarker = b;
