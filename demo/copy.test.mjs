@@ -42,7 +42,7 @@ for (const r of rows) {
     assert.ok(l.startsWith(BLOB), `link not a blob at integration: ${l}`);
     readFileSync(new URL(l.slice(BLOB.length), repo)); // the linked file is in the repo
   }
-  assert.ok(/class="tag[^"]*">(MEASURED|ESTIMATE|SYNTHETIC|ANALYTIC|UNMEASURED)</.test(r), `row without a label: ${plain(r)}`);
+  assert.ok(/class="tag[^"]*">(MEASURED|ESTIMATE|SYNTHETIC|ANALYTIC|SIMULATED|UNMEASURED)</.test(r), `row without a label: ${plain(r)}`);
 }
 const has = (i, s) => assert.ok(plain(rows[i]).includes(s), `row ${i} lacks "${s}": ${plain(rows[i])}`);
 const pct = (x) => `${(100 * x).toFixed(1)}%`;
