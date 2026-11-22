@@ -42,9 +42,18 @@ def race(cells: dict, studies: int, workers: int) -> dict:
     plan = {s: studies for s in db.STREAMS}
     arms = {}
     t = perf_counter()
-    built, serial = adjacency(cells, workers), truth.neighbours
+    built, serial, reference = adjacency(cells, workers), truth.neighbours, truth.truth
     adjacency_s = perf_counter() - t
     truth.neighbours = lambda xy, *a, **k: built[xy.tobytes()] if not (a or k) else serial(xy, *a, **k)
+    once: dict = {}
+
+    def truth_once(c, *a, **k):  # both arms' prepare() take the cohort's truth features: compute them once, not per arm
+        if c is not cells or a or k:
+            return reference(c, *a, **k)
+        if "x" not in once:
+            once["x"] = reference(c)
+        return once["x"]
+    truth.truth = truth_once
     try:
         for arm in ("lab", "fused"):
             db._S.clear()  # per-process kernel and CSR state: on Modal each arm has its own container
@@ -52,7 +61,7 @@ def race(cells: dict, studies: int, workers: int) -> dict:
             out["stages"] = db.stage_times(out)
             arms[arm] = out
     finally:
-        truth.neighbours = serial
+        truth.neighbours, truth.truth = serial, reference
     lab, fused = (arms[a]["stages"]["wall_per_study_s"] for a in ("lab", "fused"))
     par = db.parity(arms)
     return {"label": LABEL, "workers": workers, "studies_per_stream": studies,

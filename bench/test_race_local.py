@@ -22,11 +22,11 @@ def invented(patients=12, regions=2, per=150, seed=0):
 
 def test_a_tiny_race_runs_both_arms_with_parity_inside_ci_time():
     from core import truth
-    serial = truth.neighbours
+    serial, reference = truth.neighbours, truth.truth
     t = perf_counter()
     r = rl.race(invented(), studies=2, workers=2)
     assert perf_counter() - t < 60
-    assert truth.neighbours is serial  # the pool-built adjacency is used only inside the race
+    assert truth.neighbours is serial and truth.truth is reference  # the shortcuts live only inside the race
     assert r["evaluated"] == {"lab": 4, "fused": 6}  # the lab skips calibration; Preflight pays for it
     assert r["parity"] == {"x_bitwise": True, "x_compared": 4}
     assert r["s_per_study"]["lab"] > 0 and r["s_per_study"]["fused"] > 0
@@ -42,3 +42,11 @@ def test_a_feature_mismatch_is_reported_and_fails_the_run(monkeypatch, capsys):
     monkeypatch.setattr("core.cohorts.load", lambda cohort: invented())
     assert rl.main(["--studies", "1", "--workers", "1"]) == 1
     assert "MISMATCH" in capsys.readouterr().out
+
+
+def test_the_cohort_truth_is_computed_once_for_both_arms(monkeypatch):
+    from core import truth
+    calls, real = [], truth.truth
+    monkeypatch.setattr(truth, "truth", lambda c: calls.append(1) or real(c))
+    rl.race(invented(), studies=1, workers=1)
+    assert len(calls) == 1
