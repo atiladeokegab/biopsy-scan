@@ -383,7 +383,7 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
 export function mountReimage($, tissue, { reducedMotion, search, create = createReimage3d }) {
   const study = drawStudy(tissue), p = study.p, n = study.n, real = tissue.source === "MEASURED";
   const fmt = (v) => v.toLocaleString("en-GB");
-  $("reimage-seen").textContent = `${study.perField.map(fmt).join(" and ")} of its ${fmt(n)} cells`;
+  $("reimage-seen").textContent = `${fmt(study.seen)} of its ${fmt(n)}`; // both fields together: they overlap here
   $("reimage-crossed").textContent = `${fmt(study.crossed)} cells`;
   $("reimage-size").textContent = `${fmt(Math.round(study.hi[0] - study.lo[0]))} × ${fmt(Math.round(study.hi[1] - study.lo[1]))} µm`;
   $("reimage-n").textContent = n === p.cells_in_region

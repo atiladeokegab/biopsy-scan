@@ -284,6 +284,7 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
   .reimage-still-pic:has(> img:not([hidden])) ~ .reimage-fallback { margin-bottom: calc(-1 * var(--space-3)); } /* one band with the still */
   #reimage, .reimage-still { height: var(--reimage-h-phone); min-height: 0; }
   /* While it plays, only the current step sits under the canvas; the rest stay in the accessibility tree. */
+  .reimage-steps li[aria-current] { order: -1; } /* at rest the current step stays first under the canvas; the others follow */
   .reimage-steps.playing li:not([aria-current]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .reimage-credit { order: 3; }
   .big { font-size: var(--text-xl); }
