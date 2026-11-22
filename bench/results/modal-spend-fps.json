@@ -1,0 +1,51 @@
+{
+ "workspace_profile": "fhl-08",
+ "cap_usd": 1.5,
+ "note": "build-demo's L4 frame-rate run for the 3D re-imaging view (PR #131), in modal-spend.json's format; kept apart so branches do not collide. USD figures are ESTIMATES from wall x list rate, not billing.",
+ "rates_usd_per_hour": {
+  "L4": 0.7992,
+  "cpu_core": 0.04716,
+  "memory_gib": 0.007992,
+  "source": "bench/results/modal-spend.json (modal.com/pricing read 2026-11-21T17:36Z)"
+ },
+ "entries": [
+  {
+   "utc": "2026-11-22T04:59Z",
+   "run": "gpu/fps_l4.py: headless Chrome on 1 x L4, fps over the 3D script at 1280x720 plus GPU stills",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": 120,
+    "est_usd": 0.037,
+    "basis": "upper bound: launch to local exit, about 120 s, includes the CPU image build, x $1.116/h",
+    "result": "failed before Chrome: OSError, /usr/share/glvnd is read-only on Modal"
+   }
+  },
+  {
+   "utc": "2026-11-22T05:10Z",
+   "run": "gpu/fps_l4.py rerun with ICDs in /tmp: headless Chrome on 1 x L4, fps at 1280x720 plus GPU stills",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": 69.8,
+    "est_usd": 0.022,
+    "basis": "69.8 s local wall x $1.116/h",
+    "result": "bench/results/fps-l4-20261122T051007Z.json"
+   }
+  }
+ ],
+ "running_total_usd": 0.059,
+ "running_total_basis": "sum of the two actuals; ESTIMATE, not billing"
+}
