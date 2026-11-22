@@ -1,0 +1,225 @@
+{
+  "status": "MEASURED",
+  "cohort": "Charville",
+  "exploratory": true,
+  "outcomes_already_seen": true,
+  "clinical_claims": false,
+  "scope": "Prepared feature matrix through legacy maxT, adjusted p-values, cutoff and omnibus. CPU generates paired within-stratum shuffles, recalculates masked Breslow residuals and reduces the final outputs. GPU computes batched float64 score numerators and variances. Timers include host/device transfers and exclude data and feature preparation, warmup, parity checks and leave-one-patient-out audit.",
+  "hardware": {
+    "gpu": "NVIDIA H100 80GB HBM3",
+    "gpu_count": 1,
+    "gpu_memory_bytes": 85009367040,
+    "modal_request": "H100",
+    "cpu_physical_cores_requested": 8,
+    "memory_mib": 32768,
+    "cpu": {
+      "model": "unknown",
+      "logical_cores": 8,
+      "affinity": 8,
+      "blas": {
+        "env": {
+          "OPENBLAS_NUM_THREADS": "8",
+          "OMP_NUM_THREADS": "8",
+          "MKL_NUM_THREADS": "8"
+        },
+        "libraries": [
+          {
+            "path": "libscipy_openblas64_-32a4b2a6.so",
+            "config": "OpenBLAS 0.3.31.188.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY SkylakeX MAX_THREADS=64",
+            "threads": 8
+          },
+          {
+            "path": "libscipy_openblas-6cdc3b4a.so",
+            "config": "OpenBLAS 0.3.30 DYNAMIC_ARCH NO_AFFINITY SkylakeX MAX_THREADS=64",
+            "threads": 8
+          }
+        ]
+      },
+      "elementwise": "risk-set steps in numpy, one thread"
+    },
+    "modal_task_id": "ta-01M81QQP6NN8K5NHV5P9RD2MNR",
+    "cuda_runtime_version": 12090,
+    "cupy": "14.2.0",
+    "numpy": "2.4.6"
+  },
+  "input": {
+    "patients": 159,
+    "features": 3780,
+    "resamples": 9999,
+    "seed": 0,
+    "source_fingerprint": "f481c33aab31a96e5e769a24aa19af5a6b9e23d0fc248347209969ad34e370dc",
+    "grammar_v2_hash": "26a745f831ef71ec2c8ae5bf65f3668d29fd0f53ab97699cf52ac0cc13f11564",
+    "matrix_sha256": "538fe96b56d741c4e1ed6d5f459d1281385f9fe56cf4d600f09f08343247ac28",
+    "nan_cells": 11880,
+    "source": "https://zenodo.org/records/13179600"
+  },
+  "preparation_wall_s": 35.298502236,
+  "runs": {
+    "gpu": {
+      "label": "MEASURED",
+      "backend": "cupy_float64",
+      "screen_wall_s": 3.6053913800000004,
+      "synchronized_score_products_wall_s": 0.13703207800001138,
+      "maxT": 3.9571818541499213,
+      "p": 0.0981,
+      "conditional_cutoff_alpha_05": 4.116036676601488,
+      "omnibus": {
+        "statistics": {
+          "maxT": 3.9571818541499213,
+          "sum_z2": 4298.245944467428,
+          "HC": 8.580822332158162
+        },
+        "component_p": {
+          "maxT": 0.0981,
+          "sum_z2": 0.201,
+          "HC": 0.1611
+        },
+        "p": 0.1688
+      }
+    },
+    "cpu": {
+      "label": "MEASURED",
+      "backend": "numpy_float64",
+      "screen_wall_s": 3.781472592,
+      "synchronized_score_products_wall_s": 0.34182094199998403,
+      "maxT": 3.9571818541499213,
+      "p": 0.0981,
+      "conditional_cutoff_alpha_05": 4.116036676601488,
+      "omnibus": {
+        "statistics": {
+          "maxT": 3.9571818541499213,
+          "sum_z2": 4298.245944467428,
+          "HC": 8.580822332158162
+        },
+        "component_p": {
+          "maxT": 0.0981,
+          "sum_z2": 0.201,
+          "HC": 0.1611
+        },
+        "p": 0.1688
+      }
+    }
+  },
+  "same_container_speedup": {
+    "label": "MEASURED",
+    "cpu_over_gpu": 1.048838307257505
+  },
+  "gpu_batches": [
+    {
+      "resamples": 15,
+      "features": 540,
+      "count": 1
+    },
+    {
+      "resamples": 15,
+      "features": 3240,
+      "count": 1
+    },
+    {
+      "resamples": 256,
+      "features": 540,
+      "count": 39
+    },
+    {
+      "resamples": 256,
+      "features": 3240,
+      "count": 39
+    }
+  ],
+  "gpu_memory": {
+    "baseline_device_used_bytes": 623706112,
+    "peak_sampled_device_used_bytes": 671940608,
+    "peak_pool_reserved_bytes": 36094976,
+    "samples": 81,
+    "basis": "device used via total minus free and CuPy pool reservation after each synchronized score block"
+  },
+  "parity": {
+    "tolerance": {
+      "rtol": 1e-09,
+      "atol": 1e-09
+    },
+    "same_container_null_and_observed_max_abs_difference": {
+      "U": 0.0,
+      "V": 0.0,
+      "z": 0.0,
+      "null_maxT": 1.7763568394002505e-15,
+      "null_z": 2.6645352591003757e-15
+    },
+    "same_container_p_exact": true,
+    "historical_receipt": "results/charville-v2.json",
+    "historical_source_commit": "cfb03bb681b6809da855c24d0e311be2af631d3e",
+    "historical_maxT": 3.9571818541499213,
+    "historical_p": 0.0981,
+    "historical_top_hits_identical": true,
+    "historical_wall_s_different_scope": 2149.6123337736353
+  },
+  "maxT": {
+    "statistic": 3.9571818541499213,
+    "p": 0.0981,
+    "top_hits": [
+      {
+        "grammar_index": 2600,
+        "feature": "Tumor 5|Macrophage|100um|PD1",
+        "z": 3.9571818541499213,
+        "adjusted_p": 0.0981
+      },
+      {
+        "grammar_index": 191,
+        "feature": "Tumor 3|Blood vessel|100um|enrichment",
+        "z": 3.4570007256309614,
+        "adjusted_p": 0.489
+      },
+      {
+        "grammar_index": 3685,
+        "feature": "Tumor 7|Tumor 4|100um|aSMA",
+        "z": 3.302544438268211,
+        "adjusted_p": 0.6665
+      },
+      {
+        "grammar_index": 189,
+        "feature": "Tumor 3|Blood vessel|50um|enrichment",
+        "z": 3.261202177293202,
+        "adjusted_p": 0.715
+      },
+      {
+        "grammar_index": 606,
+        "feature": "Tumor 7|Tumor 4|25um|fraction",
+        "z": 3.2249542355202476,
+        "adjusted_p": 0.7528
+      },
+      {
+        "grammar_index": 137,
+        "feature": "Tumor 2 (Ki67 Proliferating)|Stroma|100um|enrichment",
+        "z": 3.185680781697902,
+        "adjusted_p": 0.7944
+      },
+      {
+        "grammar_index": 571,
+        "feature": "Tumor 7|Macrophage|25um|enrichment",
+        "z": 3.1463509928799978,
+        "adjusted_p": 0.83
+      },
+      {
+        "grammar_index": 107,
+        "feature": "Tumor 2 (Ki67 Proliferating)|CD4 T cell|100um|enrichment",
+        "z": 3.0894633327655345,
+        "adjusted_p": 0.8748
+      },
+      {
+        "grammar_index": 573,
+        "feature": "Tumor 7|Macrophage|50um|enrichment",
+        "z": 3.0811825524896403,
+        "adjusted_p": 0.8819
+      },
+      {
+        "grammar_index": 105,
+        "feature": "Tumor 2 (Ki67 Proliferating)|CD4 T cell|50um|enrichment",
+        "z": 3.0718845660420513,
+        "adjusted_p": 0.8879
+      }
+    ]
+  },
+  "function_wall_s": 45.687859308,
+  "source_commit": "3f8ddb6a8c218ba255e0681c50a68a48d0f239b4",
+  "spend_receipt": "bench/results/modal-spend-charville-v2-gpu-20261122T133937.463457Z.json"
+}
