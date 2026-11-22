@@ -1,0 +1,28 @@
+[
+ {
+  "file": "hpa_KRT5_02.webp",
+  "gene": "KRT5",
+  "antibody": "CAB000027",
+  "tissue": "head and neck cancer",
+  "staining_level": "high",
+  "page_url": "https://www.proteinatlas.org/ENSG00000186081-KRT5/cancer/head+and+neck+cancer",
+  "image_url": "https://images.proteinatlas.org/27/155110_A_2_1.jpg",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Human Protein Atlas, proteinatlas.org (Uhlen et al.)",
+  "sha256": "304a20571df7967009186f7615dbf22127def8d1717dd8dfbafd74a9390a4168",
+  "note": "resized to 560 px wide for the demo; sha256 is of the fetched original"
+ },
+ {
+  "file": "hpa_ACTA2_02.webp",
+  "gene": "ACTA2",
+  "antibody": "CAB000002",
+  "tissue": "head and neck cancer",
+  "staining_level": "not detected",
+  "page_url": "https://www.proteinatlas.org/ENSG00000107796-ACTA2/cancer/head+and+neck+cancer",
+  "image_url": "https://images.proteinatlas.org/2/221_A_2_7.jpg",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Human Protein Atlas, proteinatlas.org (Uhlen et al.)",
+  "sha256": "770223443c89a875e7f2dd3cb0a26b92b41b741b0b393ca6043976cd5694b091",
+  "note": "resized to 560 px wide for the demo; sha256 is of the fetched original"
+ }
+]
