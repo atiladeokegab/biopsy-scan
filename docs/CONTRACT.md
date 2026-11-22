@@ -1,7 +1,7 @@
 # Contract
 
 Preflight's shared shapes. Written by the lead's agent; every area builds against it; only the lead
-changes it (anything else is a change-request, AGENTS.md §6). `core/` owns the data and grammar,
+changes it. `core/` owns the data and grammar,
 `reimage/` the kernels, `stats/` the statistic.
 
 ## Assignment

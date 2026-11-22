@@ -1,9 +1,8 @@
 name: smoke
-# The event's smoke on every PR into integration: offline, no secrets, same `make smoke` the lead
-# runs. gh-sync --init makes it a required check; hub live merges a PR only once it passed.
+# Smoke on every PR into main: offline, no secrets, the same `make smoke` as locally.
 on:
   pull_request:
-    branches: [integration]
+    branches: [main]
     types: [opened, synchronize, reopened]
 permissions:
   contents: read
