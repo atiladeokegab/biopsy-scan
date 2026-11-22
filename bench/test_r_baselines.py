@@ -52,3 +52,9 @@ def test_inputs_reach_r_column_major(tmp_path):
     Pr = np.fromfile(tmp_path / "P.i32", np.int32).reshape(9, 5, order="F")  # R: matrix(v, n, B)
     Xr = np.fromfile(tmp_path / "X.f64").reshape(9, 10, order="F")
     assert (Pr[:, 2] == P[2]).all() and np.array_equal(Xr, X, equal_nan=True)
+
+
+def test_permgpu_label_fails_outside_tolerance():
+    bad = rb.permgpu_label({"within_tol": False, "max_rel_diff_all": 3.47e-3, "tol": 1e-3})
+    assert bad["parity"].startswith("FAILED: worst column 3.5e-03") and "different workload" in bad["comparison"]
+    assert rb.permgpu_label({"within_tol": True, "max_rel_diff_all": 1e-4, "tol": 1e-3})["parity"] == "PASSED"

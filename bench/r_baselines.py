@@ -13,7 +13,9 @@ Arms (all given the same X; ours and R also the same shuffle index matrix P, dra
   permgpu   permGPU 0.15 (Shterev et al. 2010, CRAN), test = "cox", B = 9,999. It has no strata and draws its
             own shuffles, so it runs the closest workload it can express: the same X, unstratified.
 Parity: ours and r against the committed audit (maxT 3.957181854, p 0.0981) and each other (same P, so the
-same p). permGPU against a NumPy transcription of its own kernel (see permgpu_stat).
+same p). permGPU against a NumPy transcription of its own kernel (see permgpu_stat); the ours-vs-permGPU ratio is a
+different-workload comparison (no strata, its statistic, float32), and its parity FAILED in the measured run
+(r-baselines-20261122T133118Z: worst column 3.5e-3 relative, against the 1e-3 tolerance set before the run).
 """
 from __future__ import annotations
 
@@ -108,6 +110,15 @@ def permgpu_stat(X, time, event) -> np.ndarray:
         stat += np.where(ok, Xz[i] - nom / den, 0.0)
         se += np.where(ok, nom2 / den - nom * nom / den / den, 0.0)
     return np.divide(stat * stat, se, out=np.zeros_like(stat), where=se > 0)
+
+
+def permgpu_label(parity: dict) -> dict:
+    """The label every ours-vs-permGPU ratio carries: what it compares and whether its parity held."""
+    return {"comparison": "different workload: permGPU has no strata and runs its own statistic (Cox score chi2, "
+                          "information variance, float32); ours runs the unstratified permutation-variance z",
+            "parity": "PASSED" if parity["within_tol"] else
+                      f"FAILED: worst column {parity['max_rel_diff_all']:.1e} relative vs the {parity['tol']:g} "
+                      "tolerance set before the run"}
 
 
 def spread(values) -> dict:
