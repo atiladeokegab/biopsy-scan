@@ -46,7 +46,7 @@ Every number below carries its evidence label — **MEASURED**, **ESTIMATE**, **
 
 ## Reproduce in 3 Commands
 
-Requires `git`, `make`, [`uv`](https://docs.astral.sh/uv/) (installs pinned Python `3.11.*` automatically from `uv.lock` for the test suite; cold `uv sync --dev` uses ~`1.5 GB` disk across cache + `.venv`), a system `python3` on `PATH` (standard library only: the demo data checks run outside uv) and Node.js (the demo's `.mjs` checks; run here on Node `24`):
+Requires `git`, `make`, [`uv`](https://docs.astral.sh/uv/) (installs pinned Python `3.11.*` automatically from `uv.lock` for the test suite; cold `uv sync --dev` uses ~`1.5 GB` disk across cache + `.venv`), a system `python3` `3.9+` on `PATH` (standard library only: the demo data checks run outside uv) and Node.js (the demo's `.mjs` checks; run here on Node `24`):
 
 ```sh
 git clone https://github.com/atiladeokegab/sota-parallelism-nov21.git && cd sota-parallelism-nov21

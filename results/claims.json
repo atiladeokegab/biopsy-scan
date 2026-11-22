@@ -1434,12 +1434,36 @@
      "len": "fleet.failed_attempts",
      "rule": "eq",
      "expect": "1"
+    },
+    {
+     "name": "spread",
+     "path": "labels.spread",
+     "rule": "eq",
+     "expect": "median and min-max of each kind's declared fresh runs; descriptive, not a confidence interval"
+    },
+    {
+     "name": "bit",
+     "path": "fleet.repeats[0].parity_vs_prior",
+     "rule": "re:(each fleet bit-identical to its own 1-container run)",
+     "expect": "each fleet bit-identical to its own 1-container run"
+    },
+    {
+     "name": "bit1",
+     "path": "fleet.repeats[1].parity_vs_prior",
+     "rule": "re:(each fleet bit-identical to its own 1-container run)",
+     "expect": "each fleet bit-identical to its own 1-container run"
+    },
+    {
+     "name": "model",
+     "path": "fleet.failed_attempts[0].why[0]",
+     "rule": "eq",
+     "expect": "fleet.runs.8.same_gpu_model"
     }
    ],
    "quotes": [
     {
      "file": "README.md",
-     "text": "Compute-span ratio `{med}×`, median of `{n}` fresh repeats (range `{lo}–{hi}×`); `{failed}` attempt failed the same-GPU-model check and is excluded. Each fleet bit-equal to its own 1-container run; median and min–max of the fresh repeats: descriptive, not a confidence interval (**{label}**)"
+     "text": "| **GPU fleet, repeats** (`1,000` Charville studies, `8` vs `1` A100-SXM4-40GB, same GPU model, #134) | Compute-span ratio `{med}×`, median of `{n}` fresh repeats (range `{lo}–{hi}×`); `{failed}` attempt failed the same-GPU-model check and is excluded. Each fleet bit-equal to its own 1-container run; median and min–max of the fresh repeats: descriptive, not a confidence interval (**{label}**) | [`bench/results/sweep-repeats.json`](bench/results/sweep-repeats.json) |"
     }
    ]
   },
@@ -1474,12 +1498,18 @@
      "len": "scaling.repeats",
      "rule": "eq",
      "expect": "3"
+    },
+    {
+     "name": "spread",
+     "path": "labels.spread",
+     "rule": "eq",
+     "expect": "median and min-max of each kind's declared fresh runs; descriptive, not a confidence interval"
     }
    ],
    "quotes": [
     {
      "file": "README.md",
-     "text": "`{med}×` from `1` to `64` cores, median of `{n}` fresh repeats (range `{lo}–{hi}×`)"
+     "text": "| **CPU strong scaling, repeats** (Numba arm, Charville, `1` vs `64` Modal cores, #135) | `{med}×` from `1` to `64` cores, median of `{n}` fresh repeats (range `{lo}–{hi}×`). Every core count's features bitwise and maxT within 1e-9 of the #115 sweep's 1-core run; median and min–max of the fresh repeats: descriptive, not a confidence interval (**{label}**) | [`bench/results/sweep-repeats.json`](bench/results/sweep-repeats.json) |"
     },
     {
      "file": "README.md",
@@ -1526,16 +1556,58 @@
      "expect": "3"
     },
     {
-     "name": "agree",
-     "path": "matched.repeats[0].decisions_agree",
+     "name": "spread",
+     "path": "labels.spread",
      "rule": "eq",
-     "expect": "[89, 100]"
+     "expect": "median and min-max of each kind's declared fresh runs; descriptive, not a confidence interval"
+    },
+    {
+     "name": "outcomes",
+     "path": "labels.outcomes",
+     "rule": "eq",
+     "expect": "SYNTHETIC"
+    },
+    {
+     "name": "agree0",
+     "path": "matched.repeats[0].decisions_agree[0]",
+     "rule": "eq",
+     "expect": "89"
+    },
+    {
+     "name": "of0",
+     "path": "matched.repeats[0].decisions_agree[1]",
+     "rule": "eq",
+     "expect": "100"
+    },
+    {
+     "name": "agree1",
+     "path": "matched.repeats[1].decisions_agree[0]",
+     "rule": "eq",
+     "expect": "89"
+    },
+    {
+     "name": "of1",
+     "path": "matched.repeats[1].decisions_agree[1]",
+     "rule": "eq",
+     "expect": "100"
+    },
+    {
+     "name": "agree2",
+     "path": "matched.repeats[2].decisions_agree[0]",
+     "rule": "eq",
+     "expect": "89"
+    },
+    {
+     "name": "of2",
+     "path": "matched.repeats[2].decisions_agree[1]",
+     "rule": "eq",
+     "expect": "100"
     }
    ],
    "quotes": [
     {
      "file": "README.md",
-     "text": "Through scoring, as in #123: `{med}×`, median of `{n}` fresh repeats (range `{lo}–{hi}×`); `{setup}×` with setup."
+     "text": "| **Matched end to end, repeats** (lab vs Preflight, Numba arm, #134) | Through scoring, as in #123: `{med}×`, median of `{n}` fresh repeats (range `{lo}–{hi}×`); `{setup}×` with setup. One lab core vs eight Preflight workers; different procedures, as in #123. Decisions agree {agree0} of {of0} in every repeat; median and min–max of the fresh repeats: descriptive, not a confidence interval (timings **{label}**, outcomes **{outcomes}**) | [`bench/results/sweep-repeats.json`](bench/results/sweep-repeats.json) |"
     },
     {
      "file": "README.md",
@@ -1582,16 +1654,58 @@
      "expect": "3"
     },
     {
-     "name": "agree",
-     "path": "fair.repeats[0].decisions_agree",
+     "name": "spread",
+     "path": "labels.spread",
      "rule": "eq",
-     "expect": "[362, 400]"
+     "expect": "median and min-max of each kind's declared fresh runs; descriptive, not a confidence interval"
+    },
+    {
+     "name": "outcomes",
+     "path": "labels.outcomes",
+     "rule": "eq",
+     "expect": "SYNTHETIC"
+    },
+    {
+     "name": "agree0",
+     "path": "fair.repeats[0].decisions_agree[0]",
+     "rule": "eq",
+     "expect": "362"
+    },
+    {
+     "name": "of0",
+     "path": "fair.repeats[0].decisions_agree[1]",
+     "rule": "eq",
+     "expect": "400"
+    },
+    {
+     "name": "agree1",
+     "path": "fair.repeats[1].decisions_agree[0]",
+     "rule": "eq",
+     "expect": "362"
+    },
+    {
+     "name": "of1",
+     "path": "fair.repeats[1].decisions_agree[1]",
+     "rule": "eq",
+     "expect": "400"
+    },
+    {
+     "name": "agree2",
+     "path": "fair.repeats[2].decisions_agree[0]",
+     "rule": "eq",
+     "expect": "362"
+    },
+    {
+     "name": "of2",
+     "path": "fair.repeats[2].decisions_agree[1]",
+     "rule": "eq",
+     "expect": "400"
     }
    ],
    "quotes": [
     {
      "file": "README.md",
-     "text": "Through scoring: `{med}×`, median of `{n}` fresh repeats (range `{lo}–{hi}×`); `{setup}×` with setup. Decisions agree 362 of 400 in every repeat."
+     "text": "| **Fair, 8 vs 8** (lab and Preflight each on `8` workers, Numba arm, #134) | Through scoring: `{med}×`, median of `{n}` fresh repeats (range `{lo}–{hi}×`); `{setup}×` with setup. Decisions agree {agree0} of {of0} in every repeat. The Numba kernel, not the fused kernel behind the `21.0×` row; different procedures; median and min–max of the fresh repeats: descriptive, not a confidence interval (timings **{label}**, outcomes **{outcomes}**) | [`bench/results/sweep-repeats.json`](bench/results/sweep-repeats.json) |"
     }
    ]
   },
@@ -1650,16 +1764,36 @@
      "path": "summary.studies",
      "rule": "eq",
      "expect": "50"
+    },
+    {
+     "name": "workers",
+     "path": "summary.workers",
+     "rule": "eq",
+     "expect": "8"
+    },
+    {
+     "name": "out",
+     "path": "labels.outcomes",
+     "rule": "re:^([A-Z]+)",
+     "expect": "SYNTHETIC"
+    },
+    {
+     "name": "cross",
+     "path": "summary.ratio_label",
+     "rule": "re:^(cross-run)",
+     "expect": "cross-run"
+    },
+    {
+     "name": "notours",
+     "path": "summary.comparison",
+     "rule": "re:^(what a lab would run off the shelf, not Preflight's speedup)",
+     "expect": "what a lab would run off the shelf, not Preflight's speedup"
     }
    ],
    "quotes": [
     {
      "file": "README.md",
-     "text": "`{studies}` studies, #132) | `{s} s/study` (**{label}**: pool wall over studies; instrumented, so it includes our reference recount and agreement checks). Against the hand-written lab arm `{lab} s` (#113) and the fused kernel `{fused} s` (#120): `{vlab}×` and `{vfused}×`, cross-run, same container class"
-    },
-    {
-     "file": "README.md",
-     "text": "the top pattern matches in `{k}/{of}` studies"
+     "text": "| **Off-the-shelf ladder** (squidpy + lifelines on `{workers}` cores, the race's Charville design point, `{studies}` studies, #132) | `{s} s/study` (**{label}**: pool wall over studies; instrumented, so it includes our reference recount and agreement checks). Against the hand-written lab arm `{lab} s` (#113) and the fused kernel `{fused} s` (#120): `{vlab}×` and `{vfused}×`, {cross}, same container class (the lab and fused times come from other runs on other hosts of this class). What a lab would run off the shelf, not Preflight's speedup: different statistics, and the top pattern matches in `{k}/{of}` studies (outcomes **{out}**) | [`bench/results/external-baseline-20261122T043823Z.json`](bench/results/external-baseline-20261122T043823Z.json) |"
     }
    ]
   },
@@ -1706,16 +1840,18 @@
      "path": "outcomes",
      "rule": "eq",
      "expect": "SYNTHETIC"
+    },
+    {
+     "name": "pointwise",
+     "path": "answer.statement",
+     "rule": "re:(not a confidence interval for n)",
+     "expect": "not a confidence interval for n"
     }
    ],
    "quotes": [
     {
      "file": "README.md",
-     "text": "About `{n80}` patients reach `80%` power (linear interpolation of simulated power between simulated sizes). The pointwise 95% bounds cross `80%` at `{lo}` and `{hi}`: pointwise, not a confidence interval for n."
-    },
-    {
-     "file": "README.md",
-     "text": "a different source cohort (`{src}` patients reused up to `600`), censoring and grammar (**{lab}**, outcomes **{out}**)"
+     "text": "| **Head and neck sample size** (UPMC tissue, simulated cohorts of `50–600` resampled from `{src}` discovery patients, HR `2` per source SD, #133) | About `{n80}` patients reach `80%` power (linear interpolation of simulated power between simulated sizes). The pointwise 95% bounds cross `80%` at `{lo}` and `{hi}`: pointwise, not a confidence interval for n. Not comparable with Charville's `524`: a different source cohort (`{src}` patients reused up to `600`), censoring and grammar (**{lab}**, outcomes **{out}**) | [`bench/results/hn-power-upmc-discovery.json`](bench/results/hn-power-upmc-discovery.json) |"
     }
    ]
   }
