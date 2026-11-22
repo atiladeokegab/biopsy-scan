@@ -122,3 +122,13 @@ def _rec(agreement, study_s=1.0):
     return {"stream": "alternative", "i": 0, "study_s": study_s, "cells_s": 0.0, "squidpy_s": study_s / 2,
             "lifelines_s": study_s / 2, "fitted": 0, "failed": 0, "lab_call": False, "lab_top": None, "ours_top": 0,
             "agreement": agreement}
+
+
+def test_same_host_summary_takes_median_and_range_per_arm_and_ratio_per_repeat():
+    s = eb.same_host_summary([{"external_s_per_study": 24.0, "fused_s_per_study": 0.04},
+                              {"external_s_per_study": 30.0, "fused_s_per_study": 0.05},
+                              {"external_s_per_study": 20.0, "fused_s_per_study": 0.02}])
+    assert s["external_s_per_study"] == {"median": 24.0, "min": 20.0, "max": 30.0, "n": 3}
+    assert s["fused_s_per_study"] == {"median": 0.04, "min": 0.02, "max": 0.05, "n": 3}
+    assert s["ratio_per_repeat"] == pytest.approx([600.0, 600.0, 1000.0])  # per repeat, not median / median
+    assert s["ratio"]["median"] == pytest.approx(600.0) and s["ratio"]["max"] == pytest.approx(1000.0)

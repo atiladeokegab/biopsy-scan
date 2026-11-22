@@ -238,6 +238,19 @@ def ratios(per: float, workers: int, n_jobs: int) -> dict:
             "settings": {**settings(workers, n_jobs), "n_jobs_note": NJOBS_FAILED}}
 
 
+def spread(values: list[float]) -> dict:
+    return {"median": float(np.median(values)), "min": float(min(values)), "max": float(max(values)), "n": len(values)}
+
+
+def same_host_summary(repeats: list[dict]) -> dict:
+    """Per arm and for the ratio (external / fused, each repeat in its own container): median and min-max of s/study."""
+    ext = [r["external_s_per_study"] for r in repeats]
+    fus = [r["fused_s_per_study"] for r in repeats]
+    ratio = [e / f for e, f in zip(ext, fus)]
+    return {"external_s_per_study": spread(ext), "fused_s_per_study": spread(fus), "ratio": spread(ratio),
+            "ratio_per_repeat": ratio}
+
+
 def headline(s: dict) -> str:
     w = s["worker_study_s"]
     return (f"Off the shelf (squidpy + lifelines, {s['settings']['cores']} cores): {s['seconds_per_study']:.2f} s/study "
