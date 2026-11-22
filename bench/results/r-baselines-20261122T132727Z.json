@@ -1,0 +1,149 @@
+{
+  "status": "MEASURED",
+  "error": null,
+  "source_commit": "07ae8de5bb36c28c9025ce4222eb668ac32ca94b",
+  "method": "Two public baselines on the Charville v2 screen: R survival (8 cores) and permGPU (A100), against ours.\n\nWorkload (results/charville-v2.json, #47): 159 patients, 38 events, 3,780 candidate patterns (11,880 NaN\ncells, complete case per feature), 4 coverslip strata, 9,999 within-stratum outcome shuffles, statistic\nz = U / sqrt(V): U the stratified Cox partial-likelihood score at beta = 0 (Breslow ties), V its exact\nwithin-stratum permutation variance; single-step maxT.\n\nArms (all given the same X; ours and R also the same shuffle index matrix P, drawn in the reference's order):\n  ours      Preflight's product form X'[P_1 r .. P_B r] (stats.permutation_maxT), extended to NaN columns: one\n            GEMM per missingness mask, risk sets recomputed per shuffle on that mask's complete cases. NumPy.\n  r         bench/r/survival_perm.R: survival::coxph null fits (strata, Breslow) for the residuals, the score\n            and V vectorised with crossprod/rowsum, shuffles split over parallel::mclapply(mc.cores = 8).\n  permgpu   permGPU 0.15 (Shterev et al. 2010, CRAN), test = \"cox\", B = 9,999. It has no strata and draws its\n            own shuffles, so it runs the closest workload it can express: the same X, unstratified.\nParity: ours and r against the committed audit (maxT 3.957181854, p 0.0981) and each other (same P, so the\nsame p). permGPU against a NumPy transcription of its own kernel (see permgpu_stat).",
+  "audit": {
+    "maxT": 3.9571818541499213,
+    "p": 0.0981,
+    "n_resamples": 9999,
+    "seed": 0,
+    "top": "Tumor 5|Macrophage|100um|PD1",
+    "source": "results/charville-v2.json"
+  },
+  "container_class": "Modal A100 + 8 cores + 64 GiB",
+  "speedup": {
+    "ours_vs_r": {
+      "median": 4.4503697286423645,
+      "range": [
+        4.442120601243826,
+        4.484331094481024
+      ]
+    }
+  },
+  "result": {
+    "prep_s": 44.767463555,
+    "shape": {
+      "patients": 159,
+      "patterns": 3780,
+      "events": 38,
+      "nan_cells": 11880,
+      "strata": 4,
+      "shuffles": 9999,
+      "seed": 0
+    },
+    "errors": {},
+    "ours": {
+      "timing": {
+        "repeats_s": [
+          1.8304097179999985,
+          1.832233010000003,
+          1.8247983540000021
+        ],
+        "median_s": 1.8304097179999985,
+        "min_s": 1.8247983540000021,
+        "max_s": 1.832233010000003,
+        "spread_pct": 0.4061744169564627
+      },
+      "maxT": 3.9571818541499213,
+      "p": 0.0981,
+      "top": 2600,
+      "top_name": "Tumor 5|Macrophage|100um|PD1"
+    },
+    "r": {
+      "timing": {
+        "repeats_s": [
+          8.183,
+          8.139,
+          8.146
+        ],
+        "median_s": 8.146,
+        "min_s": 8.139,
+        "max_s": 8.183,
+        "spread_pct": 0.5401424011784984
+      },
+      "rscript_wall": {
+        "repeats_s": [
+          9.301834602,
+          9.276960189999997,
+          9.234806864000006
+        ],
+        "median_s": 9.276960189999997,
+        "min_s": 9.234806864000006,
+        "max_s": 9.301834602,
+        "spread_pct": 0.7225183317294486
+      },
+      "maxT": 3.9571818541499204,
+      "p": 0.1329,
+      "top": 2600,
+      "top_name": "Tumor 5|Macrophage|100um|PD1",
+      "parity_vs_ours": {
+        "z_max_abs_diff": 2.220446049250313e-15,
+        "null_maxT_max_abs_diff": 2.906545455824964,
+        "same_p": false,
+        "same_top": true
+      }
+    },
+    "permgpu_build": {
+      "returncode": 1,
+      "port": [
+        "sed -i 's/-arch=sm_20/-arch=sm_80/' configure",
+        "sed -i 's|LDFLAGS=\"-L${CUDA_HOME}/lib64\"|LDFLAGS=\"-L${CUDA_HOME}/lib64 -L${CUDA_HOME}/lib64/stubs\"|' configure"
+      ],
+      "source": [
+        "https://github.com/cran/permGPU",
+        "3c64fbba3c0611640586ff64ecf0eca3882c8998"
+      ],
+      "log_tail": "file \u2018configure\u2019 has the wrong MD5 checksum\nchecking for gcc... gcc\nchecking whether the C compiler works... yes\nchecking for C compiler default output file name... a.out\nchecking for suffix of executables... \nchecking whether we are cross compiling... no\nchecking for suffix of object files... o\nchecking whether we are using the GNU C compiler... yes\nchecking whether gcc accepts -g... yes\nchecking for gcc option to accept ISO C89... none needed\nsetting CUDA home directory to /usr/local/cuda\nchecking for /usr/local/cuda/bin/nvcc... yes\nchecking for CUDA headers... checking for /usr/local/cuda/include/cublas.h... yes\nchecking whether this is a 64-bit version of CUDA... checking for /usr/local/cuda/lib64/libcublas.so... yes\nsetting R home directory to /usr/lib/R\nchecking for R... yes\nsetting R header files to /usr/share/R/include\nconfigure: creating ./config.status\nconfig.status: creating src/Makefile\n/usr/local/cuda/bin/nvcc -c -arch=sm_80 -O2 -I/usr/local/cuda/include -Xcompiler \"-O2 -fpic -I/usr/share/R/include\" permGPU.cu -o permGPU.o\n* installing to library \u2018/usr/local/lib/R/site-library\u2019\n* installing *source* package \u2018permGPU\u2019 ...\n** using staged installation\n** libs\n** arch - \npermGPU.cu(774): error: \"rank\" is ambiguous\n            rank(a, ranks, method);\n            ^\n\npermGPU.cu(1129): error: \"rank\" is ambiguous\n        rank(a, ranks, method);\n        ^\n\npermGPU.cu(1256): error: \"rank\" is ambiguous\n      rank(a, ranks, method);\n      ^\n\npermGPU.cu(1270): error: \"rank\" is ambiguous\n        rank(a, ranks, method);\n        ^\n\npermGPU.cu(1334): error: \"rank\" is ambiguous\n            rank(a, ranks, method);\n            ^\n\n5 errors detected in the compilation of \"permGPU.cu\".\nmake: *** [Makefile:33: permGPU.o] Error 2\nERROR: compilation failed for package \u2018permGPU\u2019\n* removing \u2018/usr/local/lib/R/site-library/permGPU\u2019\n"
+    },
+    "ours_unstratified": {
+      "timing": {
+        "repeats_s": [
+          0.9908138090000023,
+          0.9980319619999989,
+          0.98737215700001
+        ],
+        "median_s": 0.9908138090000023,
+        "min_s": 0.98737215700001,
+        "max_s": 0.9980319619999989,
+        "spread_pct": 1.0758635884119818
+      },
+      "maxT": 3.541157627903842,
+      "p": 0.3702,
+      "top": 2600,
+      "top_name": "Tumor 5|Macrophage|100um|PD1"
+    },
+    "host": {
+      "cpu_model": "unknown",
+      "cpu_count": 24,
+      "affinity_size": 24,
+      "load_average_start": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "modal_task_id": "ta-01M81Q1E3057YKXCE6091C17PR",
+      "gpu": "NVIDIA A100-SXM4-40GB, 40960 MiB, 610.57.04",
+      "nvcc": "Build cuda_12.4.r12.4/compiler.34097967_0",
+      "r": "R version 4.1.2 (2021-11-01) -- \"Bird Hippie\"",
+      "r_packages": "survival 3.2.13 \nBiobase 2.54.0",
+      "r_blas": "/usr/lib/x86_64-linux-gnu/blas/libblas.so.3.10.0 /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.10.0",
+      "threads": {
+        "OMP_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8"
+      },
+      "load_average_end": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "modal": {
+    "app": "preflight-r-baselines",
+    "started_utc": "2026-11-22T13:27:27.706958+00:00",
+    "finished_utc": "2026-11-22T13:28:57.870349+00:00",
+    "wall_s": 90.163391
+  }
+}

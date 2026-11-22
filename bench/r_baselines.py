@@ -71,6 +71,17 @@ def ours(X, time, event, strata, P, block: int = 1024) -> dict:
     return {"z": z, "null_maxT": null, **summary(z, null)}
 
 
+def write_inputs(d, X, time, event, strata, P) -> None:
+    """The files bench/r/*.R read: column-major X (n x C), and P as n x B with column b = shuffle b."""
+    n, C = X.shape
+    (d / "dims.txt").write_text(f"{n} {C} {len(P)}\n")
+    np.asarray(X, np.float64).ravel(order="F").tofile(d / "X.f64")
+    np.asarray(time, np.float64).tofile(d / "time.f64")
+    np.asarray(event, np.float64).tofile(d / "event.f64")
+    np.asarray(strata, np.int32).tofile(d / "strata.i32")
+    np.asarray(P, np.int32).tofile(d / "P.i32")  # C order [B, n] is Fortran order [n, B]
+
+
 def summary(z, null) -> dict:
     """maxT, its p with the observed row counted (reference.permutation_test's rule) and the top column."""
     observed = float(np.max(np.abs(z)))

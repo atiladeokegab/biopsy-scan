@@ -43,3 +43,12 @@ def test_ratio_and_spread():
     s = rb.spread([2.0, 4.0, 3.0])
     assert s["median_s"] == 3.0 and abs(s["spread_pct"] - 200 / 3) < 1e-12
     assert rb.ratio(rb.spread([10.0, 10.0, 10.0]), s) == {"median": 10 / 3, "range": [2.5, 5.0]}
+
+
+def test_inputs_reach_r_column_major(tmp_path):
+    X, time, event, strata = _case(n=9, p=10)
+    P = rb.draws(strata, 5, seed=1)
+    rb.write_inputs(tmp_path, X, time, event, strata, P)
+    Pr = np.fromfile(tmp_path / "P.i32", np.int32).reshape(9, 5, order="F")  # R: matrix(v, n, B)
+    Xr = np.fromfile(tmp_path / "X.f64").reshape(9, 10, order="F")
+    assert (Pr[:, 2] == P[2]).all() and np.array_equal(Xr, X, equal_nan=True)

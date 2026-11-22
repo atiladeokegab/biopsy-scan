@@ -42,9 +42,11 @@ image = (
 )
 app = modal.App("preflight-r-baselines")
 # permGPU's configure hard-codes -arch=sm_20 (removed from CUDA 9+) and links -lcuda from lib64, where CUDA 12
-# ships only a stub: the two edits below are the whole port; the .cu source is untouched.
+# ships only a stub; under nvcc 12's default C++17, ranker.h's global rank() clashes with std::rank (the source
+# has `using namespace std`), so the call sites are qualified as ::rank. These three edits are the whole port.
 PORT = ["sed -i 's/-arch=sm_20/-arch=sm_80/' configure",
-        "sed -i 's|LDFLAGS=\"-L${CUDA_HOME}/lib64\"|LDFLAGS=\"-L${CUDA_HOME}/lib64 -L${CUDA_HOME}/lib64/stubs\"|' configure"]
+        "sed -i 's|LDFLAGS=\"-L${CUDA_HOME}/lib64\"|LDFLAGS=\"-L${CUDA_HOME}/lib64 -L${CUDA_HOME}/lib64/stubs\"|' configure",
+        "sed -i 's/^\\([[:space:]]*\\)rank(a, ranks, method);/\\1::rank(a, ranks, method);/' src/permGPU.cu"]
 
 
 def _run(cmd, **kw) -> subprocess.CompletedProcess:
@@ -55,8 +57,8 @@ def _host() -> dict:
     def out(cmd):
         p = _run(cmd, timeout=60)
         return (p.stdout + p.stderr).strip()
-    return {"cpu_model": next((l.split(":", 1)[1].strip() for l in out(["lscpu"]).splitlines()
-                               if l.startswith("Model name")), None),
+    return {"cpu_model": next((l.split(":", 1)[1].strip() for l in Path("/proc/cpuinfo").read_text().splitlines()
+                               if l.startswith("model name")), None),
             "cpu_count": os.cpu_count(), "affinity_size": len(os.sched_getaffinity(0)),
             "load_average_start": list(os.getloadavg()), "modal_task_id": os.environ.get("MODAL_TASK_ID"),
             "gpu": out(["nvidia-smi", "--query-gpu=name,memory.total,driver_version", "--format=csv,noheader"]),
@@ -94,10 +96,7 @@ def baselines(repeats: int = 3, n_resamples: int = 9999, seed: int = 0) -> dict:
 
     d = Path("/tmp/w")
     d.mkdir(exist_ok=True)
-    (d / "dims.txt").write_text(f"{n} {C} {n_resamples}\n")
-    np.asfortranarray(X).ravel(order="F").tofile(d / "X.f64")
-    tm.tofile(d / "time.f64"), ev.tofile(d / "event.f64"), st.tofile(d / "strata.i32")
-    np.ascontiguousarray(P.T).astype(np.int32).tofile(d / "P.i32")  # column b = shuffle b
+    rb.write_inputs(d, X, tm, ev, st, P)
 
     out = {"prep_s": prep_s, "shape": {"patients": n, "patterns": C, "events": int(ev.sum()),
                                        "nan_cells": int(np.isnan(X).sum()), "strata": int(len(np.unique(st))),
