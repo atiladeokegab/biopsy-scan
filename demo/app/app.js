@@ -1,14 +1,11 @@
 // One-screen live demo: colour deconvolution (Ruifrok & Johnston 2001, H-DAB) computed in the browser
-// from the photo's pixels, revealed tile by tile at a replay of measured pace (Current ≈ 21 s, Ours ≈ 1 s: 21×, 0.881 s vs 0.042 s per evaluated study).
-const MODES = {
-  current: { label: "CPU · open-source libraries (lab pipeline)", ms: 21000 },
-  ours: { label: "Preflight", ms: 1000 },
-};
+// from the photo's pixels once, then revealed side by side, tile by tile, at a replay of measured pace
+// (Current ≈ 21 s, Ours ≈ 1 s: 21×, 0.881 s vs 0.042 s per evaluated study).
+const LANES = { current: 21000, ours: 1000 };
 const N = 400, GRID = 16; // analysis resolution and tile grid
 const $ = (id) => document.getElementById(id);
-const img = $("photo"), cv = $("overlay"), ctx = cv.getContext("2d");
-let mode = "ours", running = false, overlay = null;
-const done = {};
+const imgs = [...document.querySelectorAll(".frame img")], img = imgs[0];
+let running = 0, overlay = null;
 
 function inv3(m) {
   const [a, b, c, d, e, f, g, h, i] = m;
@@ -50,49 +47,38 @@ function compute() {
   return o;
 }
 
-function setMode(m) {
-  if (running) return;
-  mode = m; document.body.dataset.mode = m;
-  document.querySelectorAll(".pills button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.mode === m));
-  $("mode").textContent = MODES[m].label;
-  reset();
-}
-function reset() {
-  ctx.clearRect(0, 0, cv.width, cv.height);
-  $("timer").textContent = "0.0 s"; $("prog").style.width = "0";
-  const r = $("risk"); r.classList.remove("on"); r.hidden = true;
-}
-
-function run() {
-  if (running) return;
-  reset(); running = true; $("run").disabled = true;
-  overlay ||= compute();
-  cv.width = cv.height = N;
-  const src = document.createElement("canvas"); src.width = src.height = N; src.getContext("2d").putImageData(overlay, 0, 0);
-  const tiles = []; for (let i = 0; i < GRID * GRID; i++) tiles.push(i);
-  for (let i = tiles.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [tiles[i], tiles[j]] = [tiles[j], tiles[i]]; }
-  const T = N / GRID, total = MODES[mode].ms, t0 = performance.now();
+function lane(id, src, order, t0) {
+  const el = $("lane-" + id), cv = el.querySelector("canvas"), ctx = cv.getContext("2d");
+  const timer = el.querySelector("[data-timer]"), prog = el.querySelector("[data-prog]"), done = el.querySelector("[data-done]");
+  cv.width = cv.height = N; done.hidden = true;
+  const T = N / GRID, total = LANES[id];
   let shown = 0;
-  (function frame(now) {
-    const f = Math.min(1, (now - t0) / total), want = Math.round(f * tiles.length);
-    for (; shown < want; shown++) { const t = tiles[shown], x = (t % GRID) * T, y = ((t / GRID) | 0) * T; ctx.drawImage(src, x, y, T, T, x, y, T, T); }
-    $("timer").textContent = ((now - t0) / 1000).toFixed(1) + " s"; $("prog").style.width = f * 100 + "%";
+  return new Promise((resolve) => (function frame(now) {
+    const f = Math.min(1, Math.max(0, now - t0) / total), want = Math.round(f * order.length);
+    for (; shown < want; shown++) { const t = order[shown], x = (t % GRID) * T, y = ((t / GRID) | 0) * T; ctx.drawImage(src, x, y, T, T, x, y, T, T); }
+    timer.textContent = (f * total / 1000).toFixed(1) + " s"; prog.style.width = f * 100 + "%";
     if (f < 1) return requestAnimationFrame(frame);
-    finish((now - t0) / 1000);
-  })(t0);
+    done.textContent = "Done in " + (total / 1000).toFixed(1) + " s"; done.hidden = false;
+    resolve();
+  })(t0));
 }
 
-function finish(sec) {
-  running = false; $("run").disabled = false;
-  done[mode] = sec;
-  $("results").innerHTML = Object.entries(done).map(([m, s]) => `<span>${m === "ours" ? "Preflight" : "Current"} · ${s.toFixed(1)} s replay</span>`).join("");
-  $("fast").hidden = !(done.current && done.ours);
-  if (mode === "ours") { const r = $("risk"); r.hidden = false; requestAnimationFrame(() => r.classList.add("on")); }
+async function run() {
+  if (running) return;
+  running = 1; $("run").disabled = true;
+  $("banner").classList.remove("on");
+  const r = $("risk"); r.classList.remove("on"); r.hidden = true;
+  overlay ||= compute();
+  const src = document.createElement("canvas"); src.width = src.height = N; src.getContext("2d").putImageData(overlay, 0, 0);
+  const order = []; for (let i = 0; i < GRID * GRID; i++) order.push(i);
+  for (let i = order.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [order[i], order[j]] = [order[j], order[i]]; }
+  const t0 = performance.now(); // one moment for both lanes
+  await Promise.all(Object.keys(LANES).map((id) => lane(id, src, order, t0)));
+  $("banner").classList.add("on");
+  r.hidden = false; requestAnimationFrame(() => r.classList.add("on"));
+  running = 0; $("run").disabled = false;
 }
 
-document.querySelectorAll(".pills button").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
 $("run").addEventListener("click", run);
-$("run").disabled = true; // wait for the photo, or the overlay is computed from a blank image
-img.decode().then(() => { if (!running) $("run").disabled = false; }, () => { $("run").textContent = "Photo failed to load"; });
-const q = new URLSearchParams(location.search).get("mode");
-setMode(MODES[q] ? q : "ours");
+$("run").disabled = true; // wait for both photos, or the overlay is computed from a blank image
+Promise.all(imgs.map((i) => i.decode())).then(() => { if (!running) $("run").disabled = false; }, () => { $("run").textContent = "Photo failed to load"; });
