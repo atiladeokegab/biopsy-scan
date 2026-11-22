@@ -1837,7 +1837,7 @@
     },
     {
      "file": "docs/SUBMISSION.md",
-     "text": "Off the shelf (#132, `bench/results/external-baseline-20261122T043823Z.json`): squidpy + lifelines on {workers} cores {s} s per study ({label}); {vlab}× and {vfused}× against the lab and fused arms, {cross}, same container class; what a lab would run off the shelf, not Preflight's speedup: different statistics, and the top pattern matches in {k} of {of} studies."
+     "text": "Off the shelf (#132, `bench/results/external-baseline-20261122T043823Z.json`): squidpy + lifelines on {workers} cores {s} s per study ({label}); {vlab}× and {vfused}× against the lab and fused arms, {cross}, same container class; what a lab would run off the shelf, not Preflight's speedup: different statistics, and the top pattern matches in {k} of {of} studies. Repeat spreads are median and min–max, descriptive, not confidence intervals. Rerun the race on your own CPU: `make race-local` (#140; it fetches the Zenodo data first through `make data`). It runs the same lab and fused arms as #113 and #120 on a small slice, 8 studies per stream on every core by default (`make race-local RACE_STUDIES=20 RACE_WORKERS=4` to change). Its timings are MEASURED on that machine, not the Modal figures, and it times the work without reproducing the decisions. GPU kernel 3.19× (#75) | MEASURED (compute); rates ESTIMATE; outcomes {out}; #132 ratios {cross} |"
     }
    ]
   },
@@ -1903,7 +1903,7 @@
     },
     {
      "file": "docs/SUBMISSION.md",
-     "text": "head and neck: about {n80} patients for 80% (pointwise 95% bounds cross 80% at {lo} and {hi}, {pointwise}; resampled from {src} UPMC discovery patients; not comparable with Charville's 524; `bench/results/hn-power-upmc-discovery.json`, #133)"
+     "text": "head and neck: about {n80} patients for 80% (pointwise 95% bounds cross 80% at {lo} and {hi}, {pointwise}; resampled from {src} UPMC discovery patients; not comparable with Charville's 524; `bench/results/hn-power-upmc-discovery.json`, #133); the shared-threshold procedure had lower estimated power, 15.3% against the lab's 20.3% (#113), and event-count calibration does not close it, +0.2 points [−0.7, +1.1] (#117); Charville v2 maxT p = 0.098 over 3,780 patterns (`results/charville-v2.json`, #47); UPMC locked test inconclusive at 18% simulated power (`results/upmc-rediscovery.json`, #109) | Schoenfeld formula ANALYTIC; simulated power, power at scale, head and neck sample size (outcomes {out}) and calibration {lab}; Charville MEASURED, exploratory; UPMC UNMEASURED (underpowered) |"
     }
    ]
   }
