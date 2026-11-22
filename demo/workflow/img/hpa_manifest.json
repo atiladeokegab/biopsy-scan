@@ -26,5 +26,49 @@
   "antibody": "CAB000012",
   "antibody_source": "real-biopsy MANIFEST.json (image_url id)",
   "note": "resized to 800 px for the demo; sha256 is of the 1600 px source"
+ },
+ {
+  "file": "hpa_best_07_ACTA2.webp",
+  "gene": "ACTA2",
+  "kind": "real brightfield IHC (DAB) TMA core image, cropped to the core and resized to 760 px",
+  "tissue": "head and neck cancer (HPA cancer tissue section)",
+  "page_url": "https://www.proteinatlas.org/ENSG00000107796-ACTA2/cancer/head+and+neck+cancer",
+  "image_url": "https://images.proteinatlas.org/2/221_A_2_7.jpg",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Human Protein Atlas, proteinatlas.org (Uhlen et al.)",
+  "sha256": "404d9ba9ac0f99e6687a78d204ba303ad08a5a4e1b76d253017d36a42618fc0d"
+ },
+ {
+  "file": "hpa_best_08_PTPRC.webp",
+  "gene": "PTPRC",
+  "kind": "real brightfield IHC (DAB) TMA core image, cropped to the core and resized to 760 px",
+  "tissue": "head and neck cancer (HPA cancer tissue section)",
+  "page_url": "https://www.proteinatlas.org/ENSG00000081237-PTPRC/cancer/head+and+neck+cancer",
+  "image_url": "https://images.proteinatlas.org/440/155128_A_2_5.jpg",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Human Protein Atlas, proteinatlas.org (Uhlen et al.)",
+  "sha256": "99a492798f44c2a0219b442d14daa126eb15365d2aaed6beb692d0da260580f6"
+ },
+ {
+  "file": "hpa_best_11_CD3E.webp",
+  "gene": "CD3E",
+  "kind": "real brightfield IHC (DAB) TMA core image, cropped to the core and resized to 760 px",
+  "tissue": "head and neck cancer (HPA cancer tissue section)",
+  "page_url": "https://www.proteinatlas.org/ENSG00000198851-CD3E/cancer/head+and+neck+cancer",
+  "image_url": "https://images.proteinatlas.org/43955/160072_A_2_5.jpg",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Human Protein Atlas, proteinatlas.org (Uhlen et al.)",
+  "sha256": "1ee0c5e53724b6ba4c931a25acd935a0316f4a44055b7ddbda9ae3974bf3bc8b"
+ },
+ {
+  "file": "hpa_best_13_CD68.webp",
+  "gene": "CD68",
+  "kind": "real brightfield IHC (DAB) TMA core image, cropped to the core and resized to 760 px",
+  "tissue": "head and neck cancer (HPA cancer tissue section)",
+  "page_url": "https://www.proteinatlas.org/ENSG00000129226-CD68/cancer/head+and+neck+cancer",
+  "image_url": "https://images.proteinatlas.org/72862/157171_A_2_5.jpg",
+  "licence": "CC BY-SA 3.0",
+  "attribution": "Human Protein Atlas, proteinatlas.org (Uhlen et al.)",
+  "sha256": "7a2df5b56cb47b125cd9799ff233c635faa611f3c4a8177daafa3a7e61475b91"
  }
 ]
