@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Preflight · Plan a study</title>
+  <link rel="icon" href="data:,">
+  <style>
+    @font-face { font-family: "Inter"; src: url("../fonts/InterVariable.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+    @font-face { font-family: "Instrument Serif"; src: url("../fonts/InstrumentSerif-400-latin.woff2") format("woff2"); font-display: swap; }
+    @font-face { font-family: "JetBrains Mono"; src: url("../fonts/JetBrainsMono-400-latin.woff2") format("woff2"); font-display: swap; }
+    :root { --bg:#05070B; --surface:#0A0E15; --ink:#F3EFE6; --body:#B8C0CC; --muted:#7D8796; --hair:rgba(243,239,230,.12);
+      --emerald:#2BD4A4; --coral:#E86F51; --gold:#E9B949;
+      --serif:"Instrument Serif",Georgia,serif; --sans:"Inter",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--body); font: 15px/1.45 var(--sans); }
+    header { display: flex; align-items: center; gap: 16px; padding: 14px 24px; border-bottom: 1px solid var(--hair); }
+    .wordmark { font: 28px/1 var(--serif); color: var(--ink); text-decoration: none; margin-right: auto; }
+    header a { color: var(--body); }
+    main { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 32px; padding: 24px 28px; max-width: 1280px; margin: 0 auto; }
+    h1 { font: 32px/1.1 var(--serif); color: var(--ink); margin: 0 0 6px; }
+    form { display: grid; gap: 14px; align-content: start; }
+    label { display: grid; gap: 4px; font-size: 14px; color: var(--ink); }
+    input, select { background: var(--surface); color: var(--ink); border: 1px solid var(--hair); border-radius: 8px; padding: 8px 10px; font: 15px var(--mono); }
+    input:focus-visible, select:focus-visible { outline: 2px solid var(--emerald); outline-offset: 1px; }
+    .hint { font: 12px var(--mono); color: var(--muted); }
+    .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-content: start; }
+    .card { background: var(--surface); border: 1px solid var(--hair); border-radius: 12px; padding: 18px; display: grid; gap: 8px; align-content: start; }
+    .card.wide { grid-column: 1 / -1; }
+    .tag { font: 12px var(--mono); color: var(--gold); text-transform: uppercase; letter-spacing: .04em; }
+    .tag.sim { color: var(--emerald); }
+    .big { font: 52px/1 var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+    .missing { font: 18px/1.35 var(--serif); color: var(--ink); }
+    .src { font: 12px var(--mono); color: var(--muted); word-break: break-all; }
+    .scenario { grid-column: 1 / -1; font-size: 13px; color: var(--muted); }
+    @media (max-width: 760px) { main { grid-template-columns: 1fr; } .cards { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="wordmark" href="../">Preflight</a>
+    <a href="../app/">Live demo</a>
+  </header>
+  <main>
+    <form id="f" aria-describedby="scope">
+      <div>
+        <h1>Plan a study</h1>
+        <p class="hint" id="scope">Screen power under a simulated planted effect, for a study you have not run yet. Simulated values are copied from committed Monte Carlo runs; interpolations and the textbook formula are labelled as estimates.</p>
+      </div>
+      <label>Source cohort <select name="cohort"><option value="charville">Charville (colorectal)</option><option value="upmc">UPMC (head and neck)</option></select></label>
+      <label>Patients <input name="patients" type="number" min="1" step="1" value="159"><span class="hint" data-axis="patients"></span></label>
+      <label>Fields per patient <input name="regions" type="number" min="1" step="1" value="2"><span class="hint" data-axis="regions"></span></label>
+      <label>Field size (µm, or "full" for the whole core) <input name="fov" value="400"><span class="hint" data-axis="fov_um"></span></label>
+      <label>Mis-call rate (%) <input name="miscall" type="number" min="0" max="100" step="1" value="10"><span class="hint" data-axis="miscall"></span></label>
+    </form>
+    <section class="cards" aria-live="polite">
+      <div class="card"><div class="tag sim" id="simTag"></div><div id="sim"></div><div class="hint" id="simNote"></div><div class="src" id="simSrc"></div></div>
+      <div class="card"><div class="tag" id="fTag"></div><div id="formula"></div><div class="hint">Ignores field count, field size and mis-calls.</div><div class="src" id="fSrc"></div></div>
+      <div class="card wide"><div class="tag">Routine-stain panel search</div><div class="missing" id="stains"></div><div class="src" id="stSrc"></div></div>
+      <p class="scenario" id="scenario"></p>
+    </section>
+  </main>
+  <script type="module">
+    import { plan, pct, scenario } from "./plan.js";
+    const data = await (await fetch("./data.json")).json();
+    const f = document.getElementById("f"), $ = (id) => document.getElementById(id);
+    const show = (el, r) => { el.className = r.missing ? "missing" : "big"; el.textContent = r.missing ?? pct(r.power); };
+    function render() {
+      const v = Object.fromEntries(new FormData(f)), c = data.cohorts[v.cohort];
+      const fov = v.fov.trim().toLowerCase() === "full" ? "full" : Number(v.fov);
+      const r = plan(data, { cohort: v.cohort, patients: Number(v.patients), regions: Number(v.regions), fov, miscall: Number(v.miscall) / 100 });
+      for (const el of document.querySelectorAll("[data-axis]")) {
+        const ax = c.axes[el.dataset.axis];
+        el.textContent = "Simulated: " + (el.dataset.axis === "miscall" ? ax.map((m) => `${m * 100}%`) : ax).join(", ");
+      }
+      $("simTag").textContent = r.sim.label ?? "SIMULATED power";
+      show($("sim"), r.sim); $("simNote").textContent = r.sim.note ?? ""; $("simSrc").textContent = r.sim.source;
+      $("fTag").textContent = r.formula.label ?? data.labels.formula;
+      show($("formula"), r.formula); $("fSrc").textContent = r.formula.source ?? "";
+      $("stains").textContent = r.stains.missing; $("stSrc").textContent = r.stains.source;
+      $("scenario").textContent = scenario(data, v.cohort);
+    }
+    f.addEventListener("input", render);
+    render();
+  </script>
+</body>
+</html>

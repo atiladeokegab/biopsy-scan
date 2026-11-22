@@ -1,0 +1,138 @@
+{
+  "status": "ESTIMATE",
+  "basis": "Modal list-rate function runtime estimates for recorded points and full reserves for incomplete points. This conservative total includes reservations from entries made after a stop.",
+  "scope": "Abandoned homogeneous A100 attempts. This cost ledger makes no scalability claim.",
+  "attempts": [
+    {
+      "utc": "20261122T130250Z",
+      "source_commit": "be07b7cf02c5b57d5dc39b8ca9214926c52afcbf",
+      "result": "Stopped after an input rank mismatch was identified",
+      "usd_per_worker_hour": 2.731824,
+      "entries": [
+        {
+          "repeat": 1,
+          "gpus": 1,
+          "reserved_usd": 0.30353600000000003,
+          "failure": ""
+        }
+      ],
+      "modal_app_id": "ap-ywkayYx9BaOEyxLanOzkgf",
+      "estimate_and_retained_usd": 0.30353600000000003
+    },
+    {
+      "utc": "20261122T130440Z",
+      "source_commit": "f923ae959294665c5c26f372f7b476da2d16e42a",
+      "result": "16-worker sample failed exact model and device gate",
+      "usd_per_worker_hour": 2.731824,
+      "entries": [
+        {
+          "repeat": 1,
+          "gpus": 1,
+          "reserved_usd": 0.30353600000000003,
+          "estimated_usd": 0.20911734099286172
+        },
+        {
+          "repeat": 1,
+          "gpus": 16,
+          "reserved_usd": 2.8532384000000004,
+          "estimated_usd": 0.9006718675343837,
+          "failure": "expected 16 distinct NVIDIA A100-SXM4-40GB devices"
+        }
+      ],
+      "estimate_and_retained_usd": 1.1097892085272454
+    },
+    {
+      "utc": "20261122T131450Z",
+      "source_commit": "0318558923b25c289550f9b108f6490c7dbea2f1",
+      "result": "Stopped after mixed 40 and 80 GB placement",
+      "usd_per_worker_hour": 2.731824,
+      "entries": [
+        {
+          "repeat": 1,
+          "gpus": 1,
+          "reserved_usd": 0.30353600000000003,
+          "estimated_usd": 0.20395832314301018
+        },
+        {
+          "repeat": 1,
+          "gpus": 2,
+          "reserved_usd": 0.4097736,
+          "estimated_usd": 0.3051161670872971
+        },
+        {
+          "repeat": 1,
+          "gpus": 4,
+          "reserved_usd": 0.8195472,
+          "failure": "expected one NVIDIA A100-SXM4-40GB, got ['NVIDIA A100-SXM4-80GB, 81920 MiB, 620.70.06']"
+        },
+        {
+          "repeat": 1,
+          "gpus": 8,
+          "reserved_usd": 1.6390944,
+          "failure": ""
+        },
+        {
+          "repeat": 1,
+          "gpus": 16,
+          "reserved_usd": 3.2781888,
+          "failure": "function fu-X3ISJkeUGP16DiVASWOynR is stopped"
+        },
+        {
+          "repeat": 2,
+          "gpus": 1,
+          "reserved_usd": 0.30353600000000003,
+          "failure": "function fu-RdDY3zPfNoQezkGlb1PXMw is stopped"
+        }
+      ],
+      "modal_app_id": "ap-A1H79ivOu2xLGwXNZMpzEO",
+      "estimate_and_retained_usd": 6.549440890230308
+    },
+    {
+      "utc": "20261122T132610Z",
+      "source_commit": "30ec366214340621ae8e4d4b1ecbd190f58a040e",
+      "result": "Stopped during the switch to H100 after PCIe placement",
+      "usd_per_worker_hour": 3.131424,
+      "entries": [
+        {
+          "repeat": 1,
+          "gpus": 1,
+          "reserved_usd": 0.347936,
+          "estimated_usd": 0.21786007666950752
+        },
+        {
+          "repeat": 1,
+          "gpus": 2,
+          "reserved_usd": 0.46971359999999995,
+          "estimated_usd": 0.28570776629004724
+        },
+        {
+          "repeat": 1,
+          "gpus": 4,
+          "reserved_usd": 0.9394271999999999,
+          "failure": "expected one NVIDIA A100-SXM4-80GB, got ['NVIDIA A100 80GB PCIe, 81920 MiB, 620.70.06']"
+        },
+        {
+          "repeat": 1,
+          "gpus": 8,
+          "reserved_usd": 1.8788543999999998,
+          "failure": "expected one NVIDIA A100-SXM4-80GB, got ['NVIDIA A100 80GB PCIe, 81920 MiB, 620.70.06']"
+        },
+        {
+          "repeat": 1,
+          "gpus": 16,
+          "reserved_usd": 3.7577087999999996,
+          "failure": ""
+        },
+        {
+          "repeat": 2,
+          "gpus": 1,
+          "reserved_usd": 0.347936,
+          "failure": "function fu-1AAch6XWp2n4JLnssuIrTF is stopped"
+        }
+      ],
+      "modal_app_id": "ap-3rGv907KFAzgHNswbYah9Y",
+      "estimate_and_retained_usd": 7.427494242959554
+    }
+  ],
+  "estimate_and_retained_usd": 15.390260341717108
+}

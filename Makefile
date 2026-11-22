@@ -16,6 +16,7 @@ smoke: install test
 	node demo/preflight.test.mjs
 	node demo/workflow.test.mjs
 	node demo/workflow/steps.test.mjs
+	node demo/plan/plan.test.mjs
 	node demo/tour.test.mjs
 
 data:

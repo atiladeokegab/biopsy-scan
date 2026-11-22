@@ -5,12 +5,14 @@
 **Preflight simulates thousands of cell-by-cell spatial-biomarker studies on real CODEX tissue before you image a slide, screens every candidate pattern with honest multiple-testing correction, and tests how much signal survives one- or two-stain clinical IHC.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-Live interactive demo: <https://atiladeokegab.github.io/sota-parallelism-nov21/>  
+Live interactive demo: <https://preflight-demo-5zvig7nbvq-nw.a.run.app/> (Google Cloud Run; GitHub Pages fallback: <https://atiladeokegab.github.io/sota-parallelism-nov21/>)  
 A recorded walkthrough accompanies the submission.
 
 ![Preflight 3D tissue viewer and power gap demo](docs/assets/demo-1280.png)
 
 Every number below carries its evidence label — **MEASURED**, **ESTIMATE**, **ANALYTIC**, **SYNTHETIC**, or **UNMEASURED** — and links its committed source file. Real-cohort results are exploratory (*outcomes already seen; no clinical survival claims*).
+
+**Headline speed, on `8` CPU cores (the fused kernel is not a GPU kernel):** `583×` vs off-the-shelf squidpy + lifelines (`24.4 s` vs `0.042 s` per study, `8` workers each; timings **MEASURED**, ratio cross-run, same container class, until the same-host rerun lands; instrumented, so it includes our reference recount and agreement checks; different statistics, top pattern the same in `14/50` studies; [`external-baseline-20261122T043823Z.json`](bench/results/external-baseline-20261122T043823Z.json)); `21×` vs an optimised lab-method rewrite (`0.881 s` vs `0.0419 s` per evaluated study, cross-run; `14.0×` per whole design point, `1,761.88 s` vs `125.73 s` compute wall; the fused kernel re-images, scoring and the cutoff are a separate step, and the cutoff and calls are outside the timing; **MEASURED**; [`modal-design-20261121T205536Z.json`](bench/results/modal-design-20261121T205536Z.json)); `5.5×` fair 8 v 8, compute per decided study with calibration charged, Numba arm, not the fused kernel (median of `3` repeats, range `4.6–5.6×`, **MEASURED**; [`sweep-repeats.json`](bench/results/sweep-repeats.json)). Rows below.
 
 ## Committed Results (on `integration`)
 

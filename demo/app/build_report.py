@@ -63,13 +63,15 @@ y = para("Preflight's aim is to tell the pathologist which one or two routine st
 
 # risk analysis box
 y -= 22
-bh = 78
+# wording matches the app's risk card (demo/app/index.html) word for word
+bh = 96
 c.setStrokeColor(RULE); c.setLineWidth(0.8); c.roundRect(M, y - bh, W - 2 * M, bh, 6, stroke=1, fill=0)
 c.setFillColor(EMERALD); c.rect(M, y - bh, 4, bh, stroke=0, fill=1)
-c.setFillColor(INK); c.setFont("Helvetica-Bold", 11); c.drawString(M + 18, y - 22, "Risk of outcome event")
-c.setFont("Times-Roman", 20); c.drawString(M + 18, y - 48, "Illustrative")
-para("Score withheld in this demo: no numeric risk is shown. A real report would describe the risk of an outcome event "
-     "(our screen used overall survival), scored from the example stains.", M + 160, y - 14, W - 2 * M - 180, size=9.5, color=MUTED)
+c.setFillColor(MUTED); c.setFont("Courier-Bold", 8.5)
+c.drawString(M + 18, y - 20, "MEASURED · Exploratory Charville survival screen, results/charville-v2.json")
+c.setFillColor(INK); c.setFont("Times-Roman", 20); c.drawString(M + 18, y - 46, "Overall survival")
+para("No validated risk score issued. None of the 3,780 features passed the 0.05 threshold (maxT p = 0.0981). "
+     "Preflight withholds a score rather than guess.", M + 18, y - 56, W - 2 * M - 36, size=10.5)
 y -= bh + 28
 
 # speed

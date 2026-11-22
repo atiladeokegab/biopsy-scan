@@ -1,0 +1,94 @@
+{
+  "status": "MEASURED",
+  "label": "MEASURED elapsed stages. Setup total derived by summing recorded components.",
+  "receipt": "bench/results/modal-design-20261121T205536Z.json",
+  "source_commit": "064bd6e95f721c8be7747d4cfef5eb5bd4bbd79d",
+  "scope": "Compute includes re-imaging and scoring per evaluated study. Setup covers recorded data load, outcome prep, adjacency and warm-up. The local summary and Modal launch or transfer time are separate.",
+  "arms": {
+    "lab": {
+      "source": "bench/results/modal-design-20261121T194458Z.json (source_commit 093c1eea6eda7e0433c0f506a95e54d8401ed79d)",
+      "container_class": "Modal A100 + 8 cores + 64 GiB",
+      "evaluated_studies": 2000,
+      "setup": {
+        "load_s": 0.08355238199999993,
+        "outcome_prep_s": 163.87864598200002,
+        "adjacency_s": 0.000014671000002408618,
+        "warm_up_s": null,
+        "score_warm_up_s": null,
+        "recorded_total_s": 163.9622130350001
+      },
+      "compute_wall_s": 1761.8763195039999,
+      "compute_wall_per_evaluated_study_s": 0.880938159752,
+      "end_to_end_in_container_s": 1925.838532539,
+      "summary_local_s": null
+    },
+    "numba": {
+      "source": "bench/results/modal-design-20261121T194458Z.json (source_commit 093c1eea6eda7e0433c0f506a95e54d8401ed79d)",
+      "container_class": "Modal A100 + 8 cores + 64 GiB",
+      "evaluated_studies": 3000,
+      "setup": {
+        "load_s": 0.08366760000000006,
+        "outcome_prep_s": 165.60711088300002,
+        "adjacency_s": 58.972571875,
+        "warm_up_s": 2.551965015999997,
+        "score_warm_up_s": null,
+        "recorded_total_s": 227.21531537400006
+      },
+      "compute_wall_s": 375.25794010699997,
+      "compute_wall_per_evaluated_study_s": 0.12508598003566665,
+      "end_to_end_in_container_s": 602.473255481,
+      "summary_local_s": null
+    },
+    "gpu": {
+      "source": "bench/results/modal-design-20261121T194458Z.json (source_commit 093c1eea6eda7e0433c0f506a95e54d8401ed79d)",
+      "container_class": "Modal A100 + 8 cores + 64 GiB",
+      "evaluated_studies": 3000,
+      "setup": {
+        "load_s": 0.07903638199999996,
+        "outcome_prep_s": 163.749456445,
+        "adjacency_s": 62.28376610500001,
+        "warm_up_s": 2.431851144999996,
+        "score_warm_up_s": null,
+        "recorded_total_s": 228.5441100769999
+      },
+      "compute_wall_s": 2266.8503852400004,
+      "compute_wall_per_evaluated_study_s": 0.7556167950800001,
+      "end_to_end_in_container_s": 2495.3944953170003,
+      "summary_local_s": null
+    },
+    "hybrid": {
+      "source": "bench/results/modal-design-20261121T194458Z.json (source_commit 093c1eea6eda7e0433c0f506a95e54d8401ed79d)",
+      "container_class": "Modal A100 + 8 cores + 64 GiB",
+      "evaluated_studies": 3000,
+      "setup": {
+        "load_s": 0.08401100899999991,
+        "outcome_prep_s": 161.680351707,
+        "adjacency_s": 60.574237966,
+        "warm_up_s": 2.6872088000000076,
+        "score_warm_up_s": 2.025790319999942,
+        "recorded_total_s": 227.0515998020001
+      },
+      "compute_wall_s": 377.67464485,
+      "compute_wall_per_evaluated_study_s": 0.12589154828333332,
+      "end_to_end_in_container_s": 604.7262446520001,
+      "summary_local_s": null
+    },
+    "fused": {
+      "source": "this run",
+      "container_class": "Modal A100 + 8 cores + 64 GiB",
+      "evaluated_studies": 3000,
+      "setup": {
+        "load_s": 0.08774214000000002,
+        "outcome_prep_s": 162.079857441,
+        "adjacency_s": 58.131579171,
+        "warm_up_s": 4.388936122999979,
+        "score_warm_up_s": null,
+        "recorded_total_s": 224.688114875
+      },
+      "compute_wall_s": 125.73223524399998,
+      "compute_wall_per_evaluated_study_s": 0.04191074508133333,
+      "end_to_end_in_container_s": 350.420350119,
+      "summary_local_s": 1.582042426802218
+    }
+  }
+}

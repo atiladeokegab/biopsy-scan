@@ -1,0 +1,250 @@
+{
+  "status": "INCOMPLETE",
+  "source_commit": "2d11a6d52fe308f78bcb3ac34fd21ebef14f61db",
+  "reference": "bench/results/modal-design-20261121T205536Z.json",
+  "reference_commit": "064bd6e95f721c8be7747d4cfef5eb5bd4bbd79d",
+  "synthetic_outcome_plan": {
+    "calibration": 1000,
+    "null": 1000,
+    "alternative": 1000
+  },
+  "seed_root": 20261121,
+  "labels": {
+    "timings": "MEASURED",
+    "outcomes": "SIMULATED",
+    "rates_and_costs": "ESTIMATE"
+  },
+  "hardware_request": {
+    "gpu": "H100!",
+    "cpus": 8,
+    "memory_gib": 32
+  },
+  "scope": "Each H100 worker loads staged Charville inputs, prepares draws and warms up. Compute spans re-imaging and GPU scoring across shard windows (host clock skew unmeasured). End-to-end wall includes Modal call, setup, transfer and one driver threshold/calls summary. Parity checks separate.",
+  "repeats": [
+    {
+      "2": {
+        "status": "MEASURED",
+        "compute_span_s": 1247.0292007923126,
+        "common_overlap_s": 989.9356653690338,
+        "all_overlapped": true,
+        "seed_coverage_exact": true,
+        "distinct_task_ids": true,
+        "gpus": 2,
+        "evaluated_studies": 3000,
+        "local_threshold_and_calls_s": 1.542910779826343,
+        "modal_call_wall_s": 1443.2332651009783,
+        "end_to_end_wall_s": 1444.7774691209197,
+        "wall_s_per_evaluated_study": 0.4815924897069732,
+        "studies_per_hour_compute_span": 8660.583082688128,
+        "summary": {
+          "studies": {
+            "calibration": 1000,
+            "null": 1000,
+            "alternative": 1000
+          },
+          "rule": "maxT > design threshold from 1000 independent calibration nulls",
+          "threshold": 4.280528180733615,
+          "identification": {
+            "rate": 0.084,
+            "k": 84,
+            "n": 1000,
+            "wilson95": [
+              0.0683588136777643,
+              0.10282504938221758
+            ]
+          },
+          "fwer": {
+            "rate": 0.046,
+            "k": 46,
+            "n": 1000,
+            "wilson95": [
+              0.03466249276326498,
+              0.06081220394161907
+            ]
+          },
+          "power": {
+            "rate": 0.153,
+            "k": 153,
+            "n": 1000,
+            "wilson95": [
+              0.13201921562431126,
+              0.17663655476466403
+            ]
+          }
+        },
+        "parity": {
+          "studies_compared": 3000,
+          "x_bitwise": true,
+          "max_abs_maxT_delta": 4.440892098500626e-15,
+          "absolute_tolerance": 1e-09
+        },
+        "workers": [
+          {
+            "gpu": {
+              "model": "NVIDIA H100 80GB HBM3",
+              "memory": "81559 MiB",
+              "driver": "620.70.06",
+              "count": 1,
+              "cuda_driver_api": null,
+              "cuda_runtime": "12.4",
+              "all": [
+                "NVIDIA H100 80GB HBM3, 81559 MiB, 620.70.06"
+              ],
+              "modal_task_id": "ta-01M81QX3VTJXP3JJJNAWAV4A6R",
+              "uuid": "GPU-0797291c-2651-2b49-3236-08558aedfcfc"
+            },
+            "compute_window": [
+              1795355147.4892404,
+              1795356137.4249058
+            ],
+            "reimage_wall_s": 988.6079528969999,
+            "scoring_wall_s": 1.3233287840001253,
+            "compute_wall_s": 989.9356639970001,
+            "setup_s": {
+              "load": 0.3911287840000002,
+              "outcome_prep": 98.090349102,
+              "adjacency_upload": 49.843241585,
+              "warm_up": 1.4428081960000156,
+              "rendezvous": 37.299330317
+            },
+            "plant_feature": 0,
+            "in_function_s": 1177.446344546
+          },
+          {
+            "gpu": {
+              "model": "NVIDIA H100 80GB HBM3",
+              "memory": "81559 MiB",
+              "driver": "620.70.06",
+              "count": 1,
+              "cuda_driver_api": null,
+              "cuda_runtime": "12.4",
+              "all": [
+                "NVIDIA H100 80GB HBM3, 81559 MiB, 620.70.06"
+              ],
+              "modal_task_id": "ta-01M81QX405BE5TH80C6X62MMGR",
+              "uuid": "GPU-bd7c70b2-6e1c-b703-1c18-bc9599a653e7"
+            },
+            "compute_window": [
+              1795355147.1643226,
+              1795356394.1935234
+            ],
+            "reimage_wall_s": 1245.4069812899997,
+            "scoring_wall_s": 1.61652522699967,
+            "compute_wall_s": 1247.029199,
+            "setup_s": {
+              "load": 0.3845715509999996,
+              "outcome_prep": 117.76436277,
+              "adjacency_upload": 62.936032139000005,
+              "warm_up": 1.8943326339999942,
+              "rendezvous": 0.5448265670000012
+            },
+            "plant_feature": 0,
+            "in_function_s": 1431.073171047
+          }
+        ]
+      },
+      "1": {
+        "status": "MEASURED",
+        "compute_span_s": 2337.6734898090363,
+        "common_overlap_s": 2337.6734898090363,
+        "all_overlapped": true,
+        "seed_coverage_exact": true,
+        "distinct_task_ids": true,
+        "gpus": 1,
+        "evaluated_studies": 3000,
+        "local_threshold_and_calls_s": 0.09978073695674539,
+        "modal_call_wall_s": 2552.7429380482063,
+        "end_to_end_wall_s": 2552.844705864787,
+        "wall_s_per_evaluated_study": 0.8509482352882624,
+        "studies_per_hour_compute_span": 4619.977959745887,
+        "summary": {
+          "studies": {
+            "calibration": 1000,
+            "null": 1000,
+            "alternative": 1000
+          },
+          "rule": "maxT > design threshold from 1000 independent calibration nulls",
+          "threshold": 4.280528180733615,
+          "identification": {
+            "rate": 0.084,
+            "k": 84,
+            "n": 1000,
+            "wilson95": [
+              0.0683588136777643,
+              0.10282504938221758
+            ]
+          },
+          "fwer": {
+            "rate": 0.046,
+            "k": 46,
+            "n": 1000,
+            "wilson95": [
+              0.03466249276326498,
+              0.06081220394161907
+            ]
+          },
+          "power": {
+            "rate": 0.153,
+            "k": 153,
+            "n": 1000,
+            "wilson95": [
+              0.13201921562431126,
+              0.17663655476466403
+            ]
+          }
+        },
+        "parity": {
+          "studies_compared": 3000,
+          "x_bitwise": true,
+          "max_abs_maxT_delta": 4.440892098500626e-15,
+          "absolute_tolerance": 1e-09
+        },
+        "workers": [
+          {
+            "gpu": {
+              "model": "NVIDIA H100 80GB HBM3",
+              "memory": "81559 MiB",
+              "driver": "620.70.06",
+              "count": 1,
+              "cuda_driver_api": null,
+              "cuda_runtime": "12.4",
+              "all": [
+                "NVIDIA H100 80GB HBM3, 81559 MiB, 620.70.06"
+              ],
+              "modal_task_id": "ta-01M81QX3VTDQKB58F5Y0A4ACQR",
+              "uuid": "GPU-ab9e4357-b04b-534a-7dc0-e944e56e0ef8"
+            },
+            "compute_window": [
+              1795355167.9920917,
+              1795357505.6655815
+            ],
+            "reimage_wall_s": 2335.348378865,
+            "scoring_wall_s": 2.3138675820000003,
+            "compute_wall_s": 2337.6734883169997,
+            "setup_s": {
+              "load": 0.14035022100000027,
+              "outcome_prep": 150.322562858,
+              "adjacency_upload": 54.862850356000024,
+              "warm_up": 1.8298316499999885,
+              "rendezvous": 0.0
+            },
+            "plant_feature": 0,
+            "in_function_s": 2545.4786839910003
+          }
+        ]
+      }
+    }
+  ],
+  "failures": [
+    {
+      "repeat": 1,
+      "gpus": 8,
+      "reason": "only 5 of 8 H100s reached the start gate"
+    },
+    {
+      "repeat": 1,
+      "gpus": 4,
+      "reason": "only 2 of 4 H100s reached the start gate"
+    }
+  ]
+}
