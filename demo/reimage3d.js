@@ -260,7 +260,8 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
   const target = new THREE.Vector3(), bt = new THREE.Vector3(wx(boundary[0]), lift(...boundary), wz(boundary[1]));
   function draw(t, orbit) {
     const w = canvas.clientWidth, h = canvas.clientHeight;
-    if (canvas.width !== Math.floor(w * renderer.getPixelRatio())) renderer.setSize(w, h, false);
+    const pr = renderer.getPixelRatio();
+    if (canvas.width !== Math.floor(w * pr) || canvas.height !== Math.floor(h * pr)) renderer.setSize(w, h, false);
     camera.aspect = w / h;
     const s = timeline(t), k = s.camera;
     // Frame k.r core radii whichever side of the canvas is shorter.
