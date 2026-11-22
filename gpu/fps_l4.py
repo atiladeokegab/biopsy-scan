@@ -143,7 +143,7 @@ def main():
     (DEMO / "img" / "reimage-end.jpg").write_bytes(out.pop("end_jpg_1280x720"))
     (DEMO / "img" / "reimage-end-phone.jpg").write_bytes(out.pop("end_jpg_390x844"))  # framed for the phone, not the desktop frame shrunk
     ts = out.pop("timestamps_ms")
-    res = {"status": "MEASURED", "label": "MEASURED (L4, headless Chrome); a data-centre L4, not a laptop GPU",
+    res = {"status": "MEASURED", "label": "holds the 60 fps display cap on an L4 (MEASURED, headless, vsync-capped); a data-centre L4, not a laptop GPU",
            "what": "rAF frame intervals over the 3D re-imaging script (fly-in, windows, flicker), 1280x720, whole page live",
            "utc": stamp, "modal_wall_s": round(wall, 1), **out, **summary(ts)}
     path = DEMO.parent / "bench" / "results" / f"fps-l4-{stamp}.json"
