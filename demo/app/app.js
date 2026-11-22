@@ -1,7 +1,7 @@
 // One-screen live demo: colour deconvolution (Ruifrok & Johnston 2001, H-DAB) computed in the browser
-// from the photo's pixels, revealed tile by tile at a replay of measured pace (Current ≈ 14 s, Ours ≈ 1 s: 14×).
+// from the photo's pixels, revealed tile by tile at a replay of measured pace (Current ≈ 21 s, Ours ≈ 1 s: 21×, 0.881 s vs 0.042 s per evaluated study).
 const MODES = {
-  current: { label: "CPU · open-source libraries (lab pipeline)", ms: 14000 },
+  current: { label: "CPU · open-source libraries (lab pipeline)", ms: 21000 },
   ours: { label: "Preflight", ms: 1000 },
 };
 const N = 400, GRID = 16; // analysis resolution and tile grid
