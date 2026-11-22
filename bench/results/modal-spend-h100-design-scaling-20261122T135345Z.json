@@ -1,0 +1,19 @@
+{
+  "status": "ESTIMATE",
+  "source_commit": "03d30b28a48c853349d007dacfa34e4269751dce",
+  "prior_project_usd": 125.84,
+  "task_cap_usd": 7.13,
+  "usd_per_worker_second": 0.0012728400000000001,
+  "entries": [
+    {
+      "repeat": 1,
+      "gpus": 8,
+      "reserved_usd": 7.127904000000001,
+      "status": "UNMEASURED",
+      "error": "only 7 of 8 H100s reached the allocated gate"
+    }
+  ],
+  "basis": "Modal list rates. Successful points use function runtime. Failed points retain reservations.",
+  "task_estimated_and_retained_usd": 7.127904000000001,
+  "running_total_usd": 132.967904
+}

@@ -1,0 +1,46 @@
+{
+  "status": "ESTIMATE",
+  "source_commit": "2d11a6d52fe308f78bcb3ac34fd21ebef14f61db",
+  "prior_project_usd": 115.237,
+  "task_cap_usd": 25.0,
+  "usd_per_worker_second": 0.0012728400000000001,
+  "entries": [
+    {
+      "repeat": 1,
+      "gpus": 1,
+      "reserved_usd": 3.6912360000000004,
+      "status": "MEASURED",
+      "estimated_usd": 3.2399870881311053
+    },
+    {
+      "repeat": 1,
+      "gpus": 2,
+      "reserved_usd": 4.073088,
+      "status": "MEASURED",
+      "estimated_usd": 3.3202279802273944
+    },
+    {
+      "repeat": 1,
+      "gpus": 4,
+      "reserved_usd": 5.091360000000001,
+      "status": "UNMEASURED",
+      "error": "only 2 of 4 H100s reached the start gate"
+    },
+    {
+      "repeat": 1,
+      "gpus": 8,
+      "reserved_usd": 7.127904000000001,
+      "status": "UNMEASURED",
+      "error": "only 5 of 8 H100s reached the start gate"
+    },
+    {
+      "repeat": 2,
+      "gpus": 1,
+      "reserved_usd": 3.6912360000000004,
+      "status": "SUBMITTED"
+    }
+  ],
+  "basis": "Modal list rates. Successful points use function runtime. Failed points retain reservations.",
+  "task_estimated_and_retained_usd": 18.7794790683585,
+  "running_total_usd": 134.0164790683585
+}

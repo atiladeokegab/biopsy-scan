@@ -1,0 +1,347 @@
+{
+  "status": "MEASURED",
+  "source_commit": "03d30b28a48c853349d007dacfa34e4269751dce",
+  "reference": "bench/results/modal-design-20261121T205536Z.json",
+  "reference_commit": "064bd6e95f721c8be7747d4cfef5eb5bd4bbd79d",
+  "synthetic_outcome_plan": {
+    "calibration": 1000,
+    "null": 1000,
+    "alternative": 1000
+  },
+  "seed_root": 20261121,
+  "labels": {
+    "timings": "MEASURED",
+    "outcomes": "SIMULATED",
+    "rates_and_costs": "ESTIMATE"
+  },
+  "hardware_request": {
+    "gpu": "H100!",
+    "cpus": 8,
+    "memory_gib": 32
+  },
+  "gpu_counts": [
+    8
+  ],
+  "scope": "Each H100 worker loads staged Charville inputs, prepares draws and warms up. Compute spans re-imaging and GPU scoring across shard windows (host clock skew unmeasured). End-to-end wall includes Modal call, setup, transfer and one driver threshold/calls summary. Parity checks separate.",
+  "repeats": [
+    {
+      "8": {
+        "status": "MEASURED",
+        "compute_span_s": 326.46865606307983,
+        "common_overlap_s": 237.94928884506226,
+        "all_overlapped": true,
+        "seed_coverage_exact": true,
+        "distinct_task_ids": true,
+        "gpus": 8,
+        "evaluated_studies": 3000,
+        "local_threshold_and_calls_s": 1.505425320006907,
+        "modal_call_wall_s": 545.6981878657825,
+        "end_to_end_wall_s": 547.20503420569,
+        "wall_s_per_evaluated_study": 0.18240167806856333,
+        "studies_per_hour_compute_span": 33081.276868163535,
+        "summary": {
+          "studies": {
+            "calibration": 1000,
+            "null": 1000,
+            "alternative": 1000
+          },
+          "rule": "maxT > design threshold from 1000 independent calibration nulls",
+          "threshold": 4.280528180733615,
+          "identification": {
+            "rate": 0.084,
+            "k": 84,
+            "n": 1000,
+            "wilson95": [
+              0.0683588136777643,
+              0.10282504938221758
+            ]
+          },
+          "fwer": {
+            "rate": 0.046,
+            "k": 46,
+            "n": 1000,
+            "wilson95": [
+              0.03466249276326498,
+              0.06081220394161907
+            ]
+          },
+          "power": {
+            "rate": 0.153,
+            "k": 153,
+            "n": 1000,
+            "wilson95": [
+              0.13201921562431126,
+              0.17663655476466403
+            ]
+          }
+        },
+        "parity": {
+          "studies_compared": 3000,
+          "x_bitwise": true,
+          "max_abs_maxT_delta": 4.440892098500626e-15,
+          "absolute_tolerance": 1e-09
+        },
+        "workers": [
+          {
+            "gpu": {
+              "model": "NVIDIA H100 80GB HBM3",
+              "memory": "81559 MiB",
+              "driver": "620.70.06",
+              "count": 1,
+              "cuda_driver_api": null,
+              "cuda_runtime": "12.4",
+              "all": [
+                "NVIDIA H100 80GB HBM3, 81559 MiB, 620.70.06"
+              ],
+              "modal_task_id": "ta-01M81SC53K44WRCCZVXYRHHYNR",
+              "uuid": "GPU-fbff92da-61f7-b3b1-ff34-33734ed611e9"
+            },
+            "compute_window": [
+              1795356715.0283895,
+              1795357010.8064263
+            ],
+            "reimage_wall_s": 295.090910834,
+            "scoring_wall_s": 0.685795282000015,
+            "compute_wall_s": 295.778034897,
+            "setup_s": {
+              "load": 0.07131369000000021,
+              "outcome_prep": 118.40763933,
+              "adjacency_upload": 61.177438322000015,
+              "warm_up": 1.6229849090000243,
+              "allocation_gate": 2.690731747,
+              "rendezvous": 28.80341277299999
+            },
+            "plant_feature": 0,
+            "in_function_s": 509.036331407
+          },
+          {
+            "gpu": {
+              "model": "NVIDIA H100 80GB HBM3",
+              "memory": "81559 MiB",
+              "driver": "620.70.06",
+              "count": 1,
+              "cuda_driver_api": null,
+              "cuda_runtime": "12.4",
+              "all": [
+                "NVIDIA H100 80GB HBM3, 81559 MiB, 620.70.06"
+              ],
+              "modal_task_id": "ta-01M81SC5559WCC30GYSQDPWZFR",
+              "uuid": "GPU-d4697339-b76d-aad6-bfbd-ab14619b1d08"
+            },
+            "compute_window": [
+              1795356714.6168017,
+              1795356972.5128677
+            ],
+            "reimage_wall_s": 257.33231260900004,
+            "scoring_wall_s": 0.5626962370000115,
+            "compute_wall_s": 257.89606428,
+            "setup_s": {
+              "load": 0.06665812399999993,
+              "outcome_prep": 99.22196946000001,
+              "adjacency_upload": 52.12283424399999,
+              "warm_up": 1.5832839079999985,
+              "allocation_gate": 2.585877621,
+              "rendezvous": 56.861075801
+            },
+            "plant_feature": 0,
+            "in_function_s": 470.71659281
+          },
+          {
+            "gpu": {
+              "model": "NVIDIA H100 80GB HBM3",
+              "memory": "81559 MiB",
+              "driver": "620.70.06",
+              "count": 1,
+              "cuda_driver_api": null,
+              "cuda_runtime": "12.4",
+              "all": [
+                "NVIDIA H100 80GB HBM3, 81559 MiB, 620.70.06"
+              ],
+              "modal_task_id": "ta-01M81SC5552B5SD1XXSX66H16R",
+              "uuid": "GPU-801d3fdb-5bc2-2614-9c00-eab4b1e93959"
+            },
+            "compute_window": [
+              1795356714.665971,
+              1795356969.9577577
+            ],
+            "reimage_wall_s": 254.71784671399996,
+            "scoring_wall_s": 0.5728824990000021,
+            "compute_wall_s": 255.291784588,
+            "setup_s": {
+              "load": 0.06211358300000036,
+              "outcome_prep": 99.373332278,
+              "adjacency_upload": 50.37479597800001,
+              "warm_up": 1.274747385000012,
+              "allocation_gate": 2.7099795560000004,
+              "rendezvous": 58.643830251
+            },
+            "plant_feature": 0,
+            "in_function_s": 468.15016083899997
+          },
+          {
+            "gpu": {
+              "model": "NVIDIA H100 80GB HBM3",
+              "memory": "81559 MiB",
+              "driver": "610.57.04",
+              "count": 1,
+              "cuda_driver_api": null,
+              "cuda_runtime": "12.4",
+              "all": [
+                "NVIDIA H100 80GB HBM3, 81559 MiB, 610.57.04"
+              ],
+              "modal_task_id": "ta-01M81SC545SVE3WF9XJKH1Y2CR",
+              "uuid": "GPU-fd955a35-cd78-b369-349d-b732bb70e81f"
+            },
+            "compute_window": [
+              1795356714.9272623,
+              1795356953.398085
+            ],
+            "reimage_wall_s": 237.84415021500004,
+            "scoring_wall_s": 0.6254761469999721,
+            "compute_wall_s": 238.47082122100002,
+            "setup_s": {
+              "load": 0.07541474999999931,
+              "outcome_prep": 112.319206831,
+              "adjacency_upload": 57.86308210499999,
+              "warm_up": 1.4994586390000109,
+              "allocation_gate": 1.7049070979999996,
+              "rendezvous": 38.78059494299998
+            },
+            "plant_feature": 0,
+            "in_function_s": 451.139548669
+          },
+          {
+            "gpu": {
+              "model": "NVIDIA H100 80GB HBM3",
+              "memory": "81559 MiB",
+              "driver": "620.70.06",
+              "count": 1,
+              "cuda_driver_api": null,
+              "cuda_runtime": "12.4",
+              "all": [
+                "NVIDIA H100 80GB HBM3, 81559 MiB, 620.70.06"
+              ],
+              "modal_task_id": "ta-01M81SC54597ETK986K2YJ85MR",
+              "uuid": "GPU-ee09eb58-b7ac-9704-af4f-d5c40165c156"
+            },
+            "compute_window": [
+              1795356714.8030832,
+              1795357005.9538467
+            ],
+            "reimage_wall_s": 290.462658087,
+            "scoring_wall_s": 0.6867348410000318,
+            "compute_wall_s": 291.150761258,
+            "setup_s": {
+              "load": 0.07179734299999918,
+              "outcome_prep": 119.107873675,
+              "adjacency_upload": 62.59704663400001,
+              "warm_up": 1.6372246469999823,
+              "allocation_gate": 1.9242273669999999,
+              "rendezvous": 26.689622763999978
+            },
+            "plant_feature": 0,
+            "in_function_s": 503.59958248000004
+          },
+          {
+            "gpu": {
+              "model": "NVIDIA H100 80GB HBM3",
+              "memory": "81559 MiB",
+              "driver": "610.57.04",
+              "count": 1,
+              "cuda_driver_api": null,
+              "cuda_runtime": "12.4",
+              "all": [
+                "NVIDIA H100 80GB HBM3, 81559 MiB, 610.57.04"
+              ],
+              "modal_task_id": "ta-01M81SC54N74RD5H5NB0M103CR",
+              "uuid": "GPU-2362f43c-ce87-108b-aca5-86bd86d0860d"
+            },
+            "compute_window": [
+              1795356714.8084157,
+              1795356992.0113077
+            ],
+            "reimage_wall_s": 276.5585171199999,
+            "scoring_wall_s": 0.6431261139999833,
+            "compute_wall_s": 277.202890205,
+            "setup_s": {
+              "load": 0.06802824899999926,
+              "outcome_prep": 98.203088146,
+              "adjacency_upload": 57.105990307,
+              "warm_up": 1.6834002729999895,
+              "allocation_gate": 1.7103264880000002,
+              "rendezvous": 53.36470567499998
+            },
+            "plant_feature": 0,
+            "in_function_s": 489.77413350200004
+          },
+          {
+            "gpu": {
+              "model": "NVIDIA H100 80GB HBM3",
+              "memory": "81559 MiB",
+              "driver": "620.70.06",
+              "count": 1,
+              "cuda_driver_api": null,
+              "cuda_runtime": "12.4",
+              "all": [
+                "NVIDIA H100 80GB HBM3, 81559 MiB, 620.70.06"
+              ],
+              "modal_task_id": "ta-01M81SC53KC7R8CZK8B0AGZ1ZR",
+              "uuid": "GPU-52cd42d3-3255-9c41-f545-3ec3722db767"
+            },
+            "compute_window": [
+              1795356715.4487963,
+              1795357021.339517
+            ],
+            "reimage_wall_s": 305.118181034,
+            "scoring_wall_s": 0.771143104000032,
+            "compute_wall_s": 305.89071916999995,
+            "setup_s": {
+              "load": 0.07262317699999965,
+              "outcome_prep": 118.189352254,
+              "adjacency_upload": 61.94509376699999,
+              "warm_up": 1.8716136959999972,
+              "allocation_gate": 1.9596994599999995,
+              "rendezvous": 28.363080274999987
+            },
+            "plant_feature": 0,
+            "in_function_s": 518.726316267
+          },
+          {
+            "gpu": {
+              "model": "NVIDIA H100 80GB HBM3",
+              "memory": "81559 MiB",
+              "driver": "620.70.06",
+              "count": 1,
+              "cuda_driver_api": null,
+              "cuda_runtime": "12.4",
+              "all": [
+                "NVIDIA H100 80GB HBM3, 81559 MiB, 620.70.06"
+              ],
+              "modal_task_id": "ta-01M81SC54N9JH9GDTTMNMEX70R",
+              "uuid": "GPU-0546e103-0e58-ed24-a001-2d14b0a02896"
+            },
+            "compute_window": [
+              1795356714.673815,
+              1795357041.0854578
+            ],
+            "reimage_wall_s": 325.799791575,
+            "scoring_wall_s": 0.6104781469999239,
+            "compute_wall_s": 326.411641198,
+            "setup_s": {
+              "load": 0.08427290200000037,
+              "outcome_prep": 152.39891825299998,
+              "adjacency_upload": 55.112945705000016,
+              "warm_up": 1.771735729999989,
+              "allocation_gate": 0.40061541499999986,
+              "rendezvous": 0.6469478490000142
+            },
+            "plant_feature": 0,
+            "in_function_s": 537.3567037089999
+          }
+        ]
+      }
+    }
+  ],
+  "failures": [],
+  "spread": {}
+}
