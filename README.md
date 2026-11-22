@@ -48,6 +48,8 @@ make smoke   # uv sync --dev, offline pytest suite, and node demo/race.test.mjs 
 make demo    # validates demo/data and serves the interactive demo at http://localhost:8000 (PORT=8001 if busy)
 ```
 
+`make race-local` reruns the race on your own CPU: the lab's per-study permutation test against Preflight's fused kernel on a small Charville slice (8 studies per stream on every core; fetches the data on first use). It prints s/study for each, the ratio and feature parity, and takes about 2 minutes. These are your machine's numbers, not the Modal figures.
+
 Real cohort runs additionally fetch the public CODEX datasets into gitignored `data/` (`make data`, Zenodo [`13179600`](https://zenodo.org/records/13179600), [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/); optional `DATA_DIR` overrides `data/`).
 
 ## Repository Layout
