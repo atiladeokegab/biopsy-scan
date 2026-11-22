@@ -15,10 +15,11 @@ from pathlib import Path
 from statistics import median
 
 import numpy as np
+import modal
 
 from gpu.modal_app import _charville, app, gpu_function, gpu_info, overlap
 
-FLEET = (1, 16, 2, 4, 8)  # test 16-GPU capacity immediately after the reference
+FLEET = (1, 2, 4, 8, 16)
 STRONG, WEAK_PER_GPU = 256, 16
 MODEL = "NVIDIA A100-SXM4-40GB"
 RATE = 2.0988 + 8 * 0.04716 + 32 * 0.007992  # archived Modal list rates, USD/h
@@ -33,7 +34,7 @@ def workload(n: int, seed: int) -> dict[str, list[int]]:
 
 
 def _timeout(n: int) -> int:
-    return 400 if n == 1 else 235
+    return 400 if n == 1 else 270
 
 
 def split_batches(batches: dict[str, list[int]], n: int) -> list[dict[str, list[int]]]:
@@ -41,12 +42,31 @@ def split_batches(batches: dict[str, list[int]], n: int) -> list[dict[str, list[
     return [{mode: parts[i].tolist() for mode, parts in split.items()} for i in range(n)]
 
 
-@app.function(**(gpu_function | {"timeout": 400}), single_use_containers=True, max_containers=16)
-def scaling_shard(batches: dict[str, list[int]]) -> dict:
+def wait_for_fleet(ready, mode: str, count: int, uuid: str, expected_ready: int) -> float:
+    """Wait for distinct prepared GPUs before starting a timed batch."""
+    if count == 1:
+        return 0.0
+    start = time.perf_counter()
+    ready[(mode, uuid)] = True
+    while ready.len() < expected_ready:
+        if time.perf_counter() - start > 65:
+            raise TimeoutError(f"{mode} fleet did not rendezvous with {count} GPUs")
+        time.sleep(.25)
+    return time.perf_counter() - start
+
+
+@app.function(**(gpu_function | {"timeout": 400}), single_use_containers=True, max_containers=16, retries=0)
+def scaling_shard(batches: dict[str, list[int]], ready, count: int) -> dict:
     from bench.real_cpu import DESIGN
     from reimage import gpu, run
 
     entered = time.perf_counter()
+    device = gpu_info()
+    device["uuid"] = subprocess.check_output(
+        ["nvidia-smi", "--query-gpu=uuid", "--format=csv,noheader"], text=True, timeout=10
+    ).strip()
+    if device["count"] != 1 or device["model"] != MODEL or not device["uuid"]:
+        raise ValueError(f"expected one {MODEL}, got {device['all']}")
     cells, layout, prep = _charville()
     design = {**DESIGN, "cells": cells, "backend": "gpu"}
     t0 = time.perf_counter()
@@ -57,16 +77,13 @@ def scaling_shard(batches: dict[str, list[int]]) -> dict:
     run(design, np.array(batches["strong"][:1]), _prepared=prepared)
     prep["warm_up"] = time.perf_counter() - t0
     results = {}
-    for mode, seeds in batches.items():
+    for phase, (mode, seeds) in enumerate(batches.items(), start=1):
+        wait = wait_for_fleet(ready, mode, count, device["uuid"], phase * count)
         wall_start, t0 = time.time(), time.perf_counter()
         features = run(design, np.array(seeds), _prepared=prepared)
         compute, wall_end = time.perf_counter() - t0, time.time()
         results[mode] = {"seeds": seeds, "features": features, "compute_s": compute,
-                         "compute_window": [wall_start, wall_end]}
-    device = gpu_info()
-    device["uuid"] = subprocess.check_output(
-        ["nvidia-smi", "--query-gpu=uuid", "--format=csv,noheader"], text=True, timeout=10
-    ).strip()
+                         "compute_window": [wall_start, wall_end], "rendezvous_wait_s": wait}
     return {"batches": results, "gpu": device, "setup_s": prep,
             "in_function_s": time.perf_counter() - entered}
 
@@ -76,7 +93,9 @@ def validate_point(parts: list[dict], n: int, expected: dict[str, list[int]], re
     hw = [p["gpu"] for p in parts]
     if (len(hw) != n or any(g["count"] != 1 or g["model"] != MODEL for g in hw)
             or any(not g["uuid"] for g in hw) or len({g["uuid"] for g in hw}) != n):
-        raise ValueError(f"expected {n} distinct {MODEL} devices")
+        models = sorted({g["model"] for g in hw})
+        uuids = len({g["uuid"] for g in hw if g["uuid"]})
+        raise ValueError(f"expected {n} distinct {MODEL} devices, got {uuids} UUIDs from {len(hw)} workers: {models}")
     rows = {}
     for mode, seeds in expected.items():
         shards = [p["batches"][mode] | {"gpu": p["gpu"]} for p in parts]
@@ -86,8 +105,8 @@ def validate_point(parts: list[dict], n: int, expected: dict[str, list[int]], re
                 or not (windows[:, 1] > windows[:, 0]).all() or not (durations > 0).all()):
             raise ValueError(f"invalid {mode} timing")
         ov = overlap(shards, seeds)
-        if not ov["seed_coverage_exact"] or not ov["distinct_task_ids"]:
-            raise ValueError(f"{mode} seed coverage or distinct task check failed")
+        if not ov["seed_coverage_exact"] or not ov["distinct_task_ids"] or not ov["all_overlapped"]:
+            raise ValueError(f"{mode} coverage, distinct task or common overlap check failed: {ov}")
         if any(s["features"].ndim != 3 or len(s["features"]) != len(s["seeds"]) for s in shards):
             raise ValueError(f"invalid {mode} feature shape")
         order = np.argsort([seed for s in shards for seed in s["seeds"]])
@@ -113,12 +132,16 @@ def summarize(repeats: list[dict]) -> dict:
         for n in sorted(FLEET):
             values = []
             for repeat in repeats:
+                if str(n) not in repeat:
+                    continue
                 baseline = repeat["1"][mode]["studies_per_hour"]
                 row = repeat[str(n)][mode]
                 speedup = row["studies_per_hour"] / baseline
                 values.append({"studies_per_hour": row["studies_per_hour"], "throughput_speedup": speedup,
                                "efficiency": speedup / n, "compute_span_s": row["compute_span_s"]})
-            summary[mode][str(n)] = {
+            if len(values) < 2:
+                continue
+            summary[mode][str(n)] = {"repeats": len(values)} | {
                 key: {"median": median(samples), "min": min(samples), "max": max(samples)}
                 for key, samples in {k: [v[k] for v in values] for k in values[0]}.items()
             }
@@ -158,11 +181,11 @@ def scaling(repeats: int = 3, cap_usd: float = 20.0, pilot: bool = False):
               "labels": {"timings": "MEASURED", "study_design": "SIMULATED on measured Charville tissue",
                          "ideal_line": "ANALYTIC perfect scaling", "spend": "ESTIMATE"},
               "scope": "Re-imaging through feature aggregation only. Strong first, then weak using the same prepared device state. "
-                       "Weak starts when each worker finishes its strong batch, so it inherits any start stagger. "
+                       "Workers rendezvous before each batch. The identical 16-GPU strong and weak work is measured once. "
                        "Compute span is first shard start to last shard finish using host clocks (clock skew unmeasured). "
                        "Modal wall measures the whole point, including setup, both batches and transfer. "
                        "Weak efficiency is one-GPU compute span divided by N-GPU compute span for N times the workload.",
-              "strong_studies": STRONG, "weak_studies_per_gpu": WEAK_PER_GPU, "repeats": []}
+              "strong_studies": STRONG, "weak_studies_per_gpu": WEAK_PER_GPU, "repeats": [], "failures": []}
     for j in range(runs):
         repeat, reference = {}, None
         report["repeats"].append(repeat)
@@ -175,7 +198,9 @@ def scaling(repeats: int = 3, cap_usd: float = 20.0, pilot: bool = False):
             print(f"repeat {j + 1}, {n} GPUs, reserve ${point['reserved_usd']:.2f}", flush=True)
             t0 = time.perf_counter()
             try:
-                parts = list(scaling_shard.with_options(timeout=_timeout(n)).map(shards, order_outputs=True))
+                with modal.Dict.ephemeral() as ready:
+                    parts = list(scaling_shard.with_options(timeout=_timeout(n)).map(
+                        shards, kwargs={"ready": ready, "count": n}, order_outputs=True))
                 wall = time.perf_counter() - t0
                 point["estimated_usd"] = sum(p["in_function_s"] for p in parts) * RATE / 3600
                 rows, reference = validate_point(parts, n, expected, reference)
@@ -183,12 +208,14 @@ def scaling(repeats: int = 3, cap_usd: float = 20.0, pilot: bool = False):
                                   "workers": [{k: v for k, v in p.items() if k != "batches"} for p in parts]}
             except Exception as exc:
                 point["failure"] = str(exc)
-                report["failure"] = {"repeat": j + 1, "gpus": n, "reason": str(exc)}
-                raise
+                report["failures"].append({"repeat": j + 1, "gpus": n, "reason": str(exc)})
+                print(f"repeat {j + 1}, {n} GPUs: UNMEASURED ({exc})", flush=True)
+                if n == 1:
+                    break  # No verified baseline to compare any later point against.
             finally:
                 save(spend, ledger)
                 save(out, report)
-    report["status"] = "MEASURED"
+    report["status"] = "PARTIAL" if report["failures"] else "MEASURED"
     if not pilot:
         report["summary"] = summarize(report["repeats"])
     save(out, report)
