@@ -93,7 +93,7 @@ export function mount(el, data) {
       g.restore();
     }
     // Two routine-stain cores: real HPA IHC when the images load, else simulated DAB on haematoxylin (labelled).
-    if (ihc > 0) {
+    if (ihc > 0 && real !== null) { // nothing while decode is pending: the badge already says REAL
       const top = (getComputedStyle(el.parentElement?.querySelector(".wf-label") ?? el).position === "absolute" ? el.parentElement.querySelector(".wf-label").offsetHeight : 0) + 12; // badges wrap on narrow screens
       const r2 = Math.min(W * 0.2, H * 0.34, (H - top - 30 - 42) / 2), y2 = Math.max(H * 0.47, top + 30 + r2);
       IHC.forEach((c, k) => {
