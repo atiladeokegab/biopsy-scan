@@ -72,17 +72,18 @@
           <span class="tags"><span class="tag ok" id="reimage-tag">MEASURED cells</span> <span class="tag">SIMULATED imaging</span></span></p>
         <ol class="reimage-steps" id="reimage-steps">
           <li>A real tumour core: <span id="reimage-n">every cell of one region</span>, each at its measured position.</li>
-          <li>Down to cell level: each dot is one cell, coloured by its measured type. Height is local cell density.</li>
+          <li>Down to cell level: each dot is one cell. Its colour groups Charville's 15 measured cell types into 3 colour groups: tumour, stroma, immune. Height is local cell density.</li>
           <li>The study images two 400 µm fields of view. It never sees the cells outside them.</li>
-          <li>It mis-calls 10% of the cells it does see: they flicker, then keep the wrong colour, ringed.</li>
+          <li>Each cell it sees has a 10% chance of a mis-call into another colour group: those cells flicker, then keep the wrong colour, ringed. The study mis-calls among all 15 types, so a mis-call inside one group does not show here.</li>
         </ol>
         <p class="legend">
           <span><i class="t"></i>Tumour</span> <span><i class="s"></i>Stroma</span> <span><i class="m"></i>Immune</span>
           <span><i class="f"></i>Field of view</span> <span><i class="r"></i>Mis-called</span>
         </p>
-        <p class="hint"><button type="button" id="reimage-replay" class="link">Replay</button> <button type="button" id="reimage-pause" class="link" aria-pressed="false">Pause</button></p>
+        <p class="hint"><button type="button" id="reimage-replay" class="link" hidden>Replay</button> <button type="button" id="reimage-pause" class="link" aria-pressed="false" hidden>Pause</button></p>
       </div>
-      <canvas id="reimage" role="img" aria-label="A real colorectal tumour core in 3D: two simulated fields of view, the rest dimmed, 10% of the cells in view mis-called"></canvas>
+      <canvas id="reimage" role="img" aria-label="A real colorectal tumour core in 3D: two simulated fields of view, the rest dimmed, each cell in view given a 10% chance of a mis-call between colour groups"></canvas>
+      <p class="reimage-fallback" id="reimage-fallback" role="status" hidden></p>
       <p class="src reimage-credit" id="reimage-credit">Cells: Charville CODEX, Wu et al. 2022 (Zenodo 13179600, CC-BY-4.0).</p>
     </div>
   </section>

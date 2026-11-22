@@ -7,7 +7,7 @@ import { tok } from "./chart.js";
 import { rng } from "./tissue.js";
 
 export const FOV_UM = 400, EPS = 0.1, WINDOWS = 2; // the design the results section reports: 2 x 400 µm, 10% mis-called
-const TYPES = ["tumour", "stroma", "immune"]; // display classes, as tissue.js draws them
+export const TYPES = ["tumour", "stroma", "immune"]; // display classes, as tissue.js draws them
 const PATIENT = "CHV-24133"; // every cell of its region (2,846 of 2,846) and a clear tumour-stroma boundary
 const DOT = 10; // µm: about one cell across
 const LIFT = 64; // µm of terrain at the densest point
@@ -133,8 +133,29 @@ function sprite(draw) {
   return t;
 }
 
+export const pickPatient = (tissue) =>
+  tissue.patients.find((q) => q.id === PATIENT) ?? tissue.patients.reduce((a, b) => (b.cells.length > a.cells.length ? b : a));
+
+// The scene's clock: it runs only while playing and on screen, so scrolling away holds the take where it was.
+export function clock(now, { held = 0, playing = true } = {}) {
+  let t0 = null, seen = false;
+  const t = () => (playing && seen && t0 !== null ? (now() - t0) / 1000 : held);
+  const resume = () => { if (playing && seen) t0 = now() - held * 1000; };
+  return {
+    t,
+    get playing() { return playing; },
+    show(on) { if (on === seen) return; if (!on) held = t(); seen = on; resume(); },
+    toggle() { if (playing) { held = t(); playing = false; } else { playing = true; resume(); } return playing; },
+    replay() { held = 0; playing = true; resume(); },
+  };
+}
+export const VISIBLE = 0.35; // share of the canvas on screen before the take plays
+export const inView = (e) => e.isIntersecting && e.intersectionRatio >= VISIBLE;
+// ?t3d=<seconds> holds the scene for stills; anything but a finite number plays it normally.
+export const captureTime = (v) => (v !== null && v.trim() !== "" && Number.isFinite(+v) ? +v : null);
+
 export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null, onStep = () => {} }) {
-  const p = tissue.patients.find((q) => q.id === PATIENT) ?? tissue.patients.reduce((a, b) => (b.cells.length > a.cells.length ? b : a));
+  const p = pickPatient(tissue);
   const cells = p.cells, n = cells.length;
   let lo = [Infinity, Infinity], hi = [-Infinity, -Infinity];
   for (const c of cells) { lo = [Math.min(lo[0], c.x), Math.min(lo[1], c.y)]; hi = [Math.max(hi[0], c.x), Math.max(hi[1], c.y)]; }
@@ -266,33 +287,68 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
     return s;
   }
 
-  // The clock runs only while the canvas is on screen and not paused; reduced motion shows the last frame, still.
-  let t0 = null, held = freezeAt ?? (reducedMotion ? END : 0), playing = !reducedMotion && freezeAt === null;
+  // Reduced motion and stills hold one moment; otherwise the clock runs while the canvas is on screen.
+  const clk = clock(() => performance.now(), { held: freezeAt ?? (reducedMotion ? END : 0), playing: !reducedMotion && freezeAt === null });
   let onScreen = false, raf = null, step = -1;
-  const now = () => (playing && t0 !== null ? (performance.now() - t0) / 1000 : held);
   function frame() {
     raf = null;
-    const t = now();
+    const t = clk.t();
     const s = draw(t, reducedMotion ? 0 : Math.max(0, t - END) * 0.05);
     if (s.step !== step) onStep((step = s.step));
-    if (playing && onScreen) raf = requestAnimationFrame(frame);
+    if (clk.playing && onScreen) raf = requestAnimationFrame(frame);
   }
   const kick = () => { if (raf === null) raf = requestAnimationFrame(frame); };
   new IntersectionObserver(([e]) => {
-    onScreen = e.isIntersecting;
-    if (onScreen && playing && t0 === null) t0 = performance.now(); // the take starts when you arrive
+    onScreen = inView(e);
+    clk.show(onScreen);
     if (onScreen) kick();
-  }, { threshold: 0.35 }).observe(canvas);
+  }, { threshold: VISIBLE }).observe(canvas);
   addEventListener("resize", kick);
   kick();
 
   return {
     patient: p,
-    replay() { held = 0; t0 = performance.now(); playing = !reducedMotion; kick(); },
-    toggle() {
-      if (playing) { held = now(); playing = false; } else { t0 = performance.now() - held * 1000; playing = true; kick(); }
-      return playing;
-    },
-    get playing() { return playing; },
+    replay() { clk.replay(); kick(); },
+    toggle() { const on = clk.toggle(); kick(); return on; },
+    get playing() { return clk.playing; },
   };
+}
+
+// The section around the canvas: provenance first (it holds without WebGL), controls only once the scene runs.
+export function mountReimage($, tissue, { reducedMotion, search, create = createReimage3d }) {
+  const p = pickPatient(tissue), n = p.cells.length, real = tissue.source === "MEASURED";
+  $("reimage-n").textContent = n === p.cells_in_region
+    ? `all ${n.toLocaleString("en-GB")} cells of one region`
+    : `${n.toLocaleString("en-GB")} of the region's ${p.cells_in_region.toLocaleString("en-GB")} cells`;
+  if (!real) {
+    $("reimage-label").firstChild.textContent = "SYNTHETIC cells: real Charville data is not loaded; imaging simulated by Preflight. ";
+    $("reimage-tag").textContent = "SYNTHETIC cells";
+    $("reimage-tag").classList.remove("ok");
+    $("reimage").setAttribute("aria-label", "A synthetic tumour core in 3D: two simulated fields of view, the rest dimmed, each cell in view given a 10% chance of a mis-call between colour groups");
+  }
+  $("reimage-credit").textContent = (real ? `Cells: Charville CODEX, Wu et al. 2022 (Zenodo 13179600, CC-BY-4.0), patient ${p.id}, region ${p.region}. ` : "") +
+    "Fields of view and mis-calls: one simulated look. In the study the two fields fall on two different regions; here both are drawn on one.";
+  const steps = [...$("reimage-steps").children];
+  let view;
+  try {
+    view = create($("reimage"), tissue, {
+      reducedMotion, freezeAt: captureTime(new URLSearchParams(search).get("t3d")),
+      onStep: (k) => steps.forEach((li, i) => (i === k ? li.setAttribute("aria-current", "step") : li.removeAttribute("aria-current"))),
+    });
+  } catch {
+    $("reimage").hidden = true;
+    $("reimage-fallback").hidden = false;
+    $("reimage-fallback").textContent = `3D view off: this browser could not start WebGL. The steps beside it still describe the ${real ? "MEASURED" : "SYNTHETIC"} cells and the SIMULATED look.`;
+    $("reimage-credit").textContent += " WebGL is unavailable here, so nothing is drawn.";
+    return;
+  }
+  if (reducedMotion) return;
+  const pause = $("reimage-pause");
+  $("reimage-replay").hidden = pause.hidden = false;
+  $("reimage-replay").addEventListener("click", () => { view.replay(); pause.textContent = "Pause"; pause.setAttribute("aria-pressed", "false"); });
+  pause.addEventListener("click", () => {
+    const on = view.toggle();
+    pause.textContent = on ? "Pause" : "Play";
+    pause.setAttribute("aria-pressed", String(!on));
+  });
 }

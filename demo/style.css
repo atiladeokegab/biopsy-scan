@@ -122,6 +122,7 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
 .legend .r { border-radius: 50%; border: 2px solid var(--text-head); }
 .reimage-text .legend .f { border-style: solid; }
 #reimage { grid-area: canvas; display: block; width: 100%; height: var(--reimage-h); background: var(--bg-canvas); }
+.reimage-fallback { grid-area: canvas; align-self: center; padding: var(--space-5); font-size: var(--text-sm); line-height: var(--leading-meta); color: var(--text-muted); }
 .reimage-credit { grid-area: credit; padding: var(--space-2) var(--space-4); line-height: var(--leading-caption); }
 
 /* RESULTS: power against the formula, the honesty strip, the scaling slot */
@@ -213,7 +214,8 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
   .reimage-text > h2, .reimage-label { order: 0; }
   .reimage-text > .reimage-steps { padding-left: calc(var(--space-4) + var(--space-5)); }
   .reimage-text > .legend { padding: 0 var(--space-4); }
-  #reimage { order: 1; height: var(--reimage-h-phone); }
+  #reimage, .reimage-fallback { order: 1; }
+  #reimage { height: var(--reimage-h-phone); }
   .reimage-credit { order: 3; }
   .big { font-size: var(--text-xl); }
   .foot { padding: var(--space-6) var(--space-4) var(--space-8); }
