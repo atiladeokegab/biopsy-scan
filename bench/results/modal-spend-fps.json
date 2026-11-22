@@ -260,8 +260,116 @@
     "basis": "64.6 s local wall x $1.116/h",
     "result": "bench/results/fps-l4-20261122T074434Z.json"
    }
+  },
+  {
+   "utc": "2026-11-22T08:08Z",
+   "run": "proof-3d recorder (scratch wrapper of gpu/fps_l4.py) on integration 00841e4: failed before recording, a recorder bug (Function has no get_raw_f); no take, no cadence",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": null,
+    "est_usd": 0.019,
+    "basis": "under 60 s local wall (not timed) x $1.116/h, upper bound",
+    "result": "none"
+   }
+  },
+  {
+   "utc": "2026-11-22T08:09Z",
+   "run": "proof-3d recorder on integration 00841e4: the first take (video on the timed context); framecheck FAIL, an 87 px grey band; its cadence is with recording on and is not cited (run 8 stands)",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": 79.0,
+    "est_usd": 0.024,
+    "basis": "79.0 s local wall x $1.116/h",
+    "result": "hub takes/2026-11-22-proof-3d-00841e4/fps-l4-20261122T080914Z.json (not committed: the take failed framecheck)"
+   }
+  },
+  {
+   "utc": "2026-11-22T09:02Z",
+   "run": "proof-3d re-record with --window-size=1280,807: band unchanged, refused by the recorder's band check",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": 369.4,
+    "est_usd": 0.115,
+    "basis": "369.4 s local wall x $1.116/h (includes any wait for an L4, so an upper bound)",
+    "result": "none (take refused)"
+   }
+  },
+  {
+   "utc": "2026-11-22T09:09Z",
+   "run": "proof-3d re-record with a CDP window resize: band gone, but the video ends before the scene does (Pause drawn)",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": 179.5,
+    "est_usd": 0.056,
+    "basis": "179.5 s local wall x $1.116/h (includes any wait for an L4, so an upper bound)",
+    "result": "none (take not used)"
+   }
+  },
+  {
+   "utc": "2026-11-22T09:14Z",
+   "run": "proof-3d re-record with a 2.5 s end hold: still ends on Pause drawn (the screencast lags about 2 s)",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": 727.7,
+    "est_usd": 0.226,
+    "basis": "727.7 s local wall x $1.116/h (includes any wait for an L4, so an upper bound)",
+    "result": "none (take not used)"
+   }
+  },
+  {
+   "utc": "2026-11-22T09:27Z",
+   "run": "proof-3d re-record with a 6 s end hold: the take sent for framecheck; its cadence is with recording on and is not cited (run 8 stands)",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": 180.3,
+    "est_usd": 0.056,
+    "basis": "180.3 s local wall x $1.116/h (includes any wait for an L4, so an upper bound)",
+    "result": "bench/results/fps-l4-20261122T092716Z.json"
+   }
   }
  ],
- "running_total_usd": 0.503,
- "running_total_basis": "sum of the two actuals; ESTIMATE, not billing"
+ "running_total_usd": 0.999,
+ "running_total_basis": "sum of the actuals; ESTIMATE, not billing"
 }
