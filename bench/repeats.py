@@ -32,6 +32,17 @@ PRIOR_SHA256 = "2edfce37ab1c6a04550ab393f210a7504ca455b27b98503cbe098e07ff500326
 ONE_ARM = {"all": False, "this_run": "one arm"}  # the runner's parity for a single-arm run without --compare-with
 Z_TOL = 1e-9
 TIMINGS = ("studies_wall_s", "compute_wall_s", "wall_per_study_s", "end_to_end_in_container_s")
+STREAMS = {"lab": ("null", "alternative"), "fused": ("calibration", "null", "alternative")}  # the lab skips calibration
+SCOPE = {"workers": 8, "container_class": "Modal A100 + 8 cores + 64 GiB",
+         "modal": {"gpu": "A100", "cpu": 8.0, "memory_mib": 65536}}  # the race's container class; every run must match
+
+
+def planned(design: dict, arm: str) -> dict:
+    """The run's declared plan, from its design, not from a summary the runner derives from its own records."""
+    n = design["studies_per_stream"]
+    if not (isinstance(n, int) and not isinstance(n, bool) and n > 0):
+        raise ValueError("studies_per_stream must be a positive integer")
+    return {st: n if st in STREAMS["lab" if arm == "lab" else "fused"] else 0 for st in STREAMS["fused"]}
 
 
 def _finite(v) -> bool:
@@ -57,9 +68,15 @@ def load_prior(path) -> dict:
     prior = json.loads(data)
     if prior["status"] != "MEASURED":
         raise ValueError("--prior must be MEASURED")
+    digest = hashlib.sha256(data).hexdigest()
+    if digest != PRIOR_SHA256:  # only #113's own file may stand as the reference
+        raise ValueError(f"--prior sha256 {digest} is not the pinned {PRIOR_SHA256}")
     for arm, v in prior["arms"].items():  # validated before it becomes a dict, so a duplicate cannot hide
-        check_studies(v["studies"], v["summary"]["studies"], "lab" if arm == "lab" else arm, f"prior {arm}")
-    prior["_file"], prior["_sha256"] = Path(path).name, hashlib.sha256(data).hexdigest()
+        plan = planned(prior["design"], arm)
+        if v["summary"]["studies"] != plan:
+            raise ValueError(f"prior {arm}: summary {v['summary']['studies']} is not the declared plan {plan}")
+        check_studies(v["studies"], plan, "lab" if arm == "lab" else arm, f"prior {arm}")
+    prior["_file"], prior["_sha256"] = Path(path).name, digest
     return prior
 
 
@@ -105,7 +122,10 @@ def extract(path, arm: str, prior: dict | None = None) -> dict:
         raise ValueError(f"{path}: every timing must be positive and finite")
     if not math.isclose(st["wall_per_study_s"], st["studies_wall_s"] / n, rel_tol=1e-9):
         raise ValueError(f"{path}: wall_per_study_s is not studies_wall_s / evaluated_studies")
-    check_studies(a["studies"], a["summary"]["studies"], arm, str(path))
+    plan = planned(r["design"], arm)
+    if a["summary"]["studies"] != plan:
+        raise ValueError(f"{path}: summary {a['summary']['studies']} is not the declared plan {plan}")
+    check_studies(a["studies"], plan, arm, str(path))
     if len(a["studies"]) != n:
         raise ValueError(f"{path}: {len(a['studies'])} study records for {n} evaluated studies")
     out = {"file": Path(path).name, "file_sha256": hashlib.sha256(data).hexdigest(), "source_commit": r["source_commit"],
@@ -125,16 +145,16 @@ def extract(path, arm: str, prior: dict | None = None) -> dict:
 
 
 def check_repeats(repeats: dict) -> None:
-    """Distinct runs (by file bytes and by Modal task), one worker count and one container class throughout."""
+    """Distinct runs (by file bytes and by Modal task), each on the declared SCOPE's workers, class and hardware."""
     every = [x for v in repeats.values() for x in v]
     for key in ("file_sha256", "run_id"):
         if len({x[key] for x in every}) != len(every):
             raise ValueError(f"the same run is counted twice ({key})")
-    for key in ("workers", "container_class"):
-        if len({json.dumps(x[key]) for x in every}) != 1:
-            raise ValueError(f"repeats differ in {key}")
-    if len({json.dumps({k: x["modal"][k] for k in ("gpu", "cpu", "memory_mib")}) for x in every}) != 1:
-        raise ValueError("repeats differ in Modal hardware")
+    for x in every:
+        got = {"workers": x["workers"], "container_class": x["container_class"],
+               "modal": {k: x["modal"].get(k) for k in SCOPE["modal"]}}
+        if got != SCOPE:
+            raise ValueError(f"{x['file']}: {got} is not the declared scope {SCOPE}")
 
 
 def _spread(values) -> dict:
@@ -201,7 +221,7 @@ def main(argv=None) -> int:
                   "+ 1,000-shuffle permutation test. fused: 8 workers, fused Numba re-imaging + Cox screen."),
         "ratio_note": ("Descriptive: ratio of median walls per study, range from the extreme pairs. It is not an "
                        "uncertainty interval around the race's 21x, whose lab batch was 2,000 studies, not 200."),
-        "container_class": "Modal A100 + 8 cores + 64 GiB, one fresh container per repeat",
+        "container_class": f"{SCOPE['container_class']}, {SCOPE['workers']} workers, one fresh container per repeat",
         "headline": (f"{s['lab']['n']} fresh-container reruns each at #120 0b27ea1: lab {s['lab']['median']:.3f} s/study "
                      f"(range {s['lab']['min']:.3f}-{s['lab']['max']:.3f}, {n_lab} studies per rerun), fused "
                      f"{s['fused']['median']:.4f} s/study (range {s['fused']['min']:.4f}-{s['fused']['max']:.4f}, "

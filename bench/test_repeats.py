@@ -12,6 +12,7 @@ RESULTS = Path(__file__).parent / "results"
 DESIGN = {"seed": 0, "root_seed": 20261121, "streams": {"null": 202, "alternative": 303}, "studies_per_stream": 2}
 LAB_PLAN = {"calibration": 0, "null": 2, "alternative": 2}
 FUSED_PLAN = {"calibration": 2, "null": 2, "alternative": 2}
+PRIOR_N = 3  # the prior runs more studies per stream than the reruns, like #113's 1,000 against 100
 
 
 def studies(plan, lab):
@@ -19,23 +20,30 @@ def studies(plan, lab):
             for s, n in plan.items() for i in range(n)]
 
 
-def run(arm, wall=4.0, task="ta-1", workers=8):
+def run(arm, wall=4.0, task="ta-1", workers=8, cls="Modal A100 + 8 cores + 64 GiB", gpu="A100", cpu=8.0, mib=65536):
     """A single-arm runner result shaped like #120's bench/modal_design.py output."""
     plan = LAB_PLAN if arm == "lab" else FUSED_PLAN
     ss = studies(plan, arm == "lab")
     return {"status": "FAILED", "parity": dict(rp.ONE_ARM), "clean_tree": True, "errors": {},
             "same_container_class": True, "source_commit": rp.HARNESS["commit"], "design": copy.deepcopy(DESIGN),
-            "arms": {arm: {"workers": workers, "warm_s": 1.0, "container_class": "Modal A100 + 8 cores + 64 GiB",
+            "arms": {arm: {"workers": workers, "warm_s": 1.0, "container_class": cls,
                            "host": {"modal_task_id": task}, "summary": {"studies": plan}, "studies": ss,
                            "stages": {"studies_wall_s": wall, "compute_wall_s": wall, "evaluated_studies": len(ss),
                                       "wall_per_study_s": wall / len(ss), "end_to_end_in_container_s": wall + 10}}},
-            "modal": {"gpu": "A100", "cpu": 8.0, "memory_mib": 65536, "wall_s": 99.0}}
+            "modal": {"gpu": gpu, "cpu": cpu, "memory_mib": mib, "wall_s": 99.0}}
 
 
 def prior():
-    return {"status": "MEASURED", "source_commit": "p", "design": dict(DESIGN, studies_per_stream=1000), "arms": {
-        "lab": {"summary": {"studies": LAB_PLAN}, "studies": studies(LAB_PLAN, True)},
-        "numba": {"summary": {"studies": FUSED_PLAN}, "studies": studies(FUSED_PLAN, False)}}}
+    lab, fused = ({k: PRIOR_N if v else 0 for k, v in plan.items()} for plan in (LAB_PLAN, FUSED_PLAN))
+    return {"status": "MEASURED", "source_commit": "p", "design": dict(DESIGN, studies_per_stream=PRIOR_N), "arms": {
+        "lab": {"summary": {"studies": lab}, "studies": studies(lab, True)},
+        "numba": {"summary": {"studies": fused}, "studies": studies(fused, False)}}}
+
+
+def pinned(monkeypatch, path):
+    """Stand a fixture prior in for #113's file by pinning its digest."""
+    monkeypatch.setattr(rp, "PRIOR_SHA256", hashlib.sha256(path.read_bytes()).hexdigest())
+    return path
 
 
 def write(tmp_path, name, doc):
@@ -49,7 +57,7 @@ def test_a_clean_single_arm_run_is_accepted_and_checked_against_the_prior(tmp_pa
     assert got["parity_vs_prior"]["all"] is True and got["parity_vs_prior"]["statistic_compared"] == 4
     assert got["runner_status"] == "FAILED" and got["runner_status_note"] == "FAILED: single-arm, no in-run parity"
     assert got["wall_per_study_s"] == pytest.approx(1.0) and len(got["file_sha256"]) == 64
-    for arm, key, val, at in [("lab", "p", 0.4, 0), ("numba", "x_sha", "y", 2)]:  # numba[2] is null 0
+    for arm, key, val, at in [("lab", "p", 0.4, 0), ("numba", "x_sha", "y", PRIOR_N)]:  # numba[PRIOR_N] is null 0
         pr = prior()
         pr["arms"][arm]["studies"][at][key] = val
         assert rp.extract(write(tmp_path, "a.json", run("lab")), "lab", pr)["parity_vs_prior"]["all"] is False
@@ -108,11 +116,34 @@ def test_a_nan_lab_p_is_rejected(tmp_path):
 
 
 @pytest.mark.parametrize("spoil", [_duplicate, _nan_maxT])
-def test_the_prior_is_validated_before_it_is_keyed(tmp_path, spoil):
+def test_the_prior_is_validated_before_it_is_keyed(tmp_path, monkeypatch, spoil):
     pr = prior()
     spoil(pr, "numba")
     with pytest.raises(ValueError, match="prior numba"):
-        rp.load_prior(write(tmp_path, "prior.json", pr))
+        rp.load_prior(pinned(monkeypatch, write(tmp_path, "prior.json", pr)))
+
+
+@pytest.mark.parametrize("arm", ["lab", "fused"])
+def test_a_consistently_truncated_run_fails_against_the_declared_plan(tmp_path, arm):
+    # Atlas round 2: one record, with summary, count and denominator all rewritten to match, still declares 2 per stream
+    r = run(arm)
+    a = r["arms"][arm]
+    a["studies"] = a["studies"][:1]
+    a["summary"]["studies"] = {st: int(st == a["studies"][0]["stream"]) for st in FUSED_PLAN}
+    a["stages"].update(evaluated_studies=1, wall_per_study_s=a["stages"]["studies_wall_s"])
+    with pytest.raises(ValueError, match="not the declared plan"):
+        rp.extract(write(tmp_path, "a.json", r), arm, prior())
+
+
+def test_only_the_pinned_prior_is_accepted(tmp_path):
+    real = RESULTS / "modal-design-20261121T194458Z.json"
+    assert rp.load_prior(real)["_sha256"] == rp.PRIOR_SHA256
+    forged = json.loads(real.read_text())
+    forged["source_commit"] = "unapproved-prior"
+    with pytest.raises(ValueError, match="not the pinned"):
+        rp.load_prior(write(tmp_path, real.name, forged))
+    with pytest.raises(ValueError, match="not the pinned"):
+        rp.load_prior(write(tmp_path, "fixture.json", prior()))
 
 
 def test_a_different_design_or_seed_is_rejected(tmp_path):
@@ -156,14 +187,22 @@ def test_the_same_run_counted_twice_is_rejected_even_renamed(tmp_path):
                           "fused": ok["fused"]})
 
 
-def test_mixed_workers_are_rejected(tmp_path):
-    reps = {"lab": _three(tmp_path, "lab", ("a", "b", "c")), "fused": _three(tmp_path, "fused", ("d", "e", "f"))}
-    reps["fused"][0] = rp.extract(write(tmp_path, "w.json", run("fused", task="g", workers=4)), "fused", prior())
-    with pytest.raises(ValueError, match="workers"):
+def test_a_uniform_but_wrong_class_is_rejected(tmp_path):
+    l4 = dict(workers=4, cls="Modal L4 + 4 cores + 32 GiB", gpu="L4", cpu=4.0, mib=32768)
+    reps = {arm: [rp.extract(write(tmp_path, f"{arm}{i}.json", run(arm, wall=4.0 + i, task=f"{arm}{i}", **l4)), arm,
+                             prior()) for i in range(3)] for arm in ("lab", "fused")}
+    with pytest.raises(ValueError, match="not the declared scope"):
         rp.check_repeats(reps)
 
 
-def _cli(tmp_path, pr):
+def test_mixed_workers_are_rejected(tmp_path):
+    reps = {"lab": _three(tmp_path, "lab", ("a", "b", "c")), "fused": _three(tmp_path, "fused", ("d", "e", "f"))}
+    reps["fused"][0] = rp.extract(write(tmp_path, "w.json", run("fused", task="g", workers=4)), "fused", prior())
+    with pytest.raises(ValueError, match="not the declared scope"):
+        rp.check_repeats(reps)
+
+
+def _cli(tmp_path, monkeypatch, pr):
     for i, t in enumerate(("a", "b", "c")):
         write(tmp_path, f"lab{i}.json", run("lab", wall=400.0 + i, task=t))
         write(tmp_path, f"fused{i}.json", run("fused", wall=24.0 + i, task="f" + t))
@@ -172,18 +211,19 @@ def _cli(tmp_path, pr):
     out = tmp_path / "out.json"
     args = ["--lab", *[str(tmp_path / f"lab{i}.json") for i in range(3)],
             "--fused", *[str(tmp_path / f"fused{i}.json") for i in range(3)],
-            "--prior", str(write(tmp_path, "prior.json", pr)), "--spend", str(spend), "--output", str(out)]
+            "--prior", str(pinned(monkeypatch, write(tmp_path, "prior.json", pr))), "--spend", str(spend),
+            "--output", str(out)]
     return rp.main(args), out
 
 
-def test_the_cli_fails_closed_on_an_external_mismatch(tmp_path, capsys):
-    code, out = _cli(tmp_path, prior())
+def test_the_cli_fails_closed_on_an_external_mismatch(tmp_path, monkeypatch, capsys):
+    code, out = _cli(tmp_path, monkeypatch, prior())
     assert code == 0 and json.loads(out.read_text())["status"] == rp.STATUS
     pr = prior()
     pr["arms"]["numba"]["studies"][3]["x_sha"] = "changed"
     bad = tmp_path / "bad"
     bad.mkdir()
-    code, out = _cli(bad, pr)
+    code, out = _cli(bad, monkeypatch, pr)
     assert code == 1 and not out.exists()  # no file, so no MEASURED headline
     assert "FAILED: a repeat failed the external parity check" in capsys.readouterr().err
 
