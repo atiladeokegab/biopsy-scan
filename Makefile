@@ -14,6 +14,7 @@ smoke: install test
 	node demo/reimage3d.test.mjs
 	python3 -I demo/collect_preflight.py --check
 	node demo/preflight.test.mjs
+	node demo/tour.test.mjs
 
 data:
 	./scripts/fetch_data.sh
