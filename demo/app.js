@@ -6,6 +6,7 @@ import { createSpeedRace, workflowHTML } from "./race.js";
 import { drawRegion, drawKM } from "./bio.js";
 import { claimTexts, bioTexts, gridTexts, dialRanges } from "./claims.js";
 import { drawChart, pct, fovLabel } from "./chart.js";
+import { panelTexts, chartSVG, scenarioText } from "./preflight.js";
 
 const $ = (id) => document.getElementById(id);
 const FOV_STEP = 100;
@@ -156,8 +157,35 @@ async function hero() {
 
 }
 
+// "Preflight your study": every control redraws the answer from data/preflight.json at once; no network after load.
+async function preflight() {
+  const data = await getJSON("data/preflight.json");
+  const form = $("pf-form");
+  $("pf-scenario").textContent = scenarioText(data);
+  const read = () => ({ patients: +$("pf-patients").value, window: form.elements["pf-window"].value,
+    miscall: +form.elements["pf-miscall"].value });
+  const draw = () => panel("preflight", () => {
+    const s = read(), t = panelTexts(data, s);
+    $("pf-patients-out").value = s.patients;
+    for (const k of ["sim", "formula", "gap", "src"]) $(`pf-${k}`).textContent = t[k];
+    $("pf-sim-note").textContent = t.simNote;
+    $("pf-caveat").textContent = t.caveat; $("pf-caveat").hidden = !t.caveat;
+    $("pf-key-sim").hidden = !t.showSimKey; $("pf-chart").setAttribute("aria-label", t.chartLabel);
+    tagOf($("pf-sim-tag"), t.simTag); tagOf($("pf-formula-tag"), t.formulaTag);
+    // Drawn at its on-screen width, so the axis text stays 12 px on a phone.
+    const W = Math.max(300, Math.round($("pf-chart").getBoundingClientRect().width) || 560);
+    $("pf-chart").setAttribute("viewBox", `0 0 ${W} 220`);
+    $("pf-chart").innerHTML = chartSVG(data, s, W);
+  });
+  form.addEventListener("input", draw);
+  addEventListener("resize", draw);
+  form.addEventListener("submit", (e) => e.preventDefault());
+  draw();
+}
+
 async function main() {
   hero();
+  preflight().catch((e) => console.warn("preflight panel not drawn:", e.message));
   const [gr, ti] = await Promise.allSettled([getJSON("data/grid.json"), getJSON("data/tissue.json")]);
   if (gr.status === "rejected" || ti.status === "rejected") {
     // Opened as a file, both fail: the serve-over-HTTP message is the one that helps.

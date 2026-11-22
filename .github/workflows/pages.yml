@@ -26,6 +26,7 @@ jobs:
         run: |
           python3 -I demo/collect_race.py
           python3 -I demo/check_data.py demo/data
+          python3 -I demo/collect_preflight.py --check
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
