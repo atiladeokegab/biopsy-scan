@@ -35,29 +35,59 @@ const plain = (s) => s.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
 assert.deepEqual(rows.map((r) => plain(r).split(".")[0]),
   ["Correctness and assumptions", "Fundamental reshaping", "Meaningful performance", "Scientific value", "Honest limits"]);
 const BLOB = "https://github.com/atiladeokegab/sota-parallelism-nov21/blob/integration/";
-for (const r of rows) {
+const SRC = {
+  fa: "stats/results/hard-negative-f458ad1.json", cv: "results/charville-v2.json", upmc: "results/upmc-rediscovery.json",
+  fused: "bench/results/modal-design-20261121T205536Z.json", sweep: "bench/results/sweep-repeats.json",
+  vs: "bench/results/vs-schoenfeld-300.json", race: "bench/results/modal-design-20261121T194458Z.json",
+};
+const fa = json(SRC.fa), cv = json(SRC.cv), upmc = json(SRC.upmc), fusedRun = json(SRC.fused);
+const sweep = json(SRC.sweep), vs = json(SRC.vs), race = json(SRC.race);
+const first = (label) => label.split(/[ :]/)[0]; // "ESTIMATE (sim)" -> "ESTIMATE"
+// Each row's evidence links and labels, in order, as the source files state them; a swapped badge or link goes red.
+const expected = [
+  { links: [SRC.fa, SRC.cv, SRC.upmc], tags: [fa.label, cv.labels.cohort_counts, first(upmc.locked.power.label)] },
+  { links: [SRC.fused], tags: [fusedRun.labels.compute] },
+  { links: [SRC.sweep], tags: [sweep.labels.timings] },
+  { links: [SRC.vs], tags: [first(vs.analytic.label), first(vs.simulated.label)] },
+  { links: [SRC.race], tags: [first(race.labels.rates)] },
+];
+const LABELS = /^(MEASURED|ESTIMATE|SYNTHETIC|ANALYTIC|SIMULATED|DERIVED)$/;
+rows.forEach((r, i) => {
   const links = [...r.matchAll(/<a class="link" href="([^"]+)"/g)].map((m) => m[1]);
-  assert.ok(links.length > 0, `row without a link: ${plain(r)}`);
-  for (const l of links) {
-    assert.ok(l.startsWith(BLOB), `link not a blob at integration: ${l}`);
-    readFileSync(new URL(l.slice(BLOB.length), repo)); // the linked file is in the repo
-  }
-  assert.ok(/class="tag[^"]*">(MEASURED|ESTIMATE|SYNTHETIC|ANALYTIC|SIMULATED|UNMEASURED)</.test(r), `row without a label: ${plain(r)}`);
-}
+  for (const l of links) assert.ok(l.startsWith(BLOB), `link not a blob at integration: ${l}`);
+  assert.deepEqual(links.map((l) => l.slice(BLOB.length)), expected[i].links, `row ${i} evidence links`);
+  for (const l of links) readFileSync(new URL(l.slice(BLOB.length), repo)); // the linked file is in the repo
+  const tags = [...r.matchAll(/class="tag[^"]*">([^<]*)</g)].map((m) => m[1]);
+  for (const t of expected[i].tags) assert.match(t, LABELS, `source label not in the label set: ${t}`);
+  assert.deepEqual(tags, expected[i].tags, `row ${i} labels: ${plain(r)}`);
+});
 const has = (i, s) => assert.ok(plain(rows[i]).includes(s), `row ${i} lacks "${s}": ${plain(rows[i])}`);
 const pct = (x) => `${(100 * x).toFixed(1)}%`;
-const fw = json("stats/results/hard-negative-f458ad1.json").rates.bootstrap.rate;
-has(0, fw.toFixed(3));
-has(0, "within chance"); has(0, `${Math.round(100 * json("results/upmc-rediscovery.json").locked.power.value)}%`);
-const arms = json("bench/results/modal-design-20261121T205536Z.json").arms;
-assert.equal(arms.lab.workers, 8); assert.equal(arms.fused.workers, 8);
-has(1, `${Math.round(arms.lab.stages.wall_per_study_s / arms.fused.stages.wall_per_study_s)}×`); has(1, "8 workers against 8");
-const sweep = json("bench/results/sweep-repeats.json");
+const n = (x) => x.toLocaleString("en-US");
+// Row 0: false-alarm rate with its denominator and interval; Charville not significant, not "no signal".
+const boot = fa.rates.bootstrap;
+has(0, pct(boot.rate)); has(0, `${boot.rejections}/${n(fa.n_datasets)}`);
+has(0, `${pct(boot.clopper_pearson_95[0])}–${pct(boot.clopper_pearson_95[1])}`);
+has(0, "not significant"); has(0, `adjusted p = ${cv.maxT.p}`);
+has(0, `${Math.round(100 * upmc.locked.power.value)}%`);
+// Row 1: per evaluated study, both workloads, calibration nulls, setup excluded, different procedures.
+const { lab, fused } = fusedRun.arms;
+assert.equal(lab.workers, 8); assert.equal(fused.workers, 8);
+has(1, `${Math.round(lab.stages.wall_per_study_s / fused.stages.wall_per_study_s)}×`); has(1, "8 workers against 8");
+has(1, "per evaluated study"); has(1, `${n(lab.stages.evaluated_studies)} lab studies`);
+has(1, `${n(fused.stages.evaluated_studies)} Preflight studies`);
+has(1, `${n(fused.summary.studies.calibration)} calibration nulls`); has(1, "setup excluded"); has(1, "different procedures");
+// Row 2: 6.3x is compute span, not Modal wall.
 has(2, `${sweep.scaling.spread.speedup_64_cores.median.toFixed(1)}×`); has(2, `${sweep.scaling.repeats.length} repeats`);
-has(2, `${sweep.fleet.spread.speedup_compute_span.median.toFixed(1)}×`);
-const at200 = json("bench/results/vs-schoenfeld-300.json").points.find((p) => p.patients === 200);
+has(2, `${sweep.fleet.spread.speedup_compute_span.median.toFixed(1)}× less compute span`);
+has(2, `Modal wall ${sweep.fleet.spread.speedup_modal_wall.median.toFixed(1)}×`); has(2, `${sweep.fleet.repeats.length} repeats`);
+// Row 3: the simulated power's denominator and its synthetic scenario.
+const at200 = vs.points.find((p) => p.patients === 200);
 has(3, pct(at200.analytic_power)); has(3, pct(at200.sim_power));
-const lim = json("bench/results/modal-design-20261121T194458Z.json").arms;
-has(4, pct(lim.numba.summary.power.rate)); has(4, pct(lim.lab.summary.power.rate));
-assert.ok(!/discover/i.test(plain(judges)), "For judges must not claim a discovery");
+has(3, `${Math.round(at200.sim_power * at200.sim_n)}/${at200.sim_n}`); has(3, "synthetic outcome model");
+has(3, `HR ${vs.hr_per_sd.toFixed(0)} per SD`); has(3, `resampled from ${vs.patients_source}`);
+// Row 4: an observed power comparison between different procedures, with counts.
+for (const a of [race.arms.numba, race.arms.lab]) { has(4, pct(a.summary.power.rate)); has(4, `${a.summary.power.k}/${n(a.summary.power.n)}`); }
+has(4, "different procedures");
+assert.ok(!/discover|threshold costs/i.test(plain(judges)), "For judges must not claim a discovery or a threshold-only cause");
 console.log("copy.test.mjs: For judges ok");
