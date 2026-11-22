@@ -1,5 +1,5 @@
 // Current vs Ours. Every number and name comes from data.json (built by build_data.py from the result files);
-// every core is real Charville cells from cells.json, drawn in the browser: raw multiplex from each cell's marker
+// every core is real cohort cells from cells.json, drawn in the browser: raw multiplex from each cell's marker
 // values at its real position, segmentation as the Voronoi of the real centroids, clipped to a cell radius,
 // coloured by real cell type. Step 2 overlays the DAB signal of real HPA photos (Ruifrok & Johnston 2001 H-DAB).
 const $ = (id) => document.getElementById(id);
@@ -219,7 +219,7 @@ function heat(img) {
 function drawIhc(now) {
   const g = fit($("ihc")), W = g.canvas.width, H = g.canvas.height;
   if (!photos) return;
-  const n = photos.length, label = 54 * DPR, d = Math.min((W - 24 * DPR * (n + 1)) / n, H - label - 40 * DPR);
+  const n = photos.length, label = 54 * DPR, d = Math.min((W - 26 * DPR * (n + 1)) / n, H - label - 40 * DPR);
   const y = (H - d - label) / 2 + label, scan = Q.has("scan") ? +Q.get("scan") : REDUCED ? 1 : 0.5 - 0.42 * Math.cos(((now - step2At) / 6000) * 2 * Math.PI);
   photos.forEach((ph, k) => {
     const x = (W / n) * k + (W / n - d) / 2, cx = x + d / 2;
@@ -238,7 +238,7 @@ function drawIhc(now) {
 // ---- loop and controls ----
 function frame(now) {
   if (running) { // rAF time can precede the click, so clamp at 0
-    t = Math.min(D.race.seconds, Math.max(0, now - t0) / 1000);
+    t = Math.min(D.race.seconds, Math.max(0, now - t0) / 1e3);
     if (t >= D.race.seconds) { running = false; $("run").disabled = false; }
   }
   $("clock").textContent = `${t.toFixed(1)}s / ${D.race.seconds.toFixed(1)}s`;
