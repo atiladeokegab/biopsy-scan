@@ -252,7 +252,7 @@ const navObs = new IntersectionObserver((entries) => {
     }
   }
 }, { rootMargin: "-30% 0px -60% 0px" });
-for (const a of navLinks) { const t = document.querySelector(a.hash); if (t) navObs.observe(t); }
+for (const a of navLinks) { const t = a.hash && document.querySelector(a.hash); if (t) navObs.observe(t); }
 
 // --bar-h follows the bar's real height (two rows on a phone), so the workflow's one screen and the anchors fit under it.
 new ResizeObserver(([e]) => document.documentElement.style.setProperty("--bar-h", `${Math.round(e.target.offsetHeight)}px`))

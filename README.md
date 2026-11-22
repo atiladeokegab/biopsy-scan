@@ -5,7 +5,7 @@
 **Preflight simulates thousands of cell-by-cell spatial-biomarker studies on real CODEX tissue before you image a slide, screens every candidate pattern with honest multiple-testing correction, and tests how much signal survives one- or two-stain clinical IHC.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-Live interactive demo: <https://atiladeokegab.github.io/sota-parallelism-nov21/>  
+Live interactive demo: <https://preflight-demo-5zvig7nbvq-nw.a.run.app/> (Google Cloud Run; GitHub Pages fallback: <https://atiladeokegab.github.io/sota-parallelism-nov21/>)  
 A recorded walkthrough accompanies the submission.
 
 ![Preflight 3D tissue viewer and power gap demo](docs/assets/demo-1280.png)
