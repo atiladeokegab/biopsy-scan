@@ -61,8 +61,8 @@ def main() -> None:
     data = {
         "schema": "preflight-plan/1",
         "labels": {
-            "sim": "SIMULATED: Monte Carlo on the real cell tables, synthetic outcomes",
-            "interp": "ESTIMATE: straight line between two simulated patient counts",
+            "sim": "SIMULATED screen power: share of studies the screen rejects under one planted effect (Monte Carlo, real cell tables, synthetic outcomes)",
+            "interp": "ESTIMATE screen power: straight line between two simulated patient counts",
             "formula": "ESTIMATE: textbook formula (Schoenfeld 1983), assumes perfect measurement of the whole tissue",
         },
         "cohorts": {c: cohort(c) for c in COHORTS},

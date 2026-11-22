@@ -16,6 +16,10 @@ assert.deepEqual([r.sim.lo, r.sim.hi], [g.power_lo, g.power_hi]);
 assert.match(r.sim.label, /^SIMULATED/);
 assert.match(r.sim.source, /^atlas\/results\/production\/charville\/grid\.json @ [0-9a-f]{7}$/);
 assert.match(r.formula.label, /^ESTIMATE/);
+// Atlas #153: rejection and identification are told apart, and the interval carries its Monte Carlo scope.
+assert.equal(r.sim.identification, g.identification_rate);
+assert.match(r.sim.note, /rejects in 19\.0% \(95% Monte Carlo interval, conditional on the source cohort, acquisition bank and realized calibration: 17%–22%\) and names the planted feature in 8\.7%\.$/);
+assert.match(plan(data, { cohort: "charville", patients: 318, regions: 2, fov: 400, miscall: 0.1 }).sim.note, /Above 159 source patients, simulated cohorts resample them\.$/);
 
 // Halfway between two simulated patient counts: the mean of the two stored values, labelled ESTIMATE.
 const a = grid.points.find((p) => p.patients === 80 && p.regions === 2 && p.fov_um === "full");

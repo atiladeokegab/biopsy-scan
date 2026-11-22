@@ -4,6 +4,7 @@
 // mis-call rate, or a patient count outside the run) is "Not measured". Nothing is extrapolated.
 export const pct = (v) => (v >= 0.995 && v < 1 ? ">99%" : v > 0 && v < 0.005 ? "<1%" : `${Math.round(v * 100)}%`);
 
+const pct1 = (v) => `${(v * 100).toFixed(1)}%`;
 const sameFov = (a, b) => String(a) === String(b);
 
 // The lab's inputs -> {sim, formula, stains}; sim is {power, lo, hi, label, source, note} or {missing, source}.
@@ -21,13 +22,17 @@ export function plan(data, { cohort, patients, regions, fov, miscall }) {
   } else {
     const row = ps.map((n) => c.points.find((p) => p.patients === n && p.regions === regions && sameFov(p.fov_um, fov) && p.miscall === miscall));
     const j = ps.findIndex((n) => n >= patients), b = row[j];
+    const scope = "95% Monte Carlo interval, conditional on the source cohort, acquisition bank and realized calibration";
+    const resampled = patients > c.source_patients ? ` Above ${c.source_patients} source patients, simulated cohorts resample them.` : "";
     if (ps[j] === patients) {
-      sim = { power: b.power, lo: b.lo, hi: b.hi, label: data.labels.sim, source: src,
-        note: `Stored point ${b.design_id}: ${b.n.toLocaleString("en")} simulated studies, 95% interval ${pct(b.lo)}–${pct(b.hi)}.` };
+      sim = { power: b.power, lo: b.lo, hi: b.hi, identification: b.identification, label: data.labels.sim, source: src,
+        note: `Stored point ${b.design_id}, ${b.n.toLocaleString("en")} simulated studies: the screen rejects in ${pct1(b.power)} ` +
+          `(${scope}: ${pct(b.lo)}–${pct(b.hi)}) and names the planted feature in ${pct1(b.identification)}.${resampled}` };
     } else {
       const a = row[j - 1], t = (patients - ps[j - 1]) / (ps[j] - ps[j - 1]), mix = (k) => a[k] + t * (b[k] - a[k]);
-      sim = { power: mix("power"), lo: mix("lo"), hi: mix("hi"), label: data.labels.interp, source: src,
-        note: `No study was run at ${patients} patients: value and band joined linearly between ${ps[j - 1]} and ${ps[j]}; not a validated interval.` };
+      sim = { power: mix("power"), lo: mix("lo"), hi: mix("hi"), identification: mix("identification"), label: data.labels.interp, source: src,
+        note: `No study was run at ${patients} patients: rejection ${pct1(mix("power"))} and planted-feature identification ` +
+          `${pct1(mix("identification"))} are joined linearly between ${ps[j - 1]} and ${ps[j]}; not a validated interval.${resampled}` };
     }
   }
   const inRange = Number.isInteger(patients) && patients >= lo && patients <= hi;
