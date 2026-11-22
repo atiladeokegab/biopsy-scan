@@ -20,6 +20,31 @@
   <div class="error" id="error" role="alert" hidden></div>
 
   <main class="page">
+  <section class="wf" id="flow" aria-labelledby="wf-title">
+    <div class="wf-copy">
+      <p class="wf-eyebrow">Preflight workflow</p>
+      <h2 class="wf-head" id="wf-title">Know whether a study can work before the first slide is stained.</h2>
+      <div class="wf-text" data-step="0"><h3>Start from real tumour tissue</h3><p>Biopsy cores from the Charville cohort, imaged in 40 channels per cell. Every point is a measured cell, glowing in the colours of its own marker signal.</p></div>
+      <div class="wf-text" data-step="1" hidden><h3>Read every cell, then test every pattern</h3><p>A scan turns the signal into 15 cell types, and the screen tests each neighbourhood pattern against survival. Exploratory result: the best pattern scores z 3.46, maxT p 0.1275, within chance.</p></div>
+      <div class="wf-text" data-step="2" hidden><h3>Stress-test the design before the trial</h3><p>A hospital images two 400 µm fields and mis-calls one cell in ten. The textbook formula promises 80% power; simulated on this tissue, it is 27%.</p></div>
+      <div class="wf-text" data-step="3" hidden><h3>Down to one or two routine stains</h3><p>The core separates into its marker channels, then becomes the brown stains a hospital lab already runs, so the test can travel.</p></div>
+    </div>
+    <div class="wf-stage">
+      <div class="wf-vis" data-step="0"><p class="wf-label"><span class="tag measured">MEASURED cells</span> <span class="tag">SYNTHETIC imaging</span></p></div> <!-- /vis -->
+      <div class="wf-vis" data-step="1" hidden><p class="wf-label"><span class="tag measured">MEASURED cells</span> <span class="tag">SYNTHETIC imaging</span></p><div class="wf-result" hidden><b>Screen result, exploratory</b><span>Best pattern z 3.46 · maxT p 0.1275</span><span>Within chance: no pattern passes the 0.05 cutoff.</span></div></div> <!-- /vis -->
+      <div class="wf-vis" data-step="2" hidden><p class="wf-label"><span class="tag measured">MEASURED cells</span> <span class="tag">SYNTHETIC imaging</span></p></div> <!-- /vis -->
+      <div class="wf-vis" data-step="3" hidden><p class="wf-label"><span class="tag measured">MEASURED cells</span> <span class="tag">SIMULATED IHC</span></p></div> <!-- /vis -->
+      <p class="wf-credit">Charville CODEX, Wu et al. 2022, Zenodo 13179600, CC-BY-4.0</p>
+    </div>
+    <ol class="wf-steps">
+      <li><button type="button" class="wf-node" data-step="0" aria-current="step"><span>01</span> Tissue context</button></li>
+      <li><button type="button" class="wf-node" data-step="1"><span>02</span> Decode the tumour</button></li>
+      <li><button type="button" class="wf-node" data-step="2"><span>03</span> Stress-test</button></li>
+      <li><button type="button" class="wf-node" data-step="3"><span>04</span> Routine stains</button></li>
+    </ol>
+  </section>
+  <script type="module" src="workflow/workflow.js"></script>
+
   <section class="hero" aria-labelledby="title">
     <div class="promise">
       <h1 id="title">Thousands of studies, simulated in seconds, before you image a slide.</h1>
