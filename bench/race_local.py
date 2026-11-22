@@ -5,11 +5,14 @@
 
 Both arms are bench.design_batch's, unchanged (the harness behind #113 and #120's Modal figures):
   lab    per study: fresh cKDTree re-imaging, then a 1,000-shuffle conditional maxT permutation test.
-  fused  per study: the fused Numba re-imaging kernel (#120), then the Cox score screen; one calibrated threshold
-         from the calibration stream decides every study, so Preflight also pays for those studies.
+  fused  per study: the fused Numba re-imaging kernel (#120), then the Cox score screen. Preflight also re-images and
+         scores the calibration stream's studies, which its threshold is built from, and that time is counted. The
+         threshold and the per-study calls are not computed here: a slice this small (8 calibration nulls) cannot set a
+         0.05 threshold. This times the work, it does not reproduce the decisions.
 s/study is each arm's compute wall per evaluated study (re-imaging and scoring; load, prep, adjacency and JIT
-warm-up excluded), the race's own metric. Feature parity: each shared study's features are bit-identical.
-Timings are MEASURED on this machine; not the Modal figures.
+warm-up excluded), the race's own metric. Every planned study ID must come back exactly once per arm, with its
+statistic, before any timing or parity is reported. Feature parity: every shared study's features are bit-identical.
+Timings are MEASURED on this machine; not the Modal figures. Both pools fork, so this needs Linux or macOS.
 """
 from __future__ import annotations
 
@@ -18,9 +21,44 @@ import os
 import sys
 from time import perf_counter
 
+import numpy as np
+
 from bench import design_batch as db
 
 LABEL = "MEASURED on this machine; not the Modal figures"
+HEX = set("0123456789abcdef")
+
+
+def check_records(records: list, arm: str, studies: int) -> None:
+    """Exactly the arm's planned study IDs, each once, with a feature hash and a finite statistic; else ValueError."""
+    ids = [(r.get("stream"), r.get("i")) for r in records]
+    want = db.planned_ids(arm, studies)
+    if len(ids) != len(set(ids)) or set(ids) != want:
+        raise ValueError(f"{arm}: {len(set(ids))} unique of {len(ids)} records, not the {len(want)} planned studies")
+    for r in records:
+        x = r.get("x_sha")
+        stat = r.get("p") if arm == "lab" else r.get("z")
+        ok = isinstance(x, str) and len(x) == 64 and set(x) <= HEX and stat is not None
+        if ok and arm == "lab":
+            ok = isinstance(stat, float) and 0.0 <= stat <= 1.0
+        elif ok:
+            z = np.asarray(stat, float)
+            ok = z.ndim == 1 and z.size > 0 and bool(np.isfinite(z).all())
+        if not ok:
+            raise ValueError(f"{arm}: study {r['stream']} {r['i']} has a malformed feature hash or statistic")
+
+
+def host(workers: int) -> dict:
+    """The named hardware: CPU model, cores this process may use, and the workers used."""
+    import platform
+    model = platform.processor() or platform.machine()
+    try:
+        with open("/proc/cpuinfo") as f:
+            model = next((ln.split(":", 1)[1].strip() for ln in f if ln.startswith("model name")), model)
+    except OSError:
+        pass
+    usable = len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else os.cpu_count()
+    return {"cpu_model": model, "logical_cpus": os.cpu_count(), "usable_cpus": usable, "workers": workers}
 
 
 def adjacency(cells: dict, workers: int) -> dict:
@@ -58,13 +96,17 @@ def race(cells: dict, studies: int, workers: int) -> dict:
         for arm in ("lab", "fused"):
             db._S.clear()  # per-process kernel and CSR state: on Modal each arm has its own container
             out = db.run_arm(arm, cells, plan, workers=workers)
+            check_records(out["records"], arm, studies)
             out["stages"] = db.stage_times(out)
             arms[arm] = out
     finally:
         truth.neighbours, truth.truth = serial, reference
     lab, fused = (arms[a]["stages"]["wall_per_study_s"] for a in ("lab", "fused"))
     par = db.parity(arms)
-    return {"label": LABEL, "workers": workers, "studies_per_stream": studies,
+    shared = len(db.planned_ids("lab", studies))  # the lab's IDs are the shared ones: it skips calibration
+    if par["x_compared"] != shared:
+        raise ValueError(f"parity compared {par['x_compared']} studies, not the {shared} both arms planned")
+    return {"label": LABEL, "host": host(workers), "workers": workers, "studies_per_stream": studies,
             "evaluated": {a: o["stages"]["evaluated_studies"] for a, o in arms.items()},
             "s_per_study": {"lab": lab, "fused": fused}, "ratio": lab / fused,
             "parity": {"x_bitwise": par["x_bitwise"], "x_compared": par["x_compared"]},
@@ -76,10 +118,12 @@ def report(r: dict) -> str:
     ok = "bit-identical" if r["parity"]["x_bitwise"] else "MISMATCH"
     return "\n".join([
         f"race-local: {r['label']}",
+        f"  CPU: {r['host']['cpu_model']}, {r['host']['usable_cpus']} of {r['host']['logical_cpus']} logical CPUs usable",
         f"  {r['workers']} workers, {r['studies_per_stream']} studies per stream "
         f"(lab {r['evaluated']['lab']}: null + alternative; Preflight {r['evaluated']['fused']}: plus calibration)",
         f"  lab way        {r['s_per_study']['lab']:.4f} s/study  (1,000-shuffle permutation test per study)",
-        f"  Preflight way  {r['s_per_study']['fused']:.4f} s/study  (fused kernel, one calibrated threshold)",
+        f"  Preflight way  {r['s_per_study']['fused']:.4f} s/study  (fused re-imaging + Cox score; calibration studies "
+        "included, threshold and calls not computed)",
         f"  ratio          {r['ratio']:.1f}x  (lab / Preflight, compute wall per evaluated study)",
         f"  feature parity {ok} on {r['parity']['x_compared']} shared studies",
         f"  setup, outside s/study: adjacency {r['setup_s']['adjacency_in_parallel']:.0f} s (every region, across the "
@@ -96,7 +140,11 @@ def main(argv=None) -> int:
         ap.error("--studies and --workers must be at least 1")
     from core.cohorts import load
     t = perf_counter()
-    r = race(load("charville"), a.studies, a.workers)
+    try:
+        r = race(load("charville"), a.studies, a.workers)
+    except ValueError as e:
+        print(f"race-local: refused, incomplete or malformed evidence: {e}", file=sys.stderr)
+        return 1
     print(report(r))
     print(f"  total wall     {perf_counter() - t:.0f} s (including data load, preparation and JIT warm-up)")
     return 0 if r["parity"]["x_bitwise"] else 1
