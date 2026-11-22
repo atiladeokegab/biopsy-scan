@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "runner": "modal",
+  "gpu_requested": "A100-40GB",
+  "commit": "36478161d1e9892cdd9f7318afb61b78eba9a550",
+  "dirty": false,
+  "launched_utc": "2026-11-22T04:40:18Z",
+  "utc": "20261122T045958Z",
+  "pricing": {
+    "source": "https://modal.com/pricing",
+    "read_utc": "2026-11-21T17:36Z",
+    "unit": "USD per second",
+    "A100-40GB": 0.000583,
+    "A100-80GB": 0.000694,
+    "H100": 0.001097,
+    "L4": 0.000222,
+    "cpu_core": 1.31e-05,
+    "memory_gib": 2.22e-06,
+    "note": "preemptible Function list price; cpu is per physical core (2 vCPU)"
+  },
+  "status": "FAILED",
+  "kind": "ladder",
+  "parity_failed": [
+    "fleet.runs.8.same_gpu_model"
+  ],
+  "note": "a check failed: no timing or ratio is published for this run"
+}

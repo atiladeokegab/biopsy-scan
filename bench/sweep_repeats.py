@@ -156,7 +156,16 @@ def scaling(doc: dict, prior: dict, kind: str) -> dict:
 REDUCE = {"fleet": fleet, "scaling": scaling, "matched": matched, "fair": matched}
 
 
-def reduce(kind: str, paths: list[Path], commit: str) -> dict:
+def failed_attempt(path: Path, commit: str) -> dict:
+    """A run the runner itself marked FAILED (no timing published): kept as evidence, never in the spread."""
+    doc = json.loads(path.read_text())
+    need(doc.get("status") == "FAILED" and doc.get("commit", doc.get("source_commit")) == commit,
+         f"{path.name}: a failed attempt must be a FAILED run at {commit[:7]}")
+    return {"file": path.name, "file_sha256": sha(path), "status": "FAILED",
+            "why": doc.get("parity_failed") or doc.get("failures") or doc.get("note")}
+
+
+def reduce(kind: str, paths: list[Path], commit: str, want: int = 3) -> dict:
     prior = load_prior(kind)
     runs = []
     for p in paths:
@@ -166,9 +175,9 @@ def reduce(kind: str, paths: list[Path], commit: str) -> dict:
         except (Bad, KeyError, TypeError) as e:
             raise Bad(f"{kind} {p.name}: {e!r}") from None
         runs.append({"file": p.name, "file_sha256": sha(p), **r})
-    need(len(runs) == 3, f"{kind}: {len(runs)} repeats, not 3")
+    need(len(runs) == want >= 2, f"{kind}: {len(runs)} repeats, not the declared {want}")
     for key in ("file_sha256", "run_id"):
-        need(len({r[key] for r in runs}) == 3, f"{kind}: a repeat appears twice ({key})")
+        need(len({r[key] for r in runs}) == want, f"{kind}: a repeat appears twice ({key})")
     spread = {k: {"median": statistics.median(v), "min": min(v), "max": max(v)}
               for k in runs[0]["values"] for v in [[r["values"][k] for r in runs]]}
     return {"status": "MEASURED", "prior": PRIORS[kind][0], "repeats": runs, "spread": spread}
@@ -177,13 +186,17 @@ def reduce(kind: str, paths: list[Path], commit: str) -> dict:
 def main(argv=None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     raw = Path(argv[0]) if argv else RESULTS / "sweep-repeats-raw"
-    commits = json.loads((raw / "commits.json").read_text())  # {kind: source commit each repeat must have run}
+    commits = json.loads((raw / "commits.json").read_text())  # {kind: {commit each repeat ran, repeats declared}}
     try:
-        out = {kind: reduce(kind, sorted((raw / kind).glob("*.json")), commits[kind]) for kind in commits}
+        out = {}
+        for kind, c in commits.items():
+            out[kind] = reduce(kind, sorted((raw / kind).glob("*.json")), c["commit"], c["repeats"])
+            out[kind]["failed_attempts"] = [failed_attempt(p, c["commit"])
+                                            for p in sorted((raw / f"{kind}-failed").glob("*.json"))]
     except Bad as e:
         print(f"no result written: {e}", file=sys.stderr)
         return 1
-    out = {"labels": {"timings": "MEASURED", "outcomes": "SYNTHETIC", "spread": "median and min-max of 3 fresh runs; "
+    out = {"labels": {"timings": "MEASURED", "outcomes": "SYNTHETIC", "spread": "median and min-max of each kind's declared fresh runs; "
                       "descriptive, not a confidence interval"}, **out}
     path = Path(argv[1]) if len(argv) > 1 else RESULTS / "sweep-repeats.json"
     path.write_text(json.dumps(out, indent=2, allow_nan=False) + "\n")

@@ -27,7 +27,7 @@ def raw(tmp_path, kind, docs):
     (tmp_path / kind).mkdir()
     for k, d in enumerate(docs):
         (tmp_path / kind / f"r{k}.json").write_text(json.dumps(d))
-    (tmp_path / "commits.json").write_text(json.dumps({kind: "c0ffee"}))
+    (tmp_path / "commits.json").write_text(json.dumps({kind: {"commit": "c0ffee", "repeats": len(docs)}}))
     return tmp_path
 
 
@@ -128,8 +128,22 @@ def test_duplicate_runs_wrong_commit_and_too_few_repeats_are_refused(tmp_path):
         s.reduce("matched", sorted((raw(tmp_path, "matched", [same, repeat("matched", 1), same]) / "matched").glob("*")), "c0ffee")
     with pytest.raises(s.Bad, match="ran c0ffee, not deadbee"):
         s.reduce("matched", sorted((tmp_path / "matched").glob("*")), "deadbeef")
-    with pytest.raises(s.Bad, match="2 repeats"):
+    with pytest.raises(s.Bad, match="2 repeats, not the declared 3"):
         s.reduce("matched", sorted((tmp_path / "matched").glob("*"))[:2], "c0ffee")
+    with pytest.raises(s.Bad, match="1 repeats"):
+        s.reduce("matched", sorted((tmp_path / "matched").glob("*"))[:1], "c0ffee", want=1)
+
+
+def test_a_failed_attempt_is_listed_with_its_reason_and_kept_out_of_the_spread(tmp_path):
+    d = raw(tmp_path, "fleet", [repeat("fleet", 0), repeat("fleet", 1)])
+    (d / "fleet-failed").mkdir()
+    (d / "fleet-failed" / "f.json").write_text(json.dumps(
+        {"status": "FAILED", "commit": "c0ffee", "parity_failed": ["fleet.runs.8.same_gpu_model"]}))
+    assert s.main([str(d), str(tmp_path / "out.json")]) == 0
+    out = json.loads((tmp_path / "out.json").read_text())["fleet"]
+    assert len(out["repeats"]) == 2 and out["failed_attempts"][0]["why"] == ["fleet.runs.8.same_gpu_model"]
+    (d / "fleet-failed" / "f.json").write_text(json.dumps({"status": "MEASURED", "commit": "c0ffee"}))
+    assert s.main([str(d), str(tmp_path / "out2.json")]) == 1
 
 
 def test_the_fair_run_must_be_the_declared_8_lab_workers():
