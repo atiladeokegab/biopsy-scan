@@ -78,3 +78,14 @@ console.log("workflow.test.mjs: ok");
   assert.equal(new Set(TYPE_COLORS.map((c) => c.toLowerCase())).size, TYPE_COLORS.length, "every type has its own colour");
   assert.ok(!TYPE_COLORS.some((c) => c.toLowerCase() === "#2bd4a4"), "emerald is for highlights only");
 }
+
+// Type: Instrument Serif for the headline and the big numbers, JetBrains Mono for chips and kicker, self-hosted with their OFL.
+{
+  const css = readFileSync(new URL("./style.css", import.meta.url), "utf8");
+  for (const [fam, file, ofl] of [["Instrument Serif", "InstrumentSerif-400-latin.woff2", "OFL-instrumentserif.txt"], ["JetBrains Mono", "JetBrainsMono-400-latin.woff2", "OFL-jetbrainsmono.txt"]]) {
+    assert.match(css, new RegExp(`@font-face\\s*\\{[^}]*"${fam}"[^}]*fonts/${file}`), `no @font-face for ${fam}`);
+    for (const f of [file, ofl]) assert.ok(existsSync(new URL(`./fonts/${f}`, import.meta.url)), `demo/fonts/${f} missing`);
+  }
+  assert.match(css, /\.wf-head\s*\{[^}]*var\(--font-serif\)/, "headline not in the serif");
+  assert.match(css, /\.wf-eyebrow\s*\{[^}]*var\(--font-mono\)/, "kicker not in the mono");
+}

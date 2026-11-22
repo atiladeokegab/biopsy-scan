@@ -71,13 +71,14 @@ export function mount(el, data) {
       g.strokeRect(X(cx + FOV_UM / 2) - s / 2, Y(cy + FOV_UM / 2) - s / 2, s, s); g.restore();
     });
     // Formula vs simulation at 200 patients: two bars that grow to the file's values.
-    const px = W * 0.65, pw = W * 0.32, big = Math.max(22, Math.min(40, W * 0.05)), font = getComputedStyle(document.body).fontFamily || "sans-serif";
+    const px = W * 0.65, pw = W * 0.32, big = Math.max(22, Math.min(40, W * 0.05)), font = getComputedStyle(document.body).fontFamily || "sans-serif",
+      serif = getComputedStyle(el).getPropertyValue("--font-serif").trim() || "Georgia, serif";
     [[P.analytic, P.analyticLabel, head], [P.sim, P.simLabel, warn]].forEach(([v, label, c], i) => {
       const a = ease(t, 2.4 + i * 0.6, 3.6 + i * 0.6); if (a <= 0) return;
       const y = H * 0.3 + i * H * 0.32;
       g.save(); g.globalAlpha = Math.min(1, a * 2);
       g.font = `600 12px ${font}`; g.fillStyle = muted; g.fillText(W < 560 ? label : `${label}, ${AT} patients`, px, y, pw);
-      g.font = `700 ${big}px ${font}`; g.fillStyle = c; g.fillText(`${Math.round(v * 100 * a)}%`, px, y + big + 4);
+      g.font = `400 ${Math.round(big * 1.3)}px ${serif}`; g.fillStyle = c; g.fillText(`${Math.round(v * 100 * a)}%`, px, y + big + 4);
       g.fillStyle = "#22303F"; g.fillRect(px, y + big + 14, pw, 5); g.fillStyle = c; g.fillRect(px, y + big + 14, pw * v * a, 5);
       g.restore();
     });
