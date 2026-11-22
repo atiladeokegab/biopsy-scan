@@ -43,6 +43,7 @@
     .risk { position: absolute; top: 0; right: 0; width: min(340px, 90%); background: var(--surface); border: 1px solid var(--hair); border-radius: 12px;
       padding: 22px; display: flex; flex-direction: column; gap: 14px; transform: translateX(110%); opacity: 0; transition: transform .5s ease, opacity .5s; }
     .risk.on { transform: none; opacity: 1; }
+    @media (min-width: 761px) { .stage:has(.risk.on) { justify-content: flex-start; } .stage:has(.risk.on) .frame { max-width: calc(100% - 360px); } } /* panel sits beside the photo, not on it */
     .risk h2 { font: 30px/1.1 var(--serif); color: var(--ink); margin: 0; }
     .demo-tag { align-self: flex-start; font: 11px var(--mono); color: var(--gold); border: 1px solid var(--gold); border-radius: 4px; padding: 3px 7px; }
     .score { display: flex; gap: 6px; } .score i { flex: 1; height: 10px; border-radius: 2px; background: var(--hair); }
@@ -97,7 +98,7 @@
       <div class="legend"><span style="--c:var(--coral)">DAB-positive</span><span style="--c:var(--emerald)">Nuclei (haematoxylin)</span></div>
       <div class="results" id="results"></div>
       <div class="fast" id="fast" hidden>21× faster</div>
-      <p class="caption">Speed replays measured runs: 0.881 s vs 0.042 s per evaluated study, 21× (<a style="color:inherit" href="https://github.com/atiladeokegab/sota-parallelism-nov21/blob/integration/bench/results/modal-design-20261121T205536Z.json">bench/results/modal-design-20261121T205536Z.json</a>)</p>
+      <p class="caption">Speed replays measured runs: 0.881 s vs 0.042 s per evaluated study, 8 CPU workers each, 21× (<a style="color:inherit" href="https://github.com/atiladeokegab/sota-parallelism-nov21/blob/integration/bench/results/modal-design-20261121T205536Z.json">bench/results/modal-design-20261121T205536Z.json</a>)</p>
     </div>
   </main>
   <footer>Real head and neck biopsy · <a href="https://www.proteinatlas.org/ENSG00000186081-KRT5/cancer/head+and+neck+cancer">Human Protein Atlas</a> · CC BY-SA 3.0 · other patients. Overlay computed in your browser from the stain colours.</footer>

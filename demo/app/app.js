@@ -85,7 +85,7 @@ function run() {
 function finish(sec) {
   running = false; $("run").disabled = false;
   done[mode] = sec;
-  $("results").innerHTML = Object.entries(done).map(([m, s]) => `<span>${m === "ours" ? "Preflight" : "Current"} · ${s.toFixed(1)} s</span>`).join("");
+  $("results").innerHTML = Object.entries(done).map(([m, s]) => `<span>${m === "ours" ? "Preflight" : "Current"} · ${s.toFixed(1)} s replay</span>`).join("");
   $("fast").hidden = !(done.current && done.ours);
   if (mode === "ours") { const r = $("risk"); r.hidden = false; requestAnimationFrame(() => r.classList.add("on")); }
 }
