@@ -11,6 +11,8 @@ smoke: install test
 	python3 -I demo/check_data.py demo/data
 	node demo/race.test.mjs
 	node demo/copy.test.mjs
+	python3 -I demo/collect_preflight.py --check
+	node demo/preflight.test.mjs
 
 data:
 	./scripts/fetch_data.sh
@@ -26,6 +28,7 @@ heldout: data
 PORT ?= 8000
 demo:
 	python3 -I demo/collect_race.py
+	python3 -I demo/collect_preflight.py
 	python3 -I demo/check_data.py
 	python3 -m http.server $(PORT) -d demo
 

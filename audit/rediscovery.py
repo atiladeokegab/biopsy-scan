@@ -80,7 +80,8 @@ ALPHA = 0.05
 EFFECT_HR_PER_SD = 2.0  # the effect the power atlas plants (scripts/export_grid.py effect_hr_per_sd)
 MIN_POWER = 0.5
 POWER_SIMS, POWER_SEED = 400, 20261121
-LABEL = "exploratory: outcomes already seen (Punovuori et al., Cell 2024); internal held-out split"
+LABEL = ("exploratory: outcomes already published (Wu et al., Nat Biomed Eng 2022); "
+         "rule biology from Punovuori et al., Cell 2024; internal held-out split")
 # Charville's strongest v2 feature (#47: z 3.96, maxT-adjusted p 0.098, MEASURED, exploratory). Its last field is a marker.
 CHARVILLE_TOP_HIT = "Tumor 5|Macrophage|100um|PD1"
 CHARVILLE_TOP_HIT_SOURCE = {"source_pr": 47, "source_result": "results/charville-v2.json",

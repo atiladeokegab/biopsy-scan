@@ -17,6 +17,9 @@ RECEIPT = rs.opening_record(rs.RULE_SHA256, rs.APPROVED_SPLIT["manifest_sha256"]
 ESTIMATES = ("hr_per_sd", "hr_per_sd_ci95", "log_hr_per_sd", "se", "wald_z", "p_one_sided", "c_index",
              "locked_test_passes")
 Z95 = 1.959964  # rediscovery.score_feature's CI multiplier
+# The label the committed records carry. They predate the 2026-11-22 citation correction and stay as written:
+# the locked set was opened once and is never rescored, so only rs.LABEL (for any future output) changed.
+COMMITTED_LABEL = "exploratory: outcomes already seen (Punovuori et al., Cell 2024); internal held-out split"
 
 
 def _strict(text):
@@ -31,7 +34,7 @@ def _finite(*vals):
 
 def check(doc, opened):
     """Raises AssertionError on any breach of the A-16.2 result contract; `opened` is the opening receipt."""
-    assert doc["cohort"] == "upmc" and doc["label"] == rs.LABEL
+    assert doc["cohort"] == "upmc" and doc["label"] == COMMITTED_LABEL
     assert doc["rule_sha256"] == doc["locked"]["rule_sha256"] == rs.RULE_SHA256 == rs.PREREG_SHA256
     assert doc["manifest_sha256"] == rs.APPROVED_SPLIT["manifest_sha256"]
     assert doc["opening_record"] == RECEIPT.name
@@ -45,10 +48,10 @@ def check(doc, opened):
     d = doc["discovery"]
     assert d["status"] == "MEASURED" and 1 <= d["rank"] <= d["of"] <= d["of_all"]
     assert _finite(d["z"]) and d["direction_ok"] is (d["z"] > 0)  # the rule's direction: higher is worse
-    assert d["label"].startswith("MEASURED on discovery patients only") and rs.LABEL in d["label"]
+    assert d["label"].startswith("MEASURED on discovery patients only") and COMMITTED_LABEL in d["label"]
 
     lk = doc["locked"]
-    assert lk["feature"] == rs.RULE["feature"] and lk["label"] == rs.LABEL
+    assert lk["feature"] == rs.RULE["feature"] and lk["label"] == COMMITTED_LABEL
     assert (lk["n_patients"], lk["n_events"]) == (rs.APPROVED_SPLIT["locked_patients"], rs.APPROVED_SPLIT["locked_events"])
     pw = lk["power"]
     assert pw["label"].startswith("SIMULATED") and "no outcomes read" in pw["label"]
@@ -182,3 +185,10 @@ def test_a_non_strict_number_is_refused():
     doc["locked"]["p_one_sided"] = float("nan")
     with pytest.raises(ValueError):
         _strict(json.dumps(doc))
+
+
+def test_label_names_the_upmc_data_source_not_the_rule_biology_paper():
+    """UPMC data: Wu et al., Nat Biomed Eng 2022. Punovuori et al., Cell 2024 is only where the rule's biology comes from."""
+    assert rs.LABEL == ("exploratory: outcomes already published (Wu et al., Nat Biomed Eng 2022); "
+                        "rule biology from Punovuori et al., Cell 2024; internal held-out split")
+    assert rs.LABEL != COMMITTED_LABEL  # the committed records keep their pre-correction label

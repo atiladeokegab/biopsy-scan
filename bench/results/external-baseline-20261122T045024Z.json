@@ -1,0 +1,41 @@
+{
+  "status": "FAILED",
+  "error": "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\n  File \"/root/preflight/bench/external_baseline.py\", line 197, in run\\n    x = squidpy_features(looks, _S[\"names\"], _S[\"focal\"], seed=0, n_jobs=n_jobs)\\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\n  File \"/root/preflight/bench/external_baseline.py\", line 92, in squidpy_features\\n    z, count = sq.gr.nhood_enrichment(a, cluster_key=\"type\", copy=True, n_perms=N_PERMS, seed=seed, n_jobs=n_jobs,\\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\n  File \"/usr/local/lib/python3.11/site-packages/squidpy/gr/_nhood.py\", line 204, in nhood_enrichment\\n    perms = parallelize(\\n            ^^^^^^^^^^^^\\n  File \"/usr/local/lib/python3.11/site-packages/squidpy/_utils.py\", line 201, in wrapper\\n    res = jl.Parallel(n_jobs=n_jobs, backend=backend)(\\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\n  File \"/usr/local/lib/python3.11/site-packages/joblib/parallel.py\", line 2098, in __call__\\n    return output if self.return_generator else list(output)\\n                                                ^^^^^^^^^^^^\\n  File \"/usr/local/lib/python3.11/site-packages/joblib/parallel.py\", line 1704, in _get_outputs\\n    yield from self._retrieve()\\n  File \"/usr/local/lib/python3.11/site-packages/joblib/parallel.py\", line 1806, in _retrieve\\n    self._raise_error_fast()\\n  File \"/usr/local/lib/python3.11/site-packages/joblib/parallel.py\", line 1885, in _raise_error_fast\\n    error_job.get_result(self.timeout)\\n  File \"/usr/local/lib/python3.11/site-packages/joblib/parallel.py\", line 780, in get_result\\n    return self._return_or_raise()\\n           ^^^^^^^^^^^^^^^^^^^^^^^\\n  File \"/usr/local/lib/python3.11/site-packages/joblib/parallel.py\", line 795, in _return_or_raise\\n    raise self._result\\nTypeError: No matching definition for argument type(s) readonly array(uint32, 1d, C), array(uint32, 1d, C), array(uint32, 1d, C)\\n')",
+  "source_commit": "2955a9de3f3f7adc63aaa8c2d96e431c35ad319a",
+  "labels": {
+    "timing": "MEASURED",
+    "outcomes": "SYNTHETIC (atlas/simulation.py, as #113)",
+    "agreement": "MEASURED (same re-imaged cells in both pipelines)",
+    "rates": "ESTIMATE (binomial rates with Wilson 95% intervals)"
+  },
+  "headline": null,
+  "method": "External baseline: the design point done the way a lab would with off-the-shelf tools (squidpy + lifelines).\n\nPer study, from the same design, seeds and draws as #113 (bench/design_batch.py):\n  cells     the visible, mis-called cells our re-imager sees (core.reimage_ref.draw, crop_mask, miscall), so both\n            pipelines get the same cells; study_cells() is checked bit for bit against core.reimage_ref.reimage.\n  squidpy   per drawn patient, one AnnData of its regions; per radius (25, 50, 100 um)\n            sq.gr.spatial_neighbors(coord_type=\"generic\", radius=r, library_key=\"region\") and\n            sq.gr.nhood_enrichment (default 1,000 permutations). It fills the same 630 slots as our grammar,\n            (tumour type t, neighbour type j, radius, statistic): \"fraction\" = squidpy's edge count share\n            count[t, j] / sum_j count[t, :], \"enrichment\" = its z-score. NaN where the patient has no visible t.\n  lifelines CoxPHFitter per feature, strata = coverslip group, rows with NaN dropped; Bonferroni over all 630:\n            the study is called when min p x 630 <= 0.05.\nTimed per study inside one single-thread pool worker: draw, mis-call, AnnData, squidpy and lifelines. Our own X and\nscore z on the same cells are computed after the timer, for agreement only. Seconds per study = pool wall / N,\nthe basis of the fused path's 0.0419 s (#120: compute_wall_s / 3,000 studies, 8 workers).",
+  "design": {
+    "patients": 159,
+    "regions_per_patient": 2,
+    "fov_um": 400.0,
+    "eps": 0.1,
+    "seed": 0,
+    "cohort": "charville",
+    "alpha": 0.05,
+    "n_perms": 1000,
+    "studies_per_stream": 2,
+    "streams": {
+      "null": 202,
+      "alternative": 303
+    },
+    "root_seed": 20261121,
+    "correction": "Bonferroni over 630"
+  },
+  "summary": null,
+  "records": null,
+  "setup": null,
+  "modal": {
+    "app": "preflight-external-baseline",
+    "class": "Modal A100 + 8 cores + 64 GiB",
+    "started_utc": "2026-11-22T04:50:24.031965+00:00",
+    "finished_utc": "2026-11-22T04:50:55.727699+00:00",
+    "wall_s": 31.695734,
+    "note": "wall_s includes container start and image pull; pool_wall_s is inside the container"
+  }
+}
