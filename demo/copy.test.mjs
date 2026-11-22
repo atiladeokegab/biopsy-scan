@@ -48,7 +48,7 @@ const expected = [
   { links: [SRC.fa, SRC.cv, SRC.upmc], tags: [fa.label, cv.labels.cohort_counts, first(upmc.locked.power.label)] },
   { links: [SRC.fused], tags: [fusedRun.labels.compute] },
   { links: [SRC.sweep], tags: [sweep.labels.timings] },
-  { links: [SRC.vs], tags: [first(vs.analytic.label), first(vs.simulated.label)] },
+  { links: [SRC.vs], tags: [first(vs.simulated.label), first(vs.analytic.label)] },
   { links: [SRC.race], tags: [first(race.labels.rates)] },
 ];
 const LABELS = /^(MEASURED|ESTIMATE|SYNTHETIC|ANALYTIC|SIMULATED|DERIVED)$/;
@@ -61,6 +61,9 @@ rows.forEach((r, i) => {
   for (const t of expected[i].tags) assert.match(t, LABELS, `source label not in the label set: ${t}`);
   assert.deepEqual(tags, expected[i].tags, `row ${i} labels: ${plain(r)}`);
 });
+const legend = plain(judges.match(/<p class="pf-legend">([\s\S]*?)<\/p>/)?.[1] ?? "");
+for (const t of new Set(expected.flatMap((e) => e.tags))) assert.ok(legend.includes(`${t},`), `legend lacks ${t}`);
+assert.ok(!/<\/span>\s+[.,;]/.test(judges), "space before punctuation after a tag pill");
 const has = (i, s) => assert.ok(plain(rows[i]).includes(s), `row ${i} lacks "${s}": ${plain(rows[i])}`);
 const pct = (x) => `${(100 * x).toFixed(1)}%`;
 const n = (x) => x.toLocaleString("en-US");
