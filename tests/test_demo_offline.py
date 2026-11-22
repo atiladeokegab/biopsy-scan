@@ -12,15 +12,22 @@ DEMO = Path(__file__).resolve().parents[1] / "demo"
 # XML namespace identifiers are names, not requests.
 NAMESPACES = {"http://www.w3.org/2000/svg", "http://www.w3.org/1999/xlink", "http://www.w3.org/1999/xhtml"}
 URL = re.compile(r"https?://[^\s\"'`)<>]+")
+# Hyperlinks to this repo's merged files (the For judges panel) load nothing until a reader clicks one.
+EVIDENCE_LINK = re.compile(r'<a class="link" href="https://github\.com/atiladeokegab/sota-parallelism-nov21/blob/[^"]+"')
 
 
 def remote_urls(text: str) -> list[str]:
-    return [u for u in URL.findall(text) if u not in NAMESPACES]
+    return [u for u in URL.findall(EVIDENCE_LINK.sub("<a", text)) if u not in NAMESPACES]
 
 
 def test_remote_url_scan_flags_a_url_and_skips_namespaces():
     assert remote_urls('const ns = "http://www.w3.org/2000/svg";') == []
     assert remote_urls('<script src="https://cdn.example.com/x.js"></script>') == ["https://cdn.example.com/x.js"]
+    # A link a reader follows to this repo's merged evidence is navigation, not a request; anywhere else it still counts.
+    blob = "https://github.com/atiladeokegab/sota-parallelism-nov21/blob/integration/bench/results/sweep-repeats.json"
+    assert remote_urls(f'<a class="link" href="{blob}">sweep-repeats.json</a>') == []
+    assert remote_urls(f'<img src="{blob}">') == [blob]
+    assert remote_urls('<a href="https://example.com/x">x</a>') == ["https://example.com/x"]
 
 
 def test_demo_sources_name_no_remote_url():
