@@ -39,7 +39,7 @@ const SRC = {
   fa: "stats/results/hard-negative-f458ad1.json", cv: "results/charville-v2.json", upmc: "results/upmc-rediscovery.json",
   fused: "bench/results/modal-design-20261121T205536Z.json", sweep: "bench/results/sweep-repeats.json",
   vs: "bench/results/vs-schoenfeld-300.json", race: "bench/results/modal-design-20261121T194458Z.json",
-  ext: "bench/results/same-host-20261122T140908Z.json",
+  ext: "bench/results/same-host-20261122T140908Z.json", agree: "docs/external-agreement.md",
 };
 const fa = json(SRC.fa), cv = json(SRC.cv), upmc = json(SRC.upmc), fusedRun = json(SRC.fused);
 const sweep = json(SRC.sweep), vs = json(SRC.vs), race = json(SRC.race), ext = json(SRC.ext);
@@ -48,7 +48,7 @@ const first = (label) => label.split(/[ :]/)[0]; // "ESTIMATE (sim)" -> "ESTIMAT
 const expected = [
   { links: [SRC.fa, SRC.cv, SRC.upmc], tags: [fa.label, cv.labels.cohort_counts, first(upmc.locked.power.label)] },
   { links: [SRC.fused], tags: [fusedRun.labels.compute] },
-  { links: [SRC.ext, SRC.sweep], tags: [first(ext.labels.timing), sweep.labels.timings] },
+  { links: [SRC.agree, SRC.ext, SRC.sweep], tags: [first(ext.labels.timing), sweep.labels.timings] },
   { links: [SRC.vs], tags: [first(vs.simulated.label), first(vs.analytic.label)] },
   { links: [SRC.race], tags: [first(race.labels.rates)] },
 ];
@@ -94,7 +94,10 @@ has(2, "reference recount and agreement checks timed separately");
 // Scope beside 534x and 312x (basis keys in the same-host file); 547x is the closest to the old combined-checks basis.
 has(2, "the whole off-the-shelf call per study"); has(2, "each result returned to the parent");
 has(2, "re-imaging and scoring only, the calibrated threshold and calls a separate step, excluded");
-has(2, "the closest scope to the old 583× combined-checks basis"); has(2, "top pick the same in 16 of 16 on a matched config"); // docs/external-agreement.md, #174
+has(2, "the closest scope to the old 583× combined-checks basis"); has(2, "top pick the same in 16 of 16 in a separate matched-feature, matched-score experiment"); // docs/external-agreement.md, #174
+// Both denominators beside 534x: the external arm's studies and the fused arm's evaluations (3 streams of full_studies_per_stream).
+has(2, "median of the paired per-repeat ratios"); has(2, `over ${ext.repeats[0].arms.external.studies} external studies`);
+has(2, `over ${n(3 * ext.design.full_studies_per_stream)} fused evaluations`);
 has(2, "per decided study with calibration charged");
 has(2, `${sweep.scaling.spread.speedup_64_cores.median.toFixed(1)}×`); has(2, `${sweep.scaling.repeats.length} repeats`);
 has(2, `${sweep.fleet.spread.speedup_compute_span.median.toFixed(1)}× less compute span`);

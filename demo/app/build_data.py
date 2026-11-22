@@ -32,10 +32,18 @@ def read(rel):
     return json.loads((ROOT / rel).read_text())
 
 
+def check_current(cur):
+    """The Current receipt's gate, as Ours has: MEASURED, no errors, both arms timed on the same cells."""
+    assert cur["status"] == "MEASURED" and not cur["errors"] and cur["checks"]["same_cells_both_arms"] is True, \
+        "Current source must be MEASURED, error-free, with matched cells in both arms"
+
+
 def build():
     cohort, cur, ours, grid = read(COHORT), read(CURRENT), read(OURS), read(GRID)
     cells = json.loads(CELLS.read_text())
     assert ours["status"] == "MEASURED" and ours["parity"]["all"] is True, "Ours source must be MEASURED with full CPU parity"
+    check_current(cur)
+    cur_n, workers, ours_n = cur["repeats"][0]["arms"]["external"]["studies"], cur["repeats"][0]["arms"]["external"]["workers"], ours["evaluated_studies"]
     studies = grid["studies_per_point"]
     cur_s, ours_s = cur["summary"]["external_pipeline_s_per_study"]["median"], ours["headline"]["gpu_wall_per_study_s_median"]
     scale = OURS_FINISH_S / (studies * ours_s)  # race seconds per real second
@@ -50,10 +58,12 @@ def build():
         "studies": studies,
         "race": {"seconds": RACE_S, "ours_finish_s": OURS_FINISH_S, "race_s_per_real_s": scale,
                  "current_studies_at_end": int(RACE_S / scale / cur_s)},
-        "current": {"s_per_study": cur_s, "workers": cur["repeats"][0]["arms"]["external"]["workers"],
+        "current": {"s_per_study": cur_s, "workers": workers, "source": CURRENT,
+                    "basis": f"Projected from {cur_n:,} measured studies, {workers} CPU workers, same host",
                     "worker_s_per_study": statistics.median(r["arms"]["external"]["worker_study_s"]["median"] for r in cur["repeats"]),
                     "total_s": studies * cur_s},
-        "ours": {"s_per_study": ours_s, "gpus": 1, "gpu": ours["headline"]["gpu_sku"], "source": OURS, "total_s": studies * ours_s},
+        "ours": {"s_per_study": ours_s, "gpus": 1, "gpu": ours["headline"]["gpu_sku"], "source": OURS,
+                 "basis": f"Projected from {ours_n:,} measured evaluations, one {ours['headline']['gpu_sku'].split()[1]}", "total_s": studies * ours_s},
         "ratio": cur_s / ours_s,
         "markers": cells["markers"],
         "marker_colors": [MARKER_RGB[m] for m in cells["markers"]],

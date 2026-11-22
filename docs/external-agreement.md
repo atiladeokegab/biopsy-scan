@@ -12,7 +12,9 @@ Preflight in **14 of 50 studies, MEASURED** (null stream 5/25, alternative 9/25;
 36 misses did the two pick the same (tumour type, neighbour type, radius) with the other statistic (from that file's
 records). Median top-10 overlap was **4.5** of 10 (`summary.agreement_median.top10_overlap` in the same file). All
 MEASURED. The speed figure for this pipeline is now the same-host rerun (#185,
-`bench/results/same-host-20261122T140908Z.json`): 534×, median of 3 fresh containers (range 511–547×), MEASURED.
+`bench/results/same-host-20261122T140908Z.json`): 534×, the median of the paired per-repeat ratios over 3 fresh
+containers (range 511–547×), 22.35 s per study over 48 external studies against 0.0426 s per study over 3,000 fused
+evaluations, MEASURED.
 
 ## Short answer
 

@@ -2,6 +2,8 @@
 import importlib.util
 import json
 import re
+
+import pytest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -46,3 +48,13 @@ def test_ui_hardcodes_no_cohort_numbers_or_marker_names():
 def test_the_grep_catches_a_planted_number_and_marker():
     planted = "<b>159 patients</b> <span>1,000</span> PanCK"
     assert sum(bool(re.search(p, planted)) for p in forbidden()) >= 3
+
+
+def test_current_receipt_gate_rejects_a_doctored_receipt():
+    good = json.loads((ROOT / bd.CURRENT).read_text())
+    bd.check_current(good)
+    for key, bad in (("status", "FAILED"), ("errors", ["boom"])):
+        with pytest.raises(AssertionError):
+            bd.check_current({**good, key: bad})
+    with pytest.raises(AssertionError):
+        bd.check_current({**good, "checks": {**good["checks"], "same_cells_both_arms": False}})
