@@ -87,3 +87,33 @@ def test_ratios_carry_both_arms_the_cross_run_label_and_the_different_statistic_
     assert r["settings"]["cores"] == 8 and r["settings"]["squidpy.gr.nhood_enrichment"]["n_perms"] == 1000
     h = eb.headline({**r, "seconds_per_study": 0.8809, "worker_study_s": {"median": 7, "min": 6, "max": 9}})
     assert "cross-run, same container class" in h and "not Preflight's speedup" in h and "range 6-9 s" in h
+
+
+def test_failed_fits_are_excluded_from_agreement_ranks_and_counted():
+    rng = np.random.default_rng(2)
+    X = rng.random((20, 12))
+    zo = np.arange(12.0)[::-1]  # our top feature is column 0
+    none = eb.agreement(X, X, np.full(12, np.nan), zo)  # every lifelines fit failed
+    assert none["top1_same"] is None and none["top10_overlap"] is None and none["z_spearman_abs"] is None
+    assert none["z_excluded"] == 12
+    zs = zo.copy()
+    zs[:3] = np.nan  # three failed fits, ours ranks them highest
+    part = eb.agreement(X, X, zs, zo)
+    assert part["z_excluded"] == 3 and part["top1_same"] and part["top_ours"] == part["top_lifelines"] == 3
+    assert part["top10_overlap"] == 9  # only 9 features are finite on both sides
+    s = eb.summarize({"records": [_rec(none), _rec(part)], "pool_wall_s": 10.0, "workers": 1, "plant_feature": 0})
+    assert s["top1_same"] == {"k": 1, "of": 1} and s["z_excluded"] == 15
+
+
+def test_headline_per_study_is_the_off_the_shelf_worker_time_not_the_instrumented_pool():
+    recs = [_rec(eb.agreement(np.ones((3, 2)), np.ones((3, 2)), np.ones(2), np.ones(2)), study_s=s) for s in (8.0, 12.0)]
+    s = eb.summarize({"records": recs, "pool_wall_s": 30.0, "workers": 2, "plant_feature": 0})
+    assert s["seconds_per_study"] == pytest.approx(20.0 / 2 / 2)  # summed worker time / workers / studies
+    assert s["instrumented_workflow_s_per_study"] == pytest.approx(15.0)
+    assert s["ratio_vs_lab"] == pytest.approx(5.0 / eb.LAB_S_PER_STUDY["value"])
+
+
+def _rec(agreement, study_s=1.0):
+    return {"stream": "alternative", "i": 0, "study_s": study_s, "cells_s": 0.0, "squidpy_s": study_s / 2,
+            "lifelines_s": study_s / 2, "fitted": 0, "failed": 0, "lab_call": False, "lab_top": None, "ours_top": 0,
+            "agreement": agreement}
