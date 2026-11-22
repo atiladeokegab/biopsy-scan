@@ -62,10 +62,22 @@ def build():
     }
 
 
+def same(a, b):
+    """Equal, except floats may differ in the last bits: math.erf is the platform's libm, so CI and a laptop differ."""
+    if isinstance(a, float) and isinstance(b, float):
+        return abs(a - b) <= 1e-12
+    if isinstance(a, dict) and isinstance(b, dict):
+        return a.keys() == b.keys() and all(same(a[k], b[k]) for k in a)
+    if isinstance(a, list) and isinstance(b, list):
+        return len(a) == len(b) and all(map(same, a, b))
+    return type(a) is type(b) and a == b
+
+
 def main(argv):
-    text = json.dumps(build(), indent=1) + "\n"
+    data = build()
+    text = json.dumps(data, indent=1) + "\n"
     if "--check" in argv:
-        ok = OUT.exists() and OUT.read_text() == text
+        ok = OUT.exists() and same(json.loads(OUT.read_text()), data)
         print(f"{OUT.relative_to(ROOT)}: {'ok' if ok else 'STALE, run python3 -I demo/collect_preflight.py'}")
         return 0 if ok else 1
     OUT.write_text(text)
