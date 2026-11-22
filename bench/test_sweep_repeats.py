@@ -62,6 +62,15 @@ def test_preflight_maxT_may_differ_by_rounding_across_hosts_but_no_more():
         s.matched(d, s.load_prior("matched"), "matched")
 
 
+def test_the_screen_hooks_maxT_may_move_by_an_ulp_across_hosts():
+    d = repeat("fleet", 0)
+    d["screen"]["backends"]["numpy"]["maxT"] = 3.058938978093486  # fleet repeat 3's host
+    s.fleet(d, s.load_prior("fleet"), "fleet")
+    d["screen"]["backends"]["numpy"]["maxT"] = 3.06
+    with pytest.raises(s.Bad, match="maxT differs"):
+        s.fleet(d, s.load_prior("fleet"), "fleet")
+
+
 def screen_old_p(d):
     d["screen"]["backends"]["cupy"]["p"] = 0.789
 
