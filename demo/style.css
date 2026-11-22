@@ -328,14 +328,17 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
 @keyframes wf-in { from { opacity: 0; transform: translateY(8px) scale(0.985); } }
 .wf-text:not([hidden]), .wf-vis:not([hidden]) { animation: wf-in 0.6s cubic-bezier(.2, .7, .2, 1); }
 @media (prefers-reduced-motion: reduce) { .wf-text:not([hidden]), .wf-vis:not([hidden]) { animation: none; } }
-.wf-vis {
+.wf-vis { /* label row on top, the tissue below it, step 2's legend and result in a column beside: nothing over the tissue */
   position: relative; aspect-ratio: 16 / 10; overflow: hidden; border-radius: var(--radius-surface);
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr);
   background: radial-gradient(ellipse at 70% 80%, rgba(43, 212, 164, 0.08), transparent 60%), var(--bg-canvas);
 }
 .wf-vis canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; will-change: transform; }
-.wf-label { position: absolute; left: var(--space-3); right: var(--space-3); top: var(--space-3); z-index: 2; margin: 0; }
-.wf-label .tag { white-space: normal; background: var(--bg-canvas); } /* opaque: the tilted grid passes under it */
-.wf-canvas { position: absolute; inset: 0; }
+.wf-label { grid-column: 1 / -1; z-index: 2; margin: 0; padding: var(--space-3) var(--space-3) 0; display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.wf-label .tag { white-space: normal; background: var(--bg-canvas); }
+.wf-canvas { position: relative; overflow: hidden; min-height: 0; } /* clips step 1's tilted grid below the label row */
+.wf-canvas:last-child { grid-column: 1 / -1; }
+.wf-foot { display: flex; flex-direction: column; justify-content: flex-end; gap: var(--space-4); padding: var(--space-3); max-width: 15rem; }
 .wf-short { display: none; }
 @media (max-width: 600px) { /* phones: the chips sit above the visual in normal flow, never over it */
   .wf .wf-vis { display: flex; flex-direction: column; aspect-ratio: auto; } /* .wf: beats the later 900px 4:3 rule */
@@ -346,18 +349,19 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
 }
 .wf-ring { position: absolute; z-index: 1; border: 2px solid var(--text-head); border-radius: 50%; box-shadow: 0 0 18px var(--accent); transition: opacity 0.4s; pointer-events: none; }
 .wf-result {
-  position: absolute; right: var(--space-3); bottom: var(--space-3); z-index: 2; display: grid; gap: var(--space-1); max-width: 13rem;
+  display: grid; gap: var(--space-1); opacity: 0; transition: opacity 0.5s;
   padding: var(--space-3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-surface);
   color: var(--text-body); font-size: var(--text-xs); line-height: var(--leading-caption);
 }
+.wf-result.on { opacity: 1; }
 .wf-result b { color: var(--text-head); font-size: var(--text-sm); }
 .wf-legend {
-  position: absolute; left: var(--space-3); bottom: var(--space-3); z-index: 2; margin: 0; padding: 0; list-style: none;
+  margin: 0; padding: 0; list-style: none;
   display: grid; gap: var(--space-1); color: var(--text-body); font-size: var(--text-xs);
   opacity: 0; transition: opacity 0.5s;
 }
 .wf-legend.on { opacity: 1; }
-.wf-legend li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--space-3); max-width: 300px; }
+.wf-legend li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--space-3); }
 .wf-legend b { width: 4.5em; color: var(--text-head); font-weight: 600; }
 .wf-legend span { white-space: nowrap; }
 .wf-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: var(--space-1); }
@@ -376,9 +380,8 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
 @media (max-width: 900px) {
   .wf { grid-template-columns: minmax(0, 1fr); grid-template-areas: "copy" "stage" "steps"; gap: var(--space-4); }
   .wf-text h3 { margin-top: var(--space-4); }
-  .wf-legend { display: none; }
+  .wf-foot { display: none; } /* no room beside the tissue: the legend hides as before, and the result is in the step text above */
   .wf-vis { aspect-ratio: 4 / 3; }
-  .wf-result { display: none; } /* the same result is in the step text above */
   .wf-node { font-size: var(--text-xs); padding-right: var(--space-1); }
 }
 

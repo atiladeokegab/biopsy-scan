@@ -4,13 +4,12 @@ import { TYPE_COLORS } from "./palette.js";
 import { drawCore, glow, sizeCanvas } from "./step1.js";
 
 const SCAN_MS = 2600;
-// wide: the core sits right, leaving the left for the result card and the legend; narrow: centred (legend hidden)
-const cxOf = (w) => w / 2; // centred; the result card sits top-right, the legend bottom-left
+const cxOf = (w) => w / 2; // centred; the legend and result card sit in a column beside the canvas, never over it
 
 export function mount(el, data) {
   const core = data.tma.cores[data.tma.pick];
-  const result = el.querySelector(".wf-result");
-  const legend = el.appendChild(document.createElement("ul"));
+  const foot = el.parentElement.querySelector(".wf-foot"), result = foot.querySelector(".wf-result");
+  const legend = foot.insertBefore(document.createElement("ul"), result);
   legend.className = "wf-legend";
   // Grouped by family: one row each for tumour, immune and stroma. The tumour subtypes share one label.
   const { type_names: names, type_groups: groups = [] } = data.tma;
@@ -58,9 +57,9 @@ export function mount(el, data) {
     play() {
       this.stop();
       if (!layers || layers.w !== el.clientWidth || layers.h !== el.clientHeight) build(); // both: a stale height stretches the core
-      result.hidden = true; legend.classList.remove("on");
+      result.classList.remove("on"); legend.classList.remove("on");
       raf = requestAnimationFrame((now) => frame(now)(now));
-      timer = setTimeout(() => { result.hidden = false; legend.classList.add("on"); }, SCAN_MS + 300);
+      timer = setTimeout(() => { result.classList.add("on"); legend.classList.add("on"); }, SCAN_MS + 300);
     },
     stop() { cancelAnimationFrame(raf); clearTimeout(timer); },
   };
