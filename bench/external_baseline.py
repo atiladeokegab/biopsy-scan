@@ -27,6 +27,13 @@ ALPHA = 0.05
 N_PERMS = 1000  # squidpy's default for nhood_enrichment
 FUSED_S_PER_STUDY = {"value": 0.0419, "source": "bench/results/modal-design-20261121T205536Z.json",
                      "basis": "fused compute_wall_s 125.73 / 3,000 studies, 8 single-thread workers (#120)"}
+LAB_S_PER_STUDY = {"value": 0.8809, "source": "bench/results/modal-design-20261121T194458Z.json",
+                   "basis": "lab compute_wall_s 1,761.88 / 2,000 studies (null and alternative ids 0-999, which "
+                            "include these), 8 single-thread workers (#113)"}
+COMPARISON = ("what a lab would run off the shelf, not Preflight's speedup: squidpy's enrichment z is a permutation "
+              "z-score and lifelines fits a Wald Cox per feature, different statistics from our enrichment ratio and "
+              "stratified Cox score z (see agreement_median)")
+GPU_NOTE = "squidpy and lifelines never touch the GPU; the A100 is only the container class, as in #113 and #120"
 
 _S: dict = {}
 
@@ -63,7 +70,7 @@ def our_features(sc: list, focal: list[int], K: int) -> np.ndarray:
     return features(S, m)
 
 
-def squidpy_features(looks: list, names: list[str], focal: list[int], seed: int) -> np.ndarray:
+def squidpy_features(looks: list, names: list[str], focal: list[int], seed: int, n_jobs: int = 1) -> np.ndarray:
     """One patient's 630 features from squidpy, in the grammar's order ((t * K + j) * R + r) * 2 + s."""
     import anndata as ad
     import pandas as pd
@@ -82,7 +89,7 @@ def squidpy_features(looks: list, names: list[str], focal: list[int], seed: int)
     present = np.bincount(ty, minlength=K) > 0
     for r, rad in enumerate(RADII_UM):
         sq.gr.spatial_neighbors(a, coord_type="generic", radius=float(rad), library_key="region", delaunay=False)
-        z, count = sq.gr.nhood_enrichment(a, cluster_key="type", copy=True, n_perms=N_PERMS, seed=seed, n_jobs=1,
+        z, count = sq.gr.nhood_enrichment(a, cluster_key="type", copy=True, n_perms=N_PERMS, seed=seed, n_jobs=n_jobs,
                                           show_progress_bar=False)
         for ti, t in enumerate(focal):
             if not present[t]:
@@ -162,7 +169,8 @@ def one_study(job: tuple[str, int]) -> dict:
     t0 = perf_counter()
     sc = study_cells(_S["cells"], db.design(), s["image_seed"])
     t1 = perf_counter()
-    Xs = np.stack([squidpy_features(looks, names, focal, seed=int(s["image_seed"]) % 2**32) for looks in sc])
+    Xs = np.stack([squidpy_features(looks, names, focal, seed=int(s["image_seed"]) % 2**32, n_jobs=_S["n_jobs"])
+                   for looks in sc])
     t2 = perf_counter()
     lf = lifelines_screen(Xs, s["time"], s["event"], s["strata"])
     call = bonferroni(lf["p"], Xs.shape[1])
@@ -176,25 +184,40 @@ def one_study(job: tuple[str, int]) -> dict:
             "ours_maxT": float(np.nanmax(np.abs(zo))), "agreement": agreement(Xs, Xo, lf["z"], zo)}
 
 
-def run(cells: dict, plan: dict, workers: int = 8) -> dict:
-    """The plan's studies over a fork pool of single-thread workers; pool wall is the timed compute."""
+def run(cells: dict, plan: dict, workers: int = 8, n_jobs: int = 1) -> dict:
+    """The plan's studies over a fork pool of workers, each squidpy call on n_jobs; pool wall is the timed compute."""
     import multiprocessing as mp
     info = prepare(cells, plan)
+    _S["n_jobs"] = n_jobs
     st0 = next(st for st, n in plan.items() if n)
     s0 = _S["studies"][st0][0]
     t = perf_counter()
     # warm-up before the fork: squidpy's numba JIT and the imports, on one patient and two columns
     looks = study_cells(cells, db.design(), s0["image_seed"])[0]
-    x = squidpy_features(looks, _S["names"], _S["focal"], seed=0)
+    x = squidpy_features(looks, _S["names"], _S["focal"], seed=0, n_jobs=n_jobs)
     lifelines_screen(np.tile(x[:2], (len(s0["time"]), 1)) + np.arange(len(s0["time"]))[:, None],
                      s0["time"], s0["event"], s0["strata"])
     warm_s = perf_counter() - t
     jobs = [(st, i) for st, n in plan.items() for i in range(n)]
     t = perf_counter()
-    with mp.get_context("fork").Pool(workers) as pool:
-        recs = pool.map(one_study, jobs, chunksize=1)
+    if workers == 1:  # squidpy's n_jobs starts loky processes, which a daemonic pool worker may not
+        recs = [one_study(j) for j in jobs]
+    else:
+        with mp.get_context("fork").Pool(workers) as pool:
+            recs = pool.map(one_study, jobs, chunksize=1)
     wall = perf_counter() - t
-    return {"records": recs, "pool_wall_s": wall, "warm_s": warm_s, "workers": workers, **info}
+    return {"records": recs, "pool_wall_s": wall, "warm_s": warm_s, "workers": workers, "n_jobs": n_jobs, **info}
+
+
+def settings(workers: int, n_jobs: int) -> dict:
+    """Every library setting the timing used, so the baseline can be checked for fairness."""
+    from core.grammar import RADII_UM
+    return {"pool_workers": workers, "squidpy.gr.spatial_neighbors": {"coord_type": "generic", "radius_um": list(RADII_UM),
+            "library_key": "region", "delaunay": False},
+            "squidpy.gr.nhood_enrichment": {"n_perms": N_PERMS, "n_jobs": n_jobs, "cluster_key": "type"},
+            "lifelines.CoxPHFitter": {"defaults": True, "strata": ["coverslip group"], "per_feature": True,
+                                      "note": "lifelines has no parallel option; one fit per feature"},
+            "correction": "Bonferroni over 630, alpha 0.05", "cores": workers * n_jobs}
 
 
 def summarize(out: dict) -> dict:
@@ -210,7 +233,10 @@ def summarize(out: dict) -> dict:
                            "min": float(min(r["study_s"] for r in recs)), "max": float(max(r["study_s"] for r in recs))},
         "stage_share": {k: float(sum(r[f"{k}_s"] for r in recs) / sum(r["study_s"] for r in recs))
                         for k in ("cells", "squidpy", "lifelines")},
+        "ratio_vs_lab": per / LAB_S_PER_STUDY["value"], "lab": LAB_S_PER_STUDY,
         "ratio_vs_fused": per / FUSED_S_PER_STUDY["value"], "fused": FUSED_S_PER_STUDY,
+        "comparison": COMPARISON, "gpu": GPU_NOTE,
+        "settings": settings(out["workers"], out.get("n_jobs", 1)),
         "calls": {st: db.rate([r["lab_call"] for r in rs]) for st, rs in by.items() if rs},
         "planted_feature": plant,
         "top_is_planted": {"lifelines": sum(r["lab_top"] == plant for r in by["alternative"]),

@@ -346,6 +346,27 @@
       },
       "counted": "actual (container x wall)",
       "running_total_usd": 45.589
+    },
+    {
+      "utc": "2026-11-22T04:50Z",
+      "run": "build-9 external-baseline 2/stream, squidpy n_jobs=8",
+      "containers": 1,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 5.0,
+      "est_usd": 1.49,
+      "basis": "1800 s ceiling x $2.987568/h",
+      "source_commit": "2955a9de3f3f7adc63aaa8c2d96e431c35ad319a",
+      "container_class": "Modal A100 + 8 cores + 64 GiB",
+      "actual": {
+        "modal_wall_s": 31.7,
+        "est_usd": 0.026,
+        "basis": "container x local wall (an upper bound: includes queueing)",
+        "result": "bench/results/external-baseline-20261122T045024Z.json"
+      },
+      "counted": "actual (container x wall)",
+      "running_total_usd": 45.615
     }
   ],
   "container_usd_per_hour_H100": 4.58,
