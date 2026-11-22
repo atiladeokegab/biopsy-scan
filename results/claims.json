@@ -1826,20 +1826,7 @@
      "expect": "what a lab would run off the shelf, not Preflight's speedup"
     }
    ],
-   "quotes": [
-    {
-     "file": "README.md",
-     "text": "| **Off-the-shelf ladder** (squidpy + lifelines on `{workers}` cores, the race's Charville design point, `{studies}` studies, #132) | `{s} s/study` (**{label}**: pool wall over studies; instrumented, so it includes our reference recount and agreement checks). Against the hand-written lab arm `{lab} s` (#113) and the fused kernel `{fused} s` (#120): `{vlab}×` and `{vfused}×`, {cross}, same container class (the lab and fused times come from other runs on other hosts of this class). What a lab would run off the shelf, not Preflight's speedup: different statistics, and the top pattern matches in `{k}/{of}` studies (outcomes **{out}**) | [`bench/results/external-baseline-20261122T043823Z.json`](bench/results/external-baseline-20261122T043823Z.json) |"
-    },
-    {
-     "file": "docs/JUDGING.md",
-     "text": "| Off-the-shelf ladder (#132): the race's Charville design point done with squidpy + lifelines on {workers} cores, {studies} studies | {s} s per study (pool wall over studies; instrumented, so it includes our reference recount and agreement checks). Against the hand-written lab arm {lab} s (#113) and the fused kernel {fused} s (#120): {vlab}× and {vfused}×, {cross}, same container class (the lab and fused times come from other runs on other hosts of this class). What a lab would run off the shelf, not Preflight's speedup: different statistics, and the top pattern matches in {k} of {of} studies | `bench/results/external-baseline-20261122T043823Z.json` `summary` (#132) | {label} (timing); ratios {cross}; outcomes {out} |"
-    },
-    {
-     "file": "docs/SUBMISSION.md",
-     "text": "Off the shelf (#132, `bench/results/external-baseline-20261122T043823Z.json`): squidpy + lifelines on {workers} cores {s} s per study ({label}); {vlab}× and {vfused}× against the lab and fused arms, {cross}, same container class; what a lab would run off the shelf, not Preflight's speedup: different statistics, and the top pattern matches in {k} of {of} studies. Repeat spreads are median and min–max, descriptive, not confidence intervals. Rerun the race on your own CPU: `make race-local` (#140; it fetches the Zenodo data first through `make data`). It runs the same lab and fused arms as #113 and #120 on a small slice, 8 studies per stream on every core by default (`make race-local RACE_STUDIES=20 RACE_WORKERS=4` to change). Its timings are MEASURED on that machine, not the Modal figures, and it times the work without reproducing the decisions. GPU kernel 3.19× (#75) | MEASURED (compute); rates ESTIMATE; outcomes {out}; #132 ratios {cross} |"
-    }
-   ]
+   "quotes": []
   },
   {
    "id": "hn-power-234",
