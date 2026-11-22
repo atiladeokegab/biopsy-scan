@@ -94,7 +94,7 @@ export function mount(el, data) {
     }
     // Two routine-stain cores: real HPA IHC when the images load, else simulated DAB on haematoxylin (labelled).
     if (ihc > 0) {
-      const top = (el.querySelector(".wf-label")?.offsetHeight || 0) + 12; // badges wrap on narrow screens
+      const top = (getComputedStyle(el.parentElement?.querySelector(".wf-label") ?? el).position === "absolute" ? el.parentElement.querySelector(".wf-label").offsetHeight : 0) + 12; // badges wrap on narrow screens
       const r2 = Math.min(W * 0.2, H * 0.34, (H - top - 30 - 42) / 2), y2 = Math.max(H * 0.47, top + 30 + r2);
       IHC.forEach((c, k) => {
         const x2 = W / 2 + (k - 0.5) * r2 * 2.5;
@@ -112,7 +112,7 @@ export function mount(el, data) {
         g.restore();
         g.save(); g.globalAlpha = ihc; g.textAlign = "center";
         g.font = `600 13px ${font}`; g.fillStyle = head; g.fillText(real ? c.gene : `${c.channel} (simulated)`, x2, y2 - r2 - 22);
-        g.font = `500 11px ${font}`; g.fillStyle = muted; g.fillText(real ? `${c.note} · ${c.antibody}` : c.note, x2, y2 - r2 - 8, r2 * 2.4); // squeeze, never overlap the neighbour
+        g.font = `500 11px ${font}`; g.fillStyle = muted; g.fillText(real ? (narrow ? c.antibody : `${c.note} · ${c.antibody}`) : c.note, x2, y2 - r2 - 8, r2 * 2.4); // squeeze, never overlap the neighbour
         g.restore();
       });
       g.save(); g.globalAlpha = ihc; g.font = `600 11px ${font}`; g.fillStyle = body; g.textAlign = "center";

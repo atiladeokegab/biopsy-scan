@@ -74,7 +74,7 @@ export function mount(el, data) {
     // Formula vs simulation at 200 patients: two bars that grow to the file's values.
     const px = W * 0.65, pw = W * 0.32, big = Math.max(22, Math.min(40, W * 0.05)), font = getComputedStyle(document.body).fontFamily || "sans-serif",
       serif = getComputedStyle(el).getPropertyValue("--font-serif").trim() || "Georgia, serif";
-    const y0 = Math.max(H * 0.3, (el.querySelector(".wf-label")?.offsetHeight || 0) + 28); // below wrapped badges
+    const y0 = Math.max(H * 0.3, (getComputedStyle(el.parentElement?.querySelector(".wf-label") ?? el).position === "absolute" ? el.parentElement.querySelector(".wf-label").offsetHeight : 0) + 28); // below wrapped badges
     [[P.analytic, P.analyticLabel, head], [P.sim, P.simLabel, warn]].forEach(([v, label, c], i) => {
       const a = ease(t, 2.4 + i * 0.6, 3.6 + i * 0.6); if (a <= 0) return;
       const y = y0 + i * H * 0.32;
