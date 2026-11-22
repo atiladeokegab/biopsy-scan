@@ -51,9 +51,11 @@ def build():
     gpu = ours["headline"]["gpu_sku"].split()[1]
     same_host = cur["summary"]["ratios"]["external_pipeline_vs_fused_full"]["median"]
     # Release review: say what each lane times and give only the two measured ratios, never their product.
+    fused_n = cur["design"]["full_studies_per_stream"] * len(cur["design"]["streams"])  # fused_full evaluations, all streams
     scope = {"race": f"Current: whole squidpy + lifelines pipeline, {workers} CPU workers. Ours: fused kernel on one {gpu}, "
-                     f"scoring only (thresholds and calls excluded). Separate runs: measured same-host speed-up is "
-                     f"{same_host:.0f}× (CPU vs CPU); the {gpu} adds {ours['headline']['cpu_over_gpu']:.1f}× vs our CPU kernel.",
+                     f"re-imaging and scoring (thresholds and calls excluded). Separate measurements: {same_host:.0f}× observed "
+                     f"time ratio ({cur_n} external calls vs {fused_n:,} fused evaluations, CPU vs CPU). The {gpu} ran the same "
+                     f"fused kernel {ours['headline']['cpu_over_gpu']:.1f}× faster than CPU.",
              "ihc": f"Illustration only: {'/'.join(m for _, m in PAIR)} examples picked by hand from Human Protein Atlas samples "
                     "(other patients), not scored. Preflight issued no validated stain recommendation."}
     for gene, marker in PAIR:
