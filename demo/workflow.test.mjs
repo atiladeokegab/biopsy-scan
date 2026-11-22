@@ -6,9 +6,9 @@ import { readFileSync, existsSync } from "node:fs";
 
 const html = readFileSync(new URL("./index.html", import.meta.url), "utf8");
 const plain = (s) => s.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-const wf = html.match(/<section class="wf" id="workflow"[^>]*>([\s\S]*?)<\/section>/)?.[1] ?? "";
+const wf = html.match(/<section class="wf" id="flow"[^>]*>([\s\S]*?)<\/section>/)?.[1] ?? "";
 assert.ok(wf, "no Preflight workflow section");
-assert.ok(html.indexOf('id="workflow"') < html.indexOf('class="hero"'), "the workflow is the page's top section");
+assert.ok(html.indexOf('id="flow"') < html.indexOf('class="hero"'), "the workflow is the page's top section");
 assert.match(plain(wf), /Preflight workflow/);
 
 const steps = [...wf.matchAll(/<button type="button" class="wf-node"[^>]*data-step="(\d)"[^>]*>([\s\S]*?)<\/button>/g)];
