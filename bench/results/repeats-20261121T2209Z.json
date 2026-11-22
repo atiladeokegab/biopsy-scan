@@ -2,7 +2,8 @@
   "status": "MEASURED timing; parity checked against #113's four-arm run, not within the run",
   "labels": {
     "compute": "MEASURED",
-    "outcomes": "SYNTHETIC (atlas/simulation.py at 79a7792)"
+    "outcomes": "SYNTHETIC (atlas/simulation.py at 79a7792)",
+    "spend": "ESTIMATE (elapsed wall x list rate, not billing)"
   },
   "harness": {
     "pr": 120,
@@ -16,13 +17,14 @@
       "file": "modal-design-20261121T194458Z.json",
       "sha256": "2edfce37ab1c6a04550ab393f210a7504ca455b27b98503cbe098e07ff500326",
       "source_commit": "093c1eea6eda7e0433c0f506a95e54d8401ed79d",
-      "where": "reimage-fast-b9 (#120), from #113"
+      "where": "bench/results/ on integration since #120; written by #113"
     },
-    "rule": "each repeat: X sha256 equal to every prior arm on every shared study (same seeds); lab p exactly equal to the prior lab arm's; fused maxT within 1e-9 of the prior numba arm's. Single-arm runs have no in-run partner, so the runner marks them FAILED with parity 'one arm'; this check replaces that."
+    "rule": "each repeat: exactly its planned study IDs, each once, with finite statistics; design and seeds equal to the prior's; X sha256 equal to every prior arm on every shared study; lab p exactly equal to the prior lab arm's; fused maxT within 1e-9 of the prior numba arm's. Single-arm runs have no in-run partner, so the runner marks them FAILED with parity 'one arm'; this check replaces that."
   },
-  "scope": "wall per evaluated study = studies_wall_s / evaluated_studies inside the container (re-imaging and scoring; excludes data load, outcome prep, adjacency and warm-up), as the race reports it. lab: 8 single-thread workers, cKDTree + 1,000-shuffle permutation test, null + alternative studies. fused: 8 workers, fused Numba re-imaging + Cox screen, calibration + null + alternative studies.",
+  "scope": "Fresh-container timing reruns of the same seeded studies: lab 200 evaluated studies per repeat (null + alternative), fused 3,000 (calibration + null + alternative). Wall per evaluated study = studies_wall_s / evaluated_studies inside the container (re-imaging and scoring; excludes data load, outcome prep, adjacency and warm-up), as the race reports it. lab: 8 single-thread workers, cKDTree + 1,000-shuffle permutation test. fused: 8 workers, fused Numba re-imaging + Cox screen.",
+  "ratio_note": "Descriptive: ratio of median walls per study, range from the extreme pairs. It is not an uncertainty interval around the race's 21x, whose lab batch was 2,000 studies, not 200.",
   "container_class": "Modal A100 + 8 cores + 64 GiB, one fresh container per repeat",
-  "headline": "Over 3 independent repeats each: lab 1.071 s/study (range 1.063-1.261), fused 0.0424 s/study (range 0.0422-0.0425); ratio 25.2x (range 25.0-29.9x), all at #120 0b27ea1. Fused at a29f1b7 (before the crop fix): 0.0417 s/study (range 0.0399-0.0422, 3 repeats).",
+  "headline": "3 fresh-container reruns each at #120 0b27ea1: lab 1.071 s/study (range 1.063-1.261, 200 studies per rerun), fused 0.0424 s/study (range 0.0422-0.0425, 3,000 studies per rerun); ratio of medians 25.2x (extreme pairs 25.0-29.9x). Kept separate: fused at a29f1b7 (before the crop fix) 0.0417 s/study (range 0.0399-0.0422, 3 reruns).",
   "summary": {
     "lab": {
       "n": 3,
@@ -54,6 +56,8 @@
         "file": "lab-0b27ea1-1-modal-design-20261121T220939Z.json",
         "file_sha256": "12b7563f2c1ab52db501a648cd5c47532c504a45468268bb94171f06807d670c",
         "source_commit": "0b27ea1f79db7d45a7be0c35b2866f0dce338d3d",
+        "run_id": "ta-01M802HA9ATBNTGH0RYSMEK9BR",
+        "container_class": "Modal A100 + 8 cores + 64 GiB",
         "runner_status": "FAILED",
         "runner_parity": {
           "all": false,
@@ -114,6 +118,8 @@
         "file": "lab-0b27ea1-2-modal-design-20261121T221407Z.json",
         "file_sha256": "f00b903683c469af9bca5549b8d64ebf37fb4a79b2748939c4e6f793c700b13a",
         "source_commit": "0b27ea1f79db7d45a7be0c35b2866f0dce338d3d",
+        "run_id": "ta-01M802S1GQRBQZ70F2K5MTDDSR",
+        "container_class": "Modal A100 + 8 cores + 64 GiB",
         "runner_status": "FAILED",
         "runner_parity": {
           "all": false,
@@ -174,6 +180,8 @@
         "file": "lab-0b27ea1-3-modal-design-20261121T221820Z.json",
         "file_sha256": "ba94e6c57e2f39d963d8f4b0a19e44394509ec4d7b54e4c9dc9823d58188fec8",
         "source_commit": "0b27ea1f79db7d45a7be0c35b2866f0dce338d3d",
+        "run_id": "ta-01M8030RJ6QWVHJ641R4KHYCCR",
+        "container_class": "Modal A100 + 8 cores + 64 GiB",
         "runner_status": "FAILED",
         "runner_parity": {
           "all": false,
@@ -236,6 +244,8 @@
         "file": "fused-0b27ea1-1-modal-design-20261121T220939Z.json",
         "file_sha256": "a3f1b7ced8249438f53316af302776740cb9bd0986369279dfe1e710c93f51cf",
         "source_commit": "0b27ea1f79db7d45a7be0c35b2866f0dce338d3d",
+        "run_id": "ta-01M802GXX6FXYA14Z68TJEBSYR",
+        "container_class": "Modal A100 + 8 cores + 64 GiB",
         "runner_status": "FAILED",
         "runner_parity": {
           "all": false,
@@ -296,6 +306,8 @@
         "file": "fused-0b27ea1-2-modal-design-20261121T221554Z.json",
         "file_sha256": "81bc61babe675e0f02ee6eef314b7f0e5347b52ca834ce27074e16cfd0ae492a",
         "source_commit": "0b27ea1f79db7d45a7be0c35b2866f0dce338d3d",
+        "run_id": "ta-01M802WA72BB44GY8CTJQE7H0R",
+        "container_class": "Modal A100 + 8 cores + 64 GiB",
         "runner_status": "FAILED",
         "runner_parity": {
           "all": false,
@@ -356,6 +368,8 @@
         "file": "fused-0b27ea1-3-modal-design-20261121T222213Z.json",
         "file_sha256": "af7b560b2d3d7ad9918cef12d39bc2881587065c53ae28692f26c4e8f22f2832",
         "source_commit": "0b27ea1f79db7d45a7be0c35b2866f0dce338d3d",
+        "run_id": "ta-01M8037X1M9AG5029XD6T41CXR",
+        "container_class": "Modal A100 + 8 cores + 64 GiB",
         "runner_status": "FAILED",
         "runner_parity": {
           "all": false,
@@ -418,6 +432,8 @@
         "file": "fused-a29f1b7-1-modal-design-20261121T220121Z.json",
         "file_sha256": "341c0f6e91209ca96dbe7f46e48adbd0c3b470c5996b4501397f5cd71958c694",
         "source_commit": "a29f1b7bb3c1f0d747121b52c04b285aa1bd6d93",
+        "run_id": "ta-01M8021NFMNEWQRHFWTR40K1XR",
+        "container_class": "Modal A100 + 8 cores + 64 GiB",
         "runner_status": "FAILED",
         "runner_parity": {
           "all": false,
@@ -478,6 +494,8 @@
         "file": "fused-a29f1b7-2-modal-design-20261121T221020Z.json",
         "file_sha256": "c73c21e58161ba8456f9d8d6ca8400bfd7f50541df7037b209b6338abea9c8a8",
         "source_commit": "a29f1b7bb3c1f0d747121b52c04b285aa1bd6d93",
+        "run_id": "ta-01M802J4BK88XZTRGRENB0E89R",
+        "container_class": "Modal A100 + 8 cores + 64 GiB",
         "runner_status": "FAILED",
         "runner_parity": {
           "all": false,
@@ -538,6 +556,8 @@
         "file": "fused-a29f1b7-3-modal-design-20261121T221555Z.json",
         "file_sha256": "e05efa46dc8d9903169e8439e996be5bc3c8bc7eee97aed1e68b30c269cb7016",
         "source_commit": "a29f1b7bb3c1f0d747121b52c04b285aa1bd6d93",
+        "run_id": "ta-01M802WAXERVHR9TRKX6R2EWYR",
+        "container_class": "Modal A100 + 8 cores + 64 GiB",
         "runner_status": "FAILED",
         "runner_parity": {
           "all": false,
@@ -602,12 +622,12 @@
     "completed_usd": {
       "value": 2.646,
       "runs": 10,
-      "label": "MEASURED wall x rate (upper bound: includes queueing)"
+      "label": "ESTIMATE: elapsed wall per run (local, launch to finish) x list rate; not billing"
     },
     "aborted_usd": {
       "value": 0.251,
       "runs": 3,
-      "label": "ESTIMATE: local wall from start to abort x rate"
+      "label": "ESTIMATE: elapsed wall from start to abort x list rate; not billing"
     }
   }
 }

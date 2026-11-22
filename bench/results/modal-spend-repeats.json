@@ -6,17 +6,17 @@
     "memory_gib": 0.007992,
     "source": "#120's bench/modal_design.py RATES"
   },
-  "note": "Every repeat-sweep run (#120's runner, unchanged): copied from the runner's own bench/results/modal-spend.json in throwaway checkouts. Cap 4 USD (lead).",
+  "note": "Every repeat-sweep run (#120's runner, unchanged): copied from the runner's own bench/results/modal-spend.json in throwaway checkouts. Cap 4 USD (lead). Every USD figure here is an ESTIMATE from elapsed wall x list rate, not billing; per-entry 'basis' text is copied from the runner's own ledger.",
   "cap_usd": 4.0,
   "completed_usd": {
     "value": 2.646,
     "runs": 10,
-    "label": "MEASURED wall x rate (upper bound: includes queueing)"
+    "label": "ESTIMATE: elapsed wall per run (local, launch to finish) x list rate; not billing"
   },
   "aborted_usd": {
     "value": 0.251,
     "runs": 3,
-    "label": "ESTIMATE: local wall from start to abort x rate"
+    "label": "ESTIMATE: elapsed wall from start to abort x list rate; not billing"
   },
   "entries": [
     {
