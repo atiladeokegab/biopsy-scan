@@ -89,9 +89,9 @@ export function boundaryPoint(cells, lo, hi, n, sigma) {
 
 // The scene's script. r: framed radius in core radii; elev/azim: radians; focus: 0 the core centre, 1 the boundary.
 const SHOTS = {
-  whole: { r: 0.82, elev: 1.0, azim: -0.55, focus: 0 },
+  whole: { r: 0.86, elev: 1.0, azim: -0.55, focus: 0 },
   cell: { r: 0.15, elev: 0.62, azim: -0.2, focus: 1 },
-  look: { r: 0.86, elev: 0.86, azim: 0.3, focus: 0 },
+  look: { r: 0.9, elev: 0.86, azim: 0.3, focus: 0 },
   rest: { r: 0.4, elev: 0.72, azim: 0.75, focus: 1 },
 };
 const MOVES = [[0, 0.8, "whole", "whole"], [0.8, 4.6, "whole", "cell"], [4.6, 6.2, "cell", "cell"],
@@ -169,8 +169,7 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
   const wx = (x) => x - mid[0], wz = (y) => y - mid[1];
 
   // Terrain: the core as a disc of tissue whose height is local cell density.
-  let reach = 0;
-  for (const c of cells) reach = Math.max(reach, Math.hypot(wx(c.x), wz(c.y)));
+  const reach = cells.map((c) => Math.hypot(wx(c.x), wz(c.y))).sort((a, b) => a - b)[Math.floor(n * 0.98)]; // a stray cell never sizes the disc
   const tg = new THREE.RingGeometry(0.01, reach + DOT * 2, 160, 80);
   tg.rotateX(-Math.PI / 2);
   const tp = tg.attributes.position;
@@ -190,7 +189,8 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
     grad.addColorStop(0, "#ffffff"); grad.addColorStop(0.6, "#ececec"); grad.addColorStop(1, "#a4a4a4");
     g.fillStyle = grad; g.beginPath(); g.arc(32, 32, 29, 0, Math.PI * 2); g.fill();
   });
-  scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ size: DOT, vertexColors: true, map: ball, alphaTest: 0.5 })));
+  const dots = new THREE.PointsMaterial({ size: DOT, vertexColors: true, map: ball, alphaTest: 0.5 });
+  scene.add(new THREE.Points(geo, dots));
 
   // Rings round the cells this look mis-calls inside a field of view.
   const wrong = [...Array(n).keys()].filter((j) => inside[j] && obs[j] !== type[j]);
@@ -245,6 +245,7 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
     // Frame k.r core radii whichever side of the canvas is shorter.
     const half = (camera.fov * Math.PI) / 360, fit = Math.min(half, Math.atan(Math.tan(half) * camera.aspect));
     const dist = (k.r * RC) / Math.sin(fit), az = k.azim + orbit;
+    dots.size = DOT * (1 + 0.3 * clamp01((k.r - 0.15) / 0.7)); // a touch larger from afar, true size at cell level
     target.set(0, LIFT * 0.3, 0).lerp(bt, k.focus);
     camera.position.set(target.x + dist * Math.cos(k.elev) * Math.sin(az), target.y + dist * Math.sin(k.elev),
       target.z + dist * Math.cos(k.elev) * Math.cos(az));

@@ -211,6 +211,8 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
   .reimage-text { display: contents; }
   .reimage-text > * { padding: 0 var(--space-4); order: 2; }
   .reimage-text > h2, .reimage-label { order: 0; }
+  .reimage-text > .reimage-steps { padding-left: calc(var(--space-4) + var(--space-5)); }
+  .reimage-text > .legend { padding: 0 var(--space-4); }
   #reimage { order: 1; height: var(--reimage-h-phone); }
   .reimage-credit { order: 3; }
   .big { font-size: var(--text-xl); }
