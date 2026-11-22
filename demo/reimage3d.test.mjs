@@ -3,7 +3,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const { miscall, randomCrop, inCrop, heightField, boundaryPoint, timeline, END, FOV_UM, EPS, WINDOWS } = await import("./reimage3d.js");
+const { miscall, randomCrop, inCrop, heightField, boundaryPoint, timeline, END, FOV_UM, EPS, WINDOWS, TYPES,
+  clock, inView, captureTime, mountReimage } = await import("./reimage3d.js");
 
 // miscall follows core/reimage_ref.py: keep the type with prob 1 - eps, else a uniform other type,
 // chosen as the first k with cumsum(M[type])[k] > u. Rows for eps 0.1, K 3: [.9 .05 .05], [.05 .9 .05].
@@ -67,5 +68,55 @@ assert.match(label, /Charville \(colorectal, not head and neck\)/);
 assert.match(label, /imaging simulated by Preflight/);
 // The steps name the design the code draws.
 const steps = html.match(/id="reimage-steps"[^>]*>([\s\S]*?)<\/ol>/)[1];
-assert.ok(steps.includes(`${["", "one", "two"][WINDOWS]} ${FOV_UM} µm fields`) && steps.includes(`${EPS * 100}% of the cells`), "steps match the design");
+assert.ok(steps.includes(`${["", "one", "two"][WINDOWS]} ${FOV_UM} µm fields`) && steps.includes(`${EPS * 100}% chance`), "steps match the design");
+
+// The display model is on screen: 15 measured types drawn as 3 colour groups, errors drawn only between groups.
+const tissueJSON = JSON.parse(readFileSync(new URL("./data/tissue.json", import.meta.url), "utf8"));
+const nTypes = Object.keys(tissueJSON.meta.display_classes).length;
+const flat = (x) => x.replace(/<[^>]+>/g, "").replace(/\s+/g, " ");
+assert.ok(flat(steps).includes(`${nTypes} measured cell types`) && flat(steps).includes(`${TYPES.length} colour groups`), "steps say types are grouped");
+assert.match(flat(steps), /mis-call inside one group does not show here/);
+assert.doesNotMatch(flat(steps), /mis-calls 10% of the cells/, "no exact achieved fraction");
+const aria = html.match(/<canvas id="reimage"[^>]*aria-label="([^"]+)"/)[1];
+assert.match(aria, /10% chance/); assert.match(aria, /colour groups/);
+assert.match(html, /id="reimage-replay"[^>]*hidden/, "controls start hidden"); assert.match(html, /id="reimage-pause"[^>]*hidden/);
+
+// Playback: time stops while the scene is off screen and resumes where it left off.
+let ms = 0; const c = clock(() => ms);
+assert.equal(c.t(), 0, "not started before it is seen");
+c.show(true); ms = 5000; assert.equal(c.t(), 5);
+c.show(false); ms = 25000; assert.equal(c.t(), 5, "off screen: held");
+c.show(true); assert.equal(c.t(), 5, "back on screen: resumes, no jump"); ms = 26000; assert.equal(c.t(), 6);
+assert.equal(c.toggle(), false); ms = 30000; assert.equal(c.t(), 6, "paused");
+c.show(false); c.show(true); ms = 31000; assert.equal(c.t(), 6, "paused stays paused across a scroll");
+assert.equal(c.toggle(), true); ms = 32000; assert.equal(c.t(), 7);
+c.replay(); assert.equal(c.t(), 0); ms = 33000; assert.equal(c.t(), 1);
+const still = clock(() => ms, { held: END, playing: false }); still.show(true); ms = 99000; assert.equal(still.t(), END, "reduced motion: last frame");
+assert.equal(inView({ isIntersecting: true, intersectionRatio: 0.1 }), false, "a sliver is not in view");
+assert.equal(inView({ isIntersecting: true, intersectionRatio: 0.5 }), true);
+
+// Capture time: only a finite number holds the scene.
+for (const bad of [null, "", "nope", "NaN", "Infinity", " "]) assert.equal(captureTime(bad), null, `t3d=${bad}`);
+assert.equal(captureTime("9.8"), 9.8); assert.equal(captureTime("0"), 0);
+
+// Setup: provenance first, controls only after WebGL starts, an honest fallback without it.
+const fakeEl = () => { const e = { textContent: "", hidden: false, attrs: {}, cls: new Set(["ok"]), on: {}, firstChild: { textContent: "" },
+  setAttribute(k, v) { this.attrs[k] = v; }, removeAttribute(k) { delete this.attrs[k]; }, addEventListener(t, f) { this.on[t] = f; } };
+  e.classList = { remove: (k) => e.cls.delete(k), add: (k) => e.cls.add(k) }; return e; };
+const page = () => { const els = {}; const $ = (id) => (els[id] ??= fakeEl());
+  $("reimage-replay").hidden = $("reimage-pause").hidden = true; $("reimage-steps").children = [1, 2, 3, 4].map(fakeEl); return $; };
+const synth = { source: "SYNTHETIC", patients: [{ id: "S-1", region: "r1", cells_in_region: 2, cells: [{ x: 0, y: 0, type: "tumour" }, { x: 9, y: 9, type: "stroma" }] }] };
+let $ = page();
+mountReimage($, synth, { reducedMotion: false, search: "", create: () => { throw new Error("no WebGL"); } });
+assert.equal($("reimage-tag").textContent, "SYNTHETIC cells"); assert.ok(!$("reimage-tag").cls.has("ok"), "no MEASURED styling");
+assert.ok($("reimage-replay").hidden && $("reimage-pause").hidden, "no dead controls without WebGL");
+assert.ok($("reimage").hidden, "canvas hidden without WebGL");
+assert.match($("reimage-credit").textContent, /WebGL/); assert.match($("reimage-fallback").textContent, /SYNTHETIC/);
+let got; $ = page();
+mountReimage($, tissueJSON, { reducedMotion: false, search: "?t3d=nope", create: (cv, t, o) => { got = o; return { replay() {}, toggle: () => false }; } });
+assert.equal(got.freezeAt, null, "malformed t3d plays normally");
+assert.equal($("reimage-tag").textContent, "MEASURED cells"); assert.match($("reimage-credit").textContent, /Zenodo 13179600/);
+assert.ok(!$("reimage-replay").hidden && !$("reimage-pause").hidden, "controls revealed once WebGL runs");
+$ = page(); mountReimage($, tissueJSON, { reducedMotion: true, search: "", create: () => ({}) });
+assert.ok($("reimage-replay").hidden, "reduced motion: no controls");
 console.log("reimage3d.test.mjs: ok");
