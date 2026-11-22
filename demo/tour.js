@@ -9,7 +9,7 @@ export const STEPS = [
   { target: ".wf-steps", title: "Four steps, any order",
     text: "Tissue context, Decode the tumour, Stress-test, Routine stains. Click a step to jump to it; once the tour is closed, the arrow keys step too." },
   { target: ".wf-stage", title: "Every picture says what is real",
-    text: "The tags on each picture say what is measured and what is simulated, analytic or an estimate. Step 3 is the headline: the formula promises 80% power for 200 patients; simulated on this tissue it is 27%." },
+    text: "The tags above each picture say what is measured and what is simulated, analytic, an estimate or an illustration. The cells are real Charville cells throughout." },
   { target: ".bio", title: "The pattern",
     text: "A spatial pattern found in real Charville tumour tissue, with the survival curves it splits. It is exploratory: the cutoff was chosen on the same cohort, so no p-value is claimed." },
   { target: ".speed", title: "Run the studies",
@@ -62,13 +62,13 @@ function els() {
 // spotlight cut short above it. r: the target's viewport rect; top: the bar's bottom edge.
 export function layout(r, cw, ch, vw, vh, top, gap = 12, pad = 6) {
   const s = { top: Math.max(r.top - pad, top + 2), bottom: Math.min(r.bottom + pad, vh - 2), left: r.left - pad, right: r.right + pad };
-  const midY = Math.min(Math.max(s.top, top + gap), vh - ch - gap);
+  const midY = Math.max(gap, Math.min(Math.max(s.top, top + gap), vh - ch - gap));
   if (vw - s.right >= cw + 2 * gap) return { spot: s, card: { top: midY, left: s.right + gap } };
   if (s.left >= cw + 2 * gap) return { spot: s, card: { top: midY, left: s.left - gap - cw } };
   const left = Math.max(gap, Math.min((vw - cw) / 2, vw - cw - gap));
   if (vh - s.bottom >= ch + 2 * gap) return { spot: s, card: { top: s.bottom + gap, left } };
   if (s.top - top >= ch + 2 * gap) return { spot: s, card: { top: s.top - gap - ch, left } };
-  const cardTop = vh - ch - gap;
+  const cardTop = Math.max(gap, vh - ch - gap); // a card taller than the screen scrolls inside (max-height)
   return { spot: { ...s, bottom: Math.max(s.top, Math.min(s.bottom, cardTop - gap)) }, card: { top: cardTop, left } };
 }
 
@@ -76,7 +76,7 @@ function place() {
   if (at < 0) return;
   const t = document.querySelector(STEPS[at].target);
   const bar = document.querySelector(".bar");
-  const barB = bar && STEPS[at].target !== "#tour-btn" ? bar.getBoundingClientRect().bottom : 0;
+  const barB = bar && STEPS[at].target !== "#tour-btn" ? Math.max(0, bar.getBoundingClientRect().bottom) : 0;
   const r = t ? t.getBoundingClientRect() : { top: innerHeight / 2, bottom: innerHeight / 2, left: innerWidth / 2, right: innerWidth / 2 };
   const vw = document.documentElement.clientWidth;
   const { spot, card } = layout(r, ui.card.offsetWidth, ui.card.offsetHeight, vw, innerHeight, barB);
@@ -97,7 +97,8 @@ function show(i) {
   const t = document.querySelector(s.target);
   const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
   // Top of the target under the bar (scroll-padding-top), so the card fits beside or below it.
-  if (t && s.target !== "#tour-btn") t.scrollIntoView({ block: "start", behavior: smooth ? "smooth" : "auto" });
+  // The bar's own button only needs to be in view (the bar is not sticky on short screens).
+  if (t) t.scrollIntoView({ block: s.target === "#tour-btn" ? "nearest" : "start", behavior: smooth ? "smooth" : "auto" });
   document.body.classList.add("touring");
   card.querySelector(".tour-next").focus({ preventScroll: true });
 }

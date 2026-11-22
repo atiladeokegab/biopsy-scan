@@ -35,7 +35,7 @@ export async function start(root = document.getElementById("wf-root")) {
   const texts = [...section.querySelectorAll(".wf-text")];
   const vis = [...section.querySelectorAll(".wf-vis")];
   const mods = [];
-  let current = -1, timer = 0;
+  let current = -1, timer = 0, autoplay = false;
 
   function show(i, auto) {
     clearTimeout(timer);
@@ -44,8 +44,13 @@ export async function start(root = document.getElementById("wf-root")) {
     nodes.forEach((n, k) => { n.toggleAttribute("aria-current", k === i); if (k === i) n.setAttribute("aria-current", "step"); n.classList.toggle("done", k < i); });
     texts.forEach((t, k) => { t.hidden = k !== i; });
     vis.forEach((v, k) => { v.hidden = k !== i; });
-    mods[i]?.play();
-    if (auto && i < nodes.length - 1) timer = setTimeout(() => show(i + 1, true), STEP_MS[i]);
+    autoplay = auto;
+    if (mods[i]) dwell(i); // else it starts when its module mounts
+  }
+  // Play the showing step and, under autoplay, start its dwell only once its picture is ready.
+  function dwell(i) {
+    mods[i].play();
+    if (autoplay && i < nodes.length - 1) timer = setTimeout(() => show(i + 1, true), STEP_MS[i]);
   }
 
   async function getJSON(path) {
@@ -62,6 +67,7 @@ export async function start(root = document.getElementById("wf-root")) {
     return { play() {}, stop() {} };
   };
 
+  nodes.forEach((n, i) => n.addEventListener("click", () => show(i, false)));
   // The step text and controls show at once; each picture starts when its module has mounted.
   show(0, !matchMedia("(prefers-reduced-motion: reduce)").matches);
   try {
@@ -75,13 +81,12 @@ export async function start(root = document.getElementById("wf-root")) {
         console.warn(`workflow ${file}:`, e);
         mods[i] = stub(vis[i].querySelector(".wf-canvas"), "This step is being prepared.");
       }
-      if (i === current) mods[i].play(); // its step is already showing
+      if (i === current) dwell(i); // its step is already showing
     }));
   } catch (e) {
     console.warn("workflow data:", e);
     vis.forEach((v, i) => { mods[i] = stub(v.querySelector(".wf-canvas"), "Tissue data not loaded."); });
   }
-  nodes.forEach((n, i) => n.addEventListener("click", () => show(i, false)));
   // Arrow keys step through it while it is on screen, unless a control (the sliders below) has the focus.
   addEventListener("keydown", (e) => {
     if (!["ArrowRight", "ArrowLeft"].includes(e.key) || e.target.closest?.("input, select, textarea")) return;

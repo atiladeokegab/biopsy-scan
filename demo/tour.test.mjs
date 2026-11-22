@@ -30,4 +30,9 @@ for (const [r, vw, vh] of [
   assert.ok(!hits(spot, box(card, 358, 230)), JSON.stringify({ r, spot, card }));
   assert.ok(card.top >= 0 && card.top + 230 <= vh && card.left >= 0 && card.left + 358 <= vw, "card on screen");
 }
+// A screen shorter than the card: the card still starts on screen.
+for (const [vw, vh] of [[390, 260], [667, 320]]) {
+  const { card } = layout({ top: 60, bottom: 900, left: 16, right: vw - 16 }, 358, 300, vw, vh, 48);
+  assert.ok(card.top >= 0 && card.left >= 0, JSON.stringify({ vw, vh, card }));
+}
 console.log("tour ok");
