@@ -1,19 +1,25 @@
 {
- "schema": "preflight-panel/1",
+ "schema": "preflight-panel/2",
  "note": "Built by demo/collect_preflight.py from the two files below; do not edit by hand.",
  "sources": {
   "bench/results/power-at-scale.json": "c16e5b73fbbafcc9cb3ed60f4ac56e36377c24ea5baa2175701fad1c8c37ae87",
   "bench/results/vs-schoenfeld-300.json": "62f97b7668cbae9b226099c7d187662959259004954083987d65e1d29582d0a8"
  },
- "cohort": "charville",
- "hr_per_sd": 2.0,
- "alpha": 0.05,
+ "scenario": {
+  "cohort": "charville",
+  "patients_source": 159,
+  "events_source": 38,
+  "hr_per_sd": 2.0,
+  "features_m": 630,
+  "alpha": 0.05,
+  "method": "model-based Monte Carlo (model-based Monte Carlo under the empirical verified source; no clinical claim)",
+  "resampling": "patients drawn with replacement from the source cohort; every count above 159 repeats source patients (resample_ratio = patients / source)"
+ },
  "designs": [
   {
    "id": "cropped",
    "window": "400um",
    "miscall": 0.1,
-   "regions": 2,
    "label": "ESTIMATE: simulated",
    "source": "bench/results/power-at-scale.json",
    "points": [
@@ -22,91 +28,130 @@
      "power": 0.06333333333333334,
      "lo": 0.03855801982837607,
      "hi": 0.0971381966071201,
-     "n": 300
+     "n": 300,
+     "fwer": 0.04,
+     "fwer_lo": 0.011004493986188198,
+     "fwer_hi": 0.09925715671265992
     },
     {
      "patients": 80,
      "power": 0.09666666666666666,
      "lo": 0.06569857461558702,
      "hi": 0.135874909828131,
-     "n": 300
+     "n": 300,
+     "fwer": 0.02,
+     "fwer_lo": 0.0024313368239425423,
+     "fwer_hi": 0.07038393247107011
     },
     {
      "patients": 120,
      "power": 0.18,
      "lo": 0.13821040458516728,
      "hi": 0.22823938614489622,
-     "n": 300
+     "n": 300,
+     "fwer": 0.05,
+     "fwer_lo": 0.016431879182052155,
+     "fwer_hi": 0.11283491110546275
     },
     {
      "patients": 160,
      "power": 0.15,
      "lo": 0.1115625224301255,
      "hi": 0.19551644068402696,
-     "n": 300
+     "n": 300,
+     "fwer": 0.07,
+     "fwer_lo": 0.028605288907438704,
+     "fwer_hi": 0.13891972845585732
     },
     {
      "patients": 200,
      "power": 0.27,
      "lo": 0.2205882653286876,
      "hi": 0.32401877317210587,
-     "n": 300
+     "n": 300,
+     "fwer": 0.06,
+     "fwer_lo": 0.022334886071316368,
+     "fwer_hi": 0.12602993458082296
     },
     {
      "patients": 240,
      "power": 0.31,
      "lo": 0.2581057346337669,
      "hi": 0.3656939294152805,
-     "n": 300
+     "n": 300,
+     "fwer": 0.02,
+     "fwer_lo": 0.0024313368239425423,
+     "fwer_hi": 0.07038393247107011
     },
     {
      "patients": 300,
      "power": 0.41,
      "lo": 0.3538119678255766,
      "hi": 0.4679836990634417,
-     "n": 300
+     "n": 300,
+     "fwer": 0.02,
+     "fwer_lo": 0.0024313368239425423,
+     "fwer_hi": 0.07038393247107011
     },
     {
      "patients": 400,
      "power": 0.6833333333333333,
      "lo": 0.6274055061865507,
      "hi": 0.7355956388931847,
-     "n": 300
+     "n": 300,
+     "fwer": 0.04,
+     "fwer_lo": 0.011004493986188198,
+     "fwer_hi": 0.09925715671265992
     },
     {
      "patients": 500,
      "power": 0.7633333333333333,
      "lo": 0.7110980607839333,
      "hi": 0.8102844320975204,
-     "n": 300
+     "n": 300,
+     "fwer": 0.04,
+     "fwer_lo": 0.011004493986188198,
+     "fwer_hi": 0.09925715671265992
     },
     {
      "patients": 600,
      "power": 0.9133333333333333,
      "lo": 0.8755926371349083,
      "hi": 0.9426051674529489,
-     "n": 300
+     "n": 300,
+     "fwer": 0.08,
+     "fwer_lo": 0.0351715625181628,
+     "fwer_hi": 0.15155763586442095
     },
     {
      "patients": 700,
      "power": 0.9166666666666666,
      "lo": 0.8794412631240651,
      "hi": 0.945345724121591,
-     "n": 300
+     "n": 300,
+     "fwer": 0.07,
+     "fwer_lo": 0.028605288907438704,
+     "fwer_hi": 0.13891972845585732
     },
     {
      "patients": 800,
      "power": 0.9433333333333334,
      "lo": 0.910819595565837,
      "hi": 0.9666466884833154,
-     "n": 300
+     "n": 300,
+     "fwer": 0.02,
+     "fwer_lo": 0.0024313368239425423,
+     "fwer_hi": 0.07038393247107011
     },
     {
      "patients": 1000,
      "power": 0.9966666666666667,
      "lo": 0.9815687479519322,
      "hi": 0.9999156108676822,
-     "n": 300
+     "n": 300,
+     "fwer": 0.04,
+     "fwer_lo": 0.011004493986188198,
+     "fwer_hi": 0.09925715671265992
     }
    ]
   },
@@ -114,7 +159,6 @@
    "id": "control",
    "window": "core",
    "miscall": 0.0,
-   "regions": 2,
    "label": "ESTIMATE (sim), control design",
    "source": "bench/results/vs-schoenfeld-300.json",
    "points": [
@@ -123,49 +167,70 @@
      "power": 0.07666666666666666,
      "lo": 0.04921878387567447,
      "hi": 0.11281811536048231,
-     "n": 300
+     "n": 300,
+     "fwer": 0.06,
+     "fwer_lo": 0.022334886071316368,
+     "fwer_hi": 0.12602993458082296
     },
     {
      "patients": 80,
      "power": 0.20666666666666667,
      "lo": 0.16227849673901487,
      "hi": 0.2569532425409742,
-     "n": 300
+     "n": 300,
+     "fwer": 0.11,
+     "fwer_lo": 0.05620702028548746,
+     "fwer_hi": 0.18830113219644257
     },
     {
      "patients": 120,
      "power": 0.32666666666666666,
      "lo": 0.2738755348957323,
      "hi": 0.38292229290809604,
-     "n": 300
+     "n": 300,
+     "fwer": 0.07,
+     "fwer_lo": 0.028605288907438704,
+     "fwer_hi": 0.13891972845585732
     },
     {
      "patients": 160,
      "power": 0.31,
      "lo": 0.2581057346337669,
      "hi": 0.3656939294152805,
-     "n": 300
+     "n": 300,
+     "fwer": 0.02,
+     "fwer_lo": 0.0024313368239425423,
+     "fwer_hi": 0.07038393247107011
     },
     {
      "patients": 200,
      "power": 0.6,
      "lo": 0.5421335604344895,
      "hi": 0.6558709649136094,
-     "n": 300
+     "n": 300,
+     "fwer": 0.03,
+     "fwer_lo": 0.006229971538306395,
+     "fwer_hi": 0.08517605297428002
     },
     {
      "patients": 240,
      "power": 0.7166666666666667,
      "lo": 0.6620360460817218,
      "hi": 0.7669599073682997,
-     "n": 300
+     "n": 300,
+     "fwer": 0.1,
+     "fwer_lo": 0.04900468922148595,
+     "fwer_hi": 0.17622259774002266
     },
     {
      "patients": 300,
      "power": 0.86,
      "lo": 0.8155064400789335,
      "hi": 0.8972020001688272,
-     "n": 300
+     "n": 300,
+     "fwer": 0.07,
+     "fwer_lo": 0.028605288907438704,
+     "fwer_hi": 0.13891972845585732
     }
    ]
   }
@@ -174,8 +239,6 @@
   "label": "ANALYTIC (formula)",
   "method": "Schoenfeld (1983) events formula, continuous covariate (Hsieh and Lavori 2000), D = patients x event fraction, two-sided, Bonferroni over m features; assumes the feature is measured exactly on the whole tissue",
   "source": "bench/results/vs-schoenfeld-300.json",
-  "features_m": 630,
-  "event_fraction": 0.2389937106918239,
   "power": {
    "50": 0.06054482419485496,
    "60": 0.09316389444993917,
