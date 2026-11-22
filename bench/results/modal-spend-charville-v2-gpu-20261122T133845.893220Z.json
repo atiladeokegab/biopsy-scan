@@ -1,0 +1,23 @@
+{
+  "label": "ESTIMATE",
+  "source_commit": "f5caaea0b80d317460990bf13482b688d417e551",
+  "state": "failed",
+  "rates": {
+    "gpu_s": 0.001097,
+    "physical_core_s": 1.31e-05,
+    "gib_s": 2.22e-06,
+    "source": "https://modal.com/pricing",
+    "checked_utc": "2026-11-22"
+  },
+  "run_estimated_usd": 2.5,
+  "task_cap_usd": 5.0,
+  "project_cap_usd": 150.0,
+  "prior_task_estimate_usd": 0,
+  "prior_project_estimate_usd": 100.0,
+  "reservation_usd": 2.5,
+  "timeout_s": 1500,
+  "basis": "GPU plus capped CPU and memory list rates, charged for measured function wall plus retention. An unresolved or failed call retains its reservation. Startup and credits can differ.",
+  "call_id": "fc-01M81QP3JP6170K9WGEWAPKC2W",
+  "failure_reason": "Modal loaded the runner from /root and the historical receipt path resolved outside the repository mount. No permutation scoring ran.",
+  "run_estimate_scope": "Conservative reservation retained because function wall was unavailable."
+}
