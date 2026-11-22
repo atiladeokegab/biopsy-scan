@@ -1,12 +1,14 @@
 // One-screen live demo: colour deconvolution (Ruifrok & Johnston 2001, H-DAB) computed in the browser
 // from the photo's pixels once, then revealed side by side, tile by tile, at a replay of measured pace
-// (Current ≈ 21 s, Ours ≈ 1 s: 21×, 0.881 s vs 0.042 s per evaluated study).
-const LANES = { current: 21000, ours: 1000 };
+// at the true measured ratio: 24.443 s vs 0.0419 s per study, 583× (bench/results/external-baseline-20261122T043823Z.json).
+// Ours paints in 1.0 s, so Current would take 583 s; "Skip to end" completes it.
+const LANES = { current: 583000, ours: 1000 };
+const fmt = (ms) => ms < 60000 ? (ms / 1000).toFixed(1) + " s" : Math.floor(ms / 60000) + " min " + String(Math.floor(ms / 1000) % 60).padStart(2, "0") + " s";
 const N = 400, GRID = 16; // analysis resolution and tile grid
 const $ = (id) => document.getElementById(id);
 const imgs = [...document.querySelectorAll(".frame img")], img = imgs[0];
 const FADE = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 150; // per-tile fade, ms
-let running = 0, overlay = null;
+let running = 0, overlay = null, token = 0, skip = false;
 
 function inv3(m) {
   const [a, b, c, d, e, f, g, h, i] = m;
@@ -48,14 +50,15 @@ function compute() {
   return o;
 }
 
-function lane(id, src, order, t0) {
+function lane(id, src, order, t0, my) {
   const el = $("lane-" + id), cv = el.querySelector("canvas"), ctx = cv.getContext("2d");
   const timer = el.querySelector("[data-timer]"), prog = el.querySelector("[data-prog]"), done = el.querySelector("[data-done]");
   cv.width = cv.height = N; done.hidden = true;
   const T = N / GRID, total = LANES[id], n = order.length, span = Math.max(1, total - FADE);
   let shown = 0;
   return new Promise((resolve) => (function frame(now) {
-    const e = Math.max(0, now - t0), f = Math.min(1, e / total);
+    if (my !== token) return resolve(false); // a newer run or photo took over
+    const e = skip && id === "current" ? total : Math.max(0, now - t0), f = Math.min(1, e / total);
     // tile i starts at i/n of the span and fades in over FADE ms; redraw only tiles still fading
     for (let i = shown; i < n; i++) {
       const s0 = (i / n) * span; if (e < s0) break;
@@ -64,27 +67,29 @@ function lane(id, src, order, t0) {
       if (a === 1 && i === shown) shown++;
     }
     ctx.globalAlpha = 1;
-    timer.textContent = (f * total / 1000).toFixed(1) + " s"; prog.style.width = f * 100 + "%";
+    timer.textContent = fmt(f * total); prog.style.width = Math.max(f * 100, f > 0 ? 0.4 : 0) + "%"; // keep a sliver visible
     if (shown < n || f < 1) return requestAnimationFrame(frame);
-    done.textContent = "Done in " + (total / 1000).toFixed(1) + " s"; done.hidden = false;
-    resolve();
+    done.textContent = skip && id === "current" ? "Skipped · " + fmt(total) + " at this pace" : "Done in " + fmt(total); done.hidden = false;
+    resolve(true);
   })(t0));
 }
 
 async function run() {
   if (running) return;
+  const my = ++token; skip = false; reset();
   running = 1; $("run").disabled = true; thumbs.forEach((b) => (b.disabled = true));
-  $("banner").classList.remove("on");
-  const r = $("risk"); r.classList.remove("on"); r.hidden = true;
   overlay ||= compute();
   const src = document.createElement("canvas"); src.width = src.height = N; src.getContext("2d").putImageData(overlay, 0, 0);
   const order = []; for (let i = 0; i < GRID * GRID; i++) order.push(i);
   for (let i = order.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [order[i], order[j]] = [order[j], order[i]]; }
   const t0 = performance.now(); // one moment for both lanes
-  await Promise.all(Object.keys(LANES).map((id) => lane(id, src, order, t0)));
+  const slow = lane("current", src, order, t0, my);
+  $("pace").hidden = false;
+  if (!(await lane("ours", src, order, t0, my))) return;
   $("banner").classList.add("on");
-  r.hidden = false; requestAnimationFrame(() => r.classList.add("on"));
-  running = 0; $("run").disabled = false; thumbs.forEach((b) => (b.disabled = false));
+  const r = $("risk"); r.hidden = false; requestAnimationFrame(() => r.classList.add("on"));
+  running = 0; $("run").disabled = false; thumbs.forEach((b) => (b.disabled = false)); // Run again or swap photo cancels the crawl
+  if (await slow) $("pace").hidden = true;
 }
 
 function reset() {
@@ -93,12 +98,12 @@ function reset() {
     cv.getContext("2d").clearRect(0, 0, cv.width, cv.height); el.querySelector("[data-done]").hidden = true;
     el.querySelector("[data-timer]").textContent = "0.0 s"; el.querySelector("[data-prog]").style.width = "0";
   }
-  $("banner").classList.remove("on"); const r = $("risk"); r.classList.remove("on"); r.hidden = true;
+  $("pace").hidden = true; $("banner").classList.remove("on"); const r = $("risk"); r.classList.remove("on"); r.hidden = true;
 }
 
 function load(btn) { // swap both panels to this photo; Run waits until both have decoded
   thumbs.forEach((b) => b.setAttribute("aria-pressed", b === btn));
-  overlay = null; reset();
+  overlay = null; token++; reset();
   $("gene").textContent = btn.dataset.gene; $("credit").href = btn.dataset.page;
   const run = $("run"); run.disabled = true; run.textContent = "Run";
   imgs.forEach((i) => (i.src = "../workflow/img/" + btn.dataset.file));
@@ -110,4 +115,5 @@ function load(btn) { // swap both panels to this photo; Run waits until both hav
 const thumbs = [...document.querySelectorAll(".thumbs button")];
 thumbs.forEach((b) => b.addEventListener("click", () => !running && load(b)));
 $("run").addEventListener("click", run);
+$("skip").addEventListener("click", () => (skip = true));
 load(thumbs[0]);

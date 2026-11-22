@@ -37,6 +37,10 @@
     .lane-head { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 4px 12px; }
     .lane-head .bar { grid-column: 1 / -1; }
     .lane .mode { font-size: 22px; }
+    .pace { grid-column: 1 / -1; font: 13px var(--mono); color: var(--muted); display: flex; gap: 12px; align-items: center; }
+    .pace[hidden] { display: none; }
+    .pace button { all: unset; cursor: pointer; color: var(--coral); text-decoration: underline; text-underline-offset: 3px; }
+    .pace button:focus-visible { outline: 2px solid var(--emerald); outline-offset: 2px; }
     .lane .timer { font-size: 40px; }
     .stage { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
     .stage { container-type: size; }
@@ -52,7 +56,7 @@
     .timer { font: 52px/1 var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
     .bar { height: 6px; background: var(--hair); border-radius: 3px; overflow: hidden; }
     .bar i { display: block; height: 100%; width: 0; background: var(--emerald); }
-    #lane-current .bar i { background: var(--coral); } #lane-current .done { color: var(--coral); border-color: var(--coral); }
+    #lane-current .bar i { background: var(--coral); } #lane-current .done { color: var(--coral); border-color: var(--coral); font-size: 24px; }
     #lane-ours .mode { color: var(--emerald); }
     .results { font: 14px var(--mono); color: var(--body); display: grid; gap: 4px; }
     .fast { font: 40px/1 var(--serif); color: var(--emerald); }
@@ -95,12 +99,13 @@
     <button type="button" id="run">Run</button>
   </header>
   <main>
-    <div class="banner" id="banner" aria-live="polite">21× faster<small>0.881 s vs 0.042 s per evaluated study, 8 CPU workers each (<a style="color:inherit" href="https://github.com/atiladeokegab/sota-parallelism-nov21/blob/integration/bench/results/modal-design-20261121T205536Z.json">bench/results/modal-design-20261121T205536Z.json</a>)</small></div>
-    <section class="lane" id="lane-current" aria-label="CPU · open-source libraries (lab pipeline)">
+    <div class="banner" id="banner" aria-live="polite">583× faster<small>24.4 s vs 0.042 s per study, 8 workers each</small></div>
+    <section class="lane" id="lane-current" aria-label="Current: off-the-shelf open-source (squidpy + lifelines)">
       <div class="lane-head">
-        <div><div class="label">Current</div><p class="mode">CPU · open-source libraries (lab pipeline)</p></div>
+        <div><div class="label">Current</div><p class="mode">Off-the-shelf open-source (squidpy + lifelines)</p></div>
         <div><div class="label">Replay time</div><div class="timer" data-timer>0.0 s</div></div>
         <div class="bar"><i data-prog></i></div>
+        <div class="pace" id="pace" hidden>At this pace: 9 min 43 s <button type="button" id="skip">Skip to end</button></div>
       </div>
       <div class="stage"><div class="frame">
         <img src="../workflow/img/hpa_best_01_KRT5.webp" alt="Real head and neck cancer biopsy core (Human Protein Atlas)" crossorigin="anonymous">
@@ -133,7 +138,7 @@
         <p class="caption" style="margin:0">Illustration only. This photo was not scored by the Preflight pipeline; no clinical claim is made.</p>
         <a class="dl" href="report.pdf" download>Download report (PDF)</a>
       </aside>
-      <p class="caption">Speed replays measured runs: 0.881 s vs 0.042 s per evaluated study, 8 CPU workers each, 21× (<a style="color:inherit" href="https://github.com/atiladeokegab/sota-parallelism-nov21/blob/integration/bench/results/modal-design-20261121T205536Z.json">bench/results/modal-design-20261121T205536Z.json</a>)</p>
+      <p class="caption">Replay of measured runs: 24.443 s (off-the-shelf squidpy + lifelines) vs 0.0419 s (Preflight) per study, 8 workers each, 583×; cross-run, same container class (<a style="color:inherit" href="https://github.com/atiladeokegab/sota-parallelism-nov21/blob/integration/bench/results/external-baseline-20261122T043823Z.json">bench/results/external-baseline-20261122T043823Z.json</a>)</p>
     </div>
   </main>
   <footer>Real head and neck biopsy, <span id="gene">KRT5</span> immunostain · <a id="credit" href="https://www.proteinatlas.org/ENSG00000186081-KRT5/cancer/head+and+neck+cancer">Human Protein Atlas</a> · CC BY-SA 3.0 · other patients. Overlay computed in your browser from the stain colours.</footer>
