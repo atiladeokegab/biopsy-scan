@@ -25,7 +25,9 @@
       "range": [
         0.8633194198855019,
         0.9997882054503818
-      ]
+      ],
+      "comparison": "different workload: permGPU has no strata and runs its own statistic (Cox score chi2, information variance, float32); ours runs the unstratified permutation-variance z",
+      "parity": "FAILED: worst column 3.5e-03 relative vs the 0.001 tolerance set before the run"
     }
   },
   "result": {
@@ -156,7 +158,7 @@
         "same_top": true,
         "nan_stats": 0
       },
-      "ours_unstratified_score_chi2_top": 15.895424614529933
+      "transcription_chi2_top": 15.895424614529933
     },
     "host": {
       "cpu_model": "unknown",
@@ -190,5 +192,6 @@
     "started_utc": "2026-11-22T13:31:18.241618+00:00",
     "finished_utc": "2026-11-22T13:33:14.249242+00:00",
     "wall_s": 116.007624
-  }
+  },
+  "relabelled": "post-merge (Atlas review of #176): permgpu.ours_unstratified_score_chi2_top renamed transcription_chi2_top (it is rb.permgpu_stat's top, not ours); speedup.ours_vs_permgpu gained comparison and parity labels. No measured value changed."
 }

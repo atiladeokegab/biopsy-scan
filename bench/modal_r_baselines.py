@@ -172,7 +172,7 @@ def baselines(repeats: int = 3, n_resamples: int = 9999, seed: int = 0) -> dict:
                                             "within_tol": bool(np.nanmax(rel) <= rb.PERMGPU_TOL),
                                             "tol": rb.PERMGPU_TOL, "same_top": top == int(np.argmax(ref)),
                                             "nan_stats": int(np.isnan(stat).sum())},
-                "ours_unstratified_score_chi2_top": float(np.max(ref))}
+                "transcription_chi2_top": float(np.max(ref))}  # rb.permgpu_stat, not ours
     host["load_average_end"] = list(os.getloadavg())
     out["host"] = host
     return out
@@ -216,6 +216,8 @@ def main(repeats: int = 3, cap_usd: float = 5.0, timeout_s: int = 3600):
         for arm, base in (("r", "ours"), ("permgpu", "ours_unstratified")):
             if arm in out:
                 speedups[f"ours_vs_{arm}"] = rb.ratio(out[arm]["timing"], out[base]["timing"])
+        if "ours_vs_permgpu" in speedups:
+            speedups["ours_vs_permgpu"] |= rb.permgpu_label(out["permgpu"]["parity_vs_transcription"])
     result = {"status": "MEASURED" if out and "r" in out else "FAILED", "error": error, "source_commit": commit,
               "method": rb.__doc__.strip(), "audit": rb.AUDIT, "container_class": CLASS,
               "speedup": speedups, "result": out,
