@@ -522,6 +522,26 @@
         "result": "bench/results/usage-traces-20261122T132125Z.json"
       },
       "running_total_usd": 66.235
+    },
+    {
+      "utc": "2026-11-22T14:09Z",
+      "run": "same-host fused 1000/stream + matched 24/stream, external 24/stream x 3",
+      "containers": 3,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 7.0,
+      "est_usd": 6.77,
+      "basis": "3 x 2400 s ceiling x $3.387168/h (A100 80 GB rate)",
+      "source_commit": "a23f43e47e60a1d74a83ef07a0c65b43f6483c4b",
+      "container_class": "Modal A100 + 8 cores + 64 GiB",
+      "actual": {
+        "modal_wall_s": 2037.2,
+        "est_usd": 5.75,
+        "basis": "each container x local wall at the 80 GB rate (an upper bound: includes queueing)",
+        "result": "bench/results/same-host-20261122T140908Z.json"
+      },
+      "running_total_usd": 71.985
     }
   ],
   "container_usd_per_hour_H100": 4.58,

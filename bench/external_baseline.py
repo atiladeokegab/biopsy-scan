@@ -172,10 +172,11 @@ def prepare(cells: dict, plan: dict) -> dict:
     return info
 
 
-def one_study(job: tuple[str, int]) -> dict:
+def pipeline_study(job: tuple[str, int]) -> tuple[dict, tuple]:
+    """The off-the-shelf pipeline alone (cells, squidpy, lifelines, call); returns its record and what the checks need."""
     stream, i = job
     s = _S["studies"][stream][i]
-    names, focal, K = _S["names"], _S["focal"], _S["K"]
+    names, focal = _S["names"], _S["focal"]
     t0 = perf_counter()
     sc = study_cells(_S["cells"], db.design(), s["image_seed"])
     t1 = perf_counter()
@@ -185,18 +186,43 @@ def one_study(job: tuple[str, int]) -> dict:
     lf = lifelines_screen(Xs, s["time"], s["event"], s["strata"])
     call = bonferroni(lf["p"], Xs.shape[1])
     t3 = perf_counter()
-    Xo = our_features(sc, focal, K)  # after the timer: agreement only
+    rec = {"stream": stream, "i": i, "study_s": t3 - t0, "cells_s": t1 - t0, "squidpy_s": t2 - t1,
+           "lifelines_s": t3 - t2, "fitted": lf["fitted"], "failed": lf["failed"],
+           **{f"lab_{k}": v for k, v in call.items()}}
+    return rec, (sc, Xs, lf["z"])
+
+
+def checks_study(arg: tuple[tuple[str, int], tuple]) -> dict:
+    """Our reference recount and score on the same cells, and the agreement with the pipeline: not the pipeline."""
+    (stream, i), (sc, Xs, zs) = arg
+    s = _S["studies"][stream][i]
+    t = perf_counter()
+    Xo = our_features(sc, _S["focal"], _S["K"])
     from stats import screen_batch
     zo = screen_batch(Xo, s["time"][None], s["event"][None], strata=s["strata"], backend="numpy")["z"][0]
-    return {"stream": stream, "i": i, "x_sha_ours": db.sha(Xo), "study_s": t3 - t0, "cells_s": t1 - t0,
-            "squidpy_s": t2 - t1, "lifelines_s": t3 - t2, "fitted": lf["fitted"], "failed": lf["failed"],
-            **{f"lab_{k}": v for k, v in call.items()}, "ours_top": int(np.nanargmax(np.abs(zo))),
-            "ours_maxT": float(np.nanmax(np.abs(zo))), "agreement": agreement(Xs, Xo, lf["z"], zo)}
+    return {"x_sha_ours": db.sha(Xo), "ours_top": int(np.nanargmax(np.abs(zo))),
+            "ours_maxT": float(np.nanmax(np.abs(zo))), "agreement": agreement(Xs, Xo, zs, zo),
+            "checks_s": perf_counter() - t}
 
 
-def run(cells: dict, plan: dict, workers: int = 8, n_jobs: int = 1) -> dict:
-    """The plan's studies over a fork pool of workers, each squidpy call on n_jobs; pool wall is the timed compute."""
+def one_study(job: tuple[str, int]) -> dict:
+    rec, kept = pipeline_study(job)
+    return rec | checks_study((job, kept))  # after the pipeline's timer: agreement only
+
+
+def _map(fn, items: list, workers: int) -> list:
     import multiprocessing as mp
+    if workers == 1:  # squidpy's n_jobs starts loky processes, which a daemonic pool worker may not
+        return [fn(x) for x in items]
+    with mp.get_context("fork").Pool(workers) as pool:
+        return pool.map(fn, items, chunksize=1)
+
+
+def run(cells: dict, plan: dict, workers: int = 8, n_jobs: int = 1, split: bool = False) -> dict:
+    """The plan's studies over a fork pool of workers, each squidpy call on n_jobs; pool wall is the timed compute.
+
+    split: the pipeline alone in one pool (pipeline_wall_s), then the checks in a second pool (checks_wall_s);
+    pool_wall_s is their sum. Otherwise one pool does both per study, as the external-baseline runs did."""
     info = prepare(cells, plan)
     _S["n_jobs"] = n_jobs
     st0 = next(st for st, n in plan.items() if n)
@@ -209,14 +235,20 @@ def run(cells: dict, plan: dict, workers: int = 8, n_jobs: int = 1) -> dict:
                      s0["time"], s0["event"], s0["strata"])
     warm_s = perf_counter() - t
     jobs = [(st, i) for st, n in plan.items() for i in range(n)]
+    if not split:
+        t = perf_counter()
+        recs = _map(one_study, jobs, workers)
+        return {"records": recs, "pool_wall_s": perf_counter() - t, "warm_s": warm_s, "workers": workers,
+                "n_jobs": n_jobs, **info}
     t = perf_counter()
-    if workers == 1:  # squidpy's n_jobs starts loky processes, which a daemonic pool worker may not
-        recs = [one_study(j) for j in jobs]
-    else:
-        with mp.get_context("fork").Pool(workers) as pool:
-            recs = pool.map(one_study, jobs, chunksize=1)
-    wall = perf_counter() - t
-    return {"records": recs, "pool_wall_s": wall, "warm_s": warm_s, "workers": workers, "n_jobs": n_jobs, **info}
+    piped = _map(pipeline_study, jobs, workers)
+    pipeline_wall = perf_counter() - t
+    t = perf_counter()
+    checked = _map(checks_study, [(j, kept) for j, (_, kept) in zip(jobs, piped)], workers)
+    checks_wall = perf_counter() - t
+    recs = [rec | c for (rec, _), c in zip(piped, checked)]
+    return {"records": recs, "pipeline_wall_s": pipeline_wall, "checks_wall_s": checks_wall,
+            "pool_wall_s": pipeline_wall + checks_wall, "warm_s": warm_s, "workers": workers, "n_jobs": n_jobs, **info}
 
 
 def settings(workers: int, n_jobs: int) -> dict:
@@ -236,6 +268,20 @@ def ratios(per: float, workers: int, n_jobs: int) -> dict:
             "ratio_vs_fused": per / FUSED_S_PER_STUDY["value"], "fused": FUSED_S_PER_STUDY,
             "ratio_label": CROSS_RUN, "comparison": COMPARISON, "gpu": GPU_NOTE,
             "settings": {**settings(workers, n_jobs), "n_jobs_note": NJOBS_FAILED}}
+
+
+def spread(values: list[float]) -> dict:
+    return {"median": float(np.median(values)), "min": float(min(values)), "max": float(max(values)), "n": len(values)}
+
+
+def same_host_summary(repeats: list[dict]) -> dict:
+    """Median and min-max over repeats (each in its own container) of every s/study column and of each ratio
+    external column / fused column, the ratio taken per repeat."""
+    cols = [k for k in repeats[0] if k.endswith("_s_per_study")]
+    out = {k: spread([r[k] for r in repeats]) for k in cols}
+    ratios = {f"{e[:-len('_s_per_study')]}_vs_{f[:-len('_s_per_study')]}": [r[e] / r[f] for r in repeats]
+              for e in cols if e.startswith("external") for f in cols if f.startswith("fused")}
+    return out | {"ratios": {k: spread(v) | {"per_repeat": v} for k, v in ratios.items()}}
 
 
 def headline(s: dict) -> str:
