@@ -52,6 +52,16 @@ def both_500(root):
      lambda r: edit(r, cp.CURVE, lambda d: d["points"][-1].update(power_n=0)), "positive integer"),
     ("power outside its interval",
      lambda r: edit(r, cp.CURVE, lambda d: d["points"][-1].update(power_lo=1.0)), "outside its interval"),
+    # Prometheus #130 round 2: a field missing from both files is not agreement, and an empty comparison is no check.
+    ("source hash missing from both files", lambda r: [edit(r, f, lambda d: d["simulated"].pop("source_hash"))
+                                                     for f in (cp.CURVE, cp.VS)], "missing simulated.source_hash"),
+    ("cohort null in both files", lambda r: [edit(r, f, lambda d: d.update(cohort=None)) for f in (cp.CURVE, cp.VS)],
+     "missing cohort"),
+    ("empty comparison points, wrong event fraction",
+     lambda r: edit(r, cp.VS, lambda d: d.update(points=[], event_fraction=0.01)), "comparison: no points"),
+    ("unordered comparison points", lambda r: edit(r, cp.VS, lambda d: d["points"].reverse()), "comparison: patients"),
+    ("event fraction not events / source patients",
+     lambda r: edit(r, cp.VS, lambda d: d.update(event_fraction=0.25)), "event fraction"),
 ])
 def test_bad_sources_are_refused(root, name, mutate, msg):
     mutate(root)

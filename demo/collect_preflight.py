@@ -68,10 +68,17 @@ def build(root=ROOT):
     need({k: curve["design"].get(k) for k in CROPPED} == CROPPED, f"{CURVE}: design is not {CROPPED}")
     need({k: vs["design"].get(k) for k in CROPPED} == CROPPED, f"{VS}: design is not {CROPPED}")
     need({k: vs["control"]["design"].get(k) for k in CONTROL} == CONTROL, f"{VS}: control design is not {CONTROL}")
-    for k in SHARED:
+    for k in SHARED:  # absent or null in both is not agreement
+        need(curve.get(k) is not None and vs.get(k) is not None, f"missing {k}")
         need(curve.get(k) == vs.get(k), f"the two files disagree on {k}")
     for k in SHARED_SIM:
+        need(curve["simulated"].get(k) is not None and vs["simulated"].get(k) is not None, f"missing simulated.{k}")
         need(curve["simulated"].get(k) == vs["simulated"].get(k), f"the two files disagree on simulated.{k}")
+    ns = [p.get("patients") for p in vs.get("points") or []]  # an empty comparison would skip every check below
+    need(ns, "comparison: no points")
+    need(all(isinstance(n, int) and not isinstance(n, bool) and n > 0 for n in ns) and all(a < b for a, b in zip(ns, ns[1:])),
+         "comparison: patients must be positive, strictly increasing and unique")
+    need(abs(vs["event_fraction"] - vs["events"] / vs["patients_source"]) < 1e-12, "event fraction is not events / source patients")
     need(vs["bonferroni_alpha"] == vs["alpha"] / vs["features_m"], "Bonferroni alpha is not alpha / m")
     for p in vs["points"]:  # the formula must reproduce the file before the page may show it
         need(abs(formula(p["patients"], vs) - p["analytic_power"]) < 1e-9, f"formula drifts at {p['patients']}")
