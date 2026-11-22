@@ -247,3 +247,18 @@ def test_scaling_ledger_entries_are_single_attempt_estimates_not_upper_bounds():
                         for e in mine)
     text = json.dumps(mine) + COMMITTED.with_name(COMMITTED.stem + ".caveats.json").read_text()
     assert "billed again" not in text
+
+
+def test_the_cli_cap_defaults_to_five_dollars_which_refuses_a_repeat_after_the_first_sweep():
+    import ast
+    from pathlib import Path
+
+    tree = ast.parse((Path(__file__).parent / "modal_scaling.py").read_text())
+    main = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "main")
+    names = [a.arg for a in main.args.args]
+    default = main.args.defaults[names.index("cap_usd") - (len(names) - len(main.args.defaults))]
+    assert ast.unparse(default) == "scaling.CAP_USD" and scaling.CAP_USD == 5.0
+    spent = 3.06  # the ledger's modal-scaling lines before the repeats
+    with pytest.raises(SystemExit, match="ask the lead"):
+        scaling.check_cap(scaling.CORES, 1000, spent_usd=spent)
+    assert scaling.check_cap(scaling.CORES, 1000, spent_usd=spent, cap_usd=6.0) <= 6.0 - spent

@@ -454,6 +454,54 @@
       "basis": "0.54 GPU-h x $2.73/h",
       "running_total_usd": 57.92,
       "repeat": "sweep-repeats fleet-3"
+    },
+    {
+      "utc": "2026-11-22T06:31Z",
+      "run": "modal-scaling 1000 null studies, cores [1, 2, 4, 8, 16, 32, 64]",
+      "containers": 7,
+      "est_usd": 2.59,
+      "source_commit": "8d4a773824e90242163cf2920624f7351dcd5b6c",
+      "basis": "single-attempt estimate (not a billing ceiling): each container's timeout x (cores x $0.0000131 + GiB x $0.00000222) per s; task cap $6.0, $3.06 spent before",
+      "running_total_usd": 60.51,
+      "actual": {
+        "modal_wall_s": 907.2,
+        "result": "bench/results/sweep-repeats-raw/scaling/r1-modal-scaling-20261122T063144Z.json",
+        "est_usd": 2.089,
+        "basis": "single-attempt estimate at list price: each container x local wall (includes image build and queueing); invoice not verified"
+      },
+      "repeat": "sweep-repeats scaling-1 (3 sweeps launched concurrently, each from its own checkout and ledger copy)"
+    },
+    {
+      "utc": "2026-11-22T06:31Z",
+      "run": "modal-scaling 1000 null studies, cores [1, 2, 4, 8, 16, 32, 64]",
+      "containers": 7,
+      "est_usd": 2.59,
+      "source_commit": "8d4a773824e90242163cf2920624f7351dcd5b6c",
+      "basis": "single-attempt estimate (not a billing ceiling): each container's timeout x (cores x $0.0000131 + GiB x $0.00000222) per s; task cap $6.0, $3.06 spent before",
+      "running_total_usd": 63.1,
+      "actual": {
+        "modal_wall_s": 1475.8,
+        "result": "bench/results/sweep-repeats-raw/scaling/r2-modal-scaling-20261122T063145Z.json",
+        "est_usd": 3.399,
+        "basis": "single-attempt estimate at list price: each container x local wall (includes image build and queueing); invoice not verified"
+      },
+      "repeat": "sweep-repeats scaling-2 (3 sweeps launched concurrently, each from its own checkout and ledger copy)"
+    },
+    {
+      "utc": "2026-11-22T06:31Z",
+      "run": "modal-scaling 1000 null studies, cores [1, 2, 4, 8, 16, 32, 64]",
+      "containers": 7,
+      "est_usd": 2.59,
+      "source_commit": "8d4a773824e90242163cf2920624f7351dcd5b6c",
+      "basis": "single-attempt estimate (not a billing ceiling): each container's timeout x (cores x $0.0000131 + GiB x $0.00000222) per s; task cap $6.0, $3.06 spent before",
+      "running_total_usd": 65.69,
+      "actual": {
+        "modal_wall_s": 1290.5,
+        "result": "bench/results/sweep-repeats-raw/scaling/r3-modal-scaling-20261122T063147Z.json",
+        "est_usd": 2.972,
+        "basis": "single-attempt estimate at list price: each container x local wall (includes image build and queueing); invoice not verified"
+      },
+      "repeat": "sweep-repeats scaling-3 (3 sweeps launched concurrently, each from its own checkout and ledger copy)"
     }
   ],
   "container_usd_per_hour_H100": 4.58,
