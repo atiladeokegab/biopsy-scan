@@ -1,0 +1,111 @@
+{
+ "label": "ESTIMATE; simulated cohorts resampled from 34 UPMC discovery patients' tissue; outcomes SYNTHETIC",
+ "outcomes": "SYNTHETIC",
+ "source": "simulated cohorts of 50-600 resampled with replacement from 34 UPMC discovery patients' tissue",
+ "interval": "per point: Clopper-Pearson 95% on rejections / planted studies (200 per point on Modal)",
+ "cohort": "UPMC head and neck, discovery split only",
+ "caveats": {
+  "outcomes": "SYNTHETIC: planted Weibull outcomes, HR 2 per source SD; no real UPMC outcome was read",
+  "source": "34 discovery patients resampled with replacement up to 600: every simulated cohort reuses the same 34 patients' tissue, so the simulation sees far less tissue variety than 600 real patients would bring; the answer is conditional on these 34",
+  "censoring": "administrative censoring at one common horizon, tuned to the #83 event fraction (0.239); #83 used Charville's reverse Kaplan-Meier censoring, which needs real follow-up",
+  "plant": "the atlas's plant rule (first finite feature with within-stratum variation), on UPMC's own grammar",
+  "scope": "a design estimate for planning; no clinical claim"
+ },
+ "points": [
+  {
+   "patients": 50,
+   "power": 0.135,
+   "power_lo": 0.09088710175489771,
+   "power_hi": 0.19030917268339836,
+   "planted_studies": 200,
+   "rejections": 27,
+   "fwer": 0.05,
+   "mean_events": 11.87,
+   "threshold": 3.7313667879775445
+  },
+  {
+   "patients": 100,
+   "power": 0.4,
+   "power_lo": 0.33154626373563956,
+   "power_hi": 0.47146432720295395,
+   "planted_studies": 200,
+   "rejections": 80,
+   "fwer": 0.07,
+   "mean_events": 24.38,
+   "threshold": 3.716141383184629
+  },
+  {
+   "patients": 200,
+   "power": 0.74,
+   "power_lo": 0.6734222463428603,
+   "power_hi": 0.7993151451236594,
+   "planted_studies": 200,
+   "rejections": 148,
+   "fwer": 0.01,
+   "mean_events": 47.94,
+   "threshold": 3.8442047706027327
+  },
+  {
+   "patients": 400,
+   "power": 0.985,
+   "power_lo": 0.9567917180822874,
+   "power_hi": 0.9968958923784464,
+   "planted_studies": 200,
+   "rejections": 197,
+   "fwer": 0.05,
+   "mean_events": 95.36,
+   "threshold": 3.840897369068961
+  },
+  {
+   "patients": 600,
+   "power": 1.0,
+   "power_lo": 0.9817246596448638,
+   "power_hi": 1.0,
+   "planted_studies": 200,
+   "rejections": 200,
+   "fwer": 0.06,
+   "mean_events": 143.315,
+   "threshold": 3.878195013240725
+  }
+ ],
+ "answer": {
+  "target_power": 0.8,
+  "missing_patients": [],
+  "n_80": 248.97959183673476,
+  "n_80_pointwise_ci_crossings": [
+   200.69324049620835,
+   289.33760780945
+  ],
+  "smallest_patients_pointwise_lower_bound_clears_80": 400,
+  "max_patients_simulated": 600,
+  "statement": "Simulated power first crosses 80% at about 249 patients (interpolated). The pointwise 95% CI bounds cross 80% at 201 (upper) and 289 (lower); these are pointwise intervals, not a confidence interval for n. Smallest simulated count whose pointwise lower 95% bound is at least 80%: 400.",
+  "method": "n_80: first crossing of 80% by the simulated power, linear in patients between the bracketing points, no extrapolation. n_80_pointwise_ci_crossings: the same crossing of the per-point 95% Clopper-Pearson upper and lower bounds; pointwise, so not a confidence interval for n_80"
+ },
+ "metadata": {
+  "source_n": 34,
+  "source_regions": 125,
+  "source_cells": 1000151,
+  "grammar_hash": "adc93e69df4280df4ebc40432d4b3ca84ffb4d8e83513ae1ce883feff981915a",
+  "budget": {
+   "calibration": 200,
+   "null": 100,
+   "alternative": 200,
+   "nested": 0,
+   "direct": 20,
+   "permutations": 999,
+   "batch": 8
+  },
+  "hr_per_source_sd": 2.0,
+  "seed": 20261121,
+  "backend": "gpu",
+  "bank_draws": 64
+ },
+ "raw": [
+  "bench/results/modal-hn-power-20261122T042657Z.json"
+ ],
+ "commit": [
+  "a69073f2dc780b470dbb8d20d1375530188fb469"
+ ],
+ "planted_studies_per_point": 200,
+ "note": "re-derived from the raw file with bench.hn_power --from-raw after the label change at 35c3891; points and answer identical to the launcher's own summary"
+}
