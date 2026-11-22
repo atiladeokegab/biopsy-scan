@@ -180,9 +180,14 @@ def run(cells: dict, plan: dict, workers: int = 8) -> dict:
     """The plan's studies over a fork pool of single-thread workers; pool wall is the timed compute."""
     import multiprocessing as mp
     info = prepare(cells, plan)
-    first = next((st, 0) for st, n in plan.items() if n)
+    st0 = next(st for st, n in plan.items() if n)
+    s0 = _S["studies"][st0][0]
     t = perf_counter()
-    one_study(first)  # numba JIT in squidpy and lifelines' imports, before the fork; recomputed in the pool
+    # warm-up before the fork: squidpy's numba JIT and the imports, on one patient and two columns
+    looks = study_cells(cells, db.design(), s0["image_seed"])[0]
+    x = squidpy_features(looks, _S["names"], _S["focal"], seed=0)
+    lifelines_screen(np.tile(x[:2], (len(s0["time"]), 1)) + np.arange(len(s0["time"]))[:, None],
+                     s0["time"], s0["event"], s0["strata"])
     warm_s = perf_counter() - t
     jobs = [(st, i) for st, n in plan.items() for i in range(n)]
     t = perf_counter()
