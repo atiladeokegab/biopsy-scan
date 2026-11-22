@@ -67,14 +67,14 @@
   <section class="reimage" aria-labelledby="reimage-title">
     <div class="card reimage-card">
       <div class="reimage-text">
-        <h2 id="reimage-title">A study sees two small fields and mis-calls some cells</h2>
-        <p class="reimage-label" id="reimage-label">Real cell positions and types from one patient, Charville (colorectal, not head and neck). Imaging simulated by Preflight.
-          <span class="tags"><span class="tag" id="reimage-tag">MEASURED cells</span> <span class="tag">SYNTHETIC imaging</span></span></p>
+        <h2 id="reimage-title">A study sees two fields of view and mis-calls some cells</h2>
+        <p class="reimage-label" id="reimage-label">Real cell positions and types from one patient in the Charville cohort (colorectal, not head and neck). Imaging simulated by Preflight.
+          <span class="tags"><span class="tag measured" id="reimage-tag">MEASURED cells</span> <span class="tag">SYNTHETIC imaging</span></span></p>
         <ol class="reimage-steps" id="reimage-steps">
-          <li>One real tumour region: <span id="reimage-n">every cell</span>, each at its measured position.</li>
-          <li>Down to cell level, each dot is one cell. Charville's 15 measured cell types are drawn as 3 colour groups. Height is local cell density.</li>
-          <li>The study images two 400 µm fields of view. It never sees the cells outside them.</li>
-          <li>Each cell it sees has a 10% chance of a mis-call among the 15 types. Only a mis-call into another colour group shows here. Those cells flicker, then keep the wrong colour, ringed.</li>
+          <li value="1">One real tumour region: <span id="reimage-n">every cell</span>, each at its measured position.</li>
+          <li value="2">Down to cell level, each dot is one cell. Charville's 15 measured cell types are drawn as 3 colour groups. Height is local cell density.</li>
+          <li value="3">The study images two 400 µm fields of view, each on a different region. Both are drawn here on this one. In this draw they see <span class="num" id="reimage-seen">part of its cells</span>. The study never sees the rest.</li>
+          <li value="4">Each cell it sees has a 10% chance of a mis-call among the 15 types. Only a mis-call into another colour group shows here. In this draw that is <span class="num" id="reimage-crossed">a few cells</span>. They flicker, then keep the wrong colour, ringed.</li>
         </ol>
         <p class="legend">
           <span><i class="t"></i>Tumour</span> <span><i class="s"></i>Stroma</span> <span><i class="m"></i>Immune</span>
@@ -84,7 +84,7 @@
       </div>
       <canvas id="reimage" role="img" aria-label="A real colorectal tumour region in 3D. Two simulated fields of view, the rest dimmed. Each cell in view has a 10% chance of a mis-call. Those that cross colour groups are ringed."></canvas>
       <img id="reimage-still" class="reimage-still" src="img/reimage-end.jpg" loading="lazy" alt="The last frame of the 3D view, rendered on a GPU: two 400 µm fields of view over the real region, mis-called cells ringed." hidden>
-      <p class="reimage-fallback" id="reimage-fallback" role="status" hidden></p>
+      <p class="reimage-fallback" id="reimage-fallback" role="status">Loading the region's cells.</p>
       <p class="src reimage-credit" id="reimage-credit">Cells: Charville CODEX, Wu et al. 2022 (Zenodo 13179600, CC-BY-4.0).</p>
     </div>
   </section>

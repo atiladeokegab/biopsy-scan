@@ -9,12 +9,14 @@
   --lane-h-phone: 120px;
   --key: 12px;             /* legend and race-key swatches */
   --reimage-h: 480px;
-  --reimage-h-phone: 340px;
-  --reimage-text-w: 320px;
+  --reimage-h-phone: 290px;
+  --reimage-text-w: 384px;
 }
 
 * { box-sizing: border-box; }
-html { background: var(--bg); }
+/* Inter served with the page (OFL, fonts/OFL.txt; Latin subset), so no visitor gets the system fallback. */
+@font-face { font-family: "Inter"; src: url("fonts/InterVariable.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+html { background: var(--bg); scrollbar-color: var(--border) var(--bg); }
 body {
   margin: 0; background: var(--bg); color: var(--text-body);
   font: var(--text-base)/var(--leading-normal) var(--font-sans); -webkit-font-smoothing: antialiased;
@@ -112,7 +114,7 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
   display: grid; padding: 0; overflow: hidden; grid-template-columns: minmax(0, 1fr) var(--reimage-text-w);
   grid-template-areas: "canvas text" "fallback text" "credit text"; grid-template-rows: 1fr auto auto;
 }
-.reimage-text { grid-area: text; padding: var(--space-5); border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: var(--space-3); }
+.reimage-text { grid-area: text; padding: var(--space-4) var(--space-5); border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: var(--space-3); }
 .reimage-label { font-size: var(--text-sm); line-height: var(--leading-meta); color: var(--text-body); }
 .reimage-label .tags { display: block; margin-top: var(--space-2); }
 .reimage-steps { margin: 0; padding-left: var(--space-5); display: grid; gap: var(--space-2); font-size: var(--text-sm); line-height: var(--leading-meta); color: var(--text-muted); }
@@ -120,13 +122,16 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
 .reimage-steps li[aria-current] { color: var(--text-head); }
 .reimage-text .legend { padding: 0; }
 .legend .r { border-radius: 50%; border: 2px solid var(--text-head); }
-.reimage-text .legend .f { border: 1px solid var(--text-body); }
+.reimage-text .legend .f { border: 1px solid var(--text-body); border-radius: 0; background: rgba(185, 198, 212, 0.14); } /* the field: a lit square, not a checkbox */
+.tag.measured { border-color: var(--text-muted); } /* MEASURED is no warning: the amber border is for SYNTHETIC and UNMEASURED */
+.reimage-card .num { font-variant-numeric: tabular-nums; color: inherit; }
+.reimage-card ::selection { background: rgba(185, 198, 212, 0.3); color: var(--text-head); }
 .reimage-text .hint { display: flex; flex-wrap: wrap; gap: 0 var(--space-4); }
 .reimage-text .hint .link { min-height: var(--target-min); }
 #reimage { grid-area: canvas; display: block; width: 100%; height: 100%; min-height: var(--reimage-h); background: var(--bg-canvas); }
 .reimage-still { grid-area: canvas; display: block; width: 100%; height: 100%; min-height: var(--reimage-h); object-fit: contain; background: var(--bg-canvas); }
 .reimage-fallback { grid-area: fallback; margin: 0; padding: var(--space-3) var(--space-4) 0; max-width: 75ch; font-size: var(--text-sm); line-height: var(--leading-meta); color: var(--text-body); }
-.reimage-credit { grid-area: credit; max-width: 75ch; padding: var(--space-2) var(--space-4); line-height: var(--leading-caption); }
+.reimage-credit { grid-area: credit; max-width: 62ch; /* about 75 characters at 12px */ padding: var(--space-2) var(--space-4); line-height: var(--leading-caption); }
 
 /* RESULTS: power against the formula, the honesty strip, the scaling slot */
 .results { display: grid; gap: var(--space-5); grid-template-columns: 1.2fr 1fr 1fr; padding-top: var(--space-5); }
@@ -272,6 +277,8 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
   .reimage-text > .legend { padding: 0 var(--space-4); }
   #reimage, .reimage-still, .reimage-fallback { order: 1; }
   #reimage, .reimage-still { height: var(--reimage-h-phone); min-height: 0; }
+  /* While it plays, only the current step sits under the canvas; the rest stay in the accessibility tree. */
+  .reimage-steps.playing li:not([aria-current]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .reimage-credit { order: 3; }
   .big { font-size: var(--text-xl); }
   .foot { padding: var(--space-6) var(--space-4) var(--space-8); }

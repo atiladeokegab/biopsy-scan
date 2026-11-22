@@ -86,7 +86,7 @@ assert.match(section, /SYNTHETIC imaging/);
 assert.match(html, /<span class="tag measured" id="reimage-tag">MEASURED cells<\/span>/, "MEASURED tag neither accent nor warning");
 assert.doesNotMatch(section, /\bsmall\b/, "no size word the picture can contradict");
 assert.match(html, /<p class="reimage-fallback" id="reimage-fallback" role="status">Loading the region's cells\.<\/p>/, "a loading line until the view starts");
-assert.match(flat(steps), /In this draw it sees all the cells|In this draw it sees [^.]+ cells\./); assert.match(flat(steps), /In this draw that is [^.]+\./);
+assert.match(flat(steps), /each on a different region\. Both are drawn here on this one\. In this draw they see [^.]+\./, "says why the fields share a region"); assert.match(flat(steps), /In this draw that is [^.]+\./);
 assert.match(html, /<h2 id="reimage-title">[^<]*fields[^<]*mis-call/, "the title states the answer");
 assert.match(html, />Replay the fly-through</); assert.match(html, />Pause the fly-through</);
 assert.match(html, /<img id="reimage-still"[^>]*src="img\/reimage-end\.jpg"[^>]*loading="lazy"[^>]*hidden/, "a GPU still waits for the no-WebGL case");
@@ -134,7 +134,7 @@ assert.equal($("reimage-still").hidden, false, "measured input without WebGL: th
 assert.match($("reimage-fallback").textContent, /rendered on a GPU/);
 const study = drawStudy(tissueJSON);
 assert.ok(study.seen > 0 && study.crossed > 0 && study.crossed < study.seen, "the draw sees cells and crosses some groups");
-assert.equal($("reimage-seen").textContent, `${study.seen.toLocaleString("en-GB")} of the ${study.n.toLocaleString("en-GB")}`, "counts shown without WebGL");
+assert.equal($("reimage-seen").textContent, `${study.perField.map((v) => v.toLocaleString("en-GB")).join(" and ")} of its ${study.n.toLocaleString("en-GB")} cells`, "each field's count, shown without WebGL");
 assert.equal($("reimage-crossed").textContent, `${study.crossed.toLocaleString("en-GB")} cells`);
 let got; $ = page();
 mountReimage($, tissueJSON, { reducedMotion: false, search: "?t3d=nope", create: (cv, t, o) => { got = o; return { replay() {}, toggle: () => false }; } });
@@ -142,8 +142,10 @@ assert.equal(got.freezeAt, null, "malformed t3d plays normally");
 assert.match($("reimage-credit").textContent, /Zenodo 13179600/);
 assert.ok(!$("reimage-replay").hidden && !$("reimage-pause").hidden, "controls revealed once WebGL runs");
 assert.ok($("reimage-fallback").hidden, "the loading line goes once WebGL runs");
+assert.ok($("reimage-steps").cls.has("playing"), "while it plays, the phone shows the current step by the canvas");
+assert.match(html, /<li value="1">[\s\S]*<li value="4">/, "steps keep their numbers when others are hidden");
 $ = page(); mountReimage($, tissueJSON, { reducedMotion: true, search: "", create: () => ({}) });
-assert.ok($("reimage-replay").hidden, "reduced motion: no controls");
+assert.ok($("reimage-replay").hidden, "reduced motion: no controls"); assert.ok(!$("reimage-steps").cls.has("playing"), "reduced motion: every step shows");
 
 // The mis-calls drawn are Preflight's 15-type model seen through the 3 colour groups: a type in group g is called
 // as another type with prob eps, uniform over the other 14, so it lands in group h != g with prob eps * n_h / 14.
@@ -165,9 +167,8 @@ for (let g = 0; g < 3; g++) {
   assert.ok(Math.abs(cross - cross15) / 200000 < 0.004, `group ${TYPES[g]}: projected ${cross} vs 15-type ${cross15}`);
 }
 
-// The two fields stand for two different regions, so on the one region drawn here they never overlap.
-const [A, B] = study.crops;
-assert.ok(A[0] + A[2] <= B[0] || B[0] + B[2] <= A[0] || A[1] + A[2] <= B[1] || B[1] + B[2] <= A[1], "fields apart");
+// Each field's count is that field alone (the study's fields are on different regions, so never pooled).
+study.crops.forEach((cr, i) => assert.equal(study.perField[i], tissueJSON.patients.length && study.cells.filter((c) => c.x >= cr[0] && c.x < cr[0] + cr[2] && c.y >= cr[1] && c.y < cr[1] + cr[2]).length));
 assert.equal(study.seen, study.inside.reduce((a, b) => a + b), "seen counts the cells inside");
 
 // Framing: each shot is fitted to its subject at the canvas's own aspect, so the 390 view is redrawn, not cropped.

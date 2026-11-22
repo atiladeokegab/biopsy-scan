@@ -180,27 +180,36 @@ export const inView = (e) => e.isIntersecting && e.intersectionRatio >= VISIBLE;
 // ?t3d=<seconds> holds the scene for stills; anything but a finite number plays it normally.
 export const captureTime = (v) => (v !== null && v.trim() !== "" && Number.isFinite(+v) ? +v : null);
 
-export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null, onStep = () => {} }) {
+// One simulated look, in Preflight's draw order: the crops, then a uniform u per cell for the mis-call. It needs no
+// WebGL, so the counts show even when the view cannot start.
+export function drawStudy(tissue) {
   const p = pickPatient(tissue);
   const cells = p.cells, n = cells.length;
   let lo = [Infinity, Infinity], hi = [-Infinity, -Infinity];
   for (const c of cells) { lo = [Math.min(lo[0], c.x), Math.min(lo[1], c.y)]; hi = [Math.max(hi[0], c.x), Math.max(hi[1], c.y)]; }
+  // The study puts each field on a different region; both are drawn on this one, so on a small region they overlap.
+  const r = rng(SEED), crops = Array.from({ length: WINDOWS }, () => randomCrop(lo, hi, FOV_UM, [r(), r()]));
+  const classes = Object.values(tissue.meta?.display_classes ?? {});
+  const M = groupMatrix(TYPES.map((g) => classes.filter((v) => v === g).length || 1), EPS); // no type map: 3 equal groups
+  const type = new Uint8Array(n), obs = new Uint8Array(n), inside = new Uint8Array(n);
+  let seen = 0, crossed = 0;
+  cells.forEach((c, j) => {
+    type[j] = TYPES.indexOf(c.type);
+    obs[j] = callFrom(M[type[j]], r());
+    inside[j] = crops.some((cr) => inCrop(c.x, c.y, cr));
+    seen += inside[j]; crossed += inside[j] && obs[j] !== type[j];
+  });
+  const perField = crops.map((cr) => cells.filter((c) => inCrop(c.x, c.y, cr)).length); // what each field alone sees
+  return { p, cells, n, lo, hi, crops, type, obs, inside, seen, crossed, perField };
+}
+
+export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null, onStep = () => {} }) {
+  const { p, cells, n, lo, hi, crops, type, obs, inside } = drawStudy(tissue);
   const mid = [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2], RC = Math.max(hi[0] - lo[0], hi[1] - lo[1]) / 2;
   const field = heightField(cells, lo, hi, 96, 14);
   const lift = (x, y) => LIFT * field.at(x, y) ** 0.7;
   const boundary = boundaryPoint(cells, lo, hi, 48, 30);
 
-  // One simulated look, in Preflight's draw order: the crops, then a uniform u per cell for the mis-call.
-  const r = rng(SEED);
-  const crops = Array.from({ length: WINDOWS }, () => randomCrop(lo, hi, FOV_UM, [r(), r()]));
-  const classes = Object.values(tissue.meta?.display_classes ?? {});
-  const M = groupMatrix(TYPES.map((g) => classes.filter((v) => v === g).length || 1), EPS); // no type map: 3 equal groups
-  const type = new Uint8Array(n), obs = new Uint8Array(n), inside = new Uint8Array(n);
-  cells.forEach((c, j) => {
-    type[j] = TYPES.indexOf(c.type);
-    obs[j] = callFrom(M[type[j]], r());
-    inside[j] = crops.some((cr) => inCrop(c.x, c.y, cr));
-  });
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -254,11 +263,13 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
   // Fields of view: a thin square frame, labelled with its size, over a faint curtain of light down to the tissue.
   const H = LIFT + 34;
   const frameMat = new THREE.MeshBasicMaterial({ color: tok("--text-body"), side: THREE.DoubleSide, transparent: true });
-  const labelTex = (() => {
-    const cv = document.createElement("canvas"); cv.width = 256; cv.height = 64;
+  const labels = [], labelTex = (() => {
+    // A pill on the canvas ground, so the label reads over dots and frame edges.
+    const cv = document.createElement("canvas"); cv.width = 256; cv.height = 72;
     const g = cv.getContext("2d");
-    g.font = `600 34px ${tok("--font-sans") || "sans-serif"}`; g.fillStyle = tok("--text-body"); g.textAlign = "center"; g.textBaseline = "middle";
-    g.fillText(`${FOV_UM} µm`, 128, 34);
+    g.fillStyle = tok("--bg-canvas"); g.globalAlpha = 0.85; g.beginPath(); g.roundRect(28, 6, 200, 60, 12); g.fill(); g.globalAlpha = 1;
+    g.font = `600 36px ${tok("--font-sans") || "sans-serif"}`; g.fillStyle = tok("--text-head"); g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText(`${FOV_UM} µm`, 128, 38);
     const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace; return tx;
   })();
   const wins = crops.filter(Boolean).map((cr, i) => {
@@ -272,7 +283,7 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
     curtain.rotation.y = Math.PI / 4;
     curtain.position.y = H / 2;
     const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex, transparent: true, depthTest: false, sizeAttenuation: false }));
-    label.scale.set(0.16, 0.04, 1); // a share of the canvas height, so it reads the same at every distance and size
+    labels.push(label);
     label.position.set(0, H, half + 14);
     label.renderOrder = 2;
     g.add(frame, curtain, label);
@@ -309,6 +320,9 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
     const pr = renderer.getPixelRatio();
     if (canvas.width !== Math.floor(w * pr) || canvas.height !== Math.floor(h * pr)) renderer.setSize(w, h, false);
     camera.aspect = w / h;
+    // Labels a fixed 26 css px tall: unattenuated sprites span scale.y / (2 tan(fov/2)) of the canvas height.
+    const ly = (26 / h) * 2 * Math.tan((camera.fov * Math.PI) / 360);
+    for (const l of labels) l.scale.set(ly * (256 / 72), ly, 1);
     const s = timeline(t), k = s.camera, az = k.azim + orbit;
     // Each end of the move fitted at the current angle, so the orbit and the phone's aspect stay framed too.
     const half = (camera.fov * Math.PI) / 360, fit = Math.min(half, Math.atan(Math.tan(half) * camera.aspect));
@@ -369,17 +383,21 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
 
 // The section around the canvas: provenance first (it holds without WebGL), controls only once the scene runs.
 export function mountReimage($, tissue, { reducedMotion, search, create = createReimage3d }) {
-  const p = pickPatient(tissue), n = p.cells.length, real = tissue.source === "MEASURED";
+  const study = drawStudy(tissue), p = study.p, n = study.n, real = tissue.source === "MEASURED";
+  const fmt = (v) => v.toLocaleString("en-GB");
+  $("reimage-seen").textContent = `${study.perField.map(fmt).join(" and ")} of its ${fmt(n)} cells`;
+  $("reimage-crossed").textContent = `${fmt(study.crossed)} cells`;
   $("reimage-n").textContent = n === p.cells_in_region
     ? `all ${n.toLocaleString("en-GB")} cells`
     : `${n.toLocaleString("en-GB")} of its ${p.cells_in_region.toLocaleString("en-GB")} cells`;
   if (!real) {
     $("reimage-label").firstChild.textContent = "SYNTHETIC cells. Real Charville data is not loaded. Imaging simulated by Preflight. ";
     $("reimage-tag").textContent = "SYNTHETIC cells";
+    $("reimage-tag").classList.remove("measured");
     $("reimage").setAttribute("aria-label", "A synthetic tumour region in 3D. Two simulated fields of view, the rest dimmed. Each cell in view has a 10% chance of a mis-call. Those that cross colour groups are ringed.");
   }
   $("reimage-credit").textContent = (real ? `Cells: Charville CODEX, Wu et al. 2022 (Zenodo 13179600, CC-BY-4.0), patient ${p.id}, region ${p.region}. ` : "") +
-    "The fields of view and mis-calls are one simulated draw. The study places its two fields on two different regions. Here both fall on one.";
+    "The fields of view and mis-calls are one simulated draw.";
   const steps = [...$("reimage-steps").children];
   let view;
   try {
@@ -387,7 +405,8 @@ export function mountReimage($, tissue, { reducedMotion, search, create = create
       reducedMotion, freezeAt: captureTime(new URLSearchParams(search).get("t3d")),
       onStep: (k) => steps.forEach((li, i) => (i === k ? li.setAttribute("aria-current", "step") : li.removeAttribute("aria-current"))),
     });
-  } catch {
+  } catch (e) {
+    console.warn("3D view off:", e.message);
     $("reimage").hidden = true;
     $("reimage-still").hidden = !real; // the still is of the real region: never shown over synthetic cells
     $("reimage-fallback").hidden = false;
@@ -395,7 +414,9 @@ export function mountReimage($, tissue, { reducedMotion, search, create = create
       real ? "Above: the last frame, rendered on a GPU." : "The steps still describe the SYNTHETIC cells."}`;
     return;
   }
+  $("reimage-fallback").hidden = true;
   if (reducedMotion) return;
+  $("reimage-steps").classList.add("playing");
   const pause = $("reimage-pause");
   $("reimage-replay").hidden = pause.hidden = false;
   $("reimage-replay").addEventListener("click", () => { view.replay(); pause.textContent = "Pause the fly-through"; pause.setAttribute("aria-pressed", "false"); });

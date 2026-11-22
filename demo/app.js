@@ -196,6 +196,8 @@ async function main() {
       : "Cannot read grid.json. Run <code>python3 -I demo/check_data.py</code> and reload.";
     $("tissue-caption").textContent = "";
     $("verdict").textContent = "";
+    $("reimage").hidden = true;
+    $("reimage-fallback").textContent = "The 3D view is off: the page could not load the tissue data. The message at the top says how to fix it.";
     return;
   }
   [grid, tissue] = [gr.value, ti.value];
