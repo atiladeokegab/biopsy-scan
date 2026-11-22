@@ -20,7 +20,7 @@ A live 5-minute pitch to the judges, including a live demo of about 60 s, with t
 | Item | Where | Status |
 |---|---|---|
 | Deck | PDF exported at freeze to `docs/assets/preflight-deck.pdf` | not yet exported |
-| Live demo | https://atiladeokegab.github.io/sota-parallelism-nov21/ | live once PR #36 merges |
+| Live demo | https://atiladeokegab.github.io/sota-parallelism-nov21/ | live (PR #36 merged; the page answered HTTP 200 at 22:16Z on 21 Nov) |
 | Offline fallback | `make demo` (checks `demo/data`, then serves `demo/` locally) | in integration |
 | Demo video (backup) | `docs/film/` | recorded (proof-v5); attached at submission |
 | README | `README.md`: what it is, how to run it, a screenshot from the final run | not yet refreshed |
@@ -35,23 +35,27 @@ A live 5-minute pitch to the judges, including a live demo of about 60 s, with t
 
 ## Judging criteria and evidence
 
-Status is read from the repo as it is now: MEASURED (a results file or a passing test in `make smoke`), PENDING (the
-code or file is not in `integration` yet), UNMEASURED (needs hardware or a run we have not done). Numbers are quoted
-only from results files.
+Status is read from the repo as it is now: MEASURED (a results file or a passing test in `make smoke`), ESTIMATE (a
+simulated rate with its interval, or arithmetic on measured rows), SYNTHETIC (model-generated outcomes), PENDING (the
+code or file is not in `integration` yet), UNMEASURED (a run that cannot answer the question). Numbers are quoted
+only from results files; every row, with its source key, is in [docs/JUDGING.md](JUDGING.md).
 
 | Criterion | PRD items | Evidence | Status |
 |---|---|---|---|
-| Correctness and assumptions | R-1, R-2, R-3, R-8 | `core/test_spine.py`, `stats/test_reference.py`, `tests/test_score_contract.py`, `tests/test_reimage_contract.py`, `reimage/test_backends.py`, `audit/test_audit.py` (all in `make smoke`) | MEASURED on CPU and the CUDA simulator; agreement on a real GPU UNMEASURED |
-| Fundamental reshaping | R-4, R-6 | Shared-threshold shortcut and its nested check: `atlas/test_simulation.py` (branch `5-study-atlas`); fleet sharding, bit-identical to one device: `reimage/test_fleet.py` (PR #34) | PENDING |
-| Meaningful performance improvement | R-5, R-6 | `bench/results/ladder-amd-epyc-7b13.json` (SYNTHETIC tissue, AMD EPYC 7B13, 8 logical CPUs): only the NumPy reference rung is timed. Rung 0 (per-study cKDTree recount plus permutation test), Numba all-core and GPU rungs, and fleet studies/s are not in a results file | NumPy reference MEASURED; every speed-up UNMEASURED |
-| Scientific value | R-4, R-7, R-8 | `audit/results/charville.json` (patient-level, 159 patients, 38 events, exploratory, already seen); `audit/results/upmc.json` (descriptive only); atlas output and `bench/results/vs-schoenfeld.json` (Schoenfeld vs simulated power) not yet in integration | Audit MEASURED; atlas and Schoenfeld PENDING |
+| Correctness and assumptions | R-1, R-2, R-3, R-8 | `core/test_spine.py`, `stats/test_reference.py`, `tests/test_score_contract.py`, `tests/test_reimage_contract.py`, `reimage/test_backends.py`, `audit/test_audit.py` (all in `make smoke`) | MEASURED on CPU and the CUDA simulator; on a real A100, 39 passed, 0 failed (`bench/results/modal-a100-20261121T173127Z.json`, #75), MEASURED. Simulator against the real cohort's survival curve (#119, `bench/results/real-check-charville.json`): the difference interval contains zero at all three sizes; outcome model only, not imaging noise (counts MEASURED; outcomes SYNTHETIC; power ESTIMATE) |
+| Fundamental reshaping | R-4, R-6 | Shared-threshold shortcut: `atlas/test_simulation.py` (#45); fleet sharding, bit-identical to one device: `reimage/test_fleet.py` (#34); fleet timing: 1,000 studies, 843.7 s on 1 A100 against 128.2 s on 8, 6.6× compute span, one sweep (`bench/results/modal-a100-20261121T183709Z.json`, #75) | TESTED; fleet MEASURED |
+| Meaningful performance improvement | R-5, R-6 | The race (#113, `bench/results/modal-design-20261121T194458Z.json`): against the lab way on the same 8 cores, Preflight's Numba lane is 7.0× per evaluated study and 4.70× per design point (estimating FWER and power with each procedure, calibration included); hybrid ties Numba; different test procedures, one run per arm. Matched workflow comparison through scoring (#123, `bench/results/matched-e2e-20261121T201925Z.json`; excludes data load, the threshold calculation and the final calls): 42.1× (lab averaged over 100 studies; Preflight's 3,000 evaluated studies, 1,000 of them calibration, divided by 2,000 decided), 26.7× adding outcome simulation, adjacency and warm-up; 1 lab core against 8 Preflight cores; calls agree on 89 of 100. GPU kernel 3.19× (#75) | MEASURED (compute); rates ESTIMATE |
+| Scientific value | R-4, R-7, R-8 | Schoenfeld formula 80% against simulated 27% [22, 32] at 200 patients (`bench/results/vs-schoenfeld-300.json`, #53); about 524 patients for 80% (`bench/results/power-at-scale.json`, #83); the shared-threshold procedure had lower estimated power, 15.3% against the lab's 20.3% (#113), and event-count calibration does not close it, +0.2 points [−0.7, +1.1] (#117); Charville v2 maxT p = 0.098 over 3,780 patterns (`results/charville-v2.json`, #47); UPMC locked test inconclusive at 18% simulated power (`results/upmc-rediscovery.json`, #109) | Schoenfeld formula ANALYTIC; simulated power, power at scale and calibration ESTIMATE; Charville MEASURED, exploratory; UPMC UNMEASURED (underpowered) |
 
-The demo's answer grid, `demo/data/grid.json`, is labelled SYNTHETIC (a toy attenuation model) until the atlas output
-replaces it.
+The demo's answer grid, `demo/data/grid.json`, is the Atlas output: 48 design points; per point, 1,000 alternative studies for power, 10,000 null
+studies for false alarms and 10,000 calibration studies for the threshold (`meta.budget`); power ESTIMATE, compute
+MEASURED, outcomes SYNTHETIC.
 
 ## Hard lines
 
 - No invented numbers. Every figure carries MEASURED, SYNTHETIC, UNMEASURED, ESTIMATE or ANALYTIC.
 - Charville is the only patient-level cohort; UPMC is descriptive apart from one pre-registered locked test (R-16), which is UNMEASURED (underpowered) and inconclusive: `results/upmc-rediscovery.json`.
 - Real-data results are exploratory: their outcomes have already been seen.
-- Every speed-up is quoted against rung 0, what a lab runs today.
+- Every speed-up names its baseline, hardware and scope: the lab way (a 1,000-shuffle test in every study) for the race
+  and the matched run, one A100 for the fleet, the NumPy reference for the kernel. Two different test procedures are
+  never called equal work.

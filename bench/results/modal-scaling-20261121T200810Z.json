@@ -1,0 +1,261 @@
+{
+  "status": "MEASURED",
+  "failures": [],
+  "source_commit": "f92cc456967cef3081d01a1e313419e06f98e347",
+  "labels": {
+    "compute": "MEASURED",
+    "sweep": "one sweep, every core count launched at once",
+    "outcomes": "SYNTHETIC (atlas/simulation.py)",
+    "claims": "times and ratios only: speedup_vs_1_core = studies wall at 1 core / at n cores"
+  },
+  "workload": {
+    "arm": "numba (build-9's bench/design_batch.py at 093c1ee, copied unchanged)",
+    "stream": "null",
+    "studies": 8,
+    "root_seed": 20261121,
+    "stream_seed": 202,
+    "design": {
+      "patients": 159,
+      "regions_per_patient": 2,
+      "fov_um": 400.0,
+      "eps": 0.1,
+      "seed": 0
+    },
+    "timed": "studies_wall_s: the pool's re-imaging and Cox scoring of every study; excludes data load, study preparation, adjacency and JIT warm-up (each recorded per point)"
+  },
+  "container_class": {
+    "1": "Modal CPU container, cpu=(1, 1) physical cores as request and hard limit, 16 GiB, no GPU, modal.Image.debian_slim(python_version='3.11') + uv_sync of this repo",
+    "8": "Modal CPU container, cpu=(8, 8) physical cores as request and hard limit, 16 GiB, no GPU, modal.Image.debian_slim(python_version='3.11') + uv_sync of this repo"
+  },
+  "parity": {
+    "reference_cores": 8,
+    "z_tol": 1e-09,
+    "by_cores": {
+      "1": {
+        "studies": 8,
+        "same_studies": true,
+        "x_identical": true,
+        "z_identical": false,
+        "z_max_rel_diff": 7.79148327162959e-16,
+        "z_within_tol": true
+      },
+      "8": {
+        "studies": 8,
+        "same_studies": true,
+        "x_identical": true,
+        "z_identical": true,
+        "z_max_rel_diff": 0.0,
+        "z_within_tol": true
+      }
+    },
+    "basis": "X: sha256 per study; z: sha256 per study, and max |z - z_8| / max(1, |z_8|) over every study",
+    "all": true,
+    "against_build9_8core": {
+      "x_identical": true,
+      "maxT_identical": true,
+      "compared": 8
+    }
+  },
+  "curve": [
+    {
+      "cores": 1,
+      "workers": 1,
+      "studies": 8,
+      "studies_wall_s": 8.200718601000005,
+      "wall_per_study_s": 1.0250898251250007,
+      "speedup_vs_1_core": 1.0
+    },
+    {
+      "cores": 8,
+      "workers": 8,
+      "studies": 8,
+      "studies_wall_s": 3.984629067,
+      "wall_per_study_s": 0.498078633375,
+      "speedup_vs_1_core": 2.058088334725287
+    }
+  ],
+  "points": {
+    "1": {
+      "cores": 1,
+      "workers": 1,
+      "studies_wall_s": 8.200718601000005,
+      "warm_s": 2.1326742610000053,
+      "load_s": 0.060235205000000125,
+      "prep_s": 9.769040759,
+      "adjacency_s": 53.028869389,
+      "reimage_cpu_s": 6.948515428000007,
+      "scoring_cpu_s": 1.1086912079999962,
+      "host": {
+        "cpu_model": "unknown",
+        "cpu_count": 2,
+        "affinity_size": 2,
+        "cgroup_cpu_max": null,
+        "load_average_start": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "modal_task_id": "ta-01M7ZVJF0G7AYQ4Y3G6ZRM28MR",
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1",
+          "NUMBA_NUM_THREADS": "1",
+          "NUMBA_THREADING_LAYER": "workqueue"
+        },
+        "load_average_end": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "container_class": "Modal CPU container, cpu=(1, 1) physical cores as request and hard limit, 16 GiB, no GPU, modal.Image.debian_slim(python_version='3.11') + uv_sync of this repo"
+    },
+    "8": {
+      "cores": 8,
+      "workers": 8,
+      "studies_wall_s": 3.984629067,
+      "warm_s": 2.6982497399999943,
+      "load_s": 0.07343176999999979,
+      "prep_s": 12.246803458999999,
+      "adjacency_s": 60.277927787,
+      "reimage_cpu_s": 9.998930578000028,
+      "scoring_cpu_s": 18.23819089600002,
+      "host": {
+        "cpu_model": "unknown",
+        "cpu_count": 8,
+        "affinity_size": 8,
+        "cgroup_cpu_max": null,
+        "load_average_start": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "modal_task_id": "ta-01M7ZVJESHPMC4WDGWQ879ADDR",
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1",
+          "NUMBA_NUM_THREADS": "1",
+          "NUMBA_THREADING_LAYER": "workqueue"
+        },
+        "load_average_end": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "container_class": "Modal CPU container, cpu=(8, 8) physical cores as request and hard limit, 16 GiB, no GPU, modal.Image.debian_slim(python_version='3.11') + uv_sync of this repo"
+    }
+  },
+  "studies_by_cores": {
+    "1": [
+      {
+        "i": 0,
+        "x_sha": "0bf01f9bd6ffab192883fff2bf29aca5710e4592f5b8754f40527c53030541d0",
+        "z_sha": "d2374c7563689810b135889081808580e992bf53cc7128ff5327288343a6285b",
+        "maxT": 3.198580350436865
+      },
+      {
+        "i": 1,
+        "x_sha": "1ab75b8e7576ba64a6bcda6559a476aafca69af72dd459028e97e9a6c196fbc5",
+        "z_sha": "3375cd9b281e93ca6bb91e519a534d067e00a57984646b616d486bffc1a05a2b",
+        "maxT": 3.342401380346125
+      },
+      {
+        "i": 2,
+        "x_sha": "25813b18b73d5738727f1360c39923a99ad95a6f483491763f4b10263e2dd31a",
+        "z_sha": "9085d6aa99fc3f0f8b74c7721c943e0f2b8f842e877a3edc5ec5f538b41f63aa",
+        "maxT": 3.313067635341934
+      },
+      {
+        "i": 3,
+        "x_sha": "c7b719a40164dcadecc206bf316dbeb47dc192132060325aab3c0ea87258bef8",
+        "z_sha": "463e92a7dd9c102135eb3c50de564f3221041b0777908b59ddbfef5774177ba3",
+        "maxT": 3.33223292033212
+      },
+      {
+        "i": 4,
+        "x_sha": "522f0ec1e54755959a78fefb073832b7979ee9a3babdb3e7cc800fee2b80c206",
+        "z_sha": "440a88f21151a9c7f0473b449cc3078a930cae2d40cc60b7889a4c5415dd5ead",
+        "maxT": 3.1220427024994084
+      },
+      {
+        "i": 5,
+        "x_sha": "6bc7358f3b75f3375b5baeb58d60bc737be57a4b37948eee955f7475db927d7d",
+        "z_sha": "1155dc878becef8a15be1dfafc738e0737a6cb0664fd799940bed5045abead20",
+        "maxT": 4.284556470256986
+      },
+      {
+        "i": 6,
+        "x_sha": "34142f0fcf76086707dc1a82e840d0c6217e1649d480f3b018874573716c29fd",
+        "z_sha": "841aa7d4432e1984e40e4320fbfef3ff805e156c520234554b2ea786d960c290",
+        "maxT": 3.0640206651982527
+      },
+      {
+        "i": 7,
+        "x_sha": "d1d12784531189665cad8c4074b412f24b2a9c4653c6b10092272d040177226c",
+        "z_sha": "500a4637ae49125ebc6b53f9c670db20feda1fc2ad5dbd565c432cf0338c61c5",
+        "maxT": 3.2818259681623565
+      }
+    ],
+    "8": [
+      {
+        "i": 0,
+        "x_sha": "0bf01f9bd6ffab192883fff2bf29aca5710e4592f5b8754f40527c53030541d0",
+        "z_sha": "8ef610f8d07065d18b953676e86c92af1fe5ee65473a3e9d6b9758a61003fe32",
+        "maxT": 3.198580350436865
+      },
+      {
+        "i": 1,
+        "x_sha": "1ab75b8e7576ba64a6bcda6559a476aafca69af72dd459028e97e9a6c196fbc5",
+        "z_sha": "24089728ba5dee4cafe69766b4e56c12e114948519cca1aade00b57c66700f5f",
+        "maxT": 3.342401380346125
+      },
+      {
+        "i": 2,
+        "x_sha": "25813b18b73d5738727f1360c39923a99ad95a6f483491763f4b10263e2dd31a",
+        "z_sha": "de31e021ec2b4ac9cd987e54cec5f4fbc6fc8992b08bc8e1a89baae1e55bdbd1",
+        "maxT": 3.313067635341934
+      },
+      {
+        "i": 3,
+        "x_sha": "c7b719a40164dcadecc206bf316dbeb47dc192132060325aab3c0ea87258bef8",
+        "z_sha": "0a6cb262e238a334348e0350ce7978d32a483cdad2a43d941734cc9d9f9b3ba1",
+        "maxT": 3.3322329203321197
+      },
+      {
+        "i": 4,
+        "x_sha": "522f0ec1e54755959a78fefb073832b7979ee9a3babdb3e7cc800fee2b80c206",
+        "z_sha": "bc0050d5d1c21d26b5ab49c97219b7a8f8621f41cd5d0ffc742d46b2b188af7a",
+        "maxT": 3.122042702499409
+      },
+      {
+        "i": 5,
+        "x_sha": "6bc7358f3b75f3375b5baeb58d60bc737be57a4b37948eee955f7475db927d7d",
+        "z_sha": "61876eaee9ad0d39e9f33f12700a5c40f18b461feefc1acdafbbae2450337ccf",
+        "maxT": 4.284556470256985
+      },
+      {
+        "i": 6,
+        "x_sha": "34142f0fcf76086707dc1a82e840d0c6217e1649d480f3b018874573716c29fd",
+        "z_sha": "3a7ba32d57a3299740c61cf627c329b83c589dd08d79f47db05f6b2cec745aff",
+        "maxT": 3.0640206651982522
+      },
+      {
+        "i": 7,
+        "x_sha": "d1d12784531189665cad8c4074b412f24b2a9c4653c6b10092272d040177226c",
+        "z_sha": "f682b1613ced95d9fd71e052eea403079c816013a6bafbf4e3b99b27c9a8b42a",
+        "maxT": 3.2818259681623565
+      }
+    ]
+  },
+  "errors": {},
+  "modal": {
+    "app": "preflight-modal-scaling",
+    "started_utc": "2026-11-21T20:08:10.930818+00:00",
+    "finished_utc": "2026-11-21T20:09:36.000601+00:00",
+    "wall_s": 85.069783,
+    "build9_reference": "origin/modal-design-b9:bench/results/modal-design-20261121T185537Z.json"
+  }
+}

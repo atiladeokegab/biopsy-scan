@@ -4,11 +4,15 @@ Run: python3 -I demo/collect_race.py [extra.json ...]. Pages runs it before ever
 A bench file feeds the race in one of two ways:
   Only a file with "status": "MEASURED" and "studies": 1000 (the declared design point) may fill a race row;
   anything else is refused with a message. Either
-  1. build-modal's "kind": "design_point" file (slots a_lab_all_cores, b_ours_cpu_all_cores, c_ours_1_gpu,
-     d_ours_n_gpu.runs["16"]), or
+  0. bench/modal_design.py's four-arm file (arms lab, numba, gpu, hybrid side by side, one container class): fills
+     the four lanes lab-cpu, preflight-cpu, gpu-1 and hybrid, only when MEASURED at 1,000 studies per stream with
+     its parity gate passed (X sha256 on every shared study; z in full for gpu, via per-study maxT for hybrid). A file without all four arms (the three-arm run) feeds nothing. There is no 16-GPU lane.
+     The same file plus a fused arm (a --compare-with run) fills only fused-cpu, and only when the fused X
+     sha256 equals every other arm's on every shared study and its maxT is within 1e-9 of every batched arm's. Or
+  1. build-modal's "kind": "design_point" file (slots a_lab_all_cores, b_ours_cpu_all_cores, c_ours_1_gpu), or
      It must carry its "scope" (WORKFLOW comparison, EXPLORATORY calibration), which the page prints; GPU lanes
-     need e_gpu_parity.exact_all_containers; gpu-16 is the measured compute span; the threshold-and-calls step
-     is kept apart in "calls_s". A generic "race" list feeds nothing. Or
+     need e_gpu_parity.exact_all_containers; the threshold-and-calls step is kept apart in "calls_s".
+     A generic "race" list feeds nothing. Or
   2. R-14's impl-a shape (cpu_model, cohorts[].timings[]): the Charville 3,780-candidate Cox screen fills the
      "workflow" footnote only. It is different work, so it is never a race bar and never part of a ratio.
   3. the Modal runner's "kind": "ladder" file (#75), only the one Atlas cleared (CLEARED_LADDER): fills "interim",
@@ -31,6 +35,76 @@ DESIGN_STUDIES = 1000  # the race's declared unit: one design point, 1,000 simul
 TIMED = ("MEASURED", "ESTIMATE")
 CLEARED_LADDER = "modal-a100-20261121T183709Z.json"  # Atlas cleared this run (lead, 2026-11-21 19:00Z)
 SLOTS = {"lab-cpu": "a_lab_all_cores", "preflight-cpu": "b_ours_cpu_all_cores", "gpu-1": "c_ours_1_gpu"}
+ARMS = {"lab-cpu": "lab", "preflight-cpu": "numba", "gpu-1": "gpu", "hybrid": "hybrid"}  # the four declared lanes
+FUSED = {"fused-cpu": "fused"}
+LEGACY_MAXT = "064bd6e95f721c8be7747d4cfef5eb5bd4bbd79d"  # 205536Z's code: prior_parity before maxT_compared existed  # the fifth lane: a --compare-with run that adds the fused arm to the four-arm file
+
+
+def four_arms(name, d):
+    """bench/modal_design.py's file: each arm's compute_wall_s; load, prep, adjacency and warm-up apart in startup_s."""
+    why = ("not MEASURED" if d.get("status") != "MEASURED" else
+           "not 1,000 studies per stream" if d.get("design", {}).get("studies_per_stream") != DESIGN_STUDIES else
+           "parity gate not passed" if d.get("parity", {}).get("all") is not True else
+           "not the four declared arms" if sorted(set(d["arms"]) - {"fused"}) != sorted(ARMS.values()) else
+           "fused X or maxT parity not complete" if "fused" in d["arms"] and not fused_parity(d) else None)
+    if why:
+        print(f"{name}: refused for the race: {why}", file=sys.stderr)
+        return
+    lab = d["labels"]
+    yield "scope", {"comparison": f"Compute {lab['compute']} on one container class ({d['arms']['lab']['container_class']}); "
+                                  f"outcomes {lab['outcomes']}; FWER and power are {lab['rates'].split(' ')[0]}. "
+                                  "Seconds: in-container study and scoring wall time; load, outcome prep, adjacency "
+                                  "and warm-up apart in start-up; the cutoff and rate summary not timed. The lab and "
+                                  "batched lanes run different test and calibration procedures, not equal statistical "
+                                  "work. Parity: X sha256 on every shared study; z in full for the A100 lane, through "
+                                  "per-study maxT for the hybrid"
+                                  + ("; the fused lane: same features, same top score (X sha256 on every shared "
+                                     "study, maxT through each study)" if "fused" in d["arms"] else ""),
+                    "calibration": "Lab: 1,000 within-strata shuffles in every study. Preflight lanes: one threshold "
+                                   "from 1,000 independent calibration nulls; evaluating those studies is timed inside "
+                                   "each lane, computing the cutoff from them is not"}
+    # the five-arm file fills only its new lane; the four-arm file it copies from refreshes the other four
+    for rid, a in (FUSED if "fused" in d["arms"] else ARMS).items():
+        v = d["arms"][a]
+        if a == "fused" and any("maxT_compared" not in d["parity"]["against_prior"]["fused"][b] for b in ARMS.values() if b != "lab"):
+            print(f"{name}: {rid}: maxT coverage inferred from X coverage (legacy file, prior_parity at 064bd6e)", file=sys.stderr)
+        st, gpu = v["stages"], a in ("gpu", "hybrid")
+        yield rid, {"seconds": round(st["compute_wall_s"], 2), "label": lab["compute"],
+                    "hardware": v["container_class"], "cores": None if a == "gpu" else v["workers"],
+                    "gpu": f"1x {v['host']['gpu'].split(',')[0]}" if gpu else None, "source": name,
+                    "startup_s": round(st["end_to_end_in_container_s"] - st["compute_wall_s"], 1),
+                    "note": f"{st['evaluated_studies']:,} studies; re-imaging {100 * v['split']['reimage_share']:.1f}% "
+                            + ("of elapsed stage wall time" if gpu else "of summed worker wall time")
+                            + ("; same features, same top score; run on a different host of the same container class, about 2 h "
+                               "after the lab, Numba and A100 lanes and 70 min after the hybrid; one sweep" if a == "fused" else "")}
+
+
+def fused_parity(d):
+    """Full parity for the fused arm: X sha256 equal to every other arm on every shared study, and maxT within
+    Z_TOL (1e-9) of every batched arm's (the lab's maxT is its permutation statistic: X only, as prior_parity).
+    Bound to the plan, never to observed counts: from the design, the lab plans 2,000 studies (it skips
+    calibration) and each batched arm 3,000; x_compared and maxT_compared must equal it, and so must the fused
+    arm's evaluated_studies. A file without maxT_compared is refused, except the legacy one written at
+    LEGACY_MAXT (205536Z), whose prior_parity compared maxT over exactly the studies x_compared counts (lead
+    ruling on #120)."""
+    prior = d["parity"].get("against_prior", {}).get("fused", {})
+    per, streams = d["design"].get("studies_per_stream"), d["design"].get("streams") or {}
+    plan = lambda a: per * len([s for s in streams if not (a == "lab" and s == "calibration")])
+    if not isinstance(per, int) or not plan("fused") > 0 or d["arms"]["fused"]["stages"].get("evaluated_studies") != plan("fused"):
+        return False
+    def ok(a):
+        e = prior.get(a, {})
+        if e.get("x_bitwise") is not True or e.get("x_compared") != plan(a):
+            return False
+        rel = e.get("maxT_max_rel_diff")
+        return a == "lab" or (e.get("maxT_within_tol") is True and isinstance(rel, (int, float)) and 0 <= rel <= 1e-9
+                              and e.get("maxT_compared", e["x_compared"] if legacy_maxT(d) else None) == plan(a))
+    return prior.get("all") is True and all(ok(a) for a in ARMS.values())
+
+
+def legacy_maxT(d):
+    """The one file whose maxT coverage is inferred from its X coverage: recorded code sha 064bd6e, in full."""
+    return d.get("source_commit") == LEGACY_MAXT
 
 
 def refused(d):
@@ -61,15 +135,12 @@ def design_point(name, d):
                     "cores": None if gpu else r.get("workers"), "gpu": f"1x {gpu[0]}" if gpu else None, "source": name,
                     **({"calls_s": round(r["plus_threshold_and_calls_s"], 2)} if "plus_threshold_and_calls_s" in r else {}),
                     **({"note": r["basis"]} if r.get("basis") not in (None, "measured") else {})}
-    run = s.get("d_ours_n_gpu", {}).get("runs", {}).get("16")
-    if s.get("d_ours_n_gpu", {}).get("label") in TIMED and run and parity:
-        yield "gpu-16", {"seconds": round(run["compute_span_s"], 2), "note": "compute span across containers", "startup_s": round(run["startup_and_transfer_s"], 1),
-                         "label": s["d_ours_n_gpu"]["label"], "hardware": "Modal", "cores": None,
-                         "gpu": f"{run['containers_seen']}x {' / '.join(sorted(set(run['gpus'])))}", "source": name}
 
 
 def rows_from(path, d):
     name = f"bench/results/{path.name}"
+    if isinstance(d.get("arms"), dict) and "labels" in d:
+        yield from four_arms(name, d)
     if d.get("kind") == "design_point":
         why = refused(d)
         if why:

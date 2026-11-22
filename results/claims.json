@@ -1,0 +1,1419 @@
+{
+ "schema": "preflight-claim-ledger/1",
+ "about": "One entry per headline claim. tests/test_claims.py recomputes each named value from its committed source file and fails on any drift. Each `quotes` entry binds the claim to its published text: `text` is filled with the rendered values ({name}, {label}) and must appear verbatim in `file`; a demo data quote (`path` + `value`) must equal the source value exactly, numbers in type and value. scripts/check_claims.py also scans README.md, docs/JUDGING.md, docs/SUBMISSION.md and the demo page for stale wording. Only claims whose source is on integration are listed; add new results as new entries when they merge.",
+ "rules": {
+  "fixed:N": "format the number with N decimals",
+  "pct:N": "multiply by 100 and format with N decimals",
+  "comma[:N]": "thousands separators, with N decimals if given (1,000; 2,149.61)",
+  "word": "the first word of a string label",
+  "eq": "the value as stored (strings, integers, booleans)",
+  "ratio": "first path divided by second path, then the rule",
+  "product": "first path times second path, then the rule",
+  "md": "the string with | escaped as \\\\| (inside a Markdown table cell)",
+  "median_ratio": "{over, items, group, num, den, pick}: for each group of `over` (by `group`), the median over its `items` of num/den; then the min or max of those medians, then the rule",
+  "distinct": "[list path, key]: the number of distinct values of key across the list",
+  "len": "the length of the list at the path",
+  "sci:N": "scientific notation with N decimals (2.3e-15)",
+  "spct:N": "like pct:N with an explicit sign (+0.2, -0.7)",
+  "lower": "the string in lower case",
+  "re:PATTERN": "the first group of PATTERN found in the string"
+ },
+ "claims": [
+  {
+   "id": "fleet-6.6x",
+   "claim": "MEASURED, observed 6.6× compute-span reduction 843.7→128.2 s for 1,000 Charville re-imaging/feature-generation studies, 8 A100-SXM4-40GB vs 1, one sweep; outputs bit-identical; inference outside timing",
+   "source": "bench/results/modal-a100-20261121T183709Z.json",
+   "pr": 75,
+   "label": "MEASURED",
+   "label_path": "status",
+   "values": [
+    {
+     "name": "w1",
+     "path": "fleet.runs.1.compute_span_s",
+     "rule": "fixed:1",
+     "expect": "843.7"
+    },
+    {
+     "name": "w8",
+     "path": "fleet.runs.8.compute_span_s",
+     "rule": "fixed:1",
+     "expect": "128.2"
+    },
+    {
+     "name": "ratio",
+     "ratio": [
+      "fleet.runs.1.compute_span_s",
+      "fleet.runs.8.compute_span_s"
+     ],
+     "rule": "fixed:1",
+     "expect": "6.6"
+    },
+    {
+     "name": "studies",
+     "path": "fleet.studies",
+     "rule": "comma",
+     "expect": "1,000"
+    },
+    {
+     "name": "bit_identical",
+     "path": "fleet.runs.8.bit_identical_to_1",
+     "rule": "eq",
+     "expect": "True"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "{label}, observed {ratio}× compute-span reduction {w1}→{w8} s for {studies} Charville re-imaging/feature-generation studies, 8 A100-SXM4-40GB vs 1, one sweep; outputs bit-identical; inference outside timing"
+    }
+   ]
+  },
+  {
+   "id": "kernel-3.19x",
+   "claim": "GPU kernel, feature step only: 3.19× (median), NumPy 2.24 s vs GPU 0.70 s, exact parity",
+   "source": "bench/results/modal-a100-20261121T183709Z.json",
+   "pr": 75,
+   "label": "MEASURED",
+   "label_path": "status",
+   "values": [
+    {
+     "name": "numpy",
+     "path": "kernel.rows.numpy_reference.median_s",
+     "rule": "fixed:2",
+     "expect": "2.24"
+    },
+    {
+     "name": "gpu",
+     "path": "kernel.rows.gpu.median_s",
+     "rule": "fixed:2",
+     "expect": "0.70"
+    },
+    {
+     "name": "speedup",
+     "ratio": [
+      "kernel.rows.numpy_reference.median_s",
+      "kernel.rows.gpu.median_s"
+     ],
+     "rule": "fixed:2",
+     "expect": "3.19"
+    },
+    {
+     "name": "parity",
+     "path": "kernel.parity_exact",
+     "rule": "eq",
+     "expect": "True"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "`{speedup}×` (median): NumPy `{numpy} s` vs GPU `{gpu} s`, exact parity (**{label}**)"
+    }
+   ]
+  },
+  {
+   "id": "numba-quiet-2.5-4.1x",
+   "claim": "Numba 2.5–4.1× faster than NumPy per study on a quiet 8-core Modal host, by threading mode",
+   "source": "bench/results/modal-quiet-cpu-20261121T180327Z.json",
+   "pr": 94,
+   "label": "MEASURED",
+   "label_path": "status",
+   "formula": "for each threading mode (runs[].mode), the median over that mode's studies of numpy.wall_s / numba.wall_s; the range is the smallest and largest of those per-mode medians (workqueue 2.49 and omp-default 4.11 at this commit)",
+   "values": [
+    {
+     "name": "lo",
+     "median_ratio": {
+      "over": "runs",
+      "items": "studies",
+      "group": "mode",
+      "num": "numpy.wall_s",
+      "den": "numba.wall_s",
+      "pick": "min"
+     },
+     "rule": "fixed:1",
+     "expect": "2.5"
+    },
+    {
+     "name": "hi",
+     "median_ratio": {
+      "over": "runs",
+      "items": "studies",
+      "group": "mode",
+      "num": "numpy.wall_s",
+      "den": "numba.wall_s",
+      "pick": "max"
+     },
+     "rule": "fixed:1",
+     "expect": "4.1"
+    },
+    {
+     "name": "lo2",
+     "median_ratio": {
+      "over": "runs",
+      "items": "studies",
+      "group": "mode",
+      "num": "numpy.wall_s",
+      "den": "numba.wall_s",
+      "pick": "min"
+     },
+     "rule": "fixed:2",
+     "expect": "2.49"
+    },
+    {
+     "name": "hi2",
+     "median_ratio": {
+      "over": "runs",
+      "items": "studies",
+      "group": "mode",
+      "num": "numpy.wall_s",
+      "den": "numba.wall_s",
+      "pick": "max"
+     },
+     "rule": "fixed:2",
+     "expect": "4.11"
+    },
+    {
+     "name": "cores",
+     "path": "host.requested_cores",
+     "rule": "fixed:0",
+     "expect": "8"
+    },
+    {
+     "name": "rounds",
+     "distinct": [
+      "runs",
+      "round"
+     ],
+     "rule": "eq",
+     "expect": "5"
+    },
+    {
+     "name": "studies",
+     "len": "runs[0].studies",
+     "rule": "eq",
+     "expect": "2"
+    },
+    {
+     "name": "modes",
+     "distinct": [
+      "runs",
+      "mode"
+     ],
+     "rule": "eq",
+     "expect": "3"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "(`{cores}` Modal cores, `{rounds} rounds × {studies} studies` per mode, #94) | Numba `{lo}–{hi}×` faster than NumPy per study, by threading mode (**{label}**)"
+    }
+   ]
+  },
+  {
+   "id": "fwer-0.060",
+   "claim": "R-15 clinical-null bootstrap FWER 0.060 (60 of 1,000) [0.046, 0.077] Clopper-Pearson 95% on the hard negative",
+   "source": "stats/results/hard-negative-f458ad1.json",
+   "pr": 99,
+   "label": "SYNTHETIC",
+   "label_path": "label",
+   "values": [
+    {
+     "name": "rej",
+     "path": "rates.bootstrap.rejections",
+     "rule": "eq",
+     "expect": "60"
+    },
+    {
+     "name": "n",
+     "path": "n_datasets",
+     "rule": "comma",
+     "expect": "1,000"
+    },
+    {
+     "name": "rate",
+     "path": "rates.bootstrap.rate",
+     "rule": "fixed:3",
+     "expect": "0.060"
+    },
+    {
+     "name": "lo",
+     "path": "rates.bootstrap.clopper_pearson_95[0]",
+     "rule": "fixed:3",
+     "expect": "0.046"
+    },
+    {
+     "name": "hi",
+     "path": "rates.bootstrap.clopper_pearson_95[1]",
+     "rule": "fixed:3",
+     "expect": "0.077"
+    },
+    {
+     "name": "unadj",
+     "path": "rates.unadjusted.rate",
+     "rule": "fixed:3",
+     "expect": "0.997"
+    },
+    {
+     "name": "unadj_rej",
+     "path": "rates.unadjusted.rejections",
+     "rule": "eq",
+     "expect": "997"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "Clinical-null parametric bootstrap FWER `{rate}` (`{rej}/{n}`, `[{lo}, {hi}]` CP 95%) vs `{unadj}` (`{unadj_rej}/{n}`) unadjusted (**{label}**)"
+    },
+    {
+     "file": "docs/JUDGING.md",
+     "text": "{rate} ({rej} of {n}) [{lo}, {hi}] Clopper-Pearson 95%, {label}, stats/results/hard-negative-f458ad1.json"
+    }
+   ]
+  },
+  {
+   "id": "power-at-scale",
+   "claim": "68.3% [62.7, 73.6] at 400 patients; about 524 patients for 80%, interpolated between 500 and 600",
+   "source": "bench/results/power-at-scale.json",
+   "pr": 83,
+   "label": "ESTIMATE",
+   "label_path": "status",
+   "values": [
+    {
+     "name": "p400",
+     "path": "points[patients=400].power",
+     "rule": "pct:1",
+     "expect": "68.3"
+    },
+    {
+     "name": "lo",
+     "path": "points[patients=400].power_lo",
+     "rule": "pct:1",
+     "expect": "62.7"
+    },
+    {
+     "name": "hi",
+     "path": "points[patients=400].power_hi",
+     "rule": "pct:1",
+     "expect": "73.6"
+    },
+    {
+     "name": "n80",
+     "path": "answer.n_80",
+     "rule": "fixed:0",
+     "expect": "524"
+    },
+    {
+     "name": "p500",
+     "path": "points[patients=500].power",
+     "rule": "pct:1",
+     "expect": "76.3"
+    },
+    {
+     "name": "p600",
+     "path": "points[patients=600].power",
+     "rule": "pct:1",
+     "expect": "91.3"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "`{p400}%` `[{lo}, {hi}]` at `400` patients; about `{n80}` patients for `80%`, interpolated between `500` and `600` (**{label}** (SIMULATED))"
+    }
+   ]
+  },
+  {
+   "id": "formula-vs-simulation-200",
+   "claim": "At 200 patients the Schoenfeld formula predicts 80.1%; simulation on real tissue gives 27.0% [22.1%, 32.4%] over 300 studies",
+   "source": "bench/results/vs-schoenfeld-300.json",
+   "pr": 53,
+   "label": "ESTIMATE",
+   "label_path": "status",
+   "values": [
+    {
+     "name": "analytic",
+     "path": "points[patients=200].analytic_power",
+     "rule": "pct:1",
+     "expect": "80.1"
+    },
+    {
+     "name": "analytic0",
+     "path": "points[patients=200].analytic_power",
+     "rule": "pct:0",
+     "expect": "80"
+    },
+    {
+     "name": "analytic_label",
+     "path": "analytic.label",
+     "rule": "word",
+     "expect": "ANALYTIC"
+    },
+    {
+     "name": "sim",
+     "path": "points[patients=200].sim_power",
+     "rule": "pct:1",
+     "expect": "27.0"
+    },
+    {
+     "name": "sim0",
+     "path": "points[patients=200].sim_power",
+     "rule": "pct:0",
+     "expect": "27"
+    },
+    {
+     "name": "lo",
+     "path": "points[patients=200].sim_lo",
+     "rule": "pct:1",
+     "expect": "22.1"
+    },
+    {
+     "name": "lo0",
+     "path": "points[patients=200].sim_lo",
+     "rule": "pct:0",
+     "expect": "22"
+    },
+    {
+     "name": "hi",
+     "path": "points[patients=200].sim_hi",
+     "rule": "pct:1",
+     "expect": "32.4"
+    },
+    {
+     "name": "hi0",
+     "path": "points[patients=200].sim_hi",
+     "rule": "pct:0",
+     "expect": "32"
+    },
+    {
+     "name": "n",
+     "path": "points[patients=200].sim_n",
+     "rule": "eq",
+     "expect": "300"
+    },
+    {
+     "name": "patients",
+     "path": "points[patients=200].patients",
+     "rule": "eq",
+     "expect": "200"
+    },
+    {
+     "name": "hr",
+     "path": "hr_per_sd",
+     "rule": "fixed:1",
+     "expect": "2.0"
+    },
+    {
+     "name": "m",
+     "path": "features_m",
+     "rule": "eq",
+     "expect": "630"
+    },
+    {
+     "name": "alpha",
+     "path": "alpha",
+     "rule": "fixed:2",
+     "expect": "0.05"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "(`n = {patients}`, `HR = {hr}/SD`, `M = {m}`, `alpha = {alpha}`) | Schoenfeld formula predicts `{analytic}%` (**{analytic_label}**); cell-by-cell real-tissue simulation gives `{sim}%`, 95% CI `[{lo}%, {hi}%]` over `{n}` studies (**{label}**)"
+    },
+    {
+     "file": "docs/JUDGING.md",
+     "text": "At {patients} patients it says {analytic0}%; simulation on real tissue gives {sim0}% (95% CI {lo0} to {hi0}%)[^60] | `bench/results/vs-schoenfeld-300.json` (#53) | {label} ({n} studies per point) |"
+    },
+    {
+     "file": "demo/data/claims.json",
+     "path": "power.formula",
+     "value": "analytic"
+    },
+    {
+     "file": "demo/data/claims.json",
+     "path": "power.sim",
+     "value": "sim"
+    },
+    {
+     "file": "demo/data/claims.json",
+     "path": "power.lo",
+     "value": "lo"
+    },
+    {
+     "file": "demo/data/claims.json",
+     "path": "power.hi",
+     "value": "hi"
+    },
+    {
+     "file": "demo/data/claims.json",
+     "path": "power.n",
+     "value": "n"
+    },
+    {
+     "file": "demo/data/claims.json",
+     "path": "power.label",
+     "value": "label"
+    },
+    {
+     "file": "demo/data/claims.json",
+     "path": "power.formula_label",
+     "value": "analytic_label"
+    },
+    {
+     "file": "demo/data/claims.json",
+     "path": "power.patients",
+     "value": "patients"
+    }
+   ]
+  },
+  {
+   "id": "charville-v2-maxT",
+   "claim": "Charville joint screen (v2): maxT p = 0.098 over 3,780 patterns, exploratory",
+   "source": "results/charville-v2.json",
+   "pr": 47,
+   "label": "MEASURED",
+   "label_path": "labels.maxT",
+   "values": [
+    {
+     "name": "p",
+     "path": "maxT.p",
+     "rule": "fixed:3",
+     "expect": "0.098"
+    },
+    {
+     "name": "n_features",
+     "path": "n_features_tested",
+     "rule": "comma",
+     "expect": "3,780"
+    },
+    {
+     "name": "n_v1",
+     "path": "n_features_v1",
+     "rule": "eq",
+     "expect": "630"
+    },
+    {
+     "name": "n_v2",
+     "path": "n_features_v2_expr",
+     "rule": "comma",
+     "expect": "3,150"
+    },
+    {
+     "name": "patients",
+     "path": "n_patients",
+     "rule": "eq",
+     "expect": "159"
+    },
+    {
+     "name": "events",
+     "path": "n_events",
+     "rule": "eq",
+     "expect": "38"
+    },
+    {
+     "name": "omnibus",
+     "path": "omnibus.p",
+     "rule": "fixed:2",
+     "expect": "0.17"
+    },
+    {
+     "name": "omnibus4",
+     "path": "omnibus.p",
+     "rule": "fixed:4",
+     "expect": "0.1688"
+    },
+    {
+     "name": "resamples",
+     "path": "maxT.n_resamples",
+     "rule": "comma",
+     "expect": "9,999"
+    },
+    {
+     "name": "wall",
+     "path": "runtime.wall_s",
+     "rule": "comma:2",
+     "expect": "2,149.61"
+    },
+    {
+     "name": "exploratory",
+     "path": "exploratory",
+     "rule": "eq",
+     "expect": "True"
+    },
+    {
+     "name": "feature",
+     "path": "maxT.top_hits[0].feature",
+     "rule": "eq",
+     "expect": "Tumor 5|Macrophage|100um|PD1"
+    },
+    {
+     "name": "z",
+     "path": "maxT.top_hits[0].z",
+     "rule": "fixed:2",
+     "expect": "3.96"
+    },
+    {
+     "name": "lopo_kept",
+     "product": [
+      "maxT.top_hits[0].lopo.rank1_retained_fraction",
+      "maxT.top_hits[0].lopo.n_patients"
+     ],
+     "rule": "fixed:0",
+     "expect": "158"
+    },
+    {
+     "name": "lopo_n",
+     "path": "maxT.top_hits[0].lopo.n_patients",
+     "rule": "eq",
+     "expect": "159"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "(`{patients}` patients, `{events}` events, `{n_features}` patterns: v1's `{n_v1}` plus `{n_v2}` on the same patients, `10` channels) | maxT p = {p} over {n_features} patterns (top `Tumor 5\\|Macrophage\\|100um\\|PD1`, `z = {z}`, `{resamples}` resamples; omnibus p = `{omnibus4}`; NumPy ref `{wall} s`) (**{label}**, exploratory)"
+    },
+    {
+     "file": "docs/JUDGING.md",
+     "text": "v1's {n_v1} cell-mix patterns plus {n_v2} more with protein channels, on the same {patients} patients and {events} events. The top candidate is PD1 on macrophages within 100 µm of Tumor 5 cells (`Tumor 5\\|Macrophage\\|100um\\|PD1`), z = {z}. maxT p = {p} over {n_features} patterns ({resamples} resamples) and omnibus p = {omnibus}: not significant after correction (maxT p = {p}); consistent with chance. It stays rank 1 in {lopo_kept} of {lopo_n} leave-one-patient-out drops | `results/charville-v2.json` (#47) | {label}, exploratory, negative |"
+    },
+    {
+     "file": "demo/data/claims.json",
+     "path": "maxT.p",
+     "value": "p"
+    },
+    {
+     "file": "demo/data/claims.json",
+     "path": "maxT.z",
+     "value": "z"
+    },
+    {
+     "file": "demo/data/claims.json",
+     "path": "maxT.tests",
+     "value": "n_features"
+    },
+    {
+     "file": "demo/data/claims.json",
+     "path": "maxT.feature",
+     "value": "feature"
+    },
+    {
+     "file": "demo/data/claims.json",
+     "path": "maxT.label",
+     "value": "label"
+    }
+   ]
+  },
+  {
+   "id": "upmc-r16-locked",
+   "claim": "UPMC R-16 locked test: HR per SD 1.82 [0.47, 6.97], one-sided p 0.193, C-index 0.548, does not pass; UNMEASURED (underpowered: conditional power 18% < 50%, 4 design events), inconclusive",
+   "source": "results/upmc-rediscovery.json",
+   "pr": 109,
+   "label": "UNMEASURED",
+   "label_path": "locked.status",
+   "values": [
+    {
+     "name": "feature",
+     "path": "locked.feature",
+     "rule": "eq",
+     "expect": "Tumor (Podo+)|Stromal / Fibroblast|25um|fraction"
+    },
+    {
+     "name": "hr_per_sd",
+     "path": "locked.hr_per_sd",
+     "rule": "fixed:2",
+     "expect": "1.82"
+    },
+    {
+     "name": "hr_lo",
+     "path": "locked.hr_per_sd_ci95[0]",
+     "rule": "fixed:2",
+     "expect": "0.47"
+    },
+    {
+     "name": "hr_hi",
+     "path": "locked.hr_per_sd_ci95[1]",
+     "rule": "fixed:2",
+     "expect": "6.97"
+    },
+    {
+     "name": "p_one_sided",
+     "path": "locked.p_one_sided",
+     "rule": "fixed:3",
+     "expect": "0.193"
+    },
+    {
+     "name": "c_index",
+     "path": "locked.c_index",
+     "rule": "fixed:3",
+     "expect": "0.548"
+    },
+    {
+     "name": "locked_test_passes",
+     "path": "locked.locked_test_passes",
+     "rule": "eq",
+     "expect": "False"
+    },
+    {
+     "name": "power",
+     "path": "locked.power.value",
+     "rule": "pct:0",
+     "expect": "18"
+    },
+    {
+     "name": "design_events",
+     "path": "locked.power.design_events",
+     "rule": "eq",
+     "expect": "4"
+    },
+    {
+     "name": "feature_md",
+     "path": "locked.feature",
+     "rule": "md",
+     "expect": "Tumor (Podo+)\\|Stromal / Fibroblast\\|25um\\|fraction"
+    },
+    {
+     "name": "min_power",
+     "path": "locked.power.min_power",
+     "rule": "pct:0",
+     "expect": "50"
+    },
+    {
+     "name": "n_patients",
+     "path": "locked.n_patients",
+     "rule": "eq",
+     "expect": "16"
+    },
+    {
+     "name": "n_events",
+     "path": "locked.n_events",
+     "rule": "eq",
+     "expect": "4"
+    },
+    {
+     "name": "charville_hit",
+     "path": "charville_top_hit.status",
+     "rule": "eq",
+     "expect": "NOT TESTABLE"
+    },
+    {
+     "name": "charville_testable",
+     "path": "charville_top_hit.status",
+     "rule": "lower",
+     "expect": "not testable"
+    },
+    {
+     "name": "charville_marker",
+     "path": "charville_top_hit.reason",
+     "rule": "re:absent \\((\\w+)\\)",
+     "expect": "PD1"
+    },
+    {
+     "name": "charville_feature",
+     "path": "charville_top_hit.feature",
+     "rule": "eq",
+     "expect": "Tumor 5|Macrophage|100um|PD1"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "`{n_patients}` locked patients, `{n_events}` events) | Locked feature `{feature_md}`: HR per SD `{hr_per_sd}` `[{hr_lo}, {hr_hi}]`, one-sided p `{p_one_sided}`, C-index `{c_index}`; the locked test does not pass. **{label}** (underpowered: conditional power `{power}%` < `{min_power}%` with `{design_events}` design events), so these numbers are inconclusive."
+    },
+    {
+     "file": "docs/JUDGING.md",
+     "text": "the frozen rule's feature (`{feature_md}`) gives HR per SD {hr_per_sd} [{hr_lo}, {hr_hi}], one-sided p {p_one_sided}, C-index {c_index}, so the locked test does not pass. It is inconclusive: underpowered, conditional power {power}% < {min_power}% with {design_events} design events."
+    },
+    {
+     "file": "docs/JUDGING.md",
+     "text": "| `results/upmc-rediscovery.json` (#109) | {label} (underpowered) |"
+    },
+    {
+     "file": "docs/SUBMISSION.md",
+     "text": "one pre-registered locked test (R-16), which is {label} (underpowered) and inconclusive: `results/upmc-rediscovery.json`."
+    },
+    {
+     "file": "README.md",
+     "text": "The Charville top hit is {charville_testable} on UPMC ({charville_marker} absent)."
+    },
+    {
+     "file": "docs/JUDGING.md",
+     "text": "The Charville top hit is {charville_testable} on UPMC ({charville_marker} absent)."
+    }
+   ]
+  },
+  {
+   "id": "upmc-r16-discovery-rank",
+   "claim": "UPMC R-16 discovery rank 366 of 612, discovery patients only",
+   "source": "results/upmc-rediscovery.json",
+   "pr": 109,
+   "label": "MEASURED",
+   "label_path": "discovery.status",
+   "values": [
+    {
+     "name": "rank",
+     "path": "discovery.rank",
+     "rule": "eq",
+     "expect": "366"
+    },
+    {
+     "name": "of",
+     "path": "discovery.of",
+     "rule": "eq",
+     "expect": "612"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "Discovery rank `{rank}` of `{of}` (**{label}**, discovery patients only)"
+    },
+    {
+     "file": "docs/JUDGING.md",
+     "text": "Discovery rank {rank} of {of} ({label}, discovery patients only)"
+    }
+   ]
+  },
+  {
+   "source": "bench/results/modal-design-20261121T194458Z.json",
+   "pr": 113,
+   "label": "MEASURED",
+   "label_path": "labels.compute",
+   "id": "race-lane-walls",
+   "claim": "One design point on real Charville tissue, one A100 + 8-core container class: compute wall (re-imaging and scoring) lab 1761.88 s over 2,000 studies, Preflight Numba 375.26 s, 1 A100 2266.85 s and hybrid 377.67 s over 3,000 each; per evaluated study 0.881 / 0.125 / 0.756 / 0.126 s",
+   "values": [
+    {
+     "name": "lab_wall",
+     "path": "arms.lab.stages.compute_wall_s",
+     "rule": "fixed:2",
+     "expect": "1761.88"
+    },
+    {
+     "name": "lab_per_study",
+     "path": "arms.lab.stages.wall_per_study_s",
+     "rule": "fixed:3",
+     "expect": "0.881"
+    },
+    {
+     "name": "lab_studies",
+     "path": "arms.lab.stages.evaluated_studies",
+     "rule": "comma",
+     "expect": "2,000"
+    },
+    {
+     "name": "numba_wall",
+     "path": "arms.numba.stages.compute_wall_s",
+     "rule": "fixed:2",
+     "expect": "375.26"
+    },
+    {
+     "name": "numba_per_study",
+     "path": "arms.numba.stages.wall_per_study_s",
+     "rule": "fixed:3",
+     "expect": "0.125"
+    },
+    {
+     "name": "numba_studies",
+     "path": "arms.numba.stages.evaluated_studies",
+     "rule": "comma",
+     "expect": "3,000"
+    },
+    {
+     "name": "gpu_wall",
+     "path": "arms.gpu.stages.compute_wall_s",
+     "rule": "fixed:2",
+     "expect": "2266.85"
+    },
+    {
+     "name": "gpu_per_study",
+     "path": "arms.gpu.stages.wall_per_study_s",
+     "rule": "fixed:3",
+     "expect": "0.756"
+    },
+    {
+     "name": "gpu_studies",
+     "path": "arms.gpu.stages.evaluated_studies",
+     "rule": "comma",
+     "expect": "3,000"
+    },
+    {
+     "name": "hybrid_wall",
+     "path": "arms.hybrid.stages.compute_wall_s",
+     "rule": "fixed:2",
+     "expect": "377.67"
+    },
+    {
+     "name": "hybrid_per_study",
+     "path": "arms.hybrid.stages.wall_per_study_s",
+     "rule": "fixed:3",
+     "expect": "0.126"
+    },
+    {
+     "name": "hybrid_studies",
+     "path": "arms.hybrid.stages.evaluated_studies",
+     "rule": "comma",
+     "expect": "3,000"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "demo/data/baseline.json",
+     "path": "rows[id=lab-cpu].seconds",
+     "value": "lab_wall"
+    },
+    {
+     "file": "demo/data/baseline.json",
+     "path": "rows[id=lab-cpu].label",
+     "value": "label"
+    },
+    {
+     "file": "demo/data/baseline.json",
+     "path": "rows[id=preflight-cpu].seconds",
+     "value": "numba_wall"
+    },
+    {
+     "file": "demo/data/baseline.json",
+     "path": "rows[id=preflight-cpu].label",
+     "value": "label"
+    },
+    {
+     "file": "demo/data/baseline.json",
+     "path": "rows[id=gpu-1].seconds",
+     "value": "gpu_wall"
+    },
+    {
+     "file": "demo/data/baseline.json",
+     "path": "rows[id=gpu-1].label",
+     "value": "label"
+    },
+    {
+     "file": "demo/data/baseline.json",
+     "path": "rows[id=hybrid].seconds",
+     "value": "hybrid_wall"
+    },
+    {
+     "file": "demo/data/baseline.json",
+     "path": "rows[id=hybrid].label",
+     "value": "label"
+    }
+   ]
+  },
+  {
+   "source": "bench/results/modal-design-20261121T194458Z.json",
+   "pr": 113,
+   "label": "MEASURED",
+   "label_path": "labels.compute",
+   "id": "race-7.0x",
+   "claim": "Preflight on 8 CPU cores (Numba) is 7.0× faster per evaluated study than the lab way (0.881 s vs 0.125 s; Preflight's 3,000 studies include its 1,000 calibration nulls); totals for the same design-point output 4.70× (1,761.88 s vs 375.26 s); different procedures",
+   "values": [
+    {
+     "name": "speedup",
+     "ratio": [
+      "arms.lab.stages.wall_per_study_s",
+      "arms.numba.stages.wall_per_study_s"
+     ],
+     "rule": "fixed:1",
+     "expect": "7.0"
+    },
+    {
+     "name": "lab",
+     "path": "arms.lab.stages.wall_per_study_s",
+     "rule": "fixed:3",
+     "expect": "0.881"
+    },
+    {
+     "name": "numba",
+     "path": "arms.numba.stages.wall_per_study_s",
+     "rule": "fixed:3",
+     "expect": "0.125"
+    },
+    {
+     "name": "per_stream",
+     "path": "design.studies_per_stream",
+     "rule": "comma",
+     "expect": "1,000"
+    },
+    {
+     "name": "numba_studies",
+     "path": "arms.numba.stages.evaluated_studies",
+     "rule": "comma",
+     "expect": "3,000"
+    },
+    {
+     "name": "calib",
+     "path": "arms.numba.summary.studies.calibration",
+     "rule": "comma",
+     "expect": "1,000"
+    },
+    {
+     "name": "lab_studies",
+     "path": "arms.lab.stages.evaluated_studies",
+     "rule": "comma",
+     "expect": "2,000"
+    },
+    {
+     "name": "lab_calib",
+     "path": "arms.lab.summary.studies.calibration",
+     "rule": "eq",
+     "expect": "0"
+    },
+    {
+     "name": "lab_total",
+     "path": "arms.lab.stages.compute_wall_s",
+     "rule": "comma:2",
+     "expect": "1,761.88"
+    },
+    {
+     "name": "numba_total",
+     "path": "arms.numba.stages.compute_wall_s",
+     "rule": "fixed:2",
+     "expect": "375.26"
+    },
+    {
+     "name": "total_ratio",
+     "ratio": [
+      "arms.lab.stages.compute_wall_s",
+      "arms.numba.stages.compute_wall_s"
+     ],
+     "rule": "fixed:2",
+     "expect": "4.70"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "(Charville, one A100 + 8-core container class, `{per_stream}` studies per stream, one sweep, #113) | In-container study and scoring wall time per evaluated study (excludes load, prep, adjacency, warm-up, cutoff and rate summary): lab `{lab} s` vs Preflight on 8 CPU cores (Numba) `{numba} s`, `{speedup}×` per evaluated study; Preflight's `{numba_studies}` studies include its `{calib}` calibration nulls, the lab's `{lab_studies}` have none. Totals for the same design-point output: lab `{lab_total} s` vs Preflight `{numba_total} s`, `{total_ratio}×`. Different procedures: per-study permutation vs one calibrated threshold."
+    }
+   ]
+  },
+  {
+   "source": "bench/results/modal-design-20261121T194458Z.json",
+   "pr": 113,
+   "label": "MEASURED",
+   "label_path": "labels.compute",
+   "id": "race-hybrid-tie",
+   "claim": "The hybrid lane (CPU re-imaging feeding A100 scoring) ties Numba on 8 CPU cores: 0.126 s vs 0.125 s per study (ratio 1.01); re-imaging dominates both",
+   "values": [
+    {
+     "name": "ratio",
+     "ratio": [
+      "arms.hybrid.stages.wall_per_study_s",
+      "arms.numba.stages.wall_per_study_s"
+     ],
+     "rule": "fixed:2",
+     "expect": "1.01"
+    },
+    {
+     "name": "hybrid",
+     "path": "arms.hybrid.stages.wall_per_study_s",
+     "rule": "fixed:3",
+     "expect": "0.126"
+    },
+    {
+     "name": "numba",
+     "path": "arms.numba.stages.wall_per_study_s",
+     "rule": "fixed:3",
+     "expect": "0.125"
+    },
+    {
+     "name": "hybrid_share",
+     "path": "arms.hybrid.split.reimage_share",
+     "rule": "pct:1",
+     "expect": "99.6"
+    },
+    {
+     "name": "numba_share",
+     "path": "arms.numba.split.reimage_share",
+     "rule": "pct:1",
+     "expect": "98.0"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "Hybrid (CPU re-imaging feeding A100 scoring) `{hybrid} s` per study, a tie with Numba: re-imaging is `{hybrid_share}%` and `{numba_share}%` of their time."
+    }
+   ]
+  },
+  {
+   "source": "bench/results/modal-design-20261121T194458Z.json",
+   "pr": 113,
+   "label": "MEASURED",
+   "label_path": "labels.compute",
+   "id": "race-parity-1e-15",
+   "claim": "Numba and A100 scores agree to about 10⁻¹⁵ relative: max relative z difference 2.3e-15 (gpu, every z) and 1.6e-15 (hybrid, per-study maxT); X sha256 matches on every shared study",
+   "values": [
+    {
+     "name": "gpu",
+     "path": "arms.gpu.z_vs_numba.max_rel_diff",
+     "rule": "sci:1",
+     "expect": "2.3e-15"
+    },
+    {
+     "name": "hybrid",
+     "path": "arms.hybrid.z_vs_numba.max_rel_diff",
+     "rule": "sci:1",
+     "expect": "1.6e-15"
+    },
+    {
+     "name": "parity_all",
+     "path": "parity.all",
+     "rule": "eq",
+     "expect": "True"
+    },
+    {
+     "name": "hybrid_prior",
+     "path": "parity.against_prior.hybrid.all",
+     "rule": "eq",
+     "expect": "True"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "Numba vs A100 z agree to `{gpu}` relative; hybrid checked through each study's maxT (**{label}**)"
+    }
+   ]
+  },
+  {
+   "id": "race-power-gap",
+   "claim": "Power 15.3% (153/1,000) with Preflight's one calibrated threshold vs 20.3% (203/1,000) with the lab's per-study permutation: different procedures, a method difference, not a speed artefact",
+   "source": "bench/results/modal-design-20261121T194458Z.json",
+   "pr": 113,
+   "label": "ESTIMATE (FWER and power: binomial rates with Wilson 95% intervals)",
+   "label_path": "labels.rates",
+   "values": [
+    {
+     "name": "p",
+     "path": "arms.numba.summary.power.rate",
+     "rule": "pct:1",
+     "expect": "15.3"
+    },
+    {
+     "name": "k",
+     "path": "arms.numba.summary.power.k",
+     "rule": "eq",
+     "expect": "153"
+    },
+    {
+     "name": "n",
+     "path": "arms.numba.summary.power.n",
+     "rule": "comma",
+     "expect": "1,000"
+    },
+    {
+     "name": "lab_p",
+     "path": "arms.lab.summary.power.rate",
+     "rule": "pct:1",
+     "expect": "20.3"
+    },
+    {
+     "name": "lab_k",
+     "path": "arms.lab.summary.power.k",
+     "rule": "eq",
+     "expect": "203"
+    },
+    {
+     "name": "lab_n",
+     "path": "arms.lab.summary.power.n",
+     "rule": "comma",
+     "expect": "1,000"
+    },
+    {
+     "name": "rates_label",
+     "path": "labels.rates",
+     "rule": "word",
+     "expect": "ESTIMATE"
+    },
+    {
+     "name": "compute_label",
+     "path": "labels.compute",
+     "rule": "eq",
+     "expect": "MEASURED"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "(`{n}` alternative studies each, #113) | Power `{p}%` (`{k}/{n}`) with Preflight's one calibrated threshold vs `{lab_p}%` (`{lab_k}/{lab_n}`) with the lab's per-study permutation: different procedures, so a method difference, not a speed artefact (rates **{rates_label}**, compute **{compute_label}**)"
+    }
+   ]
+  },
+  {
+   "id": "event-count-calibration",
+   "claim": "Two event-count bins give power 15.5% vs 15.3% pooled: paired gain +0.2 pp [-0.7, +1.1], no clear recovery of the power gap",
+   "source": "bench/results/event-count-calibration.json",
+   "pr": 117,
+   "label": "ESTIMATE",
+   "label_path": "labels.power",
+   "values": [
+    {
+     "name": "two",
+     "path": "methods.two_bins.power.rate",
+     "rule": "pct:1",
+     "expect": "15.5"
+    },
+    {
+     "name": "pooled",
+     "path": "methods.pooled.power.rate",
+     "rule": "pct:1",
+     "expect": "15.3"
+    },
+    {
+     "name": "gain",
+     "path": "methods.two_bins.paired_vs_pooled.alternative.difference",
+     "rule": "spct:1",
+     "expect": "+0.2"
+    },
+    {
+     "name": "lo",
+     "path": "methods.two_bins.paired_vs_pooled.alternative.paired_bootstrap95[0]",
+     "rule": "spct:1",
+     "expect": "-0.7"
+    },
+    {
+     "name": "hi",
+     "path": "methods.two_bins.paired_vs_pooled.alternative.paired_bootstrap95[1]",
+     "rule": "spct:1",
+     "expect": "+1.1"
+    },
+    {
+     "name": "n",
+     "path": "methods.two_bins.paired_vs_pooled.alternative.n",
+     "rule": "comma",
+     "expect": "1,000"
+    },
+    {
+     "name": "primary",
+     "path": "primary",
+     "rule": "eq",
+     "expect": "two_bins"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "same `{n}` alternative studies, #117) | Power `{two}%` two-bin vs `{pooled}%` pooled: paired gain `{gain}` pp `[{lo}, {hi}]` (paired bootstrap 95%), no clear recovery of the power gap (**{label}**)"
+    }
+   ]
+  },
+  {
+   "id": "cpu-scaling-38.2x",
+   "claim": "Numba arm strong scaling on Modal CPU, same 1,000 null studies: 1.151 s/study on 1 core vs 0.0301 s on 64, 38.2x; one sweep, the 4- and 8-core points beat linear, not separated from host variance",
+   "source": "bench/results/modal-scaling-20261121T201008Z.json",
+   "pr": 115,
+   "label": "MEASURED",
+   "label_path": "status",
+   "values": [
+    {
+     "name": "studies",
+     "path": "workload.studies",
+     "rule": "comma",
+     "expect": "1,000"
+    },
+    {
+     "name": "stream",
+     "path": "workload.stream",
+     "rule": "eq",
+     "expect": "null"
+    },
+    {
+     "name": "cores_lo",
+     "path": "curve[0].cores",
+     "rule": "eq",
+     "expect": "1"
+    },
+    {
+     "name": "cores_hi",
+     "path": "curve[-1].cores",
+     "rule": "eq",
+     "expect": "64"
+    },
+    {
+     "name": "wall_1",
+     "ratio": [
+      "points.1.studies_wall_s",
+      "workload.studies"
+     ],
+     "rule": "fixed:3",
+     "expect": "1.151"
+    },
+    {
+     "name": "wall_64",
+     "ratio": [
+      "points.64.studies_wall_s",
+      "workload.studies"
+     ],
+     "rule": "fixed:4",
+     "expect": "0.0301"
+    },
+    {
+     "name": "speedup_64",
+     "ratio": [
+      "points.1.studies_wall_s",
+      "points.64.studies_wall_s"
+     ],
+     "rule": "fixed:1",
+     "expect": "38.2"
+    },
+    {
+     "name": "speedup_4",
+     "ratio": [
+      "points.1.studies_wall_s",
+      "points.4.studies_wall_s"
+     ],
+     "rule": "fixed:2",
+     "expect": "5.07"
+    },
+    {
+     "name": "speedup_8",
+     "ratio": [
+      "points.1.studies_wall_s",
+      "points.8.studies_wall_s"
+     ],
+     "rule": "fixed:2",
+     "expect": "12.71"
+    },
+    {
+     "name": "parity",
+     "path": "parity.all",
+     "rule": "eq",
+     "expect": "True"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "| **CPU strong scaling** (Numba arm, Charville, the same `{studies}` {stream} studies at `{cores_lo}–{cores_hi}` Modal cores, one concurrent sweep, #115) | One sweep. Studies wall per study `{wall_1} s` on 1 core vs `{wall_64} s` on 64 cores: `{speedup_64}×`. The 4- and 8-core points beat linear (`{speedup_4}×`, `{speedup_8}×`); one sweep, not separated from host variance (each core count on its own host, CPU models unknown, RAM grows with cores; host, cache and scheduling effects not isolated): observed ratios, not a guaranteed speed-up. X sha256 bit-equal at every core count; z within `1e-9` relative of the 8-core z (**{label}**) | [`bench/results/modal-scaling-20261121T201008Z.json`](bench/results/modal-scaling-20261121T201008Z.json) ([caveats](bench/results/modal-scaling-20261121T201008Z.caveats.json)) |"
+    }
+   ]
+  },
+  {
+   "id": "matched-e2e-42.1x",
+   "claim": "Matched workflow comparison through scoring (excludes data load, threshold and calls): lab 8.818 s per study vs Preflight 0.2096 s per decided study, 42.1x; 26.7x including setup; 1 lab core vs 8 Preflight workers; different procedures; features bitwise on 100 shared studies, decisions agree 89/100",
+   "source": "bench/results/matched-e2e-20261121T201925Z.json",
+   "pr": 123,
+   "label": "MEASURED",
+   "label_path": "status",
+   "values": [
+    {
+     "name": "lab",
+     "ratio": [
+      "arms.lab.stages.studies_wall_s",
+      "wall.studies.lab"
+     ],
+     "rule": "fixed:3",
+     "expect": "8.818"
+    },
+    {
+     "name": "lab_n",
+     "path": "wall.studies.lab",
+     "rule": "comma",
+     "expect": "100"
+    },
+    {
+     "name": "lab_w",
+     "path": "arms.lab.workers",
+     "rule": "eq",
+     "expect": "1"
+    },
+    {
+     "name": "pf_w",
+     "path": "arms.preflight.workers",
+     "rule": "eq",
+     "expect": "8"
+    },
+    {
+     "name": "pf",
+     "ratio": [
+      "arms.preflight.stages.studies_wall_s",
+      "wall.studies.preflight_decided"
+     ],
+     "rule": "fixed:4",
+     "expect": "0.2096"
+    },
+    {
+     "name": "pf_n",
+     "path": "wall.studies.preflight_decided",
+     "rule": "comma",
+     "expect": "2,000"
+    },
+    {
+     "name": "calib",
+     "path": "wall.studies.preflight_calibration",
+     "rule": "comma",
+     "expect": "1,000"
+    },
+    {
+     "name": "ratio",
+     "ratio": [
+      "wall.lab_s_per_study",
+      "wall.preflight_s_per_decided_study"
+     ],
+     "rule": "fixed:1",
+     "expect": "42.1"
+    },
+    {
+     "name": "ratio_setup",
+     "ratio": [
+      "wall.with_setup.lab_s_per_study",
+      "wall.with_setup.preflight_s_per_decided_study"
+     ],
+     "rule": "fixed:1",
+     "expect": "26.7"
+    },
+    {
+     "name": "x_bitwise",
+     "path": "parity.x_bitwise",
+     "rule": "eq",
+     "expect": "True"
+    },
+    {
+     "name": "x_n",
+     "path": "parity.x_compared",
+     "rule": "eq",
+     "expect": "100"
+    },
+    {
+     "name": "agree",
+     "path": "decisions.agree",
+     "rule": "eq",
+     "expect": "89"
+    },
+    {
+     "name": "compared",
+     "path": "decisions.compared",
+     "rule": "eq",
+     "expect": "100"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "| **Matched end to end** (lab vs Preflight, same container, design and seeds, #123) | Matched workflow comparison through scoring (re-imaging plus each study's test or screen; excludes data load, threshold and calls): lab `{lab} s` per study (`{lab_n}` studies) vs Preflight `{pf} s` per decided study (`{pf_n}` decided, its `{calib}` calibration nulls paid for): `{ratio}×`; `{ratio_setup}×` including setup (outcome simulation, adjacency, warm-up). `{lab_w}` lab core vs `{pf_w}` Preflight workers; different procedures (per-study permutation vs one calibrated threshold). Features bitwise on `{x_n}` shared studies; decisions agree `{agree}/{compared}` (**{label}**, outcomes SYNTHETIC) | [`bench/results/matched-e2e-20261121T201925Z.json`](bench/results/matched-e2e-20261121T201925Z.json) |"
+    }
+   ],
+   "note": "26.7× uses the stored wall.with_setup per-study totals; not cross-checked against the setup stage timers."
+  }
+ ],
+ "stale": [
+  {
+   "pattern": "\\b2\\.23\\b",
+   "why": "the kernel NumPy median is 2.2353 s, which rounds to 2.24"
+  },
+  {
+   "pattern": "0\\.1275",
+   "why": "v1 Charville maxT p; the headline is the v2 joint screen, p = 0.098 over 3,780"
+  },
+  {
+   "pattern": "(?<![-_])\\bidentical\\b",
+   "why": "CPU and GPU agree to rounding, not identically; only bit-identical fleet sharding is exact"
+  },
+  {
+   "pattern": "(?i)chance explains",
+   "why": "a p-value does not prove chance: say not significant after correction; consistent with chance"
+  }
+ ]
+}

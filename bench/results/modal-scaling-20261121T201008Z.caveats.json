@@ -1,0 +1,23 @@
+{
+  "about": "Qualifications of bench/results/modal-scaling-20261121T201008Z.json (MEASURED, one sweep), added after review (Atlas on #115) without changing or rerunning it.",
+  "result": "bench/results/modal-scaling-20261121T201008Z.json",
+  "caveats": {
+    "sweep": "one concurrent sweep: every core count launched at once, each in its own Modal container; no repeat",
+    "hosts": "each container on whatever host Modal chose; the CPU model reads 'unknown' and cgroup cpu.max is unavailable in the sandbox, so host, cache and scheduling variation are not separated from scaling",
+    "memory": "RAM allocation changes with cores: max(16, 2 x cores) GiB",
+    "preemption": "Modal may preempt and restart a container; the 2026-11-21T20:10Z sweep had one such restart",
+    "ratios": "speedup_vs_1_core is a ratio of measured studies walls; a ratio above the core count (5.07x at 4 workers, 12.71x at 8 in the 20:10Z sweep) is an observation of this sweep, not a guaranteed speedup; nothing here is a parallel-efficiency measurement",
+    "parity": "X: sha256 per study, exact at every core count. z: within Z_TOL (1e-9 relative) of the 8-core z; bitwise z equality is reported per core count, not required",
+    "spend": "single-attempt estimate at list price (each container once); not a billing ceiling across preemption or retries; invoice not verified"
+  },
+  "fields": {
+    "studies_wall_s": "perf_counter wall of the worker pool over every study (re-imaging and Cox scoring); excludes data load, study preparation, adjacency and JIT warm-up",
+    "reimage_worker_wall_s": "sum over studies of each worker's perf_counter wall in re-imaging; not CPU time",
+    "scoring_worker_wall_s": "sum over studies of each worker's perf_counter wall in Cox scoring; not CPU time",
+    "reimage_cpu_s": "older name in this result for reimage_worker_wall_s: summed perf_counter wall seconds, not CPU time",
+    "scoring_cpu_s": "older name in this result for scoring_worker_wall_s: summed perf_counter wall seconds, not CPU time"
+  },
+  "parity_in_this_result": "X sha256 identical to the 8-core point for all 1,000 studies at every core count; z bit-identical at 4, 32 and 64 cores, within 1.2e-15 relative at 1, 2 and 16; the file keeps z sha256 and maxT per study, not full z vectors, so the full-vector distances cannot be recomputed from it",
+  "spend_in_ledger": "the $3.008 in bench/results/modal-spend.json for this sweep is a single-attempt estimate at list price (containers x local wall), not a billing ceiling; it does not establish what the preemption restart cost; invoice not verified",
+  "provenance": "MEASURED at its source_commit 2207648, which ran build-9's bench/design_batch.py from 093c1ee, copied unchanged (the result's workload.arm says so). #115 later merged integration and took #113's bench/design_batch.py; that version changes only the docstring, stage_times, split and headline, none of which this sweep calls (it calls run_arm's numba path, unchanged), and stats/screen.py only gained screen_studies, which the numba arm does not use. The sweep was not rerun; its source_commit still names the commit that ran it."
+}
