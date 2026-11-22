@@ -40,8 +40,8 @@ export function plan(data, { cohort, patients, regions, fov, miscall }) {
     ? { power: c.formula[patients - lo], label: data.labels.formula, source: `bench/vs_schoenfeld.py · ${c.features_source} (${c.features_m} features)` }
     : { missing: `Not computed: whole patient counts from ${lo} to ${hi} only.` };
   const s = data.stains; // shortcut: only the UNMEASURED case is drawn; add a stains table if a run ever passes its gate
-  const stains = { missing: `Not measured: the routine-stain panel search (${s.code}) ran on the UPMC discovery split ` +
-    `(${s.n_patients} patients, ${s.n_events} events) and its own gate withheld every panel. ${s.source} says ${s.status}: ${s.reason}.`, source: s.source };
+  const stains = { missing: `No panel recommendation. The search (${s.code}) ran on the UPMC discovery split ` +
+    `(${s.n_patients} patients, ${s.n_events} events). Its 0.5 concordance gate withheld every panel: ${s.source} says ${s.status}: ${s.reason}.`, source: s.source };
   return { sim, formula, stains };
 }
 
