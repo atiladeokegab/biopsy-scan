@@ -81,9 +81,13 @@ has(1, `${Math.round(lab.stages.wall_per_study_s / fused.stages.wall_per_study_s
 has(1, "per evaluated study"); has(1, `${n(lab.stages.evaluated_studies)} lab studies`);
 has(1, `${n(fused.stages.evaluated_studies)} Preflight studies`);
 has(1, `${n(fused.summary.studies.calibration)} calibration nulls`); has(1, "setup excluded"); has(1, "different procedures");
+has(1, "cross-run"); has(1, `${(lab.stages.compute_wall_s / fused.stages.compute_wall_s).toFixed(1)}× per whole design point`);
+has(1, "re-images each study"); has(1, "the cutoff and calls are outside the timing");
 // Row 2: 583x off the shelf keeps its cross-run caveat; 5.5x is the fair 8 v 8 median; 6.3x is compute span, not Modal wall.
 has(2, `${Math.round(ext.summary.ratio_vs_fused)}×`); has(2, `${ext.summary.seconds_per_study.toFixed(1)} s`); has(2, "cross-run, same container class");
 has(2, `${sweep.fair.spread.ratio.median.toFixed(1)}×`); has(2, "8 workers against 8");
+has(2, "reference recount and agreement checks"); has(2, `top pattern the same in ${ext.summary.top1_same.k} of ${ext.summary.top1_same.of} studies`);
+has(2, "per decided study with calibration charged");
 has(2, `${sweep.scaling.spread.speedup_64_cores.median.toFixed(1)}×`); has(2, `${sweep.scaling.repeats.length} repeats`);
 has(2, `${sweep.fleet.spread.speedup_compute_span.median.toFixed(1)}× less compute span`);
 has(2, `Modal wall ${sweep.fleet.spread.speedup_modal_wall.median.toFixed(1)}×`); has(2, `${sweep.fleet.repeats.length} repeats`);
