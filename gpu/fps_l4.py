@@ -100,12 +100,14 @@ def measure() -> dict:
         out["stills"] = {}
         for name, vp, dpr in (("1280x720", (1280, 720), 1), ("390x844", (390, 844), 2)):
             ctx = browser.new_context(viewport={"width": vp[0], "height": vp[1]}, device_scale_factor=dpr)
-            for t in (0, 2.6, 5.4, 9.8, 13, 15):
+            for t in (0, 2.6, 5.4, 9.8, 12.6, 13, 15):
                 pg = ctx.new_page()
                 pg.goto(f"http://localhost:8000/?t3d={t}", wait_until="networkidle")
                 pg.evaluate("document.querySelector('.reimage').scrollIntoView({block: 'start'})")
                 pg.wait_for_timeout(1500)
                 out["stills"][f"{name}-t{t}"] = pg.screenshot()
+                if name == "1280x720" and t == 15:  # the no-WebGL fallback's still: the canvas alone, last frame
+                    out["end_jpg"] = pg.locator("#reimage").screenshot(type="jpeg", quality=82)
                 pg.close()
             ctx.close()
         browser.close()
@@ -134,6 +136,8 @@ def main():
     shots.mkdir(parents=True, exist_ok=True)
     for k, png in out.pop("stills").items():
         (shots / f"reimage3d-{k}.png").write_bytes(png)
+    (DEMO / "img").mkdir(exist_ok=True)
+    (DEMO / "img" / "reimage-end.jpg").write_bytes(out.pop("end_jpg"))
     ts = out.pop("timestamps_ms")
     res = {"status": "MEASURED", "label": "MEASURED (L4, headless Chrome); a data-centre L4, not a laptop GPU",
            "what": "rAF frame intervals over the 3D re-imaging script (fly-in, windows, flicker), 1280x720, whole page live",

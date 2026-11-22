@@ -66,7 +66,7 @@ assert.ok(html.indexOf('id="speed-race"') < html.indexOf('id="reimage"'), "the 3
 const label = html.match(/id="reimage-label"[^>]*>([\s\S]*?)<\/p>/)[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ");
 assert.match(label, /Real cell positions and types/);
 assert.match(label, /Charville \(colorectal, not head and neck\)/);
-assert.match(label, /imaging simulated by Preflight/);
+assert.match(label, /Imaging simulated by Preflight\./);
 // The steps name the design the code draws.
 const steps = html.match(/id="reimage-steps"[^>]*>([\s\S]*?)<\/ol>/)[1];
 assert.ok(steps.includes(`${["", "one", "two"][WINDOWS]} ${FOV_UM} µm fields`) && steps.includes(`${EPS * 100}% chance`), "steps match the design");
@@ -119,12 +119,16 @@ const page = () => { const els = {}; const $ = (id) => (els[id] ??= fakeEl());
 const synth = { source: "SYNTHETIC", patients: [{ id: "S-1", region: "r1", cells_in_region: 2, cells: [{ x: 0, y: 0, type: "tumour" }, { x: 9, y: 9, type: "stroma" }] }] };
 let $ = page();
 mountReimage($, synth, { reducedMotion: false, search: "", create: () => { throw new Error("no WebGL"); } });
-assert.equal($("reimage-tag").textContent, "SYNTHETIC cells"); assert.ok(!$("reimage-tag").cls.has("ok"), "no MEASURED styling");
+assert.equal($("reimage-tag").textContent, "SYNTHETIC cells");
 assert.ok($("reimage-replay").hidden && $("reimage-pause").hidden, "no dead controls without WebGL");
 assert.ok($("reimage").hidden, "canvas hidden without WebGL");
 assert.doesNotMatch($("reimage-credit").textContent, /WebGL/, "the credit does not repeat the fallback");
 assert.match($("reimage-fallback").textContent, /SYNTHETIC/); assert.match($("reimage-fallback").textContent, /hardware acceleration|another browser/, "says how to recover");
-assert.equal($("reimage-still").hidden, false, "the GPU still shows in the well");
+assert.equal($("reimage-still").hidden, true, "no still of real cells over synthetic input");
+$ = page(); $("reimage-still").hidden = true;
+mountReimage($, tissueJSON, { reducedMotion: false, search: "", create: () => { throw new Error("no WebGL"); } });
+assert.equal($("reimage-still").hidden, false, "measured input without WebGL: the GPU still shows in the well");
+assert.match($("reimage-fallback").textContent, /rendered on a GPU/);
 let got; $ = page();
 mountReimage($, tissueJSON, { reducedMotion: false, search: "?t3d=nope", create: (cv, t, o) => { got = o; return { replay() {}, toggle: () => false }; } });
 assert.equal(got.freezeAt, null, "malformed t3d plays normally");
@@ -144,7 +148,8 @@ assert.ok(Math.abs(M[1][1] - (1 - 0.1 * 12 / 14)) < 1e-12, "stroma row");
 // Brute force: draw the 15-type model directly and compare the group-crossing rate.
 const types15 = Object.values(tissueJSON.meta.display_classes);
 for (let g = 0; g < 3; g++) {
-  const src = types15.findIndex((v) => v === TYPES[g]); let cross = 0, cross15 = 0; const r2 = (() => { let a = 99; return () => ((a = (a * 1103515245 + 12345) % 2147483648) / 2147483648); })();
+  const src = types15.findIndex((v) => v === TYPES[g]); let cross = 0, cross15 = 0; const r2 = (() => { let a = 99 + g; return () => { // mulberry32: the float LCG it replaces lost bits past 2^53
+    a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; })();
   for (let i = 0; i < 200000; i++) {
     if (callFrom(M[g], r2()) !== g) cross++;
     const u = r2(); if (u < EPS) { const others = types15.filter((_, k) => k !== src); if (others[Math.floor(r2() * 14)] !== TYPES[g]) cross15++; }

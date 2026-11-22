@@ -110,7 +110,7 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
 .reimage { padding-top: var(--space-5); }
 .reimage-card {
   display: grid; padding: 0; overflow: hidden; grid-template-columns: minmax(0, 1fr) var(--reimage-text-w);
-  grid-template-areas: "canvas text" "credit text"; grid-template-rows: 1fr auto;
+  grid-template-areas: "canvas text" "fallback text" "credit text"; grid-template-rows: 1fr auto auto;
 }
 .reimage-text { grid-area: text; padding: var(--space-5); border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: var(--space-3); }
 .reimage-label { font-size: var(--text-sm); line-height: var(--leading-meta); color: var(--text-body); }
@@ -120,10 +120,13 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
 .reimage-steps li[aria-current] { color: var(--text-head); }
 .reimage-text .legend { padding: 0; }
 .legend .r { border-radius: 50%; border: 2px solid var(--text-head); }
-.reimage-text .legend .f { border-style: solid; }
+.reimage-text .legend .f { border: 1px solid var(--text-body); }
+.reimage-text .hint { display: flex; flex-wrap: wrap; gap: 0 var(--space-4); }
+.reimage-text .hint .link { min-height: var(--target-min); }
 #reimage { grid-area: canvas; display: block; width: 100%; height: 100%; min-height: var(--reimage-h); background: var(--bg-canvas); }
-.reimage-fallback { grid-area: canvas; align-self: center; padding: var(--space-5); font-size: var(--text-sm); line-height: var(--leading-meta); color: var(--text-muted); }
-.reimage-credit { grid-area: credit; padding: var(--space-2) var(--space-4); line-height: var(--leading-caption); }
+.reimage-still { grid-area: canvas; display: block; width: 100%; height: 100%; min-height: var(--reimage-h); object-fit: cover; background: var(--bg-canvas); }
+.reimage-fallback { grid-area: fallback; margin: 0; padding: var(--space-3) var(--space-4) 0; max-width: 75ch; font-size: var(--text-sm); line-height: var(--leading-meta); color: var(--text-body); }
+.reimage-credit { grid-area: credit; max-width: 75ch; padding: var(--space-2) var(--space-4); line-height: var(--leading-caption); }
 
 /* RESULTS: power against the formula, the honesty strip, the scaling slot */
 .results { display: grid; gap: var(--space-5); grid-template-columns: 1.2fr 1fr 1fr; padding-top: var(--space-5); }
@@ -267,8 +270,8 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
   .reimage-text > h2, .reimage-label { order: 0; }
   .reimage-text > .reimage-steps { padding-left: calc(var(--space-4) + var(--space-5)); }
   .reimage-text > .legend { padding: 0 var(--space-4); }
-  #reimage, .reimage-fallback { order: 1; }
-  #reimage { height: var(--reimage-h-phone); min-height: 0; }
+  #reimage, .reimage-still, .reimage-fallback { order: 1; }
+  #reimage, .reimage-still { height: var(--reimage-h-phone); min-height: 0; }
   .reimage-credit { order: 3; }
   .big { font-size: var(--text-xl); }
   .foot { padding: var(--space-6) var(--space-4) var(--space-8); }

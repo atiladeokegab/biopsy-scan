@@ -67,22 +67,23 @@
   <section class="reimage" aria-labelledby="reimage-title">
     <div class="card reimage-card">
       <div class="reimage-text">
-        <h2 id="reimage-title">What one study actually sees</h2>
-        <p class="reimage-label" id="reimage-label">Real cell positions and types from one patient, Charville (colorectal, not head and neck); imaging simulated by Preflight.
-          <span class="tags"><span class="tag ok" id="reimage-tag">MEASURED cells</span> <span class="tag">SIMULATED imaging</span></span></p>
+        <h2 id="reimage-title">A study sees two small fields and mis-calls some cells</h2>
+        <p class="reimage-label" id="reimage-label">Real cell positions and types from one patient, Charville (colorectal, not head and neck). Imaging simulated by Preflight.
+          <span class="tags"><span class="tag" id="reimage-tag">MEASURED cells</span> <span class="tag">SYNTHETIC imaging</span></span></p>
         <ol class="reimage-steps" id="reimage-steps">
-          <li>A real tumour core: <span id="reimage-n">every cell of one region</span>, each at its measured position.</li>
-          <li>Down to cell level: each dot is one cell. Charville's 15 measured cell types are drawn as 3 colour groups. Height is local cell density.</li>
+          <li>One real tumour region: <span id="reimage-n">every cell</span>, each at its measured position.</li>
+          <li>Down to cell level, each dot is one cell. Charville's 15 measured cell types are drawn as 3 colour groups. Height is local cell density.</li>
           <li>The study images two 400 µm fields of view. It never sees the cells outside them.</li>
-          <li>Each cell it sees has a 10% chance of a mis-call to another group: it flickers, then keeps the wrong colour, ringed. The study mis-calls among all 15 types; a mis-call inside one group does not show here.</li>
+          <li>Each cell it sees has a 10% chance of a mis-call among the 15 types. Only a mis-call into another colour group shows here. Those cells flicker, then keep the wrong colour, ringed.</li>
         </ol>
         <p class="legend">
           <span><i class="t"></i>Tumour</span> <span><i class="s"></i>Stroma</span> <span><i class="m"></i>Immune</span>
           <span><i class="f"></i>Field of view</span> <span><i class="r"></i>Mis-called</span>
         </p>
-        <p class="hint"><button type="button" id="reimage-replay" class="link" hidden>Replay</button> <button type="button" id="reimage-pause" class="link" aria-pressed="false" hidden>Pause</button></p>
+        <p class="hint"><button type="button" id="reimage-replay" class="link" hidden>Replay the fly-through</button> <button type="button" id="reimage-pause" class="link" aria-pressed="false" hidden>Pause the fly-through</button></p>
       </div>
-      <canvas id="reimage" role="img" aria-label="A real colorectal tumour core in 3D: two simulated fields of view, the rest dimmed, each cell in view given a 10% chance of a mis-call between colour groups"></canvas>
+      <canvas id="reimage" role="img" aria-label="A real colorectal tumour region in 3D. Two simulated fields of view, the rest dimmed. Each cell in view has a 10% chance of a mis-call. Those that cross colour groups are ringed."></canvas>
+      <img id="reimage-still" class="reimage-still" src="img/reimage-end.jpg" loading="lazy" alt="The last frame of the 3D view, rendered on a GPU: two 400 µm fields of view over the real region, mis-called cells ringed." hidden>
       <p class="reimage-fallback" id="reimage-fallback" role="status" hidden></p>
       <p class="src reimage-credit" id="reimage-credit">Cells: Charville CODEX, Wu et al. 2022 (Zenodo 13179600, CC-BY-4.0).</p>
     </div>

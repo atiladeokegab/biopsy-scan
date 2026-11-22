@@ -16,7 +16,6 @@ const SEED = 16; // the one simulated look shown: window placement and per-cell 
 
 // Preflight's mis-call (core/reimage_ref.py::miscall with confusion_matrix): keep the type with prob 1 - eps,
 // else a uniform other type; the called type is the first k with cumsum(M[type])[k] > u.
-// shortcut: K is the 3 display classes, not the source's 15 types, so a mis-call inside a class (CD4 to CD8) never shows.
 export function miscall(type, u, eps, K) {
   let cum = 0;
   for (let k = 0; k < K; k++) {
@@ -24,6 +23,32 @@ export function miscall(type, u, eps, K) {
     if (cum > u) return k;
   }
   return K - 1;
+}
+
+// The same 15-type model seen through the 3 colour groups (exact, not an approximation): a source type in group g is
+// called as one of the other K - 1 types uniformly with prob eps, so it lands in group h != g with prob eps * n_h / (K - 1).
+export function groupMatrix(sizes, eps) {
+  const K = sizes.reduce((a, b) => a + b);
+  return sizes.map((ng, g) => sizes.map((nh, h) => (h === g ? 1 - (eps * (K - ng)) / (K - 1) : (eps * nh) / (K - 1))));
+}
+export function callFrom(row, u) {
+  let cum = 0;
+  for (let k = 0; k < row.length; k++) if ((cum += row[k]) > u) return k;
+  return row.length - 1;
+}
+
+// Camera distance and target that fit the points inside +-margin of the frame at this angle and aspect.
+export function fitView(points, elev, azim, fovDeg, aspect, margin) {
+  const box = new THREE.Box3().setFromPoints(points), target = box.getCenter(new THREE.Vector3());
+  const cam = new THREE.PerspectiveCamera(fovDeg, aspect, 0.1, 1e6), q = new THREE.Vector3();
+  const dir = new THREE.Vector3(Math.cos(elev) * Math.sin(azim), Math.sin(elev), Math.cos(elev) * Math.cos(azim));
+  const fits = (d) => {
+    cam.position.copy(target).addScaledVector(dir, d); cam.lookAt(target); cam.updateMatrixWorld();
+    return points.every((p) => { q.copy(p).project(cam); return q.z < 1 && Math.abs(q.x) <= margin && Math.abs(q.y) <= margin; });
+  };
+  let lo = 1, hi = 1e5;
+  for (let i = 0; i < 40; i++) { const mid = Math.sqrt(lo * hi); if (fits(mid)) hi = mid; else lo = mid; }
+  return { target, dist: hi };
 }
 
 // Preflight's random_crop: a square of side s placed uniformly inside the bounding box [lo, hi], null if s covers it.
@@ -87,12 +112,13 @@ export function boundaryPoint(cells, lo, hi, n, sigma) {
   return [o[0] + ((bi % n) + 0.5) * cell, o[1] + (Math.floor(bi / n) + 0.5) * cell];
 }
 
-// The scene's script. r: framed radius in core radii; elev/azim: radians; focus: 0 the core centre, 1 the boundary.
+// The scene's script. fit: what the shot frames (the region, the region and its fields, or the fields), fitted at the
+// canvas's own aspect; cell level instead frames r region radii round the tumour-stroma boundary. r also sizes the dots.
 const SHOTS = {
-  whole: { r: 0.86, elev: 1.0, azim: -0.55, focus: 0 },
-  cell: { r: 0.15, elev: 0.62, azim: -0.2, focus: 1 },
-  look: { r: 0.9, elev: 0.86, azim: 0.3, focus: 0 },
-  rest: { r: 0.4, elev: 0.72, azim: 0.75, focus: 1 },
+  whole: { r: 0.86, elev: 1.0, azim: -0.55, fit: "region" },
+  cell: { r: 0.15, elev: 0.62, azim: -0.2, fit: null },
+  look: { r: 0.9, elev: 0.86, azim: 0.3, fit: "all" },
+  rest: { r: 0.6, elev: 0.72, azim: 0.75, fit: "fields" },
 };
 const MOVES = [[0, 0.8, "whole", "whole"], [0.8, 4.6, "whole", "cell"], [4.6, 6.2, "cell", "cell"],
   [6.2, 9.0, "cell", "look"], [9.0, 10.6, "look", "look"], [10.6, 12.2, "look", "rest"], [12.2, 15, "rest", "rest"]];
@@ -111,7 +137,7 @@ export function timeline(t) {
     r: Math.exp(Math.log(A.r) + (Math.log(B.r) - Math.log(A.r)) * e), // zoom in log space: an even fall in scale
     elev: A.elev + (B.elev - A.elev) * e,
     azim: A.azim + (B.azim - A.azim) * e,
-    focus: A.focus + (B.focus - A.focus) * e,
+    from, to, e,
   };
   const settled = t >= FLICK[1];
   // Under 3 flashes a second (WCAG 2.3.1): the called colour shows on alternate 0.4 s beats, then stays.
@@ -167,10 +193,12 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
   // One simulated look, in Preflight's draw order: the crops, then a uniform u per cell for the mis-call.
   const r = rng(SEED);
   const crops = Array.from({ length: WINDOWS }, () => randomCrop(lo, hi, FOV_UM, [r(), r()]));
+  const classes = Object.values(tissue.meta?.display_classes ?? {});
+  const M = groupMatrix(TYPES.map((g) => classes.filter((v) => v === g).length || 1), EPS); // no type map: 3 equal groups
   const type = new Uint8Array(n), obs = new Uint8Array(n), inside = new Uint8Array(n);
   cells.forEach((c, j) => {
     type[j] = TYPES.indexOf(c.type);
-    obs[j] = miscall(type[j], r(), EPS, TYPES.length);
+    obs[j] = callFrom(M[type[j]], r());
     inside[j] = crops.some((cr) => inCrop(c.x, c.y, cr));
   });
 
@@ -213,7 +241,7 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
   const dots = new THREE.PointsMaterial({ size: DOT, vertexColors: true, map: ball, alphaTest: 0.5 });
   scene.add(new THREE.Points(geo, dots));
 
-  // Rings round the cells this look mis-calls inside a field of view.
+  // Rings round the cells mis-called into another colour group inside a field of view.
   const wrong = [...Array(n).keys()].filter((j) => inside[j] && obs[j] !== type[j]);
   const rpos = new Float32Array(wrong.length * 3);
   wrong.forEach((j, k) => rpos.set([pos[j * 3], pos[j * 3 + 1] + 0.5, pos[j * 3 + 2]], k * 3));
@@ -223,12 +251,19 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
   const rings = new THREE.Points(rgeo, new THREE.PointsMaterial({ size: DOT * 2.4, map: ringTex, color: tok("--text-head"), alphaTest: 0.5 }));
   scene.add(rings);
 
-  // Fields of view: a bright square frame over a faint curtain of light down to the tissue.
+  // Fields of view: a thin square frame, labelled with its size, over a faint curtain of light down to the tissue.
   const H = LIFT + 34;
-  const frameMat = new THREE.MeshBasicMaterial({ color: tok("--text-head"), side: THREE.DoubleSide, transparent: true });
+  const frameMat = new THREE.MeshBasicMaterial({ color: tok("--text-body"), side: THREE.DoubleSide, transparent: true });
+  const labelTex = (() => {
+    const cv = document.createElement("canvas"); cv.width = 256; cv.height = 64;
+    const g = cv.getContext("2d");
+    g.font = `600 34px ${tok("--font-sans") || "sans-serif"}`; g.fillStyle = tok("--text-body"); g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText(`${FOV_UM} µm`, 128, 34);
+    const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace; return tx;
+  })();
   const wins = crops.filter(Boolean).map((cr, i) => {
     const g = new THREE.Group(), half = cr[2] / 2;
-    const frame = new THREE.Mesh(new THREE.RingGeometry(half * Math.SQRT2 - 2.5, half * Math.SQRT2 + 2.5, 4, 1), frameMat);
+    const frame = new THREE.Mesh(new THREE.RingGeometry(half * Math.SQRT2 - 1.2, half * Math.SQRT2 + 1.2, 4, 1), frameMat);
     frame.rotation.set(-Math.PI / 2, 0, Math.PI / 4);
     frame.position.y = H;
     const curtain = new THREE.Mesh(new THREE.CylinderGeometry(half * Math.SQRT2, half * Math.SQRT2, H, 4, 1, true),
@@ -236,11 +271,22 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
         depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
     curtain.rotation.y = Math.PI / 4;
     curtain.position.y = H / 2;
-    g.add(frame, curtain);
+    const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex, transparent: true, depthTest: false, sizeAttenuation: false }));
+    label.scale.set(0.16, 0.04, 1); // a share of the canvas height, so it reads the same at every distance and size
+    label.position.set(0, H, half + 14);
+    label.renderOrder = 2;
+    g.add(frame, curtain, label);
     const at = new THREE.Vector3(wx(cr[0] + half), 0, wz(cr[1] + half));
     scene.add(g);
-    return { g, curtain, at, from: new THREE.Vector3(at.x + (i ? -1 : 1) * RC * 1.6, 160, at.z) };
+    return { g, curtain, label, at, from: new THREE.Vector3(at.x + (i ? -1 : 1) * RC * 1.6, 160, at.z) };
   });
+
+  // What each fitted shot must keep in frame: the region's rim (ground to peak), and the fields' corners (ground to frame).
+  const rim = [...Array(48)].flatMap((_, i) => [0, LIFT].map((y) =>
+    new THREE.Vector3((reach + DOT * 2) * Math.cos((i / 48) * 2 * Math.PI), y, (reach + DOT * 2) * Math.sin((i / 48) * 2 * Math.PI))));
+  const corners = wins.flatMap(({ at }) => [[-1, -1], [-1, 1], [1, -1], [1, 1]].flatMap(([a, b]) => [0, H].map((y) =>
+    new THREE.Vector3(at.x + (a * FOV_UM) / 2, y, at.z + (b * FOV_UM) / 2))));
+  const subjects = { region: rim, all: rim.concat(corners), fields: corners.length ? corners : rim };
 
   const base = TYPES.map((t) => new THREE.Color(tok(`--${t}`)));
   const c = new THREE.Color();
@@ -263,12 +309,17 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
     const pr = renderer.getPixelRatio();
     if (canvas.width !== Math.floor(w * pr) || canvas.height !== Math.floor(h * pr)) renderer.setSize(w, h, false);
     camera.aspect = w / h;
-    const s = timeline(t), k = s.camera;
-    // Frame k.r core radii whichever side of the canvas is shorter.
+    const s = timeline(t), k = s.camera, az = k.azim + orbit;
+    // Each end of the move fitted at the current angle, so the orbit and the phone's aspect stay framed too.
     const half = (camera.fov * Math.PI) / 360, fit = Math.min(half, Math.atan(Math.tan(half) * camera.aspect));
-    const dist = (k.r * RC) / Math.sin(fit), az = k.azim + orbit;
+    const view = (name) => {
+      const pts = subjects[SHOTS[name].fit];
+      return pts ? fitView(pts, k.elev, az, camera.fov, camera.aspect, 0.88) : { target: bt, dist: (SHOTS[name].r * RC) / Math.sin(fit) };
+    };
+    const A = view(k.from), B = k.to === k.from ? A : view(k.to);
+    const dist = Math.exp(Math.log(A.dist) + (Math.log(B.dist) - Math.log(A.dist)) * k.e);
+    target.lerpVectors(A.target, B.target, k.e);
     dots.size = DOT * (1 + 0.3 * clamp01((k.r - 0.15) / 0.7)); // a touch larger from afar, true size at cell level
-    target.set(0, LIFT * 0.3, 0).lerp(bt, k.focus);
     camera.position.set(target.x + dist * Math.cos(k.elev) * Math.sin(az), target.y + dist * Math.sin(k.elev),
       target.z + dist * Math.cos(k.elev) * Math.cos(az));
     camera.near = Math.max(1, dist * 0.05);
@@ -280,6 +331,7 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
       wi.g.position.lerpVectors(wi.from, wi.at, e);
       wi.g.visible = e > 0;
       wi.curtain.material.opacity = 0.05 * e;
+      wi.label.material.opacity = e;
     });
     frameMat.opacity = s.windows > 0 ? 1 : 0;
     rings.visible = s.rings;
@@ -319,16 +371,15 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
 export function mountReimage($, tissue, { reducedMotion, search, create = createReimage3d }) {
   const p = pickPatient(tissue), n = p.cells.length, real = tissue.source === "MEASURED";
   $("reimage-n").textContent = n === p.cells_in_region
-    ? `all ${n.toLocaleString("en-GB")} cells of one region`
-    : `${n.toLocaleString("en-GB")} of the region's ${p.cells_in_region.toLocaleString("en-GB")} cells`;
+    ? `all ${n.toLocaleString("en-GB")} cells`
+    : `${n.toLocaleString("en-GB")} of its ${p.cells_in_region.toLocaleString("en-GB")} cells`;
   if (!real) {
-    $("reimage-label").firstChild.textContent = "SYNTHETIC cells: real Charville data is not loaded; imaging simulated by Preflight. ";
+    $("reimage-label").firstChild.textContent = "SYNTHETIC cells. Real Charville data is not loaded. Imaging simulated by Preflight. ";
     $("reimage-tag").textContent = "SYNTHETIC cells";
-    $("reimage-tag").classList.remove("ok");
-    $("reimage").setAttribute("aria-label", "A synthetic tumour core in 3D: two simulated fields of view, the rest dimmed, each cell in view given a 10% chance of a mis-call between colour groups");
+    $("reimage").setAttribute("aria-label", "A synthetic tumour region in 3D. Two simulated fields of view, the rest dimmed. Each cell in view has a 10% chance of a mis-call. Those that cross colour groups are ringed.");
   }
   $("reimage-credit").textContent = (real ? `Cells: Charville CODEX, Wu et al. 2022 (Zenodo 13179600, CC-BY-4.0), patient ${p.id}, region ${p.region}. ` : "") +
-    "Fields of view and mis-calls: one simulated look. In the study the two fields fall on two different regions; here both are drawn on one.";
+    "The fields of view and mis-calls are one simulated draw. The study places its two fields on two different regions. Here both fall on one.";
   const steps = [...$("reimage-steps").children];
   let view;
   try {
@@ -338,18 +389,19 @@ export function mountReimage($, tissue, { reducedMotion, search, create = create
     });
   } catch {
     $("reimage").hidden = true;
+    $("reimage-still").hidden = !real; // the still is of the real region: never shown over synthetic cells
     $("reimage-fallback").hidden = false;
-    $("reimage-fallback").textContent = `3D view off: this browser could not start WebGL. The steps beside it still describe the ${real ? "MEASURED" : "SYNTHETIC"} cells and the SIMULATED look.`;
-    $("reimage-credit").textContent += " WebGL is unavailable here, so nothing is drawn.";
+    $("reimage-fallback").textContent = `The 3D view needs WebGL, which this browser has off. Turn on hardware acceleration in its settings, or open the page in another browser. ${
+      real ? "Above: the last frame, rendered on a GPU." : "The steps still describe the SYNTHETIC cells."}`;
     return;
   }
   if (reducedMotion) return;
   const pause = $("reimage-pause");
   $("reimage-replay").hidden = pause.hidden = false;
-  $("reimage-replay").addEventListener("click", () => { view.replay(); pause.textContent = "Pause"; pause.setAttribute("aria-pressed", "false"); });
+  $("reimage-replay").addEventListener("click", () => { view.replay(); pause.textContent = "Pause the fly-through"; pause.setAttribute("aria-pressed", "false"); });
   pause.addEventListener("click", () => {
     const on = view.toggle();
-    pause.textContent = on ? "Pause" : "Play";
+    pause.textContent = on ? "Pause the fly-through" : "Play the fly-through";
     pause.setAttribute("aria-pressed", String(!on));
   });
 }
