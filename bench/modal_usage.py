@@ -27,6 +27,9 @@ from bench.modal_external import image as external_image
 import modal
 
 DT = 0.1
+CPU_NOTE = ("per-core % from /proc/stat of the container (what psutil reads). gVisor shows 24 cores and spreads the "
+            "container's use evenly over them, so only the total is meaningful: cores busy = sum / 100 (8 reserved, "
+            "bursts can borrow more). nvidia-smi utilization.gpu is NVML's busy-kernel share over its own sample period")
 ARMS = ("current", "fused", "gpu")
 app = modal.App("preflight-usage-traces")
 _ONE = {}
@@ -162,6 +165,17 @@ def summarise(a: dict) -> dict:
             "mean_gpu_util_pct": mean(gpu), "cpu_samples_in_window": len(cpu), "gpu_samples_in_window": len(gpu)}
 
 
+def write_replay(result_path) -> None:
+    """demo/usage/traces.json from a MEASURED result: uv run --with modal python -m bench.modal_usage <result.json>"""
+    from pathlib import Path
+    path = Path(result_path).resolve()
+    r = json.loads(path.read_text())
+    if r["status"] != "MEASURED":
+        raise SystemExit(f"{path} is {r['status']}, not MEASURED")
+    (REPO / "demo" / "usage" / "traces.json").write_text(
+        json.dumps(replay(r["arms"], str(path.relative_to(REPO))), separators=(",", ":")) + "\n")
+
+
 def replay(arms: dict, source: str) -> dict:
     """The compute window of each arm, times from its start: what demo/usage/ plays back. No smoothing."""
     out = {"schema": "preflight-usage/1", "source": source, "label": "MEASURED", "sample_interval_s": DT, "arms": {}}
@@ -172,7 +186,8 @@ def replay(arms: dict, source: str) -> dict:
         out["arms"][k] = {"wall_s": round(hi - lo, 3), "studies": a["studies"], "cores": a["host"]["cpu_count"],
                           "cores_reserved": CORES, "gpu_name": (a["host"]["gpu"] or "").split(",")[0] or None,
                           "done_s": [round(t - lo, 3) for t in a["done_s"]],
-                          "cpu": [[round(t - lo, 2), [round(x) for x in c]] for t, c in a["cpu"] if win(t)],
+                          # cores busy = sum of per-core % / 100: gVisor spreads use evenly over visible cores
+                          "cpu": [[round(t - lo, 2), round(sum(c) / 100, 2)] for t, c in a["cpu"] if win(t)],
                           "gpu": [[round(t - lo, 2), u, m] for t, u, m in a["gpu"] if win(t)],
                           "summary": summarise(a)}
     return out
@@ -212,9 +227,7 @@ def main(studies: int = 4, cap_usd: float = 4.0, timeout_s: int = 1200):
         "labels": {"traces": "MEASURED", "compute_window": "DERIVED (sampler end minus the arm's own perf_counter "
                    "studies and batched-score walls)", "outcomes": "SYNTHETIC (atlas/simulation.py, as #113)",
                    "gpu_note": "squidpy and lifelines never touch the GPU; the A100 is only the container class",
-                   "cpu_note": "per-core % from /proc/stat of the container (gVisor shows every visible core; "
-                               "8 are reserved, the rest can be lent); nvidia-smi utilization.gpu is NVML's "
-                               "busy-kernel share over its own sample period"},
+                   "cpu_note": CPU_NOTE},
         "design": {"studies_per_stream": studies, "streams": list(plan), "same_seeds_every_arm": True,
                    "arms": {"current": "bench/external_baseline.run, 8 workers",
                             "fused": "bench/design_batch.run_arm('fused'), 8 workers",
@@ -230,10 +243,14 @@ def main(studies: int = 4, cap_usd: float = 4.0, timeout_s: int = 1200):
     }
     path.write_text(json.dumps(result, indent=1, allow_nan=False) + "\n")
     if result["status"] == "MEASURED":
-        demo = REPO / "demo" / "usage" / "traces.json"
-        demo.write_text(json.dumps(replay(arms, str(path.relative_to(REPO))), separators=(",", ":")) + "\n")
+        write_replay(path)
     entry["actual"] = {"modal_wall_s": round(wall, 1), "est_usd": usd, "basis": result["cost"]["basis"],
                        "result": str(path.relative_to(REPO))}
     _log_spend(entry)
     print(result["status"], json.dumps(result["summary"]), errors or "")
     print(f"Saved {path}")
+
+
+if __name__ == "__main__":
+    import sys
+    write_replay(sys.argv[1])
