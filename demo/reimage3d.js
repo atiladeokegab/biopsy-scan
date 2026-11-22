@@ -279,13 +279,13 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
     frame.position.y = H;
     const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex, transparent: true, depthTest: false, sizeAttenuation: false }));
     labels.push(label);
-    label.position.set(i ? half + 6 : 0, H, i ? 0 : half + 6); // its own edge that lies outside the other frame
-    label.center.set(0.5, 1); // hangs below the near edge on screen: outside the box, off the field's cells
+    label.position.set(i ? half + 60 : 0, H, i ? 0 : half + 60); // off its own edge that lies outside the other frame
+    label.center.set(0.5, 0.5); // centred 60 µm out, so the frame edge never crosses the text
     label.renderOrder = 2;
     g.add(frame, label);
     const at = new THREE.Vector3(wx(cr[0] + half), 0, wz(cr[1] + half));
     scene.add(g);
-    return { g, label, at, from: new THREE.Vector3(at.x + (i ? -1 : 1) * RC * 1.6, 160, at.z) };
+    return { g, label, half, at, from: new THREE.Vector3(at.x + (i ? -1 : 1) * RC * 1.6, 160, at.z) };
   });
 
   // What each fitted shot must keep in frame: the region's rim (ground to peak), and the fields' corners (ground to frame).
@@ -338,8 +338,10 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
     camera.updateProjectionMatrix();
     camera.lookAt(target);
     scene.fog.near = dist * 1.1; scene.fog.far = dist * 2.6;
+    const gap = Math.max(60, 34 * perPx); // at least 34 css px off the edge on any screen
     wins.forEach((wi, i) => {
       const e = ease(clamp01((s.windows - i * 0.3) / 0.7));
+      wi.label.position.set(i ? wi.half + gap : 0, H, i ? 0 : wi.half + gap);
       wi.g.position.lerpVectors(wi.from, wi.at, e);
       wi.g.visible = e > 0;
       wi.label.material.opacity = e;
