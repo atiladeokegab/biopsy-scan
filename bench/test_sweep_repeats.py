@@ -135,6 +135,13 @@ def scaling_point_missing(d):
     d["points"].pop("64")
 
 
+def scaling_curve_only(d):  # a self-consistent curve that no longer matches the points it summarises
+    r = d["curve"][-1]
+    r["studies_wall_s"] /= 2
+    r["wall_per_study_s"] /= 2
+    r["speedup_vs_1_core"] *= 2
+
+
 def scaling_curve_dup(d):
     d["curve"].append(d["curve"][0])
 
@@ -172,6 +179,7 @@ def missing_lab_study(d):
     ("scaling", scaling_empty, "one per core count"),
     ("scaling", scaling_point_missing, "one per core count"),
     ("scaling", scaling_curve_dup, "cores"),
+    ("scaling", scaling_curve_only, "does not follow from its point"),
 ])
 def test_a_bad_repeat_fails_closed_and_writes_no_file(tmp_path, capsys, kind, edit, why):
     d = raw(tmp_path, kind, [repeat(kind, 0), repeat(kind, 1), repeat(kind, 2, edit)])

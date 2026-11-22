@@ -37,6 +37,7 @@ CLEARED_LADDER = "modal-a100-20261121T183709Z.json"  # Atlas cleared this run (l
 SLOTS = {"lab-cpu": "a_lab_all_cores", "preflight-cpu": "b_ours_cpu_all_cores", "gpu-1": "c_ours_1_gpu"}
 ARMS = {"lab-cpu": "lab", "preflight-cpu": "numba", "gpu-1": "gpu", "hybrid": "hybrid"}  # the four declared lanes
 FUSED = {"fused-cpu": "fused"}
+REPEATS = "bench/results/repeats-20261121T2209Z.json"  # #126: fresh-container reruns of the fused lane
 LEGACY_MAXT = "064bd6e95f721c8be7747d4cfef5eb5bd4bbd79d"  # 205536Z's code: prior_parity before maxT_compared existed  # the fifth lane: a --compare-with run that adds the fused arm to the four-arm file
 
 
@@ -76,7 +77,26 @@ def four_arms(name, d):
                     "note": f"{st['evaluated_studies']:,} studies; re-imaging {100 * v['split']['reimage_share']:.1f}% "
                             + ("of elapsed stage wall time" if gpu else "of summed worker wall time")
                             + ("; same features, same top score; run on a different host of the same container class, about 2 h "
-                               "after the lab, Numba and A100 lanes and 70 min after the hybrid; one sweep" if a == "fused" else "")}
+                               "after the lab, Numba and A100 lanes and 70 min after the hybrid; one sweep"
+                               + fused_repeats() if a == "fused" else "")}
+
+
+def fused_repeats() -> str:
+    """The fused lane's spread from #126's merged reruns: median and range of wall per study, recomputed from
+    each rerun and checked against the file's summary; "" when the file is absent."""
+    path = ROOT / REPEATS
+    if not path.exists():
+        return ""
+    d = json.loads(path.read_text())
+    runs, summ = d["repeats"]["fused"], d["summary"]["fused"]
+    w = sorted(r["wall_per_study_s"] for r in runs)
+    studies = {r["evaluated_studies"] for r in runs}
+    commits = {r["source_commit"] for r in runs}
+    if (len(w), w[len(w) // 2], w[0], w[-1]) != (summ["n"], summ["median"], summ["min"], summ["max"]) or len(studies) != 1 \
+            or len(commits) != 1:
+        raise SystemExit(f"{REPEATS}: fused reruns disagree with their summary")
+    return (f" here. {len(w)} fresh-container reruns at #120 {next(iter(commits))[:7]} ({REPEATS}, #126): median "
+            f"{w[len(w) // 2]:.4f} s/study, range {w[0]:.4f}-{w[-1]:.4f}, {next(iter(studies)):,} studies each; descriptive")
 
 
 def fused_parity(d):
