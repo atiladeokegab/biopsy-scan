@@ -42,8 +42,13 @@ def newest_h100(results: Path) -> str | None:
 
 
 def h100_arm(r: dict) -> dict:
-    arms = r.get("arms", {"gpu_fused": r})
-    return arms.get("gpu_fused") or arms.get("gpu") or next(iter(arms.values()))
+    """The timed gpu_fused launch of a gpu-fused-usage file (flat 100 ms samples tagged by arm), in usage-traces shape."""
+    a, dt = r["arms"]["gpu_fused"], r["sample_period_s"]
+    s = [x for x in r["samples"] if x["arm"] == "gpu_fused"]  # warm-up and setup samples are not the timed launch
+    lo = s[0]["t_s"] - dt  # each sample closes its 100 ms interval
+    return {"compute_window_s": [lo, lo + a["wall_s"]], "studies": a["studies_per_launch"], "host": r["host"],
+            "cpu": [[x["t_s"], x["busy_cores"]] for x in s],
+            "gpu": [[x["t_s"], x["gpu_util_pct"], x["gpu_mem_used_mib"]] for x in s]}
 
 
 def build(results: Path = REPO / "bench" / "results") -> dict:
@@ -55,9 +60,9 @@ def build(results: Path = REPO / "bench" / "results") -> dict:
     h100 = newest_h100(results)
     if h100:
         r = json.loads((REPO / h100).read_text())
-        assert r["status"] == "MEASURED", h100
+        assert r["status"] == "MEASURED" and r["parity"]["all"] is True, h100
         a = h100_arm(r)
-        ours = lane(a, "H100 fused kernel", gpu_name(a), a["host"].get("cores_reserved", 1))
+        ours = lane(a, "H100 fused kernel", gpu_name(a), None)
     else:
         a = tr["arms"]["fused"]
         ours = lane(a, "CPU fused kernel", gpu_name(a), a["host"]["cores_reserved"])
