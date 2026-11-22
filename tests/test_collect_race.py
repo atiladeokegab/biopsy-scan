@@ -324,7 +324,9 @@ def test_the_five_arm_file_fills_only_the_fused_lane_and_only_with_full_x_parity
     assert (f["seconds"], f["cores"], f["gpu"]) == (372.0, 8, None)
     assert f["note"].endswith("of summed worker wall time; same features, same top score; run on a different host "
                               "of the same container class, about 2 h after the lab, Numba and A100 lanes and 70 min after "
-                              "the hybrid; one sweep")
+                              "the hybrid; one sweep here. 3 fresh-container reruns at #120 0b27ea1 "
+                              "(bench/results/repeats-20261121T2209Z.json, #126): median 0.0424 s/study, range "
+                              "0.0422-0.0425, 3,000 studies each; descriptive")
     assert "fused lane: same features, same top score" in rows["scope"]["comparison"]
     five["parity"]["against_prior"]["fused"]["gpu"]["x_bitwise"] = False
     assert list(cr.rows_from(Path("modal-design.json"), five)) == []
