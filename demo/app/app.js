@@ -92,5 +92,7 @@ function finish(sec) {
 
 document.querySelectorAll(".pills button").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
 $("run").addEventListener("click", run);
+$("run").disabled = true; // wait for the photo, or the overlay is computed from a blank image
+img.decode().then(() => { if (!running) $("run").disabled = false; }, () => { $("run").textContent = "Photo failed to load"; });
 const q = new URLSearchParams(location.search).get("mode");
 setMode(MODES[q] ? q : "ours");
