@@ -33,17 +33,23 @@ def test_lanes_replay_measured_samples_on_the_race_clock():
 def test_newest_h100_usage_file_wins(tmp_path, monkeypatch):
     res = tmp_path / "bench" / "results"
     res.mkdir(parents=True)
-    tr = json.loads((ROOT / mb.TRACES).read_text())
-    arm = dict(tr["arms"]["gpu"], host=dict(tr["arms"]["gpu"]["host"], gpu="NVIDIA H100 80GB HBM3, 81559 MiB"))
-    for stamp, status in (("20261122T150000Z", "MEASURED"), ("20261122T151500Z", "MEASURED")):
-        (res / f"gpu-fused-usage-h100-{stamp}.json").write_text(json.dumps({"status": status, "arms": {"gpu_fused": arm}}))
+    real = mb.newest_h100(ROOT / "bench" / "results")
+    assert real, "the H100 usage trace is committed"
+    for stamp in ("20261122T140000Z", "20261122T160000Z"):
+        shutil.copy(ROOT / real, res / f"gpu-fused-usage-h100-{stamp}.json")
     for rel in (mb.TRACES, mb.RACE):
         (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(ROOT / rel, tmp_path / rel)
     monkeypatch.setattr(mb, "REPO", tmp_path)
-    d = mb.build(res)
-    assert d["ours_source"] == "bench/results/gpu-fused-usage-h100-20261122T151500Z.json"
-    assert d["lanes"]["ours"]["gpu"].startswith("H100") and d["lanes"]["ours"]["name"] == "H100 fused kernel"
+    assert mb.build(res)["ours_source"] == "bench/results/gpu-fused-usage-h100-20261122T160000Z.json"
+
+
+def test_ours_is_the_timed_h100_launch():
+    ours = DATA["lanes"]["ours"]
+    assert DATA["ours_source"].startswith("bench/results/gpu-fused-usage-h100-")
+    assert ours["gpu"].startswith("H100") and ours["studies"] == 3000 and 6 < ours["wall_s"] < 6.3
+    util = sorted(u for t, u in ours["gpu_util"] if 0 <= t <= ours["wall_s"])
+    assert util[len(util) // 2] == 100  # the kernel holds the H100 busy
 
 
 def test_page_shows_no_ratio_and_hardcodes_no_trace_numbers():
