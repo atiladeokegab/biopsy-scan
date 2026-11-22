@@ -279,7 +279,7 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
     frame.position.y = H;
     const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex, transparent: true, depthTest: false, sizeAttenuation: false }));
     labels.push(label);
-    label.position.set(0, H, half * Math.SQRT2 + 4); // the frame is turned 45°: its near corner
+    label.position.set(i ? half + 6 : 0, H, i ? 0 : half + 6); // its own edge that lies outside the other frame
     label.center.set(0.5, 1); // hangs below the near edge on screen: outside the box, off the field's cells
     label.renderOrder = 2;
     g.add(frame, label);
