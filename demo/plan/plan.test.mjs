@@ -44,7 +44,7 @@ const p80 = vs.points.find((p) => p.patients === 80);
 assert.ok(Math.abs(plan(data, { cohort: "charville", patients: 80, regions: 2, fov: 400, miscall: 0.1 }).formula.power - p80.analytic_power) < 1e-12);
 
 // Stains are not measured yet and say why.
-assert.match(r.stains.missing, /^Not measured: .*ran on the UPMC discovery split \(34 patients, 6 events\).*UNMEASURED: C_full <= 0.5 \(0.2941\)/);
+assert.match(r.stains.missing, /^No panel recommendation\. The search .*ran on the UPMC discovery split \(34 patients, 6 events\).*UNMEASURED: C_full <= 0.5 \(0.2941\)/);
 assert.equal(pct(0.0004), "<1%");
 assert.equal(pct(0.996), ">99%");
 assert.match(scenario(data, "charville"), /159 patients, 38 events.*630 features.*No clinical claim\.$/);
