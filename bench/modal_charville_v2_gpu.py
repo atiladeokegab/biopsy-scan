@@ -61,7 +61,7 @@ def measure():
     from core.grammar import feature_names, grammar_hash, grammar_v2
     from core.truth import truth_v2
 
-    baseline = json.loads((ROOT / "results" / "charville-v2.json").read_text())
+    baseline = json.loads(Path("/root/preflight/results/charville-v2.json").read_text())
     if cp.cuda.runtime.getDeviceCount() != 1:
         raise RuntimeError("expected exactly one CUDA device")
     device = cp.cuda.runtime.getDeviceProperties(0)
