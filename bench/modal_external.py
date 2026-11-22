@@ -36,7 +36,7 @@ app = modal.App("preflight-external-baseline")
 
 
 @app.function(image=image, gpu=GPU, cpu=CORES, memory=MEMORY_MIB, timeout=6 * 3600, env=SINGLE)
-def baseline(plan: dict) -> dict:
+def baseline(plan: dict, n_jobs: int = 1) -> dict:
     import logging
     import sys
     import time
@@ -56,7 +56,7 @@ def baseline(plan: dict) -> dict:
     t = time.perf_counter()
     cells = load("charville")
     load_s = time.perf_counter() - t
-    out = eb.run(cells, plan, workers=int(CORES))
+    out = eb.run(cells, plan, workers=int(CORES) // n_jobs, n_jobs=n_jobs)
     host["load_average_end"] = list(os.getloadavg())
     out["summary"] = eb.summarize(out)
     out["host"], out["load_s"] = host, load_s
@@ -76,7 +76,7 @@ def _finite(o):
 
 
 @app.local_entrypoint()
-def main(studies: int = 25, cap_usd: float = 5.0, timeout_s: int = 3600):
+def main(studies: int = 25, cap_usd: float = 5.0, timeout_s: int = 3600, n_jobs: int = 1):
     from bench import design_batch as db
     from bench import external_baseline as eb
 
@@ -88,14 +88,15 @@ def main(studies: int = 25, cap_usd: float = 5.0, timeout_s: int = 3600):
         raise SystemExit(f"ceiling ${ceiling} > cap ${cap_usd}: ask the lead first")
     plan = {"null": studies, "alternative": studies}
     start = datetime.now(timezone.utc)
-    entry = {"utc": start.strftime("%Y-%m-%dT%H:%MZ"), "run": f"build-9 external-baseline {studies}/stream",
+    entry = {"utc": start.strftime("%Y-%m-%dT%H:%MZ"),
+             "run": f"build-9 external-baseline {studies}/stream, squidpy n_jobs={n_jobs}",
              "containers": 1, "gpu": GPU, "cores": CORES, "memory_gib": MEMORY_MIB / 1024, "cap_usd": cap_usd,
              "est_usd": ceiling, "basis": f"{timeout_s} s ceiling x ${USD_PER_HOUR:.6f}/h", "source_commit": commit,
              "container_class": CLASS}
     _log_spend(entry)
     error, out = None, None
     try:
-        out = baseline.with_options(timeout=timeout_s).remote(plan)
+        out = baseline.with_options(timeout=timeout_s).remote(plan, n_jobs)
     except Exception as e:  # noqa: BLE001 - a failed run is recorded as FAILED, with its spend
         error = repr(e)[-2000:]
     end = datetime.now(timezone.utc)
@@ -107,8 +108,10 @@ def main(studies: int = 25, cap_usd: float = 5.0, timeout_s: int = 3600):
         "labels": {"timing": "MEASURED", "outcomes": f"SYNTHETIC (atlas/simulation.py, as #113)",
                    "agreement": "MEASURED (same re-imaged cells in both pipelines)",
                    "rates": "ESTIMATE (binomial rates with Wilson 95% intervals)"},
-        "headline": s and (f"squidpy + lifelines {s['seconds_per_study']:.2f} s/study vs fused "
-                           f"{eb.FUSED_S_PER_STUDY['value']} s/study: {s['ratio_vs_fused']:.0f}x, 8 workers each"),
+        "headline": s and (f"Off the shelf (squidpy + lifelines, {s['settings']['cores']} cores): "
+                           f"{s['seconds_per_study']:.2f} s/study, {s['ratio_vs_lab']:.0f}x the hand-written lab arm "
+                           f"({eb.LAB_S_PER_STUDY['value']} s) and {s['ratio_vs_fused']:.0f}x the fused path "
+                           f"({eb.FUSED_S_PER_STUDY['value']} s); {eb.COMPARISON}"),
         "method": eb.__doc__.strip(),
         "design": {**db.design(), "cohort": "charville", "alpha": eb.ALPHA, "n_perms": eb.N_PERMS,
                    "studies_per_stream": studies, "streams": {k: db.STREAMS[k] for k in plan}, "root_seed": db.ROOT,
