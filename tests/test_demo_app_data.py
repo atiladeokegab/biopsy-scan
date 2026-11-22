@@ -60,11 +60,11 @@ def test_current_receipt_gate_rejects_a_doctored_receipt():
         bd.check_current({**good, "checks": {**good["checks"], "same_cells_both_arms": False}})
 
 
-def test_scope_lines_give_the_two_measured_ratios_and_never_their_product():
+def test_scope_lines_give_the_combined_ratio_only_on_the_race_line_as_separate_runs():
     race, ihc = DATA["scope"]["race"], DATA["scope"]["ihc"]
-    assert race == ("Current: whole squidpy + lifelines pipeline, 8 CPU workers. Ours: fused kernel on one H100, re-imaging and "
-                    "scoring (thresholds and calls excluded). Separate measurements: 534× observed time ratio (48 external calls "
-                    "vs 3,000 fused evaluations, CPU vs CPU). The H100 ran the same fused kernel 19.5× faster than CPU.")  # release review wording
-    combined = round(DATA["ratio"])
-    assert not re.search(rf"{combined // 1000},?{combined % 1000:03d}|{combined}", race + ihc)
+    assert race == ("Current: whole squidpy + lifelines pipeline, 8 CPU workers. Ours: fused kernel on one H100. "
+                    "10,800× faster per study: 22.35 s vs 0.00207 s, measured in separate runs.")  # founder ruling wording
+    combined = round(DATA["ratio"], -2)
+    assert re.search(rf"{combined // 1000:.0f},{combined % 1000:03.0f}×.*separate runs", race)  # only here, labelled
+    assert not re.search(rf"{combined // 1000:.0f},?{combined % 1000:03.0f}", ihc)
     assert all(m in ihc for m in DATA["kept"]) and "not scored" in ihc and "no validated stain recommendation" in ihc
