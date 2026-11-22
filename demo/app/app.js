@@ -5,6 +5,7 @@ const LANES = { current: 21000, ours: 1000 };
 const N = 400, GRID = 16; // analysis resolution and tile grid
 const $ = (id) => document.getElementById(id);
 const imgs = [...document.querySelectorAll(".frame img")], img = imgs[0];
+const FADE = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 150; // per-tile fade, ms
 let running = 0, overlay = null;
 
 function inv3(m) {
@@ -51,13 +52,20 @@ function lane(id, src, order, t0) {
   const el = $("lane-" + id), cv = el.querySelector("canvas"), ctx = cv.getContext("2d");
   const timer = el.querySelector("[data-timer]"), prog = el.querySelector("[data-prog]"), done = el.querySelector("[data-done]");
   cv.width = cv.height = N; done.hidden = true;
-  const T = N / GRID, total = LANES[id];
+  const T = N / GRID, total = LANES[id], n = order.length, span = Math.max(1, total - FADE);
   let shown = 0;
   return new Promise((resolve) => (function frame(now) {
-    const f = Math.min(1, Math.max(0, now - t0) / total), want = Math.round(f * order.length);
-    for (; shown < want; shown++) { const t = order[shown], x = (t % GRID) * T, y = ((t / GRID) | 0) * T; ctx.drawImage(src, x, y, T, T, x, y, T, T); }
+    const e = Math.max(0, now - t0), f = Math.min(1, e / total);
+    // tile i starts at i/n of the span and fades in over FADE ms; redraw only tiles still fading
+    for (let i = shown; i < n; i++) {
+      const s0 = (i / n) * span; if (e < s0) break;
+      const a = FADE ? Math.min(1, (e - s0) / FADE) : 1, t = order[i], x = (t % GRID) * T, y = ((t / GRID) | 0) * T;
+      ctx.clearRect(x, y, T, T); ctx.globalAlpha = 1 - (1 - a) ** 3; ctx.drawImage(src, x, y, T, T, x, y, T, T);
+      if (a === 1 && i === shown) shown++;
+    }
+    ctx.globalAlpha = 1;
     timer.textContent = (f * total / 1000).toFixed(1) + " s"; prog.style.width = f * 100 + "%";
-    if (f < 1) return requestAnimationFrame(frame);
+    if (shown < n || f < 1) return requestAnimationFrame(frame);
     done.textContent = "Done in " + (total / 1000).toFixed(1) + " s"; done.hidden = false;
     resolve();
   })(t0));
@@ -65,7 +73,7 @@ function lane(id, src, order, t0) {
 
 async function run() {
   if (running) return;
-  running = 1; $("run").disabled = true;
+  running = 1; $("run").disabled = true; thumbs.forEach((b) => (b.disabled = true));
   $("banner").classList.remove("on");
   const r = $("risk"); r.classList.remove("on"); r.hidden = true;
   overlay ||= compute();
@@ -76,9 +84,30 @@ async function run() {
   await Promise.all(Object.keys(LANES).map((id) => lane(id, src, order, t0)));
   $("banner").classList.add("on");
   r.hidden = false; requestAnimationFrame(() => r.classList.add("on"));
-  running = 0; $("run").disabled = false;
+  running = 0; $("run").disabled = false; thumbs.forEach((b) => (b.disabled = false));
 }
 
+function reset() {
+  for (const id of Object.keys(LANES)) {
+    const el = $("lane-" + id), cv = el.querySelector("canvas");
+    cv.getContext("2d").clearRect(0, 0, cv.width, cv.height); el.querySelector("[data-done]").hidden = true;
+    el.querySelector("[data-timer]").textContent = "0.0 s"; el.querySelector("[data-prog]").style.width = "0";
+  }
+  $("banner").classList.remove("on"); const r = $("risk"); r.classList.remove("on"); r.hidden = true;
+}
+
+function load(btn) { // swap both panels to this photo; Run waits until both have decoded
+  thumbs.forEach((b) => b.setAttribute("aria-pressed", b === btn));
+  overlay = null; reset();
+  $("gene").textContent = btn.dataset.gene; $("credit").href = btn.dataset.page;
+  const run = $("run"); run.disabled = true; run.textContent = "Run";
+  imgs.forEach((i) => (i.src = "../workflow/img/" + btn.dataset.file));
+  Promise.all(imgs.map((i) => i.decode())).then(
+    () => { if (!running && btn.getAttribute("aria-pressed") === "true") run.disabled = false; },
+    () => { if (btn.getAttribute("aria-pressed") === "true") run.textContent = "Photo failed to load"; });
+}
+
+const thumbs = [...document.querySelectorAll(".thumbs button")];
+thumbs.forEach((b) => b.addEventListener("click", () => !running && load(b)));
 $("run").addEventListener("click", run);
-$("run").disabled = true; // wait for both photos, or the overlay is computed from a blank image
-Promise.all(imgs.map((i) => i.decode())).then(() => { if (!running) $("run").disabled = false; }, () => { $("run").textContent = "Photo failed to load"; });
+load(thumbs[0]);
