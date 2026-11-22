@@ -424,3 +424,8 @@ html { scroll-padding-top: calc(var(--bar-h) + var(--space-3)); }
   .nav { order: 9; flex-basis: 100%; padding: var(--space-1) 0; margin: 0 calc(-1 * var(--space-2)); }
   html { scroll-padding-top: 104px; }
 }
+@media (min-width: 1440px) { /* the tissue is the hero: a wider stage on large screens */
+  #workflow-app { max-width: calc(1600px + 2 * var(--space-6)); }
+  .wf { grid-template-columns: minmax(340px, 400px) minmax(0, 1fr); }
+  .wf-vis { aspect-ratio: auto; height: min(66vh, 720px); }
+}

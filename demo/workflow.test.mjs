@@ -103,3 +103,7 @@ console.log("workflow.test.mjs: ok");
   assert.match(src("step3.js"), /per SD · \$\{[^}]+\} simulated studies/, "80%/27% lack their qualifiers");
   assert.match(src("main.js"), /ArrowLeft[\s\S]*?clearTimeout\(timer\)[\s\S]*?next >= 0/, "an arrow key must stop autoplay before the range guard");
 }
+
+// The 15 types are the source's published calls, not a model of ours.
+assert.doesNotMatch(plain(wf), /scan turns the signal into/, "step 2 claims we classify the cells");
+assert.match(plain(texts[1][2]), /15 cell types published with the data/);
