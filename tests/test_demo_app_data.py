@@ -58,3 +58,11 @@ def test_current_receipt_gate_rejects_a_doctored_receipt():
             bd.check_current({**good, key: bad})
     with pytest.raises(AssertionError):
         bd.check_current({**good, "checks": {**good["checks"], "same_cells_both_arms": False}})
+
+
+def test_scope_lines_give_the_two_measured_ratios_and_never_their_product():
+    race, ihc = DATA["scope"]["race"], DATA["scope"]["ihc"]
+    assert "534×" in race and "19.5×" in race and "H100" in race and "thresholds and calls excluded" in race
+    combined = round(DATA["ratio"])
+    assert not re.search(rf"{combined // 1000},?{combined % 1000:03d}|{combined}", race + ihc)
+    assert all(m in ihc for m in DATA["kept"]) and "not scored" in ihc and "no validated stain recommendation" in ihc

@@ -266,6 +266,7 @@ async function start() {
     const src = document.querySelector(`#${id} [data-src]`);
     src.textContent = `${D[id].basis} · ${D[id].source.split("/").pop()}`; src.title = D[id].source;
   }
+  document.querySelectorAll("[data-scope]").forEach((el) => { el.textContent = D.scope[el.dataset.scope]; });
   $("stack").title = D.cells_credit; $("ihc").title = D.ihc.map((p) => `${p.gene}: ${p.credit}`).join("\n");
   $("tab-1").onclick = () => show(1); $("tab-2").onclick = () => unlocked && show(2); $("to-ihc").onclick = () => show(2);
   $("run").onclick = run; $("reset").onclick = reset;

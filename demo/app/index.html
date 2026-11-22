@@ -44,6 +44,8 @@
     #ours .bar i { background: var(--emerald); }
     .replay { padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(43,212,164,.4); font: 12px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--emerald); white-space: nowrap; }
     .src { margin: 0; font: 11px var(--mono); color: var(--muted); }
+    .panels { grid-template-rows: minmax(0,1fr) auto; }
+    .scope { grid-column: 1 / -1; margin: -4px 0 0; font: 12px/1.4 var(--sans); color: var(--muted); }
     .stage { position: relative; flex: 1; min-height: 0; border-radius: 10px; background: var(--scope); overflow: hidden; }
     .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
     .readout { align-items: baseline; }
@@ -87,6 +89,7 @@
         <p class="src" data-src></p>
         <div class="stage"><canvas data-canvas></canvas></div>
       </article>
+      <p class="scope" data-scope="race"></p>
     </section>
     <section class="panels" id="step-2" role="tabpanel" aria-labelledby="tab-2" hidden>
       <article class="panel">
@@ -97,6 +100,7 @@
         <div class="head"><h2>Routine IHC</h2></div>
         <div class="stage"><canvas id="ihc"></canvas></div>
       </article>
+      <p class="scope" data-scope="ihc"></p>
     </section>
   </main>
   <script src="app.js"></script>

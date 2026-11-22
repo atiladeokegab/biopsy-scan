@@ -48,6 +48,14 @@ def build():
     cur_s, ours_s = cur["summary"]["external_pipeline_s_per_study"]["median"], ours["headline"]["gpu_wall_per_study_s_median"]
     scale = OURS_FINISH_S / (studies * ours_s)  # race seconds per real second
     photos = {p["gene"]: p for p in read(HPA)}
+    gpu = ours["headline"]["gpu_sku"].split()[1]
+    same_host = cur["summary"]["ratios"]["external_pipeline_vs_fused_full"]["median"]
+    # Release review: say what each lane times and give only the two measured ratios, never their product.
+    scope = {"race": f"Current: whole squidpy + lifelines pipeline, {workers} CPU workers. Ours: fused kernel on one {gpu}, "
+                     f"scoring only (thresholds and calls excluded). Separate runs: measured same-host speed-up is "
+                     f"{same_host:.0f}× (CPU vs CPU); the {gpu} adds {ours['headline']['cpu_over_gpu']:.1f}× vs our CPU kernel.",
+             "ihc": f"Illustration only: {'/'.join(m for _, m in PAIR)} examples picked by hand from Human Protein Atlas samples "
+                    "(other patients), not scored. Preflight issued no validated stain recommendation."}
     for gene, marker in PAIR:
         assert gene in photos and marker in cells["markers"], (gene, marker)
     return {
@@ -63,7 +71,7 @@ def build():
                     "worker_s_per_study": statistics.median(r["arms"]["external"]["worker_study_s"]["median"] for r in cur["repeats"]),
                     "total_s": studies * cur_s},
         "ours": {"s_per_study": ours_s, "gpus": 1, "gpu": ours["headline"]["gpu_sku"], "source": OURS,
-                 "basis": f"Projected from {ours_n:,} measured evaluations, one {ours['headline']['gpu_sku'].split()[1]}", "total_s": studies * ours_s},
+                 "basis": f"Projected from {ours_n:,} measured evaluations, one {gpu}", "total_s": studies * ours_s},
         "ratio": cur_s / ours_s,
         "markers": cells["markers"],
         "marker_colors": [MARKER_RGB[m] for m in cells["markers"]],
@@ -72,6 +80,7 @@ def build():
         "ihc": [{"gene": g, "marker": m, "photo": "../workflow/img/" + photos[g]["file"], "page": photos[g]["page_url"],
                  "credit": photos[g]["attribution"] + ", " + photos[g]["licence"]} for g, m in PAIR],
         "cells_credit": cells["note"],
+        "scope": scope,
     }
 
 
