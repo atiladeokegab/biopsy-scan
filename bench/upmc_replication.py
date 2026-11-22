@@ -5,8 +5,10 @@
 No new simulation: every SIMULATED number is read from results already committed, and the ANALYTIC side is
 bench/vs_schoenfeld.py's formula and compare(), the code that made Charville's headline. Two views:
 
-1. production grid: both cohorts from one atlas commit (4408ff0), same command, seed 20261121, numpy backend,
-   10,000 calibration / 10,000 null / 1,000 planted studies per design point (atlas/results/production/*).
+1. production grids: a shared protocol with a grid specific to each cohort. Both ran from one atlas commit
+   (4408ff0) with the same command form, seed 20261121, numpy backend and 10,000 calibration / 10,000 null /
+   1,000 planted studies per design point (atlas/results/production/*), but the patient counts, regions and
+   fields differ by cohort (see COMPARISON), so points are compared within a cohort, never paired across.
 2. #83 curve: the design and seed of Charville's headline (2 regions, 400 um, 10% mis-calls; bench/results/
    vs-schoenfeld-300.json) on 34 UPMC discovery patients (bench/results/hn-power-upmc-discovery.json), with
    the formula at the same planted event fraction (0.239) and UPMC's own feature count.
@@ -30,9 +32,15 @@ RESULTS = ROOT / "bench" / "results"
 OUT = RESULTS / "upmc-replication.json"
 PROD = ROOT / "atlas" / "results" / "production"
 HEADLINE = {"regions_per_patient": 2, "fov_um": 400.0, "eps": 0.1}
+COMPARISON = ("shared protocol (atlas 4408ff0, seed, budget, maxT test, formula), cohort-specific grids: Charville "
+              "80-477 patients, 1-2 regions, 200-600 um fields and full core; UPMC 25-150 patients, 1-8 regions, "
+              "200-1000 um fields and full core. Only the #83 curve shares patient counts (200 and 300).")
+OUTCOMES = ("synthetic outcomes with empirically calibrated inputs: planted Weibull outcomes, HR 2 per source SD; "
+            "in the production grids each cohort's observed event count sets the event target and its observed "
+            "follow-up sets the censoring horizons; the #83 UPMC curve uses Charville's event fraction (0.239) "
+            "and one common horizon, so no UPMC outcome enters it; no clinical claim")
 LABELS = {"ANALYTIC": "Schoenfeld events formula, Bonferroni over m features (bench/vs_schoenfeld.py)",
-          "SIMULATED": "model-based Monte Carlo power and FWER on studies re-imaged from real tissue; SYNTHETIC "
-                       "planted Weibull outcomes, HR 2 per source SD; no real outcome is read",
+          "SIMULATED": "model-based Monte Carlo power and FWER on studies re-imaged from real tissue; " + OUTCOMES,
           "MEASURED": "compute receipts only (hardware, wall time); no clinical quantity is measured"}
 
 
@@ -146,8 +154,8 @@ def build() -> dict:
         f"(Charville {prod['charville']['formula_overstates']} of {prod['charville']['design_points']}). On the #83 design at 200 patients the formula promises "
         f"{uu['analytic_power']:.0%} and UPMC tissue gives {uu['sim_power']:.0%} "
         f"[{uu['sim_lo']:.0%}-{uu['sim_hi']:.0%}], against Charville's {cu['analytic_power']:.0%} vs "
-        f"{cu['sim_power']:.0%} [{cu['sim_lo']:.0%}-{cu['sim_hi']:.0%}]. In the matched production grid (one "
-        f"commit, 1,000 planted studies) at the largest size, Charville {ph['charville']['patients']} patients: "
+        f"{cu['sim_power']:.0%} [{cu['sim_lo']:.0%}-{cu['sim_hi']:.0%}]. In the production grids (shared protocol, "
+        f"cohort-specific grids) at the largest size, Charville {ph['charville']['patients']} patients: "
         f"formula {ph['charville']['analytic_power']:.0%}, tissue {ph['charville']['sim_power']:.0%}; UPMC "
         f"{ph['upmc']['patients']}: formula {ph['upmc']['analytic_power']:.0%}, tissue "
         f"{ph['upmc']['sim_power']:.0%}. The gap is cohort-specific, so the formula cannot be trusted either way "
@@ -165,7 +173,7 @@ def build() -> dict:
             "new_simulation": "none: every simulated number is read from committed results; Modal spend $0",
             "studentised_score": "not on integration at compute time; FWER here is the atlas's maxT on the Cox "
                                  "score with permutation variance",
-            "outcome_scope": "SYNTHETIC outcomes on real tissue; no real UPMC outcome read; no clinical claim",
+            "outcome_scope": OUTCOMES, "comparison": COMPARISON,
             "curve_83": c83, "production": prod}
 
 

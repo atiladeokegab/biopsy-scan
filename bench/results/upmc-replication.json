@@ -3,17 +3,18 @@
  "status": "ESTIMATE",
  "labels": {
   "ANALYTIC": "Schoenfeld events formula, Bonferroni over m features (bench/vs_schoenfeld.py)",
-  "SIMULATED": "model-based Monte Carlo power and FWER on studies re-imaged from real tissue; SYNTHETIC planted Weibull outcomes, HR 2 per source SD; no real outcome is read",
+  "SIMULATED": "model-based Monte Carlo power and FWER on studies re-imaged from real tissue; synthetic outcomes with empirically calibrated inputs: planted Weibull outcomes, HR 2 per source SD; in the production grids each cohort's observed event count sets the event target and its observed follow-up sets the censoring horizons; the #83 UPMC curve uses Charville's event fraction (0.239) and one common horizon, so no UPMC outcome enters it; no clinical claim",
   "MEASURED": "compute receipts only (hardware, wall time); no clinical quantity is measured"
  },
  "question": "Does UPMC replicate 'real-tissue power far below the formula' and FWER control?",
  "replicated": false,
  "replicated_rule": "yes if the formula overstates power outside the simulation's 95% interval at half or more of UPMC's production design points",
- "answer": "No: UPMC does not replicate Charville's gap. The formula overstates power outside the simulation's 95% interval at 4 of 96 UPMC production design points (Charville 48 of 48). On the #83 design at 200 patients the formula promises 80% and UPMC tissue gives 74% [67%-80%], against Charville's 80% vs 27% [22%-32%]. In the matched production grid (one commit, 1,000 planted studies) at the largest size, Charville 477 patients: formula 100%, tissue 79%; UPMC 150: formula 44%, tissue 54%. The gap is cohort-specific, so the formula cannot be trusted either way without simulating on the cohort's own tissue. FWER holds near 5% on both.",
- "computed_at_commit": "5e5dab31f88967a42bda70097d82d78549f6d28d",
+ "answer": "No: UPMC does not replicate Charville's gap. The formula overstates power outside the simulation's 95% interval at 4 of 96 UPMC production design points (Charville 48 of 48). On the #83 design at 200 patients the formula promises 80% and UPMC tissue gives 74% [67%-80%], against Charville's 80% vs 27% [22%-32%]. In the production grids (shared protocol, cohort-specific grids) at the largest size, Charville 477 patients: formula 100%, tissue 79%; UPMC 150: formula 44%, tissue 54%. The gap is cohort-specific, so the formula cannot be trusted either way without simulating on the cohort's own tissue. FWER holds near 5% on both.",
+ "computed_at_commit": "380f000a8e442ae7ebab2111d85a4d604fdd1220",
  "new_simulation": "none: every simulated number is read from committed results; Modal spend $0",
  "studentised_score": "not on integration at compute time; FWER here is the atlas's maxT on the Cox score with permutation variance",
- "outcome_scope": "SYNTHETIC outcomes on real tissue; no real UPMC outcome read; no clinical claim",
+ "outcome_scope": "synthetic outcomes with empirically calibrated inputs: planted Weibull outcomes, HR 2 per source SD; in the production grids each cohort's observed event count sets the event target and its observed follow-up sets the censoring horizons; the #83 UPMC curve uses Charville's event fraction (0.239) and one common horizon, so no UPMC outcome enters it; no clinical claim",
+ "comparison": "shared protocol (atlas 4408ff0, seed, budget, maxT test, formula), cohort-specific grids: Charville 80-477 patients, 1-2 regions, 200-600 um fields and full core; UPMC 25-150 patients, 1-8 regions, 200-1000 um fields and full core. Only the #83 curve shares patient counts (200 and 300).",
  "curve_83": {
   "design": {
    "regions_per_patient": 2,
