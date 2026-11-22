@@ -260,8 +260,44 @@
     "basis": "64.6 s local wall x $1.116/h",
     "result": "bench/results/fps-l4-20261122T074434Z.json"
    }
+  },
+  {
+   "utc": "2026-11-22T08:08Z",
+   "run": "proof-3d recorder (scratch wrapper of gpu/fps_l4.py) on integration 00841e4: failed before recording, a recorder bug (Function has no get_raw_f); no take, no cadence",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": null,
+    "est_usd": 0.019,
+    "basis": "under 60 s local wall (not timed) x $1.116/h, upper bound",
+    "result": "none"
+   }
+  },
+  {
+   "utc": "2026-11-22T08:09Z",
+   "run": "proof-3d recorder on integration 00841e4: gpu/fps_l4.py's measure() and result() with video capture on the timed context; the proof take. Its cadence is with recording on and is not cited (run 8 stands)",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": 79.0,
+    "est_usd": 0.024,
+    "basis": "79.0 s local wall x $1.116/h",
+    "result": "bench/results/fps-l4-20261122T080914Z.json"
+   }
   }
  ],
- "running_total_usd": 0.503,
+ "running_total_usd": 0.546,
  "running_total_basis": "sum of the two actuals; ESTIMATE, not billing"
 }
