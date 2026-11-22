@@ -143,7 +143,10 @@ def fair_pair(plan, mask, order):
             "scoring_ratio": checked["wall"]["ratio"],
             "raw_to_answer_ratio": timings["lab"]["raw_to_answer_s"] / timings["fused"]["raw_to_answer_s"],
             "usd_per_1000_decided_estimate": {arm: o["raw_to_answer_s"] * USD_S * 1000 / decided
-                                             for arm, o in timings.items()}}
+                                             for arm, o in timings.items()},
+            "usd_per_1000_evaluated_estimate": {
+                arm: o["raw_to_answer_s"] * USD_S * 1000 / o["stages"]["evaluated_studies"]
+                for arm, o in timings.items()}}
 
 
 @app.function(image=image, cpu=(CORES, CORES), memory=(MEMORY_MIB, MEMORY_MIB), timeout=TIMEOUT_S,
@@ -181,6 +184,7 @@ def save(path, data):
 
 @app.local_entrypoint()
 def main(spent_usd: float):
+    from bench import design_batch as db
     from bench.matched_e2e import check_cap
 
     if git("status", "--porcelain", "--untracked-files=no"):
@@ -202,15 +206,22 @@ def main(spent_usd: float):
              "entries": []}
     result = {"status": "PENDING", "source_commit": commit,
               "labels": {"timings": "MEASURED", "outcomes": "SIMULATED", "rates_and_costs": "ESTIMATE"},
+              "design": {**db.design(), "hr_per_sd": db.HR, "alpha": db.ALPHA,
+                         "lab_randomizations_per_study": db.LAB_RESAMPLES, "root_seed": db.ROOT,
+                         "seed_streams": db.STREAMS},
               "modal": {"physical_cores_requested_and_capped": CORES, "memory_mib_requested_and_capped": MEMORY_MIB,
                         "gpu": None, "timeout_s": TIMEOUT_S, "profile": os.environ.get("MODAL_PROFILE")},
               "scope": "Raw public Charville CSV ZIP and labels already staged in the container. Each arm builds its own "
                        "cell cache and runs simulation setup, adjacency and JIT as applicable, scoring, threshold and calls. "
                        "Excludes upload, container startup, reporting and deployment. OS file cache uncontrolled. "
                        "Arms run sequentially in a paired container and use single-thread workers. Scaling repeats share "
-                       "one container. Fair repeats use separate calls. Costs normalize each arm to 1,000 decided studies "
-                       "at this batch size, including fused calibration, excluding startup and retention.",
-              "data_source": "https://zenodo.org/records/13179600", "spend_receipt": spend_path.name, "runs": []}
+                       "one container. Fair repeats use separate calls. Costs normalize each arm's full measured runtime "
+                       "to 1,000 decided or evaluated studies at this batch size. They exclude startup and retention.",
+              "data_source": "https://zenodo.org/records/13179600", "spend_receipt": spend_path.name,
+              "prior_scaling_comparison": {"status": "RETIRED as a scaling claim", "prior_ratio": 8.77,
+                                           "reason": "The prior ratio divided medians from different containers "
+                                                     "and study counts. This run pairs identical studies on one host."},
+              "runs": []}
     save(spend_path, spend)
     save(result_path, result)
     running = []
@@ -236,7 +247,8 @@ def main(spent_usd: float):
             save(result_path, result)
             print(f"Completed {entry['kind']} repeat {entry['repeat']}", flush=True)
         save(spend_path, spend)
-    spend["running_total_usd"] = sum(e["est_usd"] for e in spend["entries"])
+    spend["run_estimated_usd"] = sum(e["est_usd"] for e in spend["entries"])
+    spend["running_total_usd"] = spend["prior_project_usd"] + spend["run_estimated_usd"]
     save(spend_path, spend)
     if len(result["runs"]) != len(jobs):
         result["status"] = "FAILED"
@@ -247,11 +259,10 @@ def main(spent_usd: float):
     result["spread"] = {kind: {metric: spread(row[metric] for row in rows)
                                for metric in ("scoring_ratio", "raw_to_answer_ratio")}
                         for kind, rows in (("fair", fair), ("lab_scaling", scale))}
-    result["spread"]["fair"].update({
-        "raw_to_answer_s": {arm: spread(row["arms"][arm]["raw_to_answer_s"] for row in fair)
-                            for arm in ("lab", "fused")},
-        "usd_per_1000_decided_estimate": {arm: spread(row["usd_per_1000_decided_estimate"][arm] for row in fair)
-                                           for arm in ("lab", "fused")}})
+    result["spread"]["fair"]["raw_to_answer_s"] = {
+        arm: spread(row["arms"][arm]["raw_to_answer_s"] for row in fair) for arm in ("lab", "fused")}
+    for key in ("usd_per_1000_decided_estimate", "usd_per_1000_evaluated_estimate"):
+        result["spread"]["fair"][key] = {arm: spread(row[key][arm] for row in fair) for arm in ("lab", "fused")}
     result["status"] = "MEASURED"
     save(result_path, result)
     print(json.dumps(result["spread"], indent=2), flush=True)
