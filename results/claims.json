@@ -1829,6 +1829,84 @@
    "quotes": []
   },
   {
+   "id": "same-host-534x",
+   "claim": "same host, 3 fresh containers, 8 workers per arm: 534x (511-547x) off-the-shelf pipeline vs fused full, 312x on the same 48 studies; 22.35 s vs 0.0426 s per study",
+   "source": "bench/results/same-host-20261122T140908Z.json",
+   "pr": 185,
+   "label": "MEASURED",
+   "label_path": "status",
+   "values": [
+    {
+     "name": "r",
+     "path": "summary.ratios.external_pipeline_vs_fused_full.median",
+     "rule": "fixed:0",
+     "expect": "534"
+    },
+    {
+     "name": "rmin",
+     "path": "summary.ratios.external_pipeline_vs_fused_full.min",
+     "rule": "fixed:0",
+     "expect": "511"
+    },
+    {
+     "name": "rmax",
+     "path": "summary.ratios.external_pipeline_vs_fused_full.max",
+     "rule": "fixed:0",
+     "expect": "547"
+    },
+    {
+     "name": "n",
+     "path": "summary.ratios.external_pipeline_vs_fused_full.n",
+     "rule": "eq",
+     "expect": "3"
+    },
+    {
+     "name": "m",
+     "path": "summary.ratios.external_pipeline_vs_fused_matched.median",
+     "rule": "fixed:0",
+     "expect": "312"
+    },
+    {
+     "name": "ext",
+     "path": "summary.external_pipeline_s_per_study.median",
+     "rule": "fixed:2",
+     "expect": "22.35"
+    },
+    {
+     "name": "fused",
+     "path": "summary.fused_full_s_per_study.median",
+     "rule": "fixed:4",
+     "expect": "0.0426"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "`{r}×` vs off-the-shelf squidpy + lifelines, same host, median of `{n}` fresh containers (range `{rmin}–{rmax}×`; `{ext} s` per study over `48` studies vs `{fused} s` per evaluated study over `3,000`"
+    },
+    {
+     "file": "README.md",
+     "text": "`{m}×` on the same `48` studies"
+    },
+    {
+     "file": "docs/JUDGING.md",
+     "text": "{r}× against off-the-shelf squidpy + lifelines, same host, median of {n} fresh containers (range {rmin}–{rmax}×; {ext} s per study over 48 studies against {fused} s per evaluated study over 3,000"
+    },
+    {
+     "file": "docs/JUDGING.md",
+     "text": "{m}× on the same 48 studies"
+    },
+    {
+     "file": "docs/SUBMISSION.md",
+     "text": "{r}× against off-the-shelf squidpy + lifelines, same host, median of {n} fresh containers (range {rmin}–{rmax}×; {ext} s per study over 48 studies against {fused} s per evaluated study over 3,000"
+    },
+    {
+     "file": "docs/SUBMISSION.md",
+     "text": "{m}× on the same 48 studies"
+    }
+   ]
+  },
+  {
    "id": "hn-power-234",
    "claim": "Head and neck: about 234 patients for 80% power on simulated cohorts resampled from 34 UPMC discovery patients; pointwise crossings 200 and 265",
    "source": "bench/results/hn-power-upmc-discovery.json",
