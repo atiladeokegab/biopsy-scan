@@ -17,7 +17,7 @@ export const TEMPLATE = `<div class="wf" id="flow" role="region" aria-labelledby
     <div class="wf-vis" data-step="0"><p class="wf-label"><span class="tag measured">MEASURED cells</span> <span class="tag">SYNTHETIC imaging</span></p></div> <!-- /vis -->
     <div class="wf-vis" data-step="1" hidden><p class="wf-label"><span class="tag measured">MEASURED cells</span> <span class="tag">SYNTHETIC imaging</span></p><div class="wf-result" hidden><b>Screen result, exploratory</b><span>Best pattern z 3.46 · maxT p 0.1275</span><span>Within chance: no pattern passes the 0.05 cutoff.</span></div></div> <!-- /vis -->
     <div class="wf-vis" data-step="2" hidden><p class="wf-label"><span class="tag measured">MEASURED cells</span> <span class="tag">SIMULATED fields and mis-calls</span> <span class="tag">ANALYTIC formula</span> <span class="tag">ESTIMATE simulation</span></p></div> <!-- /vis -->
-    <div class="wf-vis" data-step="3" hidden><p class="wf-label"><span class="tag measured">MEASURED channels</span> <span class="tag">ILLUSTRATION marker search</span> <span class="tag measured">REAL IHC, other patients</span></p><p class="wf-credit wf-credit-in">IHC cores: Human Protein Atlas (proteinatlas.org), head and neck cancer, CC BY-SA 3.0</p></div> <!-- /vis -->
+    <div class="wf-vis" data-step="3" hidden><p class="wf-label"><span class="tag measured">MEASURED channels</span> <span class="tag">ILLUSTRATION marker search</span> <span class="tag measured">REAL IHC, other patients</span></p></div> <!-- /vis -->
     <p class="wf-credit">Charville CODEX, Wu et al. 2022, Zenodo 13179600, CC-BY-4.0</p>
   </div>
   <ol class="wf-steps">

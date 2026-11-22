@@ -360,4 +360,3 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
   .wf-result { display: none; } /* the same result is in the step text above */
   .wf-node { font-size: var(--text-xs); padding-right: var(--space-1); }
 }
-.wf-credit-in { position: absolute; left: var(--space-3); bottom: var(--space-2); z-index: 2; margin: 0; }

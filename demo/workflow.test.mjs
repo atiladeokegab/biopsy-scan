@@ -30,7 +30,8 @@ assert.equal(credit, "Charville CODEX, Wu et al. 2022, Zenodo 13179600, CC-BY-4.
 assert.ok(plain(wf).includes(credit), "the Charville credit");
 for (const t of ["SIMULATED fields and mis-calls", "ANALYTIC formula", "ESTIMATE simulation"]) assert.ok(plain(vis[2][2]).includes(t), `step 3 lacks ${t}`);
 assert.match(plain(vis[3][2]), /ILLUSTRATION/);
-assert.match(plain(vis[3][2]), /Human Protein Atlas.*CC BY-SA 3\.0/);
+const { PICKED } = await import("./workflow/step4.js"); // step 4 draws the HPA credit in its frame
+assert.match(PICKED.credit, /Human Protein Atlas.*CC BY-SA 3\.0/);
 assert.doesNotMatch(plain(wf), /clinical practice|ready for (pathology|the clinic)/i);
 const texts = [...wf.matchAll(/<div class="wf-text" data-step="(\d)"[^>]*>([\s\S]*?)<\/div>/g)];
 assert.equal(texts.length, 4, "four step texts");

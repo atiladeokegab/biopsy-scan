@@ -8,7 +8,7 @@ const MC = MARKER_COLORS.map(hex);
 // Draw one core into ctx as a disc of radius r at (cx, cy). mode "fluor": each cell glows in the sum of its
 // marker channels' colours; mode "seg": each cell is a filled disc in its type's colour.
 export function drawCore(ctx, core, cx, cy, r, mode) {
-  const [sw, sh] = core.size_um, side = Math.max(sw, sh), s = (2 * r) / side;
+  const [sw, sh = sw] = [].concat(core.size_um), side = Math.max(sw, sh), s = (2 * r) / side; // [w, h], or one side
   const ox = ((side - sw) / 2) * s, oy = ((side - sh) / 2) * s; // centre the shorter axis
   ctx.save();
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.clip();
