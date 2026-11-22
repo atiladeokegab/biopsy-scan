@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Preflight · Usage</title>
+  <link rel="icon" href="data:,">
+  <style>
+    @font-face { font-family: "Inter"; src: url("../fonts/InterVariable.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+    @font-face { font-family: "Instrument Serif"; src: url("../fonts/InstrumentSerif-400-latin.woff2") format("woff2"); font-display: swap; }
+    @font-face { font-family: "JetBrains Mono"; src: url("../fonts/JetBrainsMono-400-latin.woff2") format("woff2"); font-display: swap; }
+    :root { --bg:#05070B; --surface:#0A0E15; --ink:#F3EFE6; --body:#B8C0CC; --muted:#7D8796; --hair:rgba(243,239,230,.12);
+      --emerald:#2BD4A4; --coral:#E86F51;
+      --serif:"Instrument Serif",Georgia,serif; --sans:"Inter",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; background: var(--bg); color: var(--body); font: 15px/1.4 var(--sans); }
+    body { display: grid; grid-template-rows: auto auto 1fr auto; height: 100dvh; overflow: hidden; }
+    header { display: flex; align-items: center; gap: 16px; padding: 14px 24px; border-bottom: 1px solid var(--hair); }
+    .wordmark { font: 28px/1 var(--serif); color: var(--ink); text-decoration: none; }
+    .crumb { font: 12px var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-right: auto; }
+    .crumb a { color: var(--muted); }
+    #clock { font: 15px var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+    #start { all: unset; cursor: pointer; padding: 9px 22px; border-radius: 999px; background: var(--emerald); color: var(--bg); font: 600 14px var(--sans); }
+    #start:disabled { opacity: .45; cursor: default; }
+    #start:focus-visible, a:focus-visible { outline: 2px solid var(--emerald); outline-offset: 2px; }
+    .lede { padding: 16px 32px 0; font: 30px/1.15 var(--serif); color: var(--ink); margin: 0; }
+    .lede em { font-style: normal; color: var(--emerald); }
+    main { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 20px; padding: 16px 32px 20px; min-height: 0; }
+    .arm { display: grid; grid-template-rows: auto auto auto auto minmax(0,1fr); gap: 14px; min-height: 0; padding: 18px; border-radius: 12px; box-shadow: 0 0 0 1px var(--hair); background: var(--surface); }
+    .arm { --c: var(--emerald); } .arm.current { --c: var(--coral); }
+    .label { font: 12px var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+    .mode { font: 26px/1.1 var(--serif); color: var(--c); margin: 4px 0 0; }
+    .sub { font-size: 13px; color: var(--muted); margin: 2px 0 0; }
+    .count { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+    .done { font: 44px/1 var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+    .done small { font-size: 18px; color: var(--muted); }
+    .state { font: 13px var(--mono); color: var(--muted); text-align: right; }
+    .state.fin { color: var(--c); }
+    .row { display: flex; justify-content: space-between; align-items: baseline; }
+    .val { white-space: nowrap; font: 15px var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+    .cores { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; height: 34px; margin-top: 6px; }
+    .cores i { border-radius: 2px; background: var(--c); opacity: .06; }
+    .gbar { height: 10px; border-radius: 5px; background: var(--hair); overflow: hidden; margin-top: 8px; }
+    .gbar i { display: block; height: 100%; width: 0; background: var(--c); }
+    .chart { position: relative; min-height: 0; border-top: 1px solid var(--hair); padding-top: 10px; display: grid; grid-template-rows: auto 1fr; }
+    .chart canvas { width: 100%; height: 100%; min-height: 60px; display: block; }
+    .key { display: flex; gap: 14px; white-space: nowrap; font: 11px var(--mono); color: var(--muted); }
+    .key em { font-style: normal; margin-left: auto; }
+    .key span::before { content: ""; display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin-right: 6px; background: var(--k); }
+    footer { padding: 10px 24px; border-top: 1px solid var(--hair); font-size: 12px; color: var(--muted); }
+    footer a { color: var(--muted); }
+    @media (max-height: 760px) { .lede { font-size: 24px; padding-top: 10px; } .done { font-size: 34px; } .mode { font-size: 22px; } .arm { gap: 10px; padding: 14px; } main { padding-top: 10px; } }
+    @media (max-width: 900px) {
+      body { overflow: auto; height: auto; min-height: 100dvh; }
+      header { padding: 12px 16px; flex-wrap: wrap; } .lede { padding: 14px 16px 0; font-size: 24px; }
+      main { grid-template-columns: minmax(0,1fr); padding: 16px; }
+      .chart { height: 140px; } footer { padding: 10px 16px; overflow-wrap: anywhere; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="wordmark" href="../">Preflight</a>
+    <span class="crumb"><a href="../app/">Demo</a> / Usage</span>
+    <span id="clock" aria-live="off">0.0 s</span>
+    <button type="button" id="start" disabled>Start</button>
+  </header>
+  <p class="lede" id="lede">The same 8 studies, three ways, on the same A100 machine with 8 CPU workers.</p>
+  <main id="arms"></main>
+  <footer id="caption">Replay of measured utilisation, sampled every 100 ms.</footer>
+  <template id="arm-tpl">
+    <section class="arm">
+      <div><div class="label" data-k="tag"></div><p class="mode" data-k="name"></p><p class="sub" data-k="how"></p></div>
+      <div class="count"><div><div class="label">Studies done</div><div class="done"><span data-k="done">0</span><small data-k="of"></small></div></div>
+        <div class="state" data-k="state">waiting</div></div>
+      <div><div class="row"><span class="label" data-k="coreslabel">CPU cores</span><span class="val" data-k="cpu">0%</span></div>
+        <div class="cores" data-k="cores" aria-hidden="true"></div></div>
+      <div><div class="row"><span class="label" data-k="gpulabel">GPU</span><span class="val" data-k="gpu">0%</span></div>
+        <div class="gbar" aria-hidden="true"><i data-k="gbar"></i></div></div>
+      <div class="chart"><div class="key"><span style="--k:var(--c)">CPU cores</span><span style="--k:var(--ink)">GPU %</span><em data-k="mean"></em></div><canvas aria-hidden="true"></canvas></div>
+    </section>
+  </template>
+  <script src="usage.js"></script>
+</body>
+</html>
