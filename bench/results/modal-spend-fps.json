@@ -170,8 +170,26 @@
     "basis": "67.4 s local wall x $1.116/h",
     "result": "bench/results/fps-l4-20261122T063114Z.json"
    }
+  },
+  {
+   "utc": "2026-11-22T06:45Z",
+   "run": "gpu/fps_l4.py on head 9ace5a4 (judge round 5 fixes): written FAILED by the writer, a favicon.ico 404 in full Chrome; no stills, no cadence",
+   "containers": 1,
+   "gpu": "L4",
+   "cores": 4,
+   "memory_gib": 16,
+   "cap_usd": 1.5,
+   "est_hours": 0.25,
+   "est_usd": 0.279,
+   "basis": "1 x L4 + 4 cores + 16 GiB = $1.116/h at the 900 s function-timeout ceiling",
+   "actual": {
+    "modal_wall_s": 68.0,
+    "est_usd": 0.021,
+    "basis": "68 s local wall x $1.116/h",
+    "result": "bench/results/fps-l4-20261122T064540Z.json"
+   }
   }
  ],
- "running_total_usd": 0.201,
+ "running_total_usd": 0.222,
  "running_total_basis": "sum of the two actuals; ESTIMATE, not billing"
 }

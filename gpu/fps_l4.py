@@ -94,7 +94,7 @@ def measure() -> dict:
         pg = ctx.new_page()
         pg.on("pageerror", lambda e: errors.append(str(e)))
         # Console errors, and the warning the page logs when the 3D view falls back (WebGL failed).
-        pg.on("console", lambda m: (m.type == "error" or "3D view off" in m.text) and errors.append(f"console: {m.text}"))
+        pg.on("console", lambda m: (m.type == "error" or "3D view off" in m.text) and errors.append(f"console: {m.text} {m.location.get('url', '')}".strip()))
         pg.goto("http://localhost:8000/", wait_until="networkidle")
         pg.wait_for_timeout(1000)
         out["timestamps_ms"] = pg.evaluate(TIMED.replace("DURATION_MS", str(DURATION_MS)))
