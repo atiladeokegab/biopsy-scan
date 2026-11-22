@@ -35,6 +35,7 @@ app = modal.App("preflight-translate")
 data = modal.Volume.from_name("preflight-data").read_only()
 image = (
     modal.Image.debian_slim(python_version="3.11")
+    .apt_install("git")  # runner._code_revision runs git; without the binary it raises
     .uv_sync(str(REPO))
     .env({"DATA_DIR": DATA_DIR, "PYTHONPATH": APP_DIR})
     .workdir(APP_DIR)
@@ -89,8 +90,10 @@ def main(seed: int = 0, cap_usd: float = 10.0, timeout_s: int = 8 * 3600):
              "est_usd": ceiling, "basis": f"ceiling: {timeout_s} s timeout x ${USD_PER_HOUR:.3f}/h "
                                           f"({CORES:g} cores x ${RATES['cpu_core']} + {MEMORY_MIB // 1024} GiB x ${RATES['memory_gib']})",
              "source_commit": commit}
-    log = {"workspace_profile": os.environ.get("MODAL_PROFILE", "fhl-08"), "cap_usd": cap_usd,
-           "rates_usd_per_hour": RATES, "entries": [entry]}
+    log = json.loads(SPEND.read_text()) if SPEND.exists() else {
+        "workspace_profile": os.environ.get("MODAL_PROFILE", "fhl-08"), "cap_usd": cap_usd,
+        "rates_usd_per_hour": RATES, "entries": []}
+    log["entries"].append(entry)
     SPEND.write_text(json.dumps(log, indent=2) + "\n")
     error, out = None, None
     try:
@@ -110,7 +113,7 @@ def main(seed: int = 0, cap_usd: float = 10.0, timeout_s: int = 8 * 3600):
                         "in_function_s": out["in_function_s"], "modal_wall_s": wall, "repeats": 1,
                         "data": "upmc_labels.csv from Modal volume preflight-data; upmc_raw_data.zip from Zenodo 13179600"}
         OUT.write_text(json.dumps(rec, indent=2) + "\n")
-    log["actual_total_usd"] = entry["actual"]["est_usd"]
+    log["actual_total_usd"] = round(sum(e.get("actual", {}).get("est_usd", 0) for e in log["entries"]), 3)
     log["actual_total_basis"] = "container x local wall time; ESTIMATE, not a Modal invoice"
     SPEND.write_text(json.dumps(log, indent=2) + "\n")
     print(json.dumps(entry, indent=2))
