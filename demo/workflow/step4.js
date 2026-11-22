@@ -1,16 +1,18 @@
 // Workflow step 4, "Down to 1-2 routine stains": the pick core unrolls into its six MEASURED marker channels (each a
 // plane where every cell glows by its real CODEX intensity), a marker-combination search sweeps every 1- and
 // 2-marker panel (an animation: no search has run on real outcomes, so it names no winner), then two REAL routine IHC
-// cores from the Human Protein Atlas (other patients): KRT5 (a cytokeratin, as PanCK detects) and ACTA2 (the gene
-// for aSMA). If the images fail to load, the two channels are re-rendered as simulated DAB and say so.
+// cores from the Human Protein Atlas (other patients): KRT5 (a cytokeratin, as PanCK detects) and CD8A (CD8). If the images fail to load, the two channels are re-rendered as simulated DAB and say so.
 import { MARKER_COLORS, DAB, HAEMATOXYLIN } from "./palette.js";
 
 export const SEARCH_LABEL = "ILLUSTRATION · search not yet run on real outcomes";
 export const HPA_CREDIT = "Human Protein Atlas (proteinatlas.org), head and neck cancer, CC BY-SA 3.0";
 export const IHC = [ // real cores: file, gene, antibody (img/hpa_manifest.json), the CODEX channel it stands next to
-  { file: "hpa_KRT5_02.webp", gene: "KRT5", antibody: "CAB000027", channel: "PanCK", note: "tumour cells" },
-  { file: "hpa_ACTA2_02.webp", gene: "ACTA2", antibody: "CAB000002", channel: "aSMA", note: "stroma" },
+  { file: "hpa_KRT5_02.webp", gene: "KRT5", antibody: "CAB000027", channel: "PanCK", note: "tumour cells (keratin)" },
+  { file: "hpa_CD8A_01.webp", gene: "CD8A", antibody: "CAB075722", channel: "CD8", note: "cytotoxic T cells" },
 ];
+// For the shell's caption: the two routine stains shown, their source and licence.
+export const PICKED = { markers: IHC.map((c) => c.gene), antibodies: IHC.map((c) => c.antibody), caption: "REAL IHC, other patients",
+  credit: HPA_CREDIT, fallbackCaption: "SIMULATED IHC" };
 const SETTLE = 5.4; // seconds
 
 const sprites = new Map();
@@ -74,7 +76,7 @@ export function mount(el, data) {
       const px = W * (narrow ? 0.6 : 0.62), pw = W * (narrow ? 0.38 : 0.34), cols = 7, cw = (pw - 20) / cols, rh = narrow ? 18 : 24;
       const ph = 58 + Math.ceil(P.length / cols) * rh + 8, py = (H - ph) / 2;
       g.save(); g.globalAlpha = sa;
-      g.fillStyle = "#121A25e6"; g.strokeStyle = "#22303F"; g.beginPath(); g.roundRect(px, py, pw, ph, 10); g.fill(); g.stroke();
+      g.fillStyle = css("--surface", "#121A25"); g.strokeStyle = css("--border", "#22303F"); g.beginPath(); g.roundRect(px, py, pw, ph, 10); g.fill(); g.stroke();
       g.font = `600 12px ${font}`; g.fillStyle = head; g.fillText("Marker combination search", px + 10, py + 20, pw - 20);
       g.font = `500 11px ${font}`; g.fillStyle = muted;
       g.fillText("ILLUSTRATION ·", px + 10, py + 36, pw - 20); g.fillText("not yet run on real outcomes", px + 10, py + 50, pw - 20);
@@ -96,7 +98,7 @@ export function mount(el, data) {
         const x2 = W / 2 + (k - 0.5) * r2 * 2.5;
         g.save(); g.globalAlpha = ihc; g.translate(0, (1 - ihc) * 14);
         g.beginPath(); g.arc(x2, y2, r2, 0, 6.29); g.fillStyle = "#EEE8F1"; g.fill(); g.clip();
-        if (real) g.drawImage(imgs[k], x2 - r2 * 1.17, y2 - r2 * 1.17, r2 * 2.34, r2 * 2.34); // the core fills ~85% of the HPA frame
+        if (real) g.drawImage(imgs[k], x2 - r2 * 1.25, y2 - r2 * 1.25, r2 * 2.5, r2 * 2.5); // the core fills ~80% of the HPA frame
         else {
           const mi = markers.indexOf(c.channel), s = r2 / 80;
           for (const q of cells) {
