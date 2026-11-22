@@ -84,7 +84,7 @@ export function mount(el, data) {
   return {
     play() {
       this.stop();
-      if (!geo || geo.w !== el.clientWidth) { draw(); drawSharp(); }
+      if (!geo || geo.w !== el.clientWidth || geo.h !== el.clientHeight) { draw(); drawSharp(); }
       const { cv, px, py, r, w, h } = geo;
       sharp.style.transition = "none"; sharp.style.opacity = 0; cv.style.opacity = 1;
       cv.style.transition = "none";

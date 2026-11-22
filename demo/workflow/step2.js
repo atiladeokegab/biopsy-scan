@@ -51,7 +51,7 @@ export function mount(el, data) {
   return {
     play() {
       this.stop();
-      if (!layers || layers.w !== el.clientWidth) build();
+      if (!layers || layers.w !== el.clientWidth || layers.h !== el.clientHeight) build(); // both: a stale height stretches the core
       result.hidden = true; legend.classList.remove("on");
       raf = requestAnimationFrame((now) => frame(now)(now));
       timer = setTimeout(() => { result.hidden = false; legend.classList.add("on"); }, SCAN_MS + 300);
