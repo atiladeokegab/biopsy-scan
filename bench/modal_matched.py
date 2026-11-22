@@ -60,7 +60,7 @@ def _read(path: str) -> str | None:
 
 
 @app.function(image=image, cpu=CORES, memory=MEMORY_MIB, timeout=TIMEOUT_S, env=SINGLE)
-def matched(plan: dict) -> dict:
+def matched(plan: dict, lab_workers: int = 1) -> dict:
     import sys
 
     sys.path.insert(0, APP_DIR)
@@ -73,9 +73,9 @@ def matched(plan: dict) -> dict:
             "cpu_model": next((line.split(":", 1)[1].strip() for line in (_read("/proc/cpuinfo") or "").splitlines()
                                if line.startswith("model name")), None),
             "modal_task_id": os.environ.get("MODAL_TASK_ID"), "thread_environment": {k: os.environ.get(k) for k in SINGLE}}
-    out = m.run(lambda: load("charville"), plan, workers=int(CORES))
+    out = m.run(lambda: load("charville"), plan, workers=int(CORES), lab_workers=lab_workers)
     host["load_average_end"] = list(os.getloadavg())
-    res = m.compare(out["lab"], out["preflight"], plan)
+    res = m.compare(out["lab"], out["preflight"], plan, lab_workers=lab_workers)
     plant = out["preflight"]["setup"]["plant_feature"]
     res["arms"] = {a: {"workers": o["workers"], "affinity": o.get("affinity"), "setup": o["setup"], "warm_s": o["warm_s"],
                        "stages": worker_wall(db.stage_times(o)), "summary": db.summarize(o, plant)} for a, o in out.items()}
@@ -102,8 +102,12 @@ def _log_spend(entry: dict) -> float:
 
 
 @app.local_entrypoint()
-def main(lab_per_stream: int = 50, calibration: int = 1000, per_stream: int = 1000, cap_usd: float = 8.0):
+def main(lab_per_stream: int = 50, calibration: int = 1000, per_stream: int = 1000, cap_usd: float = 8.0,
+         lab_workers: int = 1):
     from bench import matched_e2e as m
+
+    if lab_workers not in (1, int(CORES)):
+        raise SystemExit(f"--lab-workers must be 1 (what a lab runs today) or {int(CORES)} (equal hardware)")
 
     _git("ls-files", "--error-unmatch", "bench/modal_matched.py")
     if _git("status", "--porcelain", "--untracked-files=no"):
@@ -117,12 +121,13 @@ def main(lab_per_stream: int = 50, calibration: int = 1000, per_stream: int = 10
         raise SystemExit(str(e))
     commit, start = _git("rev-parse", "HEAD"), datetime.now(timezone.utc)
     utc = f"{start:%Y-%m-%dT%H:%MZ}"
-    entry = {"utc": utc, "run": "matched lab vs Preflight, compute through scoring, 8 cores, 64 GiB, no GPU", "plan": plan,
+    entry = {"utc": utc, "run": f"matched lab ({lab_workers} worker(s)) vs Preflight (8 workers), compute through scoring, "
+                                "8 cores, 64 GiB, no GPU", "plan": plan,
              "containers": 1, "cap_usd": cap_usd, "est_hours": TIMEOUT_S / 3600, "est_usd": ceiling,
              "basis": f"8 cores + 64 GiB at the {TIMEOUT_S} s function-timeout ceiling", "source_commit": commit}
     _log_spend(entry)
     try:
-        res = matched.remote(plan)
+        res = matched.remote(plan, lab_workers)
     finally:
         end = datetime.now(timezone.utc)
         wall = (end - start).total_seconds()
@@ -138,8 +143,9 @@ def main(lab_per_stream: int = 50, calibration: int = 1000, per_stream: int = 10
                "its ladder rows are feature-only, so it marks matched_full_pipeline_speedup UNMEASURED. "
                "Here both arms do features and the per-study decision on the same studies.",
         "scope": {"lab": "cKDTree re-imaging + stats.permutation_test (1,000 within-strata shuffles), call p <= 0.05; "
-                         "one study at a time, one pool worker pinned to one core; fixed sample of the first "
-                         f"{lab_per_stream} null and {lab_per_stream} alternative studies",
+                         + ("one study at a time, one pool worker pinned to one core" if lab_workers == 1 else
+                            f"{lab_workers} single-thread pool workers, one study each at a time (equal hardware)")
+                         + f"; fixed sample of the first {lab_per_stream} null and {lab_per_stream} alternative studies",
                   "preflight": "Numba CSR re-imaging + Cox score screen, call maxT > design threshold from the "
                                f"{calibration} calibration nulls; 8 single-thread workers; calibration counted",
                   "both": "same container, design bench.real_cpu.DESIGN, same seeds (SeedSequence([20261121, stream, i])), "
@@ -148,7 +154,8 @@ def main(lab_per_stream: int = 50, calibration: int = 1000, per_stream: int = 10
                           "and excludes outcome simulation, adjacency and JIT warm-up; wall.with_setup adds the setup "
                           "back (not data load, threshold or calls). The lab ran a sample, so compare per-study wall only"},
         "plan": plan,
-        "headline": (f"Per study, compute through scoring: lab {w['lab_s_per_study']:.3f} s on 1 core "
+        "headline": (f"Per study, compute through scoring: lab {w['lab_s_per_study']:.3f} s on {lab_workers} "
+                     f"core{'s' if lab_workers > 1 else ''} "
                      f"({w['studies']['lab']} studies) vs Preflight {w['preflight_s_per_decided_study']:.4f} s on 8 cores "
                      f"({w['studies']['preflight_decided']} decided studies, {w['studies']['preflight_calibration']} "
                      f"calibration nulls paid for): {w['ratio']:.1f}x compute through scoring; "

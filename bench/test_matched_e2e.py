@@ -96,6 +96,17 @@ def test_the_lab_must_be_one_worker_on_studies_preflight_also_ran():
         m.compare(lab_out(n=6), pre_out(n=5), plan(lab=6))
 
 
+def test_an_equal_hardware_lab_must_declare_and_match_preflights_workers():
+    out = m.compare(lab_out(workers=8), pre_out(), plan(), lab_workers=8)
+    assert out["status"] == "MEASURED"
+    with pytest.raises(ValueError, match="8 workers, as declared"):
+        m.compare(lab_out(workers=1), pre_out(), plan(), lab_workers=8)
+    with pytest.raises(ValueError, match="as many workers as Preflight"):
+        m.compare(lab_out(workers=4), pre_out(), plan(), lab_workers=4)
+    with pytest.raises(ValueError, match="lab_workers must be 1 or 8"):
+        m.run(lambda: None, plan(), workers=8, lab_workers=4)
+
+
 def test_the_sweep_projection_is_analytic_and_lab_skips_calibration():
     w = {"lab_s_per_study": 7.0, "preflight_s_per_evaluated_study": 0.1}
     grid = {"points": 2, "calibration": 10, "null": 10, "alternative": 1}
@@ -122,7 +133,8 @@ def test_the_committed_result_is_matched_and_its_numbers_follow_from_its_fields(
     assert sorted(ids) == sorted((s, i) for s, n in r["plan"]["lab"].items() for i in range(n))
     assert not any("_cpu_s" in k for a in r["arms"].values() for k in a["stages"])
     assert r["status"] == "MEASURED" and r["parity"]["x_bitwise"] and r["parity"]["x_compared"] == w["studies"]["lab"]
-    assert r["arms"]["lab"]["workers"] == 1 and len(r["arms"]["lab"]["affinity"]) == 1
+    lab = r["arms"]["lab"]
+    assert lab["workers"] in (1, r["arms"]["preflight"]["workers"]) and len(lab["affinity"]) == lab["workers"]
     assert w["ratio"] == pytest.approx(w["lab_s_per_study"] / w["preflight_s_per_decided_study"])
     assert sum(x["agree"] for x in r["per_study"]) == r["decisions"]["agree"]
     assert r["projection"]["status"] == "ANALYTIC"

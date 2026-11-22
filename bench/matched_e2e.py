@@ -64,12 +64,20 @@ def _coverage(records: list, plan: dict, arm: str) -> None:
                          f"missing {sorted(want - set(got))[:3]}, extra {sorted(set(got) - want)[:3]}")
 
 
-def run(load, plan: dict, workers: int = 8) -> dict:
-    """Preflight on `workers` cores, then the lab on one pinned core; fresh cells and harness state per arm."""
+def run(load, plan: dict, workers: int = 8, lab_workers: int = 1) -> dict:
+    """Preflight on `workers` cores, then the lab: on one pinned core (lab_workers=1, what a lab runs today) or on
+    `workers` cores (the equal-hardware comparison: each study's permutation test is independent, so studies fan out).
+    Fresh cells and harness state per arm."""
+    if lab_workers not in (1, workers):
+        raise ValueError(f"lab_workers must be 1 or {workers}")
     db._S.clear()
     pre = db.run_arm("numba", load(), plan["preflight"], workers=workers)
     db._S.clear()  # else the lab would reuse the numba kernel cached in _S
     keep = os.sched_getaffinity(0)
+    if lab_workers > 1:
+        lab = db.run_arm("lab", load(), plan["lab"], workers=lab_workers)
+        lab["affinity"] = sorted(keep)
+        return {"lab": lab, "preflight": pre}
     core = max(keep)
     os.sched_setaffinity(0, {core})  # the forked worker inherits it, as bench.lab_today pins itself
     try:
@@ -80,12 +88,15 @@ def run(load, plan: dict, workers: int = 8) -> dict:
     return {"lab": lab, "preflight": pre}
 
 
-def compare(lab: dict, pre: dict, plan: dict) -> dict:
+def compare(lab: dict, pre: dict, plan: dict, lab_workers: int = 1) -> dict:
     """Per-study features and decisions on the shared studies; compute-through-scoring wall per study and ratio."""
     from stats import threshold
 
-    if lab["workers"] != 1:
-        raise ValueError("the lab arm must run one worker: one study at a time on one core")
+    if lab["workers"] != lab_workers:
+        raise ValueError("the lab arm must run one worker: one study at a time on one core" if lab_workers == 1
+                         else f"the lab arm must run {lab_workers} workers, as declared")
+    if lab_workers != 1 and lab_workers != pre["workers"]:
+        raise ValueError("an equal-hardware lab arm must run as many workers as Preflight")
     if set(plan["lab"]) != {"null", "alternative"} or any(plan["lab"][s] > plan["preflight"][s] for s in plan["lab"]):
         raise ValueError("the lab studies are not in the preflight arm's plan")
     _coverage(pre["records"], plan["preflight"], "preflight")
