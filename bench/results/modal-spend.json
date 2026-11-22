@@ -502,6 +502,26 @@
         "basis": "single-attempt estimate at list price: each container x local wall (includes image build and queueing); invoice not verified"
       },
       "repeat": "sweep-repeats scaling-3 (3 sweeps launched concurrently, each from its own checkout and ledger copy)"
+    },
+    {
+      "utc": "2026-11-22T13:21Z",
+      "run": "usage-traces 4/stream, arms ['current', 'fused', 'gpu']",
+      "containers": 3,
+      "gpu": "A100",
+      "cores": 8.0,
+      "memory_gib": 64.0,
+      "cap_usd": 4.0,
+      "est_usd": 2.99,
+      "basis": "1200 s ceiling x 3 x $2.987568/h",
+      "source_commit": "5d112d1c01624587c8e243a6ada0873af0e3db1d",
+      "container_class": "Modal A100 + 8 cores + 64 GiB",
+      "actual": {
+        "modal_wall_s": 218.7,
+        "est_usd": 0.545,
+        "basis": "3 containers x local wall 219 s x $2.9876/h (upper bound: includes image pull and queueing)",
+        "result": "bench/results/usage-traces-20261122T132125Z.json"
+      },
+      "running_total_usd": 66.235
     }
   ],
   "container_usd_per_hour_H100": 4.58,
