@@ -126,7 +126,8 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
 .pf-card { display: grid; gap: var(--space-4) var(--space-6); grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1.5fr);
   grid-template-areas: "head head head" "controls out chart" "src src src"; }
 .pf-head { grid-area: head; }
-.pf-sub { margin-top: var(--space-1); color: var(--text-body); font-size: var(--text-sm); line-height: var(--leading-meta); }
+.pf-sub, .pf-scenario { margin-top: var(--space-1); color: var(--text-body); font-size: var(--text-sm); line-height: var(--leading-meta); }
+.pf-scenario .tag { vertical-align: 1px; margin-right: var(--space-1); }
 .pf-controls { grid-area: controls; display: grid; gap: var(--space-4); align-content: start; }
 .seg { margin: 0; padding: 0; border: 0; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
 .seg legend { padding: 0; margin-bottom: var(--space-2); color: var(--text-body); }
@@ -140,6 +141,7 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
 .pf-out small { display: block; color: var(--text-body); font-size: var(--text-sm); margin-top: var(--space-1); }
 .pf-sim .big { color: var(--accent); }
 .pf-formula .big { color: var(--text-muted); }
+.pf-caveat { grid-column: 1 / -1; color: var(--text-body); font-size: var(--text-sm); line-height: var(--leading-meta); }
 .pf-gap { grid-column: 1 / -1; color: var(--text-head); font-size: var(--text-base); line-height: var(--leading-snug); font-weight: 600; }
 .pf-chart { grid-area: chart; }
 .pf-chart svg { display: block; width: 100%; height: auto; }
@@ -149,13 +151,18 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
 #pf-chart .formula { fill: none; stroke: var(--text-muted); stroke-width: 2; }
 #pf-chart .band { fill: var(--accent); fill-opacity: 0.16; }
 #pf-chart .sim { fill: none; stroke: var(--accent); stroke-width: 2.5; }
-#pf-chart .pt { fill: var(--bg); stroke: var(--accent); stroke-width: 1.5; }
+#pf-chart .pt { fill: var(--accent); }
 #pf-chart .cursor { stroke: var(--text-head); stroke-opacity: 0.5; }
 #pf-chart .fdot { fill: var(--text-muted); stroke: var(--bg); stroke-width: 2; }
 #pf-chart .sdot { fill: var(--accent); stroke: var(--bg); stroke-width: 2; }
+#pf-chart .sdot.interp { fill: var(--bg); stroke: var(--accent); stroke-width: 2.5; }
 .pf-key { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); margin-top: var(--space-1); color: var(--text-muted); font-size: var(--text-xs); }
 .pf-key i { display: inline-block; width: 14px; height: 3px; margin-right: var(--space-1); vertical-align: middle; }
 .pf-key .k-sim { background: var(--accent); box-shadow: 0 -4px 0 rgba(43, 212, 164, 0.2), 0 4px 0 rgba(43, 212, 164, 0.2); }
+.pf-key .k-pt, .pf-key .k-ring { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.pf-key .k-ring { background: none; border: 2px solid var(--accent); box-sizing: border-box; }
+.pf-key .k-pt + .k-sim { margin-left: var(--space-2); }
+.pf-key .k-ring { margin-left: var(--space-3); }
 .pf-key .k-formula { background: var(--text-muted); }
 .pf-key .k-target { background: repeating-linear-gradient(90deg, var(--text-muted) 0 3px, transparent 3px 7px); }
 .pf-card > .src { grid-area: src; }

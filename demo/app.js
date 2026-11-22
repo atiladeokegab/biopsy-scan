@@ -6,7 +6,7 @@ import { createSpeedRace, workflowHTML } from "./race.js";
 import { drawRegion, drawKM } from "./bio.js";
 import { claimTexts, bioTexts, gridTexts, dialRanges } from "./claims.js";
 import { drawChart, pct, fovLabel } from "./chart.js";
-import { panelTexts, chartSVG } from "./preflight.js";
+import { panelTexts, chartSVG, scenarioText } from "./preflight.js";
 
 const $ = (id) => document.getElementById(id);
 const FOV_STEP = 100;
@@ -161,6 +161,7 @@ async function hero() {
 async function preflight() {
   const data = await getJSON("data/preflight.json");
   const form = $("pf-form");
+  $("pf-scenario").textContent = scenarioText(data);
   const read = () => ({ patients: +$("pf-patients").value, window: form.elements["pf-window"].value,
     miscall: +form.elements["pf-miscall"].value });
   const draw = () => panel("preflight", () => {
@@ -168,6 +169,8 @@ async function preflight() {
     $("pf-patients-out").value = s.patients;
     for (const k of ["sim", "formula", "gap", "src"]) $(`pf-${k}`).textContent = t[k];
     $("pf-sim-note").textContent = t.simNote;
+    $("pf-caveat").textContent = t.caveat; $("pf-caveat").hidden = !t.caveat;
+    $("pf-key-sim").hidden = !t.showSimKey; $("pf-chart").setAttribute("aria-label", t.chartLabel);
     tagOf($("pf-sim-tag"), t.simTag); tagOf($("pf-formula-tag"), t.formulaTag);
     // Drawn at its on-screen width, so the axis text stays 12 px on a phone.
     const W = Math.max(300, Math.round($("pf-chart").getBoundingClientRect().width) || 560);

@@ -92,7 +92,7 @@ def build(root=ROOT):
         "sources": {p: hashlib.sha256(raw[p]).hexdigest() for p in (CURVE, VS)},
         "scenario": {"cohort": curve["cohort"], "patients_source": curve["patients_source"],
                      "events_source": vs["events"], "hr_per_sd": curve["hr_per_sd"], "features_m": vs["features_m"],
-                     "alpha": curve["alpha"], "method": curve["simulated"]["method"], "resampling": curve["resampling"]},
+                     "alpha": curve["alpha"], "null_studies": curve["simulated"]["budget"]["null"], "method": curve["simulated"]["method"], "resampling": curve["resampling"]},
         "designs": [
             {"id": "cropped", "window": "400um", "miscall": CROPPED["eps"], "label": curve["label"], "source": CURVE,
              "points": cropped},

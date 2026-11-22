@@ -12,6 +12,7 @@
   "hr_per_sd": 2.0,
   "features_m": 630,
   "alpha": 0.05,
+  "null_studies": 100,
   "method": "model-based Monte Carlo (model-based Monte Carlo under the empirical verified source; no clinical claim)",
   "resampling": "patients drawn with replacement from the source cohort; every count above 159 repeats source patients (resample_ratio = patients / source)"
  },
