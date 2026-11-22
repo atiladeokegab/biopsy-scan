@@ -6,7 +6,8 @@ The source is the 34 UPMC discovery patients (verified case identity) and their 
 resampled with replacement to 50, 100, 200, 400 and 600 patients. Outcomes are SYNTHETIC: planted Weibull
 outcomes at HR 2 per source SD on the atlas's own plant, the #83 event fraction, administrative censoring at
 one common horizon. Same imaging design and budget as #83 (2 regions, 400 um field, 10% mis-calls; 200
-calibration, 100 null, 300 planted studies per point; seed 20261121; 64-draw acquisition bank).
+calibration, 100 null, 300 planted studies per point; seed 20261121; 64-draw acquisition bank). The Modal
+launcher gpu/hn_power.py runs 200 planted studies per point to stay inside its $5 cap.
 
 No real outcome is read: the labels file is read for two columns only (region_id, sample_label_visualizer),
 and no locked patient's region, cells or files are touched: the patient list is checked disjoint from
@@ -106,25 +107,28 @@ def source(data_dir: Path) -> dict:
             "type_names": c["type_names"], "region_names": list(reg.region_id), "patient_names": names}
 
 
-def run(out: Path, cache: Path, data_dir: Path, patients=PATIENTS, extra: list[str] = ()) -> None:
-    """The atlas CLI on the outcome-free discovery source, with the #83 event-fraction target."""
+def run(out: Path, cache: Path, cells: dict, patients=PATIENTS, extra: list[str] = ()) -> None:
+    """The atlas CLI on the outcome-free discovery source (from source()), with the #83 event-fraction target."""
     import atlas.__main__ as cli
     import atlas.runner as runner
     from atlas.simulation import fit_model
 
-    cells = source(data_dir)
     cli.load = lambda cohort: cells if cohort == "upmc" else (_ for _ in ()).throw(ValueError(cohort))
     runner.fit_model = partial(fit_model, target=TARGET_EVENT_FRACTION)
     cli.main([*DESIGN, "--patients", *map(str, patients), "--out", str(out), "--cache", str(cache), *extra])
 
 
-def summarize(out: Path) -> dict:
+def read_run(out: Path) -> tuple[list[dict], dict]:
+    """The atlas's summary rows and metadata for one run directory."""
+    rows = pd.read_parquet(out / "upmc" / "summary.parquet").to_dict("records")
+    return rows, json.loads((out / "upmc" / "metadata.json").read_text())
+
+
+def summarize(rows: list[dict], meta: dict) -> dict:
     from bench.power_at_scale import answer, clopper_pearson
 
-    rows = pd.read_parquet(out / "upmc" / "summary.parquet").sort_values("patients")
-    meta = json.loads((out / "upmc" / "metadata.json").read_text())
     points = []
-    for r in rows.to_dict("records"):
+    for r in sorted(rows, key=lambda r: r["patients"]):
         k, n = int(r["power_count"]), int(r["power_n"])
         lo, hi = clopper_pearson(k, n)
         points.append({"patients": int(r["patients"]), "power": k / n, "power_lo": lo, "power_hi": hi,
@@ -139,5 +143,5 @@ def summarize(out: Path) -> dict:
 
 if __name__ == "__main__":
     out = Path(sys.argv[1])
-    run(out, out / "cache", Path(__import__("os").environ["DATA_DIR"]), extra=sys.argv[2:])
-    print(json.dumps(summarize(out)["answer"]["statement"]))
+    run(out, out / "cache", source(Path(__import__("os").environ["DATA_DIR"])), extra=sys.argv[2:])
+    print(json.dumps(summarize(*read_run(out))["answer"]["statement"]))

@@ -325,6 +325,19 @@
       },
       "running_total_usd": 44.556,
       "counted": "actual (container x wall); total recounted at the merge with #115's 20:02-20:10Z entries (was 41.456)"
+    },
+    {
+      "utc": "2026-11-22T04:40Z",
+      "run": "build-modal hn-power: UPMC discovery tissue, patients [50, 100, 200, 400, 600], 200 calibration / 100 null / 200 planted per point",
+      "containers": 5,
+      "gpu": "A100-40GB",
+      "cores": 8.0,
+      "memory_gib": 24.0,
+      "cap_usd": 5.0,
+      "est_usd": 4.93,
+      "basis": "ceiling: per-point timeouts 500+650+1000+1800+2700 = 6650 s x (A100 $2.0988 + 8 cores x $0.04716 + 24 GiB x $0.007992)/h",
+      "running_total_usd": 49.486,
+      "counted": "est_usd (the pre-run ceiling)"
     }
   ],
   "container_usd_per_hour_H100": 4.58,
