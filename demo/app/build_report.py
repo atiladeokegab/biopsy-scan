@@ -76,8 +76,8 @@ y -= bh + 28
 
 # speed
 c.setFillColor(INK); c.setFont("Helvetica-Bold", 11); c.drawString(M, y, "Speed")
-y = para("Off-the-shelf squidpy + lifelines 24.4 s vs Preflight 0.042 s per study, 8 workers each: <b>583×</b> "
-         "(cross-run, same container class; bench/results/external-baseline-20261122T043823Z.json).",
+y = para("Off-the-shelf squidpy + lifelines 22.35 s vs Preflight 0.0426 s per study, 8 workers each: <b>534×</b> "
+         "(same host, median of 3 fresh containers; bench/results/same-host-20261122T140908Z.json).",
          M, y - 8, W - 2 * M)
 
 # footer

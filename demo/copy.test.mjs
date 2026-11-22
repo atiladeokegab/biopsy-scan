@@ -39,7 +39,7 @@ const SRC = {
   fa: "stats/results/hard-negative-f458ad1.json", cv: "results/charville-v2.json", upmc: "results/upmc-rediscovery.json",
   fused: "bench/results/modal-design-20261121T205536Z.json", sweep: "bench/results/sweep-repeats.json",
   vs: "bench/results/vs-schoenfeld-300.json", race: "bench/results/modal-design-20261121T194458Z.json",
-  ext: "bench/results/external-baseline-20261122T043823Z.json",
+  ext: "bench/results/same-host-20261122T140908Z.json",
 };
 const fa = json(SRC.fa), cv = json(SRC.cv), upmc = json(SRC.upmc), fusedRun = json(SRC.fused);
 const sweep = json(SRC.sweep), vs = json(SRC.vs), race = json(SRC.race), ext = json(SRC.ext);
@@ -83,10 +83,18 @@ has(1, `${n(fused.stages.evaluated_studies)} Preflight studies`);
 has(1, `${n(fused.summary.studies.calibration)} calibration nulls`); has(1, "setup excluded"); has(1, "different procedures");
 has(1, "cross-run"); has(1, `${(lab.stages.compute_wall_s / fused.stages.compute_wall_s).toFixed(1)}× per whole design point`);
 has(1, "re-images each study"); has(1, "the cutoff and calls are outside the timing");
-// Row 2: 583x off the shelf keeps its cross-run caveat; 5.5x is the fair 8 v 8 median; 6.3x is compute span, not Modal wall.
-has(2, `${Math.round(ext.summary.ratio_vs_fused)}×`); has(2, `${ext.summary.seconds_per_study.toFixed(1)} s`); has(2, "cross-run, same container class");
+// Row 2: 534x off the shelf, same host, pipeline only, with its range; 5.5x is the fair 8 v 8 median; 6.3x is compute span, not Modal wall.
+const exr = ext.summary.ratios;
+has(2, `${Math.round(exr.external_pipeline_vs_fused_full.median)}×`); has(2, `${ext.summary.external_pipeline_s_per_study.median.toFixed(2)} s`); has(2, "same host");
+has(2, `range ${Math.round(exr.external_pipeline_vs_fused_full.min)}–${Math.round(exr.external_pipeline_vs_fused_full.max)}×`);
+has(2, `${Math.round(exr.external_with_checks_vs_fused_full.median)}× with them`); has(2, `${Math.round(exr.external_pipeline_vs_fused_matched.median)}× on the identical 48 studies`);
+assert.ok(!plain(rows[2]).includes("cross-run"), "row 2 still says cross-run");
 has(2, `${sweep.fair.spread.ratio.median.toFixed(1)}×`); has(2, "8 workers against 8");
-has(2, "reference recount and agreement checks"); has(2, `top pattern the same in ${ext.summary.top1_same.k} of ${ext.summary.top1_same.of} studies`);
+has(2, "reference recount and agreement checks timed separately");
+// Scope beside 534x and 312x (basis keys in the same-host file); 547x is the closest to the old combined-checks basis.
+has(2, "the whole off-the-shelf call per study"); has(2, "each result returned to the parent");
+has(2, "re-imaging and scoring only, the calibrated threshold and calls a separate step, excluded");
+has(2, "the closest scope to the old 583× combined-checks basis"); has(2, "top pick the same in 16 of 16 on a matched config"); // docs/external-agreement.md, #174
 has(2, "per decided study with calibration charged");
 has(2, `${sweep.scaling.spread.speedup_64_cores.median.toFixed(1)}×`); has(2, `${sweep.scaling.repeats.length} repeats`);
 has(2, `${sweep.fleet.spread.speedup_compute_span.median.toFixed(1)}× less compute span`);
