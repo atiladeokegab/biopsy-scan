@@ -87,7 +87,7 @@ has(1, "re-images each study"); has(1, "the cutoff and calls are outside the tim
 const exr = ext.summary.ratios;
 has(2, `${Math.round(exr.external_pipeline_vs_fused_full.median)}×`); has(2, `${ext.summary.external_pipeline_s_per_study.median.toFixed(2)} s`); has(2, "same host");
 has(2, `range ${Math.round(exr.external_pipeline_vs_fused_full.min)}–${Math.round(exr.external_pipeline_vs_fused_full.max)}×`);
-has(2, `${Math.round(exr.external_with_checks_vs_fused_full.median)}× with them`); has(2, `${Math.round(exr.external_pipeline_vs_fused_matched.median)}× on the identical 48 studies`);
+has(2, `${Math.round(exr.external_with_checks_vs_fused_full.median)}× with them`); has(2, `${Math.round(exr.external_pipeline_vs_fused_matched.median)}× on the same 48 studies`);
 assert.ok(!plain(rows[2]).includes("cross-run"), "row 2 still says cross-run");
 has(2, `${sweep.fair.spread.ratio.median.toFixed(1)}×`); has(2, "8 workers against 8");
 has(2, "reference recount and agreement checks timed separately");
