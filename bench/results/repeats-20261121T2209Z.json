@@ -23,7 +23,7 @@
   },
   "scope": "Fresh-container timing reruns of the same seeded studies: lab 200 evaluated studies per repeat (null + alternative), fused 3,000 (calibration + null + alternative). Wall per evaluated study = studies_wall_s / evaluated_studies inside the container (re-imaging and scoring; excludes data load, outcome prep, adjacency and warm-up), as the race reports it. lab: 8 single-thread workers, cKDTree + 1,000-shuffle permutation test. fused: 8 workers, fused Numba re-imaging + Cox screen.",
   "ratio_note": "Descriptive: ratio of median walls per study, range from the extreme pairs. It is not an uncertainty interval around the race's 21x, whose lab batch was 2,000 studies, not 200.",
-  "container_class": "Modal A100 + 8 cores + 64 GiB, one fresh container per repeat",
+  "container_class": "Modal A100 + 8 cores + 64 GiB, 8 workers, one fresh container per repeat",
   "headline": "3 fresh-container reruns each at #120 0b27ea1: lab 1.071 s/study (range 1.063-1.261, 200 studies per rerun), fused 0.0424 s/study (range 0.0422-0.0425, 3,000 studies per rerun); ratio of medians 25.2x (extreme pairs 25.0-29.9x). Kept separate: fused at a29f1b7 (before the crop fix) 0.0417 s/study (range 0.0399-0.0422, 3 reruns).",
   "summary": {
     "lab": {
