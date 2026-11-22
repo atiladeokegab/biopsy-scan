@@ -279,8 +279,8 @@ def parity(arms: dict) -> dict:
 LEGACY = {"reimage_cpu_s": "reimage_worker_wall_s", "scoring_cpu_s": "scoring_worker_wall_s",
           "scoring_and_calibration_cpu_s": "scoring_and_calibration_worker_wall_s"}
 COMPUTE_SCOPE = ("compute_wall_s = re-imaging every evaluated study (the pool's wall for CPU-reimaged arms) plus "
-                 "batched scoring; excludes data load, outcome prep, adjacency, warm-up and the local threshold-and-"
-                 "calls summary, which end_to_end_in_container_s adds back (all but the summary)")
+                 "batched scoring. setup_wall_s sums recorded data load, outcome prep, adjacency and warm-up. "
+                 "end_to_end_in_container_s sums compute and setup; the local threshold-and-calls summary is separate.")
 
 
 def stage_times(arm_out: dict) -> dict:
@@ -304,8 +304,8 @@ def complete(st: dict, load_s, warm_s, warm_score_s) -> dict:
     st = {LEGACY.get(k, k): v for k, v in st.items()}
     st["compute_wall_s"] = st["studies_wall_s"] + (st.get("scoring_wall_s") or 0)
     st["wall_per_study_s"] = st["compute_wall_s"] / st["evaluated_studies"]
-    st["end_to_end_in_container_s"] = (st["compute_wall_s"] + st["prep_s"] + st["adjacency_s"]
-                                       + (load_s or 0) + (warm_s or 0) + (warm_score_s or 0))
+    st["setup_wall_s"] = st["prep_s"] + st["adjacency_s"] + (load_s or 0) + (warm_s or 0) + (warm_score_s or 0)
+    st["end_to_end_in_container_s"] = st["compute_wall_s"] + st["setup_wall_s"]
     st["scope"] = COMPUTE_SCOPE
     return st
 

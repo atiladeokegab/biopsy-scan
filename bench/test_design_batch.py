@@ -77,6 +77,7 @@ def test_legacy_stage_names_are_renamed_and_the_end_to_end_adds_every_recorded_s
     st = db.complete(old, load_s=1.0, warm_s=2.0, warm_score_s=None)
     assert "reimage_cpu_s" not in st and st["reimage_worker_wall_s"] == 80.0 and st["scoring_worker_wall_s"] == 2.0
     assert st["compute_wall_s"] == 12.0 and st["wall_per_study_s"] == 3.0 and st["end_to_end_in_container_s"] == 30.0
+    assert st["setup_wall_s"] == 18.0
     assert db.split("numba", st)["reimage_share"] == 80 / 82
 
 
