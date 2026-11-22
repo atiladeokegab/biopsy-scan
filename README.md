@@ -46,13 +46,15 @@ Every number below carries its evidence label — **MEASURED**, **ESTIMATE**, **
 
 ## Reproduce in 3 Commands
 
-Requires [`uv`](https://docs.astral.sh/uv/) (installs pinned Python `3.11.*` automatically from `uv.lock`; cold `uv sync --dev` uses ~`1.5 GB` disk across cache + `.venv`) and Node.js (for `demo/race.test.mjs`):
+Requires `git`, `make`, [`uv`](https://docs.astral.sh/uv/) (installs pinned Python `3.11.*` automatically from `uv.lock` for the test suite; cold `uv sync --dev` uses ~`1.5 GB` disk across cache + `.venv`), a system `python3` on `PATH` (standard library only: the demo data checks run outside uv) and Node.js (the demo's `.mjs` checks; run here on Node `24`):
 
 ```sh
 git clone https://github.com/atiladeokegab/sota-parallelism-nov21.git && cd sota-parallelism-nov21
-make smoke   # uv sync --dev, offline pytest suite, and node demo/race.test.mjs (no raw data, GPU, or env vars needed)
-make demo    # validates demo/data and serves the interactive demo at http://localhost:8000 (PORT=8001 if busy)
+make smoke   # uv sync --dev, the offline pytest suite, then the demo data and page checks (no raw data, GPU, or env vars needed)
+make demo    # rebuilds and validates demo/data, then serves the demo at http://localhost:8000 until Ctrl-C (make demo PORT=8001 if busy)
 ```
+
+A cold `make smoke` took about `7` minutes here (`927` passed, `13` skipped). Expected output that is not an error: `3D view off: no WebGL` (the 3D check runs headless in Node), and `make demo`'s `refused for the race` lines (the collector skipping result files that are not the race's design point).
 
 Real cohort runs additionally fetch the public CODEX datasets into gitignored `data/` (`make data`, Zenodo [`13179600`](https://zenodo.org/records/13179600), [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/); optional `DATA_DIR` overrides `data/`).
 
