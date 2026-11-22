@@ -27,6 +27,7 @@ SPEND = REPO / "bench" / "results" / "modal-spend-rbaselines.json"
 THREADS = {"OMP_NUM_THREADS": "8", "OPENBLAS_NUM_THREADS": "8", "MKL_NUM_THREADS": "8"}  # ours: 8 BLAS threads
 image = (
     modal.Image.from_registry("nvidia/cuda:12.4.1-devel-ubuntu22.04", add_python="3.11")
+    .env({"DEBIAN_FRONTEND": "noninteractive", "TZ": "Etc/UTC"})  # tzdata (pulled in by R) otherwise prompts
     .apt_install("git", "r-base-core", "r-cran-survival", "r-bioc-biobase", "r-cran-runit", "r-cran-foreach",
                  "autoconf")
     .run_commands(f"git clone -q {PERMGPU[0]} /root/permGPU && git -C /root/permGPU checkout -q {PERMGPU[1]}")
