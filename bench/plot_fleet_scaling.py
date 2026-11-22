@@ -15,7 +15,7 @@ def plot(receipt: Path) -> Path:
     if data["status"] not in ("MEASURED", "PARTIAL") or data["pilot"] or not data["summary"]["strong"]:
         raise ValueError("plot requires measured fleet points with at least two repeats")
     fig, axes = plt.subplots(1, 2, figsize=(10, 4.3), layout="constrained")
-    fig.suptitle("Charville re-imaging on Modal A100-40GB workers", fontweight="bold")
+    fig.suptitle(f"Charville re-imaging on Modal {data['hardware_request']['gpu']} workers", fontweight="bold")
     for ax, mode, title in zip(axes, ("strong", "weak"), (
         f"Strong scaling · {data['strong_studies']} fixed studies",
         f"Weak scaling · {data['weak_studies_per_gpu']} studies per GPU",
