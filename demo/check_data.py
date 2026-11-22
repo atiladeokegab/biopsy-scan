@@ -1,4 +1,4 @@
-"""Check demo/data/{grid,tissue,bench,baseline,claims,biomarker}.json against the schemas in demo/README.md.
+"""Check demo/data/{grid,tissue,bench,baseline,claims,biomarker,tma}.json against the schemas in demo/README.md.
 
 Run: python3 -I demo/check_data.py [data_dir]. bench.json is optional (absent = UNMEASURED); so is
 baseline.json (absent = no baseline panel; race.test.mjs still requires the committed one).
@@ -213,13 +213,39 @@ def check_claims(c, w):
     return "power, false_alarms, maxT"
 
 
+def check_tma(d, w):
+    need(d.get("schema") == "preflight-tma/1", w, "schema must be 'preflight-tma/1'")
+    need(d.get("source") == "MEASURED", w, "source must be MEASURED (real Charville cells)")
+    need("13179600" in d.get("note", "") and "CC-BY-4.0" in d.get("note", ""), w, "note: cites Zenodo 13179600, CC-BY-4.0")
+    names, mk, cores = d.get("type_names"), d.get("markers"), d.get("cores")
+    need(isinstance(names, list) and len(names) == 15 and all(isinstance(n, str) for n in names), w, "type_names: 15 strings")
+    need(isinstance(mk, list) and mk and all(isinstance(m, str) for m in mk), w, "markers: non-empty list of strings")
+    need(isinstance(cores, list) and cores, w, "cores: non-empty list")
+    need(isinstance(d.get("pick"), int) and 0 <= d["pick"] < len(cores), w, "pick: index into cores")
+    if "type_groups" in d:
+        need(len(d["type_groups"]) == len(names) and set(d["type_groups"]) <= set(TYPES), w, "type_groups: one of " + str(TYPES) + " per type")
+    width = 3 + len(mk)
+    for i, c in enumerate(cores):
+        cells, size = c.get("cells"), c.get("size_um")
+        need(isinstance(c.get("region"), str), w, f"cores[{i}].region: string")
+        need(isinstance(size, list) and len(size) == 2 and all(num(v) and v > 0 for v in size), w, f"cores[{i}].size_um: [w, h] > 0")
+        need(isinstance(cells, list) and cells and isinstance(c.get("n_cells"), int) and len(cells) <= c["n_cells"], w,
+             f"cores[{i}]: non-empty cells, no more than n_cells")
+        for j, r in enumerate(cells):
+            ok = isinstance(r, list) and len(r) == width and all(isinstance(v, int) for v in r)
+            need(ok and 0 <= r[0] <= size[0] and 0 <= r[1] <= size[1] and 0 <= r[2] < len(names)
+                 and all(0 <= v <= 255 for v in r[3:]), w, f"cores[{i}].cells[{j}]: [x, y, type, markers 0-255] inside size_um")
+    return f"{len(cores)} cores, {sum(len(c['cells']) for c in cores)} cells"
+
+
 if __name__ == "__main__":
     for name, check, required in (("grid.json", check_grid, True), ("tissue.json", check_tissue, True),
                                   ("bench.json", check_bench, False), ("baseline.json", check_baseline, False),
-                                  ("claims.json", check_claims, False), ("biomarker.json", check_biomarker, False)):
+                                  ("claims.json", check_claims, False), ("biomarker.json", check_biomarker, False),
+                                  ("tma.json", check_tma, False)):
         path = DIR / name
         if not path.exists():
             need(not required, path, "missing")
-            print(f"{path}: absent (" + "the page hides that panel)" if name in ("baseline.json", "claims.json", "biomarker.json") else "the page shows UNMEASURED)")
+            print(f"{path}: absent (" + "the page hides that panel)" if name in ("baseline.json", "claims.json", "biomarker.json", "tma.json") else "the page shows UNMEASURED)")
             continue
         print(f"{path}: ok, {check(json.loads(path.read_text()), path)}")
