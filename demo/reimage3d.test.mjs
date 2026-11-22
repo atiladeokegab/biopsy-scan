@@ -92,7 +92,8 @@ assert.match(section, /SYNTHETIC imaging/);
 assert.match(html, /<span class="tag measured" id="reimage-tag">MEASURED cells<\/span>/, "MEASURED tag neither accent nor warning");
 assert.doesNotMatch(section, /\bsmall\b/, "no size word the picture can contradict");
 assert.match(html, /<p class="reimage-fallback" id="reimage-fallback" role="status">Loading the region's cells\.<\/p>/, "a loading line until the view starts");
-assert.match(flat(steps), /each on a different region\. Here both are drawn on this region, only [^.]+, so they overlap\. In this draw they see [^.]+\./, "says why the fields share a region"); assert.match(flat(steps), /In this draw that is [^.]+\./);
+assert.match(flat(steps), /The study images two 400 µm fields of view, which together see [^.]+ cells\. In the study each is on a different region; this region is only [^.]+, so here they overlap\. ?(<\/li>|Each cell)/, "leads with what the fields see, then why they overlap (round-8 T7)");
+assert.doesNotMatch(flat(steps), /the rest\b/, "no 'the rest' without a referent (round-8 T7)"); assert.match(flat(steps), /In this draw that is [^.]+\./);
 assert.match(html, /<h2 id="reimage-title">[^<]*fields[^<]*mis-call/, "the title states the answer");
 assert.match(html, />Replay the fly-through</); assert.match(html, />Pause the fly-through</);
 assert.match(html, /<img id="reimage-still"[^>]*src="img\/reimage-end\.jpg"[^>]*loading="lazy"[^>]*hidden/, "a GPU still waits for the no-WebGL case");
@@ -140,11 +141,12 @@ assert.equal($("reimage-still").hidden, false, "measured input without WebGL: th
 assert.match($("reimage-fallback").textContent, /rendered on a GPU/);
 const study = drawStudy(tissueJSON);
 assert.ok(study.seen > 0 && study.crossed > 0 && study.crossed < study.seen, "the draw sees cells and crosses some groups");
-assert.equal($("reimage-seen").textContent, `${study.perField.map((v) => v.toLocaleString("en-GB")).join(" and ")} of its ${study.n.toLocaleString("en-GB")} cells`, "each field's count, shown without WebGL");
+assert.equal($("reimage-seen").textContent, `${study.seen.toLocaleString("en-GB")} of its ${study.n.toLocaleString("en-GB")}`, "the cells the two fields see together, shown without WebGL");
 assert.equal($("reimage-size").textContent, `${Math.round(study.hi[0] - study.lo[0])} × ${Math.round(study.hi[1] - study.lo[1])} µm`, "the region's measured size gives the reason they overlap");
 assert.equal($("reimage-crossed").textContent, `${study.crossed.toLocaleString("en-GB")} cells`);
 for (const id of ["reimage-n", "reimage-seen", "reimage-size", "reimage-crossed"]) // loading and data-fail show the page's static text beside a still of this draw
   assert.equal(html.match(new RegExp(`id="${id}">([^<]*)<`))[1], $(id).textContent, `${id}: the static text is this draw's count, not a vague stand-in (round-7 T7)`);
+assert.match(css, /@media[^{]*max-width: 900px[^{]*\{[\s\S]*\.reimage-steps li\[aria-current\] \{ order: -1; \}/, "at rest the phone keeps the current step first under the canvas (round-8 B8)");
 assert.match(css, /\.link\s*\{[^}]*text-underline-offset/, "the text buttons' underline clears the descenders (round-7 B12)");
 let got; $ = page();
 mountReimage($, tissueJSON, { reducedMotion: false, search: "?t3d=nope", create: (cv, t, o) => { got = o; return { replay() {}, toggle: () => false }; } });
