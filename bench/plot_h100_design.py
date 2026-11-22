@@ -60,7 +60,7 @@ def plot(paths: list[Path], out: Path) -> None:
         ax.set_xticks(ticks, [str(n) for n in ticks])
         ax.yaxis.set_major_formatter(StrMethodFormatter("{x:,.0f}"))
         ax.grid(axis="y", alpha=.22)
-        ax.legend(loc="upper left", fontsize=8)
+        ax.legend(loc="upper left" if ax is axes[0] else "upper right", fontsize=8)
     counts = " · ".join(f"{n} ({len(points[n])})" for n in sizes)
     fig.supxlabel(f"GPU count (verified runs)   {counts}   |   End-to-end includes setup, transfer and global threshold", fontsize=8)
     fig.savefig(out, dpi=170)
