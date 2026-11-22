@@ -31,7 +31,169 @@
         "est_usd": 0.397,
         "result": "bench/results/matched-e2e-20261121T201925Z.json"
       }
+    },
+    {
+      "utc": "2026-11-22T04:17Z",
+      "run": "matched lab vs Preflight, compute through scoring, 8 cores, 64 GiB, no GPU",
+      "plan": {
+        "lab": {
+          "null": 50,
+          "alternative": 50
+        },
+        "preflight": {
+          "calibration": 1000,
+          "null": 1000,
+          "alternative": 1000
+        }
+      },
+      "containers": 1,
+      "cap_usd": 8.0,
+      "est_hours": 1.0,
+      "est_usd": 0.889,
+      "basis": "8 cores + 64 GiB at the 3600 s function-timeout ceiling",
+      "source_commit": "36478161d1e9892cdd9f7318afb61b78eba9a550",
+      "actual": {
+        "modal_wall_s": 1546,
+        "est_usd": 0.382,
+        "result": "bench/results/sweep-repeats-raw/matched/r1-matched-e2e-20261122T041701Z.json"
+      },
+      "repeat": "sweep-repeats matched-1"
+    },
+    {
+      "utc": "2026-11-22T04:17Z",
+      "run": "matched lab vs Preflight, compute through scoring, 8 cores, 64 GiB, no GPU",
+      "plan": {
+        "lab": {
+          "null": 50,
+          "alternative": 50
+        },
+        "preflight": {
+          "calibration": 1000,
+          "null": 1000,
+          "alternative": 1000
+        }
+      },
+      "containers": 1,
+      "cap_usd": 8.0,
+      "est_hours": 1.0,
+      "est_usd": 0.889,
+      "basis": "8 cores + 64 GiB at the 3600 s function-timeout ceiling",
+      "source_commit": "36478161d1e9892cdd9f7318afb61b78eba9a550",
+      "actual": {
+        "modal_wall_s": 1463,
+        "est_usd": 0.361,
+        "result": "bench/results/sweep-repeats-raw/matched/r2-matched-e2e-20261122T041701Z.json"
+      },
+      "repeat": "sweep-repeats matched-2"
+    },
+    {
+      "utc": "2026-11-22T04:17Z",
+      "run": "matched lab vs Preflight, compute through scoring, 8 cores, 64 GiB, no GPU",
+      "plan": {
+        "lab": {
+          "null": 50,
+          "alternative": 50
+        },
+        "preflight": {
+          "calibration": 1000,
+          "null": 1000,
+          "alternative": 1000
+        }
+      },
+      "containers": 1,
+      "cap_usd": 8.0,
+      "est_hours": 1.0,
+      "est_usd": 0.889,
+      "basis": "8 cores + 64 GiB at the 3600 s function-timeout ceiling",
+      "source_commit": "36478161d1e9892cdd9f7318afb61b78eba9a550",
+      "actual": {
+        "modal_wall_s": 1610,
+        "est_usd": 0.397,
+        "result": "bench/results/sweep-repeats-raw/matched/r3-matched-e2e-20261122T041702Z.json"
+      },
+      "repeat": "sweep-repeats matched-3"
+    },
+    {
+      "utc": "2026-11-22T04:18Z",
+      "run": "matched lab (8 worker(s)) vs Preflight (8 workers), compute through scoring, 8 cores, 64 GiB, no GPU",
+      "plan": {
+        "lab": {
+          "null": 200,
+          "alternative": 200
+        },
+        "preflight": {
+          "calibration": 1000,
+          "null": 1000,
+          "alternative": 1000
+        }
+      },
+      "containers": 1,
+      "cap_usd": 8.0,
+      "est_hours": 1.0,
+      "est_usd": 0.889,
+      "basis": "8 cores + 64 GiB at the 3600 s function-timeout ceiling",
+      "source_commit": "d4da1663caf82fdf98d945a36d7113f05a7103c8",
+      "actual": {
+        "modal_wall_s": 1161,
+        "est_usd": 0.287,
+        "result": "bench/results/sweep-repeats-raw/fair/r1-matched-e2e-20261122T041846Z.json"
+      },
+      "repeat": "sweep-repeats fair-1"
+    },
+    {
+      "utc": "2026-11-22T04:18Z",
+      "run": "matched lab (8 worker(s)) vs Preflight (8 workers), compute through scoring, 8 cores, 64 GiB, no GPU",
+      "plan": {
+        "lab": {
+          "null": 200,
+          "alternative": 200
+        },
+        "preflight": {
+          "calibration": 1000,
+          "null": 1000,
+          "alternative": 1000
+        }
+      },
+      "containers": 1,
+      "cap_usd": 8.0,
+      "est_hours": 1.0,
+      "est_usd": 0.889,
+      "basis": "8 cores + 64 GiB at the 3600 s function-timeout ceiling",
+      "source_commit": "d4da1663caf82fdf98d945a36d7113f05a7103c8",
+      "actual": {
+        "modal_wall_s": 965,
+        "est_usd": 0.238,
+        "result": "bench/results/sweep-repeats-raw/fair/r2-matched-e2e-20261122T041849Z.json"
+      },
+      "repeat": "sweep-repeats fair-2"
+    },
+    {
+      "utc": "2026-11-22T04:18Z",
+      "run": "matched lab (8 worker(s)) vs Preflight (8 workers), compute through scoring, 8 cores, 64 GiB, no GPU",
+      "plan": {
+        "lab": {
+          "null": 200,
+          "alternative": 200
+        },
+        "preflight": {
+          "calibration": 1000,
+          "null": 1000,
+          "alternative": 1000
+        }
+      },
+      "containers": 1,
+      "cap_usd": 8.0,
+      "est_hours": 1.0,
+      "est_usd": 0.889,
+      "basis": "8 cores + 64 GiB at the 3600 s function-timeout ceiling",
+      "source_commit": "d4da1663caf82fdf98d945a36d7113f05a7103c8",
+      "actual": {
+        "modal_wall_s": 960,
+        "est_usd": 0.237,
+        "result": "bench/results/sweep-repeats-raw/fair/r3-matched-e2e-20261122T041851Z.json"
+      },
+      "repeat": "sweep-repeats fair-3"
     }
   ],
-  "running_total_usd": 0.397
+  "running_total_usd": 2.299
 }
