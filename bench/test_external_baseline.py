@@ -85,9 +85,10 @@ def test_ratios_carry_both_arms_the_cross_run_label_and_the_different_statistic_
     r = eb.ratios(eb.LAB_S_PER_STUDY["value"], 8, 1)
     assert r["ratio_vs_lab"] == pytest.approx(1) and r["ratio_vs_fused"] == pytest.approx(0.8809 / 0.0419)
     assert r["settings"]["cores"] == 8 and r["settings"]["squidpy.gr.nhood_enrichment"]["n_perms"] == 1000
-    h = eb.headline({**r, "seconds_per_study": 0.8809, "instrumented_workflow_s_per_study": 1.0,
+    h = eb.headline({**r, "seconds_per_study": 0.8809, "derived_off_the_shelf_s_per_study": 0.7,
                      "worker_study_s": {"median": 7, "min": 6, "max": 9}})
     assert "cross-run, same container class" in h and "not Preflight's speedup" in h and "range 6-9 s" in h
+    assert "MEASURED, instrumented workflow" in h and "0.7 s/study, DERIVED" in h
 
 
 def test_failed_fits_are_excluded_from_agreement_ranks_and_counted():
@@ -106,12 +107,13 @@ def test_failed_fits_are_excluded_from_agreement_ranks_and_counted():
     assert s["top1_same"] == {"k": 1, "of": 1} and s["z_excluded"] == 15
 
 
-def test_headline_per_study_is_the_off_the_shelf_worker_time_not_the_instrumented_pool():
+def test_headline_per_study_is_the_measured_pool_wall_and_worker_time_is_a_separate_derived_rate():
     recs = [_rec(eb.agreement(np.ones((3, 2)), np.ones((3, 2)), np.ones(2), np.ones(2)), study_s=s) for s in (8.0, 12.0)]
     s = eb.summarize({"records": recs, "pool_wall_s": 30.0, "workers": 2, "plant_feature": 0})
-    assert s["seconds_per_study"] == pytest.approx(20.0 / 2 / 2)  # summed worker time / workers / studies
-    assert s["instrumented_workflow_s_per_study"] == pytest.approx(15.0)
-    assert s["ratio_vs_lab"] == pytest.approx(5.0 / eb.LAB_S_PER_STUDY["value"])
+    assert s["seconds_per_study"] == pytest.approx(15.0)  # pool wall / studies: measured
+    assert s["derived_off_the_shelf_s_per_study"] == pytest.approx(20.0 / 2 / 2)  # summed worker time / workers / studies
+    assert s["ratio_vs_lab"] == pytest.approx(15.0 / eb.LAB_S_PER_STUDY["value"])
+    assert "DERIVED" in s["derived_basis"] and "MEASURED" in s["seconds_per_study_basis"]
 
 
 def _rec(agreement, study_s=1.0):

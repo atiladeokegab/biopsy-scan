@@ -239,8 +239,10 @@ def ratios(per: float, workers: int, n_jobs: int) -> dict:
 def headline(s: dict) -> str:
     w = s["worker_study_s"]
     return (f"Off the shelf (squidpy + lifelines, {s['settings']['cores']} cores): {s['seconds_per_study']:.2f} s/study "
-            f"from the worker timers (one study per worker: median {w['median']:.0f} s, range {w['min']:.0f}-"
-            f"{w['max']:.0f} s; instrumented workflow {s['instrumented_workflow_s_per_study']:.2f} s/study); "
+            f"MEASURED, instrumented workflow, includes our reference recount and agreement (one study per worker: "
+            f"median {w['median']:.0f} s, range {w['min']:.0f}-{w['max']:.0f} s; off the shelf only "
+            f"{s['derived_off_the_shelf_s_per_study']:.1f} s/study, DERIVED: worker time / {s['settings']['cores']}, "
+            f"assumes perfect utilisation); "
             f"{s['ratio_vs_lab']:.1f}x the hand-written lab arm ({LAB_S_PER_STUDY['value']} s) and "
             f"{s['ratio_vs_fused']:.0f}x the fused path ({FUSED_S_PER_STUDY['value']} s), {CROSS_RUN}; {COMPARISON}")
 
@@ -248,16 +250,17 @@ def headline(s: dict) -> str:
 def summarize(out: dict) -> dict:
     recs, plant = out["records"], out["plant_feature"]
     n = len(recs)
-    per = sum(r["study_s"] for r in recs) / out["workers"] / n  # off-the-shelf work only, from the worker timers
+    per = out["pool_wall_s"] / n  # MEASURED: the pool's wall, which also runs our recount and agreement
     by = {st: [r for r in recs if r["stream"] == st] for st in ("null", "alternative")}
     ag = [r["agreement"] for r in recs]
     med = lambda k: float(np.nanmedian([a[k] for a in ag if a[k] is not None])) if ag else None
     return {
         "studies": n, "seconds_per_study": per,
-        "seconds_per_study_basis": "summed off-the-shelf worker time (cells, squidpy, lifelines) / workers / studies",
-        "instrumented_workflow_s_per_study": out["pool_wall_s"] / n,
-        "instrumented_workflow_basis": "pool wall / studies; adds our own reference recount, score and agreement "
-                                       "per study, and the pool's tail",
+        "seconds_per_study_basis": "MEASURED: pool wall / studies; instrumented workflow, includes our reference "
+                                   "recount and agreement per study",
+        "derived_off_the_shelf_s_per_study": sum(r["study_s"] for r in recs) / out["workers"] / n,
+        "derived_basis": "DERIVED: summed off-the-shelf worker time (cells, squidpy, lifelines) / workers / studies; "
+                         "assumes perfect utilisation",
         "pool_wall_s": out["pool_wall_s"], "workers": out["workers"],
         "worker_study_s": {"median": float(np.median([r["study_s"] for r in recs])),
                            "min": float(min(r["study_s"] for r in recs)), "max": float(max(r["study_s"] for r in recs))},
