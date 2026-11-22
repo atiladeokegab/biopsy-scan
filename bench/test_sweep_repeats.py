@@ -156,3 +156,9 @@ def test_a_prior_that_is_not_the_pinned_bytes_is_refused(monkeypatch):
     monkeypatch.setitem(s.PRIORS, "matched", (s.PRIORS["matched"][0], "0" * 64))
     with pytest.raises(s.Bad, match="pinned"):
         s.load_prior("matched")
+
+
+def test_the_committed_result_is_what_the_reducer_makes_of_the_committed_raw_files(tmp_path):
+    out = tmp_path / "again.json"
+    assert s.main([str(s.RESULTS / "sweep-repeats-raw"), str(out)]) == 0
+    assert out.read_text() == (s.RESULTS / "sweep-repeats.json").read_text()
