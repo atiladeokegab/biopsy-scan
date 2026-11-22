@@ -351,6 +351,7 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
   .wf { grid-template-columns: minmax(0, 1fr); grid-template-areas: "copy" "stage" "steps"; gap: var(--space-4); }
   .wf-text h3 { margin-top: var(--space-4); }
   .wf-legend { display: none; }
-  .wf-result { top: auto; bottom: var(--space-3); }
+  .wf-vis { aspect-ratio: 4 / 3; }
+  .wf-result { display: none; } /* the same result is in the step text above */
   .wf-node { font-size: var(--text-xs); padding-right: var(--space-1); }
 }
