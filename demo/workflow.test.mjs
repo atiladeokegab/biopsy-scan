@@ -40,11 +40,12 @@ assert.equal(texts.length, 4, "four step texts");
 for (const banned of [/multivision/i, /capture the full tissue context/i, /risk[- ]score/i, /from discovery to deployment/i, /complete lifecycle/i, /cloud/i])
   assert.doesNotMatch(plain(wf), banned);
 
-// The screen result is the merged file's.
-const ch = JSON.parse(readFileSync(new URL("../audit/results/charville.json", import.meta.url), "utf8"));
+// The screen result is the merged v2 file's: 3,780 patterns with protein channels.
+const ch = JSON.parse(readFileSync(new URL("../results/charville-v2.json", import.meta.url), "utf8"));
 const s2 = plain(texts[1][2]) + " " + plain(vis[1][2]);
 assert.ok(s2.includes(`z ${ch.maxT.statistic.toFixed(2)}`), `step 2 lacks z ${ch.maxT.statistic.toFixed(2)}: ${s2}`);
-assert.ok(s2.includes(`maxT p ${ch.maxT.p}`), `step 2 lacks maxT p ${ch.maxT.p}`);
+assert.ok(s2.includes(`maxT p ${+ch.maxT.p.toFixed(3)}`), `step 2 lacks maxT p ${+ch.maxT.p.toFixed(3)}`);
+assert.ok(s2.includes("3,780") && /recorded outcomes/.test(s2), "step 2 names 3,780 patterns and recorded outcomes");
 assert.match(s2, /within chance/i);
 assert.ok(ch.exploratory && /exploratory/i.test(s2), "step 2 says exploratory");
 

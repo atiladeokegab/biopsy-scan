@@ -4,19 +4,24 @@ import { TYPE_COLORS } from "./palette.js";
 import { drawCore, glow, sizeCanvas } from "./step1.js";
 
 const SCAN_MS = 2600;
-// wide: the core sits right, leaving the left for the result card and the legend; narrow: centred (legend hidden)
-const cxOf = (w) => w / 2; // centred; the result card sits top-right, the legend bottom-left
+const cxOf = (w) => w / 2; // centred; the legend and result card sit in a column beside the canvas, never over it
 
 export function mount(el, data) {
   const core = data.tma.cores[data.tma.pick];
-  const result = el.querySelector(".wf-result");
-  const legend = el.appendChild(document.createElement("ul"));
+  const foot = el.parentElement.querySelector(".wf-foot"), result = foot.querySelector(".wf-result");
+  const legend = foot.insertBefore(document.createElement("ul"), result);
   legend.className = "wf-legend";
-  data.tma.type_names.forEach((t, i) => {
+  // Grouped by family: one row each for tumour, immune and stroma. The tumour subtypes share one label.
+  const { type_names: names, type_groups: groups = [] } = data.tma;
+  for (const [g, head] of [["tumour", "Tumour"], ["immune", "Immune"], ["stroma", "Stroma"]]) {
+    const idx = names.map((_, i) => i).filter((i) => groups[i] === g);
+    if (!idx.length) continue;
     const li = legend.appendChild(document.createElement("li"));
-    li.innerHTML = `<i style="background:${TYPE_COLORS[i]}"></i>`;
-    li.append(t);
-  });
+    li.appendChild(document.createElement("b")).textContent = head;
+    const sw = (i) => { const k = document.createElement("i"); k.style.background = TYPE_COLORS[i]; k.title = names[i]; return k; };
+    if (g === "tumour") { const sp = li.appendChild(document.createElement("span")); idx.forEach((i) => sp.append(sw(i))); sp.append(`${idx.length} types`); }
+    else idx.forEach((i) => { const sp = li.appendChild(document.createElement("span")); sp.append(sw(i), names[i].replace(/ cell$/, "")); });
+  }
   let raf = 0, timer = 0, layers = null;
   const layer = (w, h, d, mode, withGlow) => {
     const c = document.createElement("canvas");
@@ -52,9 +57,9 @@ export function mount(el, data) {
     play() {
       this.stop();
       if (!layers || layers.w !== el.clientWidth || layers.h !== el.clientHeight) build(); // both: a stale height stretches the core
-      result.hidden = true; legend.classList.remove("on");
+      result.classList.remove("on"); legend.classList.remove("on");
       raf = requestAnimationFrame((now) => frame(now)(now));
-      timer = setTimeout(() => { result.hidden = false; legend.classList.add("on"); }, SCAN_MS + 300);
+      timer = setTimeout(() => { result.classList.add("on"); legend.classList.add("on"); }, SCAN_MS + 300);
     },
     stop() { cancelAnimationFrame(raf); clearTimeout(timer); },
   };

@@ -5,7 +5,11 @@ export const SEEN_KEY = "preflight-tour-v1";
 
 export const STEPS = [
   { target: "#workflow-app", title: "Start here: the Preflight workflow",
-    text: "Four steps on real tumour tissue: the tissue, decoding it, stress-testing the study design, and the routine stains it comes down to. Each step labels its numbers as measured or simulated." },
+    text: "It plays itself: four steps on real Charville tumour tissue, from the measured cells to a study design tested before the trial." },
+  { target: ".wf-steps", title: "Four steps, any order",
+    text: "Tissue context, Decode the tumour, Stress-test, Routine stains. Click a step to jump to it; once the tour is closed, the arrow keys step too." },
+  { target: ".wf-stage", title: "Every picture says what is real",
+    text: "The tags above each picture say what is measured and what is simulated, analytic, an estimate or an illustration. The cells are real Charville cells throughout." },
   { target: ".bio", title: "The pattern",
     text: "A spatial pattern found in real Charville tumour tissue, with the survival curves it splits. It is exploratory: the cutoff was chosen on the same cohort, so no p-value is claimed." },
   { target: ".speed", title: "Run the studies",
@@ -53,14 +57,31 @@ function els() {
   return ui;
 }
 
+// Where the spotlight and the card go, so the card never covers what it describes: beside the visible part of
+// the target if there is room (desktop), else below it, else above it, else pinned to the bottom with the
+// spotlight cut short above it. r: the target's viewport rect; top: the bar's bottom edge.
+export function layout(r, cw, ch, vw, vh, top, gap = 12, pad = 6) {
+  const s = { top: Math.max(r.top - pad, top + 2), bottom: Math.min(r.bottom + pad, vh - 2), left: r.left - pad, right: r.right + pad };
+  const midY = Math.max(gap, Math.min(Math.max(s.top, top + gap), vh - ch - gap));
+  if (vw - s.right >= cw + 2 * gap) return { spot: s, card: { top: midY, left: s.right + gap } };
+  if (s.left >= cw + 2 * gap) return { spot: s, card: { top: midY, left: s.left - gap - cw } };
+  const left = Math.max(gap, Math.min((vw - cw) / 2, vw - cw - gap));
+  if (vh - s.bottom >= ch + 2 * gap) return { spot: s, card: { top: s.bottom + gap, left } };
+  if (s.top - top >= ch + 2 * gap) return { spot: s, card: { top: s.top - gap - ch, left } };
+  const cardTop = Math.max(gap, vh - ch - gap); // a card taller than the screen scrolls inside (max-height)
+  return { spot: { ...s, bottom: Math.max(s.top, Math.min(s.bottom, cardTop - gap)) }, card: { top: cardTop, left } };
+}
+
 function place() {
   if (at < 0) return;
   const t = document.querySelector(STEPS[at].target);
-  const r = t ? t.getBoundingClientRect() : null;
-  const pad = 6;
-  Object.assign(ui.spot.style, r
-    ? { top: `${r.top - pad}px`, left: `${r.left - pad}px`, width: `${r.width + 2 * pad}px`, height: `${r.height + 2 * pad}px` }
-    : { top: "50%", left: "50%", width: "0px", height: "0px" });
+  const bar = document.querySelector(".bar");
+  const barB = bar && STEPS[at].target !== "#tour-btn" ? Math.max(0, bar.getBoundingClientRect().bottom) : 0;
+  const r = t ? t.getBoundingClientRect() : { top: innerHeight / 2, bottom: innerHeight / 2, left: innerWidth / 2, right: innerWidth / 2 };
+  const vw = document.documentElement.clientWidth;
+  const { spot, card } = layout(r, ui.card.offsetWidth, ui.card.offsetHeight, vw, innerHeight, barB);
+  Object.assign(ui.spot.style, { top: `${spot.top}px`, left: `${spot.left}px`, width: `${spot.right - spot.left}px`, height: `${spot.bottom - spot.top}px` });
+  Object.assign(ui.card.style, { top: `${card.top}px`, left: `${card.left}px` });
 }
 
 function loop() { place(); raf = requestAnimationFrame(loop); }
@@ -75,8 +96,9 @@ function show(i) {
   card.querySelector(".tour-next").textContent = i === STEPS.length - 1 ? "Done" : "Next";
   const t = document.querySelector(s.target);
   const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
-  // Leave room at the bottom for the card on phones.
-  if (t) t.scrollIntoView({ block: t.offsetHeight > innerHeight * 0.55 ? "start" : "center", behavior: smooth ? "smooth" : "auto" });
+  // Top of the target under the bar (scroll-padding-top), so the card fits beside or below it.
+  // The bar's own button only needs to be in view (the bar is not sticky on short screens).
+  if (t) t.scrollIntoView({ block: s.target === "#tour-btn" ? "nearest" : "start", behavior: smooth ? "smooth" : "auto" });
   document.body.classList.add("touring");
   card.querySelector(".tour-next").focus({ preventScroll: true });
 }

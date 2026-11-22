@@ -1,30 +1,34 @@
-/* Preflight Demo Design Tokens (authoritative for demo/; defined in docs/design.md). */
+/* Preflight Demo Design Tokens (authoritative for demo/; defined in docs/design.md), matched to the team deck slides-v2:
+   ground #05070B, ink #F3EFE6, body #B8C0CC, hairlines, emerald/coral/gold, Instrument Serif / Inter / JetBrains Mono. */
 :root {
   /* Palette: dark slate lab ground, one emerald accent reserved for primary CTA / found / our cohort */
-  --bg: #0B1018;
-  --bg-canvas: #070B11;
-  --surface: #121A25;
-  --surface-elevated: #131B26;
-  --border: #22303F;
+  --bg: #05070B;
+  --bg-canvas: #05070B;
+  --surface: #0A0E15;
+  --surface-elevated: #0E131B;
+  --border: rgba(243, 239, 230, 0.12); /* the deck's hairline */
+  --dim: #1B2330;
 
-  --text-head: #F4F7FA;
-  --text-body: #B9C6D4;
-  --text-muted: #8898AA;
+  --text-head: #F3EFE6;
+  --text-body: #B8C0CC;
+  --text-muted: #7D8796; /* the deck's #6E7887, lifted to 4.5:1 on --surface */
 
   /* Single UI accent: primary action, found study tiles, "our cohort" mark */
   --accent: #2BD4A4;
-  --accent-ink: #071310;
+  --accent-ink: #05070B;
 
   /* Domain spatial cell-class & status hues */
-  --tumour: #FF7A59;
-  --immune: #F5C451;
+  --tumour: #E86F51;
+  --immune: #E9B949;
   --stroma: #56687A;
   --tile-miss: #56687A;
-  --state-warn: #F5C451;
-  --state-error: #FF7A59;
+  --state-warn: #E9B949;
+  --state-error: #E86F51;
 
   /* Typography: Inter with system sans fallback, 6-step scale (minimum 12px everywhere) */
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-serif: "Instrument Serif", Georgia, serif;           /* titles, as in the deck */
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;     /* labels and tags */
   --text-xs: 0.75rem;   /* 12px: captions, axis ticks, provenance tags */
   --text-sm: 0.875rem;  /* 14px: secondary metadata, chart labels */
   --text-base: 1rem;    /* 16px: body copy, slider labels, mobile minimum */
@@ -52,7 +56,7 @@
   /* Geometry & focus */
   --radius-control: 6px;
   --radius-surface: 10px;
-  --focus-ring: 2px solid #F4F7FA;
+  --focus-ring: 2px solid #F3EFE6;
   --focus-offset: 3px;
 
   /* Layout */

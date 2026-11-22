@@ -20,7 +20,7 @@
       <a href="#preflight">Your study</a>
       <a href="#explore">Explore</a>
     </nav>
-    <button type="button" id="tour-btn" class="tour-btn">Start tour</button>
+    <button type="button" id="tour-btn" class="tour-btn" aria-label="Start tour"><span class="tb-long">Start tour</span><span class="tb-short" aria-hidden="true">Tour</span></button>
     <span class="tag" id="provenance">SYNTHETIC</span>
   </header>
 
@@ -28,6 +28,9 @@
 
   <main class="page">
   <section id="workflow-app" aria-label="Preflight workflow"><div id="wf-root"></div></section>
+  <link rel="preload" href="data/tma.json" as="fetch" crossorigin="anonymous">
+  <link rel="modulepreload" href="workflow/step1.js">
+  <link rel="modulepreload" href="workflow/palette.js">
   <script type="module" src="workflow/main.js"></script>
 
   <section class="hero" id="pattern" aria-labelledby="title">
