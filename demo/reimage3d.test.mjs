@@ -65,7 +65,9 @@ const app = readFileSync(new URL("./app.js", import.meta.url), "utf8"), src = re
 assert.match(html, /<link rel="icon" href="data:,">/, "declares an icon, so Chrome asks for no /favicon.ico and logs no 404 (L4 run 10 FAILED on it)");
 const title = html.match(/<h2 id="reimage-title">([^<]+)<\/h2>/)[1];
 assert.doesNotMatch(title, /\band\b|\bsome\b/, "the heading is one idea with no vague quantity (round-6 T7)");
-assert.match(src, /label\.position\.set\(i \? half \+ 6 : 0, H, i \? 0 : half \+ 6\)/, "each label hangs on its own frame's edge, the one outside the other frame (round-6 change 2)");
+const gap = src.match(/label\.position\.set\(i \? half \+ (\d+) : 0, H, i \? 0 : half \+ (\d+)\)/);
+assert.ok(gap && gap[1] === gap[2], "each label sits off its own frame's edge, the one outside the other frame (round-6 change 2)");
+assert.ok(+gap[1] >= 40 && /label\.center\.set\(0\.5, 0\.5\)/.test(src), "the label is centred clear of its frame edge, so no edge crosses it (round-9 B8)");
 for (const id of ["speed-race", "speed-interim", "run", "verdict", "tissue-caption", "reimage", "reimage-steps"])
   assert.equal(html.split(`id="${id}"`).length, 2, `exactly one #${id}`);
 assert.ok(html.indexOf('id="speed-race"') < html.indexOf('id="reimage"'), "the 3D view sits below the race");
