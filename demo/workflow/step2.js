@@ -12,11 +12,17 @@ export function mount(el, data) {
   const result = el.querySelector(".wf-result");
   const legend = el.appendChild(document.createElement("ul"));
   legend.className = "wf-legend";
-  data.tma.type_names.forEach((t, i) => {
+  // Grouped by family: one row each for tumour, immune and stroma. The tumour subtypes share one label.
+  const { type_names: names, type_groups: groups = [] } = data.tma;
+  for (const [g, head] of [["tumour", "Tumour"], ["immune", "Immune"], ["stroma", "Stroma"]]) {
+    const idx = names.map((_, i) => i).filter((i) => groups[i] === g);
+    if (!idx.length) continue;
     const li = legend.appendChild(document.createElement("li"));
-    li.innerHTML = `<i style="background:${TYPE_COLORS[i]}"></i>`;
-    li.append(t);
-  });
+    li.appendChild(document.createElement("b")).textContent = head;
+    const sw = (i) => { const k = document.createElement("i"); k.style.background = TYPE_COLORS[i]; k.title = names[i]; return k; };
+    if (g === "tumour") { const sp = li.appendChild(document.createElement("span")); idx.forEach((i) => sp.append(sw(i))); sp.append(`${idx.length} types`); }
+    else idx.forEach((i) => { const sp = li.appendChild(document.createElement("span")); sp.append(sw(i), names[i].replace(/ cell$/, "")); });
+  }
   let raf = 0, timer = 0, layers = null;
   const layer = (w, h, d, mode, withGlow) => {
     const c = document.createElement("canvas");

@@ -62,17 +62,21 @@ export async function start(root = document.getElementById("wf-root")) {
     return { play() {}, stop() {} };
   };
 
+  // The step text and controls show at once; each picture starts when its module has mounted.
+  show(0, !matchMedia("(prefers-reduced-motion: reduce)").matches);
   try {
     const [tma, preflight] = await Promise.all([getJSON(new URL("../data/tma.json", import.meta.url)), getJSON(new URL("../data/preflight.json", import.meta.url))]);
     const data = { tma, preflight };
-    for (const [i, file] of ["step1.js", "step2.js", "step3.js", "step4.js"].entries()) {
+    // Fetched together; each step mounts as soon as its module arrives, so step 1 plays without waiting on 2-4.
+    await Promise.all(["step1.js", "step2.js", "step3.js", "step4.js"].map(async (file, i) => {
       try {
         mods[i] = (await import(new URL(`./${file}`, import.meta.url))).mount(vis[i].querySelector(".wf-canvas"), data);
       } catch (e) {
         console.warn(`workflow ${file}:`, e);
         mods[i] = stub(vis[i].querySelector(".wf-canvas"), "This step is being prepared.");
       }
-    }
+      if (i === current) mods[i].play(); // its step is already showing
+    }));
   } catch (e) {
     console.warn("workflow data:", e);
     vis.forEach((v, i) => { mods[i] = stub(v.querySelector(".wf-canvas"), "Tissue data not loaded."); });
@@ -87,7 +91,6 @@ export async function start(root = document.getElementById("wf-root")) {
     const next = current + (e.key === "ArrowRight" ? 1 : -1);
     if (next >= 0 && next < nodes.length) { e.preventDefault(); show(next, false); }
   });
-  show(0, !matchMedia("(prefers-reduced-motion: reduce)").matches);
   return { show };
 }
 

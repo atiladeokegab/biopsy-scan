@@ -353,11 +353,15 @@ h1 { font-size: var(--text-xl); line-height: var(--leading-display-sm); font-wei
 .wf-result b { color: var(--text-head); font-size: var(--text-sm); }
 .wf-legend {
   position: absolute; left: var(--space-3); bottom: var(--space-3); z-index: 2; margin: 0; padding: 0; list-style: none;
-  display: grid; gap: 2px; color: var(--text-body); font-size: var(--text-xs);
+  display: grid; gap: var(--space-1); color: var(--text-body); font-size: var(--text-xs);
   opacity: 0; transition: opacity 0.5s;
 }
 .wf-legend.on { opacity: 1; }
+.wf-legend li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--space-3); max-width: 300px; }
+.wf-legend b { width: 4.5em; color: var(--text-head); font-weight: 600; }
+.wf-legend span { white-space: nowrap; }
 .wf-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: var(--space-1); }
+.wf-legend span i + i { margin-left: -2px; }
 .wf-stub { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-muted); font-size: var(--text-sm); }
 .wf-credit { margin-top: var(--space-2); color: var(--text-muted); font-size: var(--text-xs); }
 .wf-steps { grid-area: steps; display: grid; grid-template-columns: repeat(4, 1fr); margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--border); }

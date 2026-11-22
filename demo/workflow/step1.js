@@ -15,8 +15,9 @@ export function drawCore(ctx, core, cx, cy, r, mode) {
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.clip();
   ctx.fillStyle = mode === "seg" ? "#05070b" : "#020306";
   ctx.fillRect(cx - r, cy - r, 2 * r, 2 * r);
-  // a cell's footprint: the core's area shared among the cells it really holds, shown at the subsampled count
-  const cell = Math.max(0.8, (2 * r) / Math.sqrt(core.cells.length) * (mode === "seg" ? 0.5 : 0.42));
+  // a cell's footprint: the core's area shared among the cells it really holds, shown at the subsampled count;
+  // drawn a little over half the mean spacing so neighbouring cells touch, as in tissue, with no gaps between them
+  const cell = Math.max(0.8, (2 * r) / Math.sqrt(core.cells.length) * (mode === "seg" ? 0.68 : 0.6));
   ctx.globalCompositeOperation = mode === "seg" ? "source-over" : "lighter";
   // additive cells overlap when a small core holds many cells (the 0.8 px floor): dim each by its overlap so the sum never whites out
   const alpha = 0.85 / Math.max(1, (core.cells.length * cell * cell) / (r * r));

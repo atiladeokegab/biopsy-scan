@@ -28,6 +28,9 @@
 
   <main class="page">
   <section id="workflow-app" aria-label="Preflight workflow"><div id="wf-root"></div></section>
+  <link rel="preload" href="data/tma.json" as="fetch" crossorigin="anonymous">
+  <link rel="modulepreload" href="workflow/step1.js">
+  <link rel="modulepreload" href="workflow/palette.js">
   <script type="module" src="workflow/main.js"></script>
 
   <section class="hero" id="pattern" aria-labelledby="title">
