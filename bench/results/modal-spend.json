@@ -406,6 +406,54 @@
         "basis": "1 container x local wall (upper bound incl. queueing) x $2.668/h",
         "result": "bench/results/modal-hn-power-20261122T053210Z.json"
       }
+    },
+    {
+      "utc": "2026-11-22T04:22Z",
+      "run": "fleet N=1 x A100-40GB, 1000 studies",
+      "est_usd": 0.68,
+      "basis": "0.25 GPU-h x $2.73/h",
+      "running_total_usd": 52.12,
+      "repeat": "sweep-repeats fleet-1"
+    },
+    {
+      "utc": "2026-11-22T04:36Z",
+      "run": "fleet N=8 x A100-40GB, 1000 studies",
+      "est_usd": 1.48,
+      "basis": "0.54 GPU-h x $2.73/h",
+      "running_total_usd": 53.6,
+      "repeat": "sweep-repeats fleet-1"
+    },
+    {
+      "utc": "2026-11-22T04:41Z",
+      "run": "fleet N=1 x A100-40GB, 1000 studies",
+      "est_usd": 0.68,
+      "basis": "0.25 GPU-h x $2.73/h",
+      "running_total_usd": 54.28,
+      "repeat": "sweep-repeats fleet-2 (FAILED: fleet.runs.8.same_gpu_model, no timing published)"
+    },
+    {
+      "utc": "2026-11-22T04:56Z",
+      "run": "fleet N=8 x A100-40GB, 1000 studies",
+      "est_usd": 1.48,
+      "basis": "0.54 GPU-h x $2.73/h",
+      "running_total_usd": 55.76,
+      "repeat": "sweep-repeats fleet-2 (FAILED: fleet.runs.8.same_gpu_model, no timing published)"
+    },
+    {
+      "utc": "2026-11-22T05:01Z",
+      "run": "fleet N=1 x A100-40GB, 1000 studies",
+      "est_usd": 0.68,
+      "basis": "0.25 GPU-h x $2.73/h",
+      "running_total_usd": 56.44,
+      "repeat": "sweep-repeats fleet-3"
+    },
+    {
+      "utc": "2026-11-22T05:15Z",
+      "run": "fleet N=8 x A100-40GB, 1000 studies",
+      "est_usd": 1.48,
+      "basis": "0.54 GPU-h x $2.73/h",
+      "running_total_usd": 57.92,
+      "repeat": "sweep-repeats fleet-3"
     }
   ],
   "container_usd_per_hour_H100": 4.58,

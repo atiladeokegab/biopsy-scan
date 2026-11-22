@@ -1,0 +1,231 @@
+{
+  "labels": {
+    "timings": "MEASURED",
+    "outcomes": "SYNTHETIC",
+    "spread": "median and min-max of each kind's declared fresh runs; descriptive, not a confidence interval"
+  },
+  "matched": {
+    "status": "MEASURED",
+    "prior": "matched-e2e-20261121T201925Z.json",
+    "repeats": [
+      {
+        "file": "r1-matched-e2e-20261122T041701Z.json",
+        "file_sha256": "1526a229742962759a1719aa4c188231c09907e0b8045f8879b6eba43f73455d",
+        "run_id": "ta-01M80QHH6ZJ67AA96D9J0Y9FPR",
+        "source_commit": "36478161d1e9892cdd9f7318afb61b78eba9a550",
+        "values": {
+          "ratio": 39.96530469517295,
+          "ratio_with_setup": 25.34214533423737,
+          "lab_s_per_study": 8.45422898974,
+          "preflight_s_per_decided_study": 0.211539210178
+        },
+        "decisions_agree": [
+          89,
+          100
+        ],
+        "parity_vs_prior": "100 shared studies: features bitwise, lab p identical, Preflight maxT and the threshold within 1e-09 relative, both arms' calls identical"
+      },
+      {
+        "file": "r2-matched-e2e-20261122T041701Z.json",
+        "file_sha256": "f2c2e6eb852d58f35e73afa53e01b8c4f0fa7f89eb92718d3e045548e9e19d9c",
+        "run_id": "ta-01M80QHHRJRPST6K9229XKEYMR",
+        "source_commit": "36478161d1e9892cdd9f7318afb61b78eba9a550",
+        "values": {
+          "ratio": 37.26737072265986,
+          "ratio_with_setup": 24.164315013894782,
+          "lab_s_per_study": 7.829630512,
+          "preflight_s_per_decided_study": 0.21009345065600002
+        },
+        "decisions_agree": [
+          89,
+          100
+        ],
+        "parity_vs_prior": "100 shared studies: features bitwise, lab p identical, Preflight maxT and the threshold within 1e-09 relative, both arms' calls identical"
+      },
+      {
+        "file": "r3-matched-e2e-20261122T041702Z.json",
+        "file_sha256": "22278e1e87b9a5765c56d58b484c6a43097d90414b056e966081d3f3113349f6",
+        "run_id": "ta-01M80QHJWZPBDGTM8ANTEFMD4R",
+        "source_commit": "36478161d1e9892cdd9f7318afb61b78eba9a550",
+        "values": {
+          "ratio": 40.19037923411941,
+          "ratio_with_setup": 25.2874355691093,
+          "lab_s_per_study": 8.81571866606,
+          "preflight_s_per_decided_study": 0.219348979384
+        },
+        "decisions_agree": [
+          89,
+          100
+        ],
+        "parity_vs_prior": "100 shared studies: features bitwise, lab p identical, Preflight maxT and the threshold within 1e-09 relative, both arms' calls identical"
+      }
+    ],
+    "spread": {
+      "ratio": {
+        "median": 39.96530469517295,
+        "min": 37.26737072265986,
+        "max": 40.19037923411941
+      },
+      "ratio_with_setup": {
+        "median": 25.2874355691093,
+        "min": 24.164315013894782,
+        "max": 25.34214533423737
+      },
+      "lab_s_per_study": {
+        "median": 8.45422898974,
+        "min": 7.829630512,
+        "max": 8.81571866606
+      },
+      "preflight_s_per_decided_study": {
+        "median": 0.211539210178,
+        "min": 0.21009345065600002,
+        "max": 0.219348979384
+      }
+    },
+    "failed_attempts": []
+  },
+  "fair": {
+    "status": "MEASURED",
+    "prior": "matched-e2e-20261121T201925Z.json",
+    "repeats": [
+      {
+        "file": "r1-matched-e2e-20261122T041846Z.json",
+        "file_sha256": "37ee13a7bbf1219d1bb06226cc6fa885f6c9a715283f01ba2a712d92122787ef",
+        "run_id": "ta-01M80QMRH3C3R90BN5FTXW1EGR",
+        "source_commit": "d4da1663caf82fdf98d945a36d7113f05a7103c8",
+        "values": {
+          "ratio": 4.646156105050944,
+          "ratio_with_setup": 3.132385711820727,
+          "lab_s_per_study": 1.03059275281,
+          "preflight_s_per_decided_study": 0.221816213125
+        },
+        "decisions_agree": [
+          362,
+          400
+        ],
+        "parity_vs_prior": "100 shared studies: features bitwise, lab p identical, Preflight maxT and the threshold within 1e-09 relative, both arms' calls identical"
+      },
+      {
+        "file": "r2-matched-e2e-20261122T041849Z.json",
+        "file_sha256": "f543e5187bc1767d74f5e4bc5613402412b5bd9c8288b26ba95d0fd00f8adffa",
+        "run_id": "ta-01M80QMVNXYVE6V46JX72AZC9R",
+        "source_commit": "d4da1663caf82fdf98d945a36d7113f05a7103c8",
+        "values": {
+          "ratio": 5.509852699402246,
+          "ratio_with_setup": 3.7361213709150527,
+          "lab_s_per_study": 0.9640755749225,
+          "preflight_s_per_decided_study": 0.17497302151600003
+        },
+        "decisions_agree": [
+          362,
+          400
+        ],
+        "parity_vs_prior": "100 shared studies: features bitwise, lab p identical, Preflight maxT and the threshold within 1e-09 relative, both arms' calls identical"
+      },
+      {
+        "file": "r3-matched-e2e-20261122T041851Z.json",
+        "file_sha256": "65edccc19356253502cf90f3d5d86210ec0445f7b18613c35b84af1b38b1f3ca",
+        "run_id": "ta-01M80QMWQY95673SF11F2JQMVR",
+        "source_commit": "d4da1663caf82fdf98d945a36d7113f05a7103c8",
+        "values": {
+          "ratio": 5.551277486843023,
+          "ratio_with_setup": 3.7717421576240713,
+          "lab_s_per_study": 0.96421795546,
+          "preflight_s_per_decided_study": 0.17369298467699998
+        },
+        "decisions_agree": [
+          362,
+          400
+        ],
+        "parity_vs_prior": "100 shared studies: features bitwise, lab p identical, Preflight maxT and the threshold within 1e-09 relative, both arms' calls identical"
+      }
+    ],
+    "spread": {
+      "ratio": {
+        "median": 5.509852699402246,
+        "min": 4.646156105050944,
+        "max": 5.551277486843023
+      },
+      "ratio_with_setup": {
+        "median": 3.7361213709150527,
+        "min": 3.132385711820727,
+        "max": 3.7717421576240713
+      },
+      "lab_s_per_study": {
+        "median": 0.96421795546,
+        "min": 0.9640755749225,
+        "max": 1.03059275281
+      },
+      "preflight_s_per_decided_study": {
+        "median": 0.17497302151600003,
+        "min": 0.17369298467699998,
+        "max": 0.221816213125
+      }
+    },
+    "failed_attempts": []
+  },
+  "fleet": {
+    "status": "MEASURED",
+    "prior": "modal-a100-20261121T183709Z.json",
+    "repeats": [
+      {
+        "file": "r1-modal-a100-40gb-20261122T044006Z.json",
+        "file_sha256": "f5bf6127a3b253dd94d26d37a60a5e12161f529740e894d63b1236b05d491658",
+        "run_id": "ta-01M80QQP5VENX5E727DCJCZX7R",
+        "source_commit": "36478161d1e9892cdd9f7318afb61b78eba9a550",
+        "values": {
+          "speedup_compute_span": 6.421915962300516,
+          "speedup_modal_wall": 4.4917376074476065,
+          "compute_span_1_s": 778.2252833843231,
+          "compute_span_8_s": 121.18272614479065
+        },
+        "parity_vs_prior": "same studies, seeds and design; each fleet bit-identical to its own 1-container run; kernel parity exact on the prior's seeds; screen hook maxT within 1e-09 of the prior's, its p 0.769 on every backend (the current code's; see SCREEN_P_AT_HEAD) (the prior file stores no per-study fleet outputs to compare)"
+      },
+      {
+        "file": "r3-modal-a100-40gb-20261122T051955Z.json",
+        "file_sha256": "005f1cfe29dff77347eb66b0fc5030b3d4be3c9cac141421382a107e24cdd6ab",
+        "run_id": "ta-01M80T0M5GAWNC8T7QM7BTADHR",
+        "source_commit": "36478161d1e9892cdd9f7318afb61b78eba9a550",
+        "values": {
+          "speedup_compute_span": 6.181490341119964,
+          "speedup_modal_wall": 4.390315333490129,
+          "compute_span_1_s": 759.3269689083099,
+          "compute_span_8_s": 122.83881831169128
+        },
+        "parity_vs_prior": "same studies, seeds and design; each fleet bit-identical to its own 1-container run; kernel parity exact on the prior's seeds; screen hook maxT within 1e-09 of the prior's, its p 0.769 on every backend (the current code's; see SCREEN_P_AT_HEAD) (the prior file stores no per-study fleet outputs to compare)"
+      }
+    ],
+    "spread": {
+      "speedup_compute_span": {
+        "median": 6.301703151710241,
+        "min": 6.181490341119964,
+        "max": 6.421915962300516
+      },
+      "speedup_modal_wall": {
+        "median": 4.441026470468868,
+        "min": 4.390315333490129,
+        "max": 4.4917376074476065
+      },
+      "compute_span_1_s": {
+        "median": 768.7761261463165,
+        "min": 759.3269689083099,
+        "max": 778.2252833843231
+      },
+      "compute_span_8_s": {
+        "median": 122.01077222824097,
+        "min": 121.18272614479065,
+        "max": 122.83881831169128
+      }
+    },
+    "failed_attempts": [
+      {
+        "file": "r2-modal-a100-40gb-20261122T045958Z.json",
+        "file_sha256": "27a5af0dfe25d45c0dbb9a915d74f54de93e62bb0571c1c5aed3fdf1271f8321",
+        "status": "FAILED",
+        "why": [
+          "fleet.runs.8.same_gpu_model"
+        ]
+      }
+    ]
+  }
+}
