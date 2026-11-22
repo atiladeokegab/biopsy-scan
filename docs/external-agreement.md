@@ -9,18 +9,22 @@ Results: `bench/results/external-agreement-20261122T133722Z.json` (run 1) and
 The off-the-shelf baseline (#132, `bench/external_baseline.py`, result
 `bench/results/external-baseline-20261122T043823Z.json`, `summary.top1_same`) picked the same top feature as
 Preflight in **14 of 50 studies, MEASURED** (null stream 5/25, alternative 9/25; outcomes SIMULATED). In none of the
-36 misses did the two pick the same (tumour type, neighbour type, radius) with the other statistic; median top-10
-overlap 5 of 10 (all MEASURED, from that file's records).
+36 misses did the two pick the same (tumour type, neighbour type, radius) with the other statistic (from that file's
+records). Median top-10 overlap was **4.5** of 10 (`summary.agreement_median.top10_overlap` in the same file). All
+MEASURED.
 
 ## Short answer
 
-The two pipelines are not computing the same statistic. The main cause is the "enrichment" half of the features:
-squidpy's `nhood_enrichment` returns a permutation z-score, while Preflight's enrichment is a ratio to the region's
-cell-type mix. The Cox test is a minor cause (Wald versus score). When squidpy's graph is used with Preflight's
+The two pipelines are not computing the same statistic. Three definitions differ: the enrichment half of the features
+(squidpy's `nhood_enrichment` returns a permutation z-score; Preflight's enrichment is a ratio to the region's
+cell-type mix), the fraction weighting, and the Cox test (Wald versus score). Each was measured on its own subset,
+listed below. This work does not apportion the 36 misses among them. When squidpy's graph is used with Preflight's
 per-cell definition, and lifelines' own Efron score is taken at beta = 0, the two agree to floating-point rounding:
 **top-1 16/16 MEASURED** on the studies run locally.
 
-## Definitional differences, ranked by effect on top-1
+## Definitional differences, each with the subset it was measured on
+
+The numbering is for reference, not a ranking. No row's effect is extrapolated to the 36 misses.
 
 | # | What | Preflight | Baseline (#132) | Effect (MEASURED unless stated) |
 |---|---|---|---|---|
@@ -30,10 +34,10 @@ per-cell definition, and lifelines' own Efron score is taken at beta = 0, the tw
 | 1c | Monte Carlo noise | none (deterministic) | z depends on the permutation seed | Not measured separately |
 | 2 | Fraction weighting | mean over focal cells of the per-cell share `n_j / n` (cells with no neighbours count as 0): `core/truth.py:71,76`, `core/grammar.py:79` | pooled edge share `sum n_tj / sum n_t`, so cells with many neighbours weigh more: `bench/external_baseline.py:103` | Feature Spearman **0.994** (#132). With only this swap into our X and our score, top-1 matched in **10/16** (5/8 null, 5/8 alternative); median z Spearman 0.991 |
 | 3 | Cox test | stratified Cox **score** z at beta = 0, Breslow ties, analytic information (`stats/screen.py:3-11,304`); maxT permutation calibrates the call, not the ranking | lifelines `CoxPHFitter` **Wald** z at the MLE, Efron ties (`bench/external_baseline.py:123`) | On the matched X, Wald top-1 = ours in **4/4**. Median z Spearman 1.0 (rounded); \|z\| Spearman 0.9998 to 1.0. Small |
-| 4 | Ties | Breslow | Efron | **None** here: 0 tied event times in the studies checked (null 0: 159 patients, 35 events, 0 tied event times). Efron equals Breslow without ties |
+| 4 | Ties | Breslow | Efron | Checked only in the null-0 diagnostic: 159 patients, 35 events, 0 tied event times, so there Efron equals Breslow. Not checked in the other studies. Indirect support on the 16 run-1 studies: lifelines' Efron score equals our Breslow z to 2.7e-15 on our X, which it would not do if tied event times changed the score |
 | 5 | Strata, NaN rows | coverslip group; per-column complete cases | same strata (`bench/external_baseline.py:123`); per-column `dropna` | None. Identical by construction |
-| 6 | Neighbourhood graph | `cKDTree.query_pairs`, `d <= r`, no self (`core/truth.py:43-47`) | `spatial_neighbors(coord_type="generic", radius=r, library_key="region")`, no self | None. Same graph: X differs by at most 1e-14 (below) |
-| 7 | Close races | - | - | Many studies are near-ties: our top-1 \|z\| leads the second by 0.03 to 0.58 (median 0.19) in the 16 local studies. Half of the 50 are nulls, where the top-1 is a race among noise features. Any change to the statistic reshuffles these, so items 1 and 2 cost more top-1 matches than their feature correlations suggest |
+| 6 | Neighbourhood graph | `cKDTree.query_pairs`, `d <= r`, no self (`core/truth.py:43-47`) | `spatial_neighbors(coord_type="generic", radius=r, library_key="region")`, no self | Matched aggregate feature agreement: the patient X built on squidpy's graph differs from ours by at most 9.8e-15 (16 studies, below). Graph edges were not compared one by one |
+| 7 | Close races | - | - | Many studies are near-ties: our top-1 \|z\| leads the second by 0.03 to 0.58 (median 0.19) in the 16 local studies. Half of the 50 are nulls, where the top-1 is a race among noise features. Any change to the statistic can reshuffle these. That is consistent with rows 1 and 2 costing more top-1 matches than their feature correlations suggest, but it was not measured |
 
 Maximum T (maxT) gives family-wise adjusted p-values that rise as |z| falls. It decides whether a study is called.
 It cannot change which feature ranks first, so it plays no part in top-1.
@@ -89,5 +93,6 @@ deterministic, so the spread is 0 by construction. squidpy's z uses #132's per-s
   on 2. The full 50 would take about 45 minutes of local CPU for the matched config alone at the measured rate
   (ESTIMATE, from run 1's 871 s for 16 studies on 2 workers). That exceeds this VM's 10-minute job budget, and
   Modal was out of scope. The 2-study rows show the mechanism, not a rate.
-- **Effects were not split by item.** The ranking of rows 1, 2 and 3 comes from feature correlations (50 studies)
-  and the one-at-a-time swaps above. It was not a full factorial run.
+- **The 36 misses are not apportioned.** Rows 1, 2 and 3 are each measured on their own subset: feature correlations
+  on 50 studies, the enrichment swap on 2, the fraction swap on 16 and Wald on 4. This was not a full factorial run,
+  and it does not say how many of the 36 misses each cause explains.
