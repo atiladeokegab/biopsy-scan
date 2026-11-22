@@ -15,6 +15,7 @@ smoke: install test
 	python3 -I demo/collect_preflight.py --check
 	node demo/preflight.test.mjs
 	node demo/workflow.test.mjs
+	node demo/workflow/steps.test.mjs
 
 data:
 	./scripts/fetch_data.sh

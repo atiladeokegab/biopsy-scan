@@ -8,7 +8,8 @@ const MC = MARKER_COLORS.map(hex);
 // Draw one core into ctx as a disc of radius r at (cx, cy). mode "fluor": each cell glows in the sum of its
 // marker channels' colours; mode "seg": each cell is a filled disc in its type's colour.
 export function drawCore(ctx, core, cx, cy, r, mode) {
-  const s = (2 * r) / core.size_um;
+  const [sw, sh] = core.size_um, side = Math.max(sw, sh), s = (2 * r) / side;
+  const ox = ((side - sw) / 2) * s, oy = ((side - sh) / 2) * s; // centre the shorter axis
   ctx.save();
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.clip();
   ctx.fillStyle = mode === "seg" ? "#05070b" : "#020306";
@@ -17,7 +18,7 @@ export function drawCore(ctx, core, cx, cy, r, mode) {
   const cell = Math.max(0.8, (2 * r) / Math.sqrt(core.cells.length) * (mode === "seg" ? 0.5 : 0.42));
   ctx.globalCompositeOperation = mode === "seg" ? "source-over" : "lighter";
   for (const c of core.cells) {
-    const x = cx - r + c[0] * s, y = cy - r + c[1] * s;
+    const x = cx - r + ox + c[0] * s, y = cy - r + oy + c[1] * s;
     if (mode === "seg") ctx.fillStyle = TYPE_COLORS[c[2]];
     else {
       // squared intensities keep each cell's strongest channels and let weak ones fall dark, as in a real IF image
