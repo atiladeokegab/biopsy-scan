@@ -92,7 +92,7 @@ assert.match(section, /SYNTHETIC imaging/);
 assert.match(html, /<span class="tag measured" id="reimage-tag">MEASURED cells<\/span>/, "MEASURED tag neither accent nor warning");
 assert.doesNotMatch(section, /\bsmall\b/, "no size word the picture can contradict");
 assert.match(html, /<p class="reimage-fallback" id="reimage-fallback" role="status">Loading the region's cells\.<\/p>/, "a loading line until the view starts");
-assert.match(flat(steps), /The study images two 400 µm fields of view, which together see [^.]+ cells\. In the study each is on a different region; this region is only [^.]+, so here they overlap\. ?(<\/li>|Each cell)/, "leads with what the fields see, then why they overlap (round-8 T7)");
+assert.match(flat(steps), /The study images two 400 µm fields of view, which together see [^.]+ cells\. In the study each is on a different region\. This region is only [^.]+, so here they overlap\. ?(<\/li>|Each cell)/, "leads with what the fields see, then why they overlap (round-8 T7)");
 assert.doesNotMatch(flat(steps), /the rest\b/, "no 'the rest' without a referent (round-8 T7)"); assert.match(flat(steps), /In this draw that is [^.]+\./);
 assert.match(html, /<h2 id="reimage-title">[^<]*fields[^<]*mis-call/, "the title states the answer");
 assert.match(html, />Replay the fly-through</); assert.match(html, />Pause the fly-through</);
