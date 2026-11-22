@@ -93,7 +93,8 @@ def measure() -> dict:
         out["timestamps_ms"] = pg.evaluate(TIMED)
         # The take reached its last step, and the controls appeared because WebGL started.
         out["last_step"] = pg.evaluate("[...document.querySelectorAll('#reimage-steps li')].findIndex((li) => li.hasAttribute('aria-current'))")
-        out["controls_shown"] = pg.evaluate("!document.getElementById('reimage-pause').hidden && !document.getElementById('reimage').hidden")
+        # At the end of the take only Replay is offered (the scene stops, so there is nothing to pause).
+        out["end_controls"] = pg.evaluate("[...document.querySelectorAll('#reimage-replay, #reimage-pause')].filter((b) => !b.hidden).map((b) => b.id)")
         out["errors"] = errors
         ctx.close()
         # Stills on the GPU at each camera height, both sizes.
@@ -107,9 +108,9 @@ def measure() -> dict:
                 pg.evaluate("document.querySelector('.reimage').scrollIntoView({block: 'start'})")
                 pg.wait_for_timeout(1500)
                 out["stills"][f"{name}-t{t}"] = pg.screenshot()
-                if name == "1280x720" and t == 15:  # the no-WebGL fallback's still: the canvas alone, last frame
+                if t == 15:  # the no-WebGL fallback's still at each size: the canvas alone, last frame
                     b = pg.locator("#reimage").bounding_box()  # 2 px off the top: the card's border sits on that edge
-                    out["end_jpg"] = pg.screenshot(type="jpeg", quality=82, clip={"x": b["x"], "y": b["y"] + 2, "width": b["width"], "height": b["height"] - 2})
+                    out[f"end_jpg_{name}"] = pg.screenshot(type="jpeg", quality=82, clip={"x": b["x"], "y": b["y"] + 2, "width": b["width"], "height": b["height"] - 2})
                 pg.close()
             ctx.close()
         browser.close()
@@ -139,7 +140,8 @@ def main():
     for k, png in out.pop("stills").items():
         (shots / f"reimage3d-{k}.png").write_bytes(png)
     (DEMO / "img").mkdir(exist_ok=True)
-    (DEMO / "img" / "reimage-end.jpg").write_bytes(out.pop("end_jpg"))
+    (DEMO / "img" / "reimage-end.jpg").write_bytes(out.pop("end_jpg_1280x720"))
+    (DEMO / "img" / "reimage-end-phone.jpg").write_bytes(out.pop("end_jpg_390x844"))  # framed for the phone, not the desktop frame shrunk
     ts = out.pop("timestamps_ms")
     res = {"status": "MEASURED", "label": "MEASURED (L4, headless Chrome); a data-centre L4, not a laptop GPU",
            "what": "rAF frame intervals over the 3D re-imaging script (fly-in, windows, flicker), 1280x720, whole page live",

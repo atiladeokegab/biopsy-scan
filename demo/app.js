@@ -191,13 +191,14 @@ async function main() {
   if (gr.status === "rejected" || ti.status === "rejected") {
     // Opened as a file, both fail: the serve-over-HTTP message is the one that helps.
     $("error").hidden = false;
-    $("error").innerHTML = ti.status === "rejected"
-      ? "Cannot load tissue data. Serve over HTTP (<code>python3 -m http.server 8000 -d demo</code>) and reload."
-      : "Cannot read grid.json. Run <code>python3 -I demo/check_data.py</code> and reload.";
+    const fix = ti.status === "rejected"
+      ? "Serve over HTTP (<code>python3 -m http.server 8000 -d demo</code>) and reload."
+      : "Run <code>python3 -I demo/check_data.py</code> and reload.";
+    $("error").innerHTML = (ti.status === "rejected" ? "Cannot load tissue data. " : "Cannot read grid.json. ") + fix;
     $("tissue-caption").textContent = "";
     $("verdict").textContent = "";
     $("reimage").hidden = true;
-    $("reimage-fallback").textContent = "The 3D view is off: the page could not load the tissue data. The message at the top says how to fix it.";
+    $("reimage-fallback").innerHTML = `<span>The 3D view is off: the page could not load its data. ${fix}</span>`; // the fix in place, not a pointer to it
     return;
   }
   [grid, tissue] = [gr.value, ti.value];

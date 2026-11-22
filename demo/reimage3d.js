@@ -203,7 +203,7 @@ export function drawStudy(tissue) {
   return { p, cells, n, lo, hi, crops, type, obs, inside, seen, crossed, perField };
 }
 
-export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null, onStep = () => {} }) {
+export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null, onStep = () => {}, onEnd = () => {} }) {
   const { p, cells, n, lo, hi, crops, type, obs, inside } = drawStudy(tissue);
   const mid = [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2], RC = Math.max(hi[0] - lo[0], hi[1] - lo[1]) / 2;
   const field = heightField(cells, lo, hi, 96, 14);
@@ -315,7 +315,7 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
   }
 
   const target = new THREE.Vector3(), bt = new THREE.Vector3(wx(boundary[0]), lift(...boundary), wz(boundary[1]));
-  function draw(t, orbit) {
+  function draw(t) {
     const w = canvas.clientWidth, h = canvas.clientHeight;
     const pr = renderer.getPixelRatio();
     if (canvas.width !== Math.floor(w * pr) || canvas.height !== Math.floor(h * pr)) renderer.setSize(w, h, false);
@@ -323,8 +323,8 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
     // Labels a fixed 26 css px tall: unattenuated sprites span scale.y / (2 tan(fov/2)) of the canvas height.
     const ly = (26 / h) * 2 * Math.tan((camera.fov * Math.PI) / 360);
     for (const l of labels) l.scale.set(ly * (256 / 72), ly, 1);
-    const s = timeline(t), k = s.camera, az = k.azim + orbit;
-    // Each end of the move fitted at the current angle, so the orbit and the phone's aspect stay framed too.
+    const s = timeline(t), k = s.camera, az = k.azim;
+    // Each end of the move fitted at the current angle, so the phone's aspect stays framed too.
     const half = (camera.fov * Math.PI) / 360, fit = Math.min(half, Math.atan(Math.tan(half) * camera.aspect));
     const view = (name) => {
       const pts = subjects[SHOTS[name].fit];
@@ -356,13 +356,14 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
 
   // Reduced motion and stills hold one moment; otherwise the clock runs while the canvas is on screen.
   const clk = clock(() => performance.now(), { held: freezeAt ?? (reducedMotion ? END : 0), playing: !reducedMotion && freezeAt === null });
-  let onScreen = false, raf = null, step = -1;
+  let onScreen = false, raf = null, step = -1, ended = false;
   function frame() {
     raf = null;
     const t = clk.t();
-    const s = draw(t, reducedMotion ? 0 : Math.max(0, t - END) * 0.05);
+    const s = draw(t);
     if (s.step !== step) onStep((step = s.step));
-    if (clk.playing && onScreen) raf = requestAnimationFrame(frame);
+    if (t >= END && clk.playing && !ended) { ended = true; onEnd(); }
+    if (clk.playing && onScreen && t < END) raf = requestAnimationFrame(frame); // the take ends still: no motion without a Pause
   }
   const kick = () => { if (raf === null) raf = requestAnimationFrame(frame); };
   new IntersectionObserver(([e]) => {
@@ -375,7 +376,7 @@ export function createReimage3d(canvas, tissue, { reducedMotion, freezeAt = null
 
   return {
     patient: p,
-    replay() { clk.replay(); kick(); },
+    replay() { ended = false; clk.replay(); kick(); },
     toggle() { const on = clk.toggle(); kick(); return on; },
     get playing() { return clk.playing; },
   };
@@ -403,6 +404,7 @@ export function mountReimage($, tissue, { reducedMotion, search, create = create
   try {
     view = create($("reimage"), tissue, {
       reducedMotion, freezeAt: captureTime(new URLSearchParams(search).get("t3d")),
+      onEnd: () => { $("reimage-pause").hidden = true; }, // the take is over: only Replay is offered
       onStep: (k) => steps.forEach((li, i) => (i === k ? li.setAttribute("aria-current", "step") : li.removeAttribute("aria-current"))),
     });
   } catch (e) {
@@ -419,7 +421,7 @@ export function mountReimage($, tissue, { reducedMotion, search, create = create
   $("reimage-steps").classList.add("playing");
   const pause = $("reimage-pause");
   $("reimage-replay").hidden = pause.hidden = false;
-  $("reimage-replay").addEventListener("click", () => { view.replay(); pause.textContent = "Pause the fly-through"; pause.setAttribute("aria-pressed", "false"); });
+  $("reimage-replay").addEventListener("click", () => { view.replay(); pause.hidden = false; pause.textContent = "Pause the fly-through"; pause.setAttribute("aria-pressed", "false"); });
   pause.addEventListener("click", () => {
     const on = view.toggle();
     pause.textContent = on ? "Pause the fly-through" : "Play the fly-through";
