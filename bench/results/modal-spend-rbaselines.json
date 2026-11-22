@@ -1,0 +1,28 @@
+{
+  "workspace_profile": "fhl-08",
+  "rates_usd_per_hour": {
+    "A100": 2.0988,
+    "cpu_core": 0.04716,
+    "memory_gib": 0.007992,
+    "source": "bench/results/modal-spend.json on modal-gpu (modal.com/pricing read 2026-11-21T17:36Z)"
+  },
+  "entries": [
+    {
+      "utc": "2026-11-22T13:25:12Z",
+      "run": "R survival + permGPU baselines, 3 repeats",
+      "containers": 1,
+      "container_class": "Modal A100 + 8 cores + 64 GiB",
+      "cap_usd": 5.0,
+      "est_usd": 2.99,
+      "basis": "3600 s ceiling x $2.9876/h",
+      "source_commit": "084b78d4b7d81ec99e8278e1f7d8c0e0c3a00981",
+      "actual": {
+        "modal_wall_s": 64.7,
+        "est_usd": 0.054,
+        "basis": "container x local wall (an upper bound: includes image build and queueing)",
+        "result": "bench/results/r-baselines-20261122T132512Z.json"
+      }
+    }
+  ],
+  "total_usd": 0.054
+}

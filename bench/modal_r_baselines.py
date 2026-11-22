@@ -35,6 +35,8 @@ image = (
     .env({"DATA_DIR": DATA_DIR, "PYTHONPATH": APP_DIR, "CUDA_HOME": "/usr/local/cuda", **THREADS})
     .add_local_file(LOCAL_DATA / "charville_labels.csv", f"{DATA_DIR}/charville_labels.csv", copy=True)
     .add_local_file(LOCAL_DATA / "charville_cells.npz", f"{DATA_DIR}/charville_cells.npz", copy=True)
+    # the v2 channels: core.cohorts' own cache of charville_raw_data.zip (50 MB vs 243 MB), validated on load
+    .add_local_file(LOCAL_DATA / "charville_channels.npz", f"{DATA_DIR}/charville_channels.npz", copy=True)
     .workdir(APP_DIR)
     .add_local_dir(REPO, APP_DIR, ignore=lambda rel: not _tracked(rel))
 )
