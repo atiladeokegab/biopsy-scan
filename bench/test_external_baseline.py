@@ -85,10 +85,10 @@ def test_ratios_carry_both_arms_the_cross_run_label_and_the_different_statistic_
     r = eb.ratios(eb.LAB_S_PER_STUDY["value"], 8, 1)
     assert r["ratio_vs_lab"] == pytest.approx(1) and r["ratio_vs_fused"] == pytest.approx(0.8809 / 0.0419)
     assert r["settings"]["cores"] == 8 and r["settings"]["squidpy.gr.nhood_enrichment"]["n_perms"] == 1000
-    h = eb.headline({**r, "seconds_per_study": 0.8809, "derived_off_the_shelf_s_per_study": 0.7,
+    h = eb.headline({**r, "seconds_per_study": 0.8809, "studies": 50, "derived_off_the_shelf_s_per_study": 0.7,
                      "worker_study_s": {"median": 7, "min": 6, "max": 9}})
     assert "cross-run, same container class" in h and "not Preflight's speedup" in h and "range 6-9 s" in h
-    assert "MEASURED, instrumented workflow" in h and "0.7 s/study, DERIVED" in h
+    assert "MEASURED, instrumented workflow, pool wall" in h and "0.70 s/study, DERIVED" in h and "not a wall-clock" in h
 
 
 def test_failed_fits_are_excluded_from_agreement_ranks_and_counted():
