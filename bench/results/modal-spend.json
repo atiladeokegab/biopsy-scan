@@ -357,7 +357,13 @@
       "est_usd": 0.89,
       "basis": "ceiling: 1200 s timeout x $2.668/h (A100 $2.0988 + 8 cores x $0.04716 + 24 GiB x $0.007992)",
       "running_total_usd": 50.376,
-      "counted": "est_usd (the pre-run ceiling)"
+      "counted": "est_usd (the pre-run ceiling)",
+      "actual": {
+        "modal_wall_s": 457.6,
+        "est_usd": 0.34,
+        "basis": "1 container x local wall (upper bound incl. queueing) x $2.668/h",
+        "result": "bench/results/modal-hn-power-20261122T053210Z.json"
+      }
     }
   ],
   "container_usd_per_hour_H100": 4.58,

@@ -16,8 +16,11 @@ locked region's files. Writes bench/results/hn-power-upmc-discovery.json, labell
 """
 from __future__ import annotations
 
+import io
 import json
+import subprocess
 import sys
+import tarfile
 from functools import partial
 from pathlib import Path
 
@@ -28,6 +31,13 @@ ROOT = Path(__file__).resolve().parents[1]
 LOCK = ROOT / "core" / "upmc_locked.json"
 RESULT = ROOT / "bench" / "results" / "hn-power-upmc-discovery.json"
 PATIENTS = (50, 100, 200, 400, 600)
+PLANNED = (50, 100, 200, 300, 400, 600)  # the published curve: the five-point run plus Zeus's P=300 point
+# one value across every point of a curve, in each row and its container's metadata
+PROVENANCE = ("source_hash", "grammar_hash", "seed", "regions_per_patient", "fov_um", "eps", "alpha",
+              "hr_per_source_sd", "shape", "target_event_fraction", "calibration_n", "plant_feature", "bank_hash",
+              "measurement_model")
+META_KEEP = ("source_n", "source_regions", "source_cells", "source_hash", "grammar_hash", "budget",
+             "hr_per_source_sd", "seed", "backend", "bank_draws", "measurement_model", "mc_interval_scope")
 LABEL_COLUMNS = ["region_id", "sample_label_visualizer"]  # identity only; every outcome column stays unread
 OUTCOME_COLUMNS = {"status", "primary_outcome", "recurred", "hpvstatus", "survival_status", "survival_day"}
 # The #83 design's planted event fraction (Charville 38/159, bench/power_at_scale.FROZEN_MODEL): the same
@@ -124,7 +134,77 @@ def read_run(out: Path) -> tuple[list[dict], dict]:
     return rows, json.loads((out / "upmc" / "metadata.json").read_text())
 
 
-def summarize(rows: list[dict], meta: dict) -> dict:
+def stage(repo: Path, sha: str, dest: Path) -> Path:
+    """sha's tracked files in dest, without the locked manifest: the remote image never holds a locked ID."""
+    archive = subprocess.run(["git", "-C", str(repo), "archive", sha], capture_output=True, check=True).stdout
+    with tarfile.open(fileobj=io.BytesIO(archive)) as tar:
+        tar.extractall(dest, filter="data")
+    (Path(dest) / "core" / "upmc_locked.json").unlink(missing_ok=True)
+    leaked = [f for f in Path(dest).rglob("*") if "upmc_locked" in f.name]
+    if leaked:
+        raise PermissionError(f"locked manifest staged for upload: {leaked[0]}")
+    return Path(dest)
+
+
+def producer(repo: Path) -> str:
+    """HEAD, refusing tracked changes, so the payload is built by exactly the commit the receipt records."""
+    git = lambda *a: subprocess.run(["git", "-C", str(repo), *a], capture_output=True, text=True, check=True).stdout  # noqa: E731
+    if git("status", "--porcelain", "--untracked-files=no").strip():
+        raise RuntimeError("tracked changes in the working tree: commit them before building the payload")
+    return git("rev-parse", "HEAD").strip()
+
+
+def collect(receipts: list[dict], planned=PLANNED) -> tuple[list[dict], dict, list[int]]:
+    """Validated rows, common metadata and the planned points with no result, from launcher receipts.
+
+    Each finished point has exactly one row for its own patient count; a point seen twice must be identical; every
+    row and metadata share one source, grammar, design, seed, budget and bank; unplanned points are refused."""
+    done = {}
+    for d in receipts:
+        for p in d["points"]:
+            n = p["patients"]
+            if n not in planned:
+                raise ValueError(f"P={n} is not a planned point")
+            if "rows" not in p:
+                continue
+            if len(p["rows"]) != 1 or int(p["rows"][0]["patients"]) != n:
+                raise ValueError(f"P={n}: expected one row for P={n}")
+            if n in done and done[n]["rows"] != p["rows"]:
+                raise ValueError(f"P={n}: conflicting duplicate results")
+            done[n] = p
+    if not done:
+        raise ValueError("no finished point")
+    for k in PROVENANCE:
+        seen = {json.dumps(p["rows"][0].get(k)) for p in done.values()}
+        seen |= {json.dumps(p["metadata"][k]) for p in done.values() if k in p["metadata"]}
+        if len(seen) != 1:
+            raise ValueError(f"points disagree on {k}: {sorted(seen)}")
+    if len({json.dumps(p["metadata"]["budget"], sort_keys=True) for p in done.values()}) != 1:
+        raise ValueError("points disagree on budget")
+    meta = next(iter(done.values()))["metadata"]
+    return [done[n]["rows"][0] for n in sorted(done)], meta, [n for n in planned if n not in done]
+
+
+def validate(summary: dict) -> dict:
+    """A published curve re-derived from its own points: counts, intervals, monotone power and the 80% answer."""
+    from bench.power_at_scale import answer, clopper_pearson
+
+    pts = summary["points"]
+    if [p["patients"] for p in pts] != sorted({p["patients"] for p in pts}):
+        raise ValueError("points not strictly increasing in patients")
+    for p in pts:
+        k, n = p["rejections"], p["planted_studies"]
+        if not 0 <= k <= n or abs(p["power"] - k / n) > 1e-12 or \
+                max(abs(a - b) for a, b in zip((p["power_lo"], p["power_hi"]), clopper_pearson(k, n))) > 1e-12:
+            raise ValueError(f"P={p['patients']}: power or interval does not match {k}/{n}")
+    if any(b["rejections"] / b["planted_studies"] < a["rejections"] / a["planted_studies"] for a, b in zip(pts, pts[1:])):
+        raise ValueError("power is not monotone in patients: the interpolated crossing is ambiguous")
+    if summary["answer"] != answer(pts, summary["answer"]["missing_patients"]):
+        raise ValueError("the 80% answer does not follow from the points")
+    return summary
+
+
+def summarize(rows: list[dict], meta: dict, missing: list[int] = ()) -> dict:
     from bench.power_at_scale import answer, clopper_pearson
 
     points = []
@@ -133,21 +213,19 @@ def summarize(rows: list[dict], meta: dict) -> dict:
         lo, hi = clopper_pearson(k, n)
         points.append({"patients": int(r["patients"]), "power": k / n, "power_lo": lo, "power_hi": hi,
                        "planted_studies": n, "rejections": k, "fwer": float(r["fwer"]),
+                       "fwer_count": int(r["fwer_count"]), "fwer_n": int(r["fwer_n"]),
+                       "fwer_lo": float(r["fwer_lo"]), "fwer_hi": float(r["fwer_hi"]),
                        "mean_events": float(r["alternative_mean_events"]), "threshold": float(r["threshold"])})
     return {"label": LABEL, "outcomes": "SYNTHETIC", "source": "simulated cohorts of 50-600 resampled with replacement from 34 UPMC discovery patients' tissue",
             "interval": "per point: Clopper-Pearson 95% on rejections / planted studies (200 per point on Modal)",
             "cohort": "UPMC head and neck, discovery split only", "caveats": CAVEATS, "points": points,
-            "answer": answer(points), "metadata": {k: meta.get(k) for k in
-                                                   ("source_n", "source_regions", "source_cells", "grammar_hash",
-                                                    "budget", "hr_per_source_sd", "seed", "backend", "bank_draws")}}
+            "answer": answer(points, list(missing)), "metadata": {k: meta.get(k) for k in META_KEEP}}
 
 
-def from_raw(*raws: Path) -> dict:
-    """The summary re-derived from gpu/hn_power.py raw files (their rows are the measured record); a rerun's
-    point replaces a failed one."""
+def from_raw(*raws: Path, planned=PLANNED) -> dict:
+    """The validated summary re-derived from gpu/hn_power.py receipts (their rows are the measured record)."""
     ds = [json.loads(Path(r).read_text()) for r in raws]
-    ok = {p["patients"]: p for d in ds for p in d["points"] if "rows" in p}
-    out = summarize([r for p in ok.values() for r in p["rows"]], next(iter(ok.values()))["metadata"])
+    out = validate(summarize(*collect(ds, planned)))
     return {**out, "raw": [f"bench/results/{Path(r).name}" for r in raws], "commit": [d["commit"] for d in ds]}
 
 

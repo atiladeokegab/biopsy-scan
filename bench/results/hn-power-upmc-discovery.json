@@ -20,6 +20,10 @@
    "planted_studies": 200,
    "rejections": 27,
    "fwer": 0.05,
+   "fwer_count": 5,
+   "fwer_n": 100,
+   "fwer_lo": 0.016431879182052158,
+   "fwer_hi": 0.11283491110546275,
    "mean_events": 11.87,
    "threshold": 3.7313667879775445
   },
@@ -31,6 +35,10 @@
    "planted_studies": 200,
    "rejections": 80,
    "fwer": 0.07,
+   "fwer_count": 7,
+   "fwer_n": 100,
+   "fwer_lo": 0.028605288907438704,
+   "fwer_hi": 0.13891972845585732,
    "mean_events": 24.38,
    "threshold": 3.716141383184629
   },
@@ -42,8 +50,27 @@
    "planted_studies": 200,
    "rejections": 148,
    "fwer": 0.01,
+   "fwer_count": 1,
+   "fwer_n": 100,
+   "fwer_lo": 0.00025314603297742086,
+   "fwer_hi": 0.054459385392080645,
    "mean_events": 47.94,
    "threshold": 3.8442047706027327
+  },
+  {
+   "patients": 300,
+   "power": 0.915,
+   "power_lo": 0.8673948341704476,
+   "power_hi": 0.9497040813697427,
+   "planted_studies": 200,
+   "rejections": 183,
+   "fwer": 0.08,
+   "fwer_count": 8,
+   "fwer_n": 100,
+   "fwer_lo": 0.03517156251816281,
+   "fwer_hi": 0.15155763586442095,
+   "mean_events": 71.485,
+   "threshold": 3.793346676252596
   },
   {
    "patients": 400,
@@ -53,6 +80,10 @@
    "planted_studies": 200,
    "rejections": 197,
    "fwer": 0.05,
+   "fwer_count": 5,
+   "fwer_n": 100,
+   "fwer_lo": 0.016431879182052158,
+   "fwer_hi": 0.11283491110546275,
    "mean_events": 95.36,
    "threshold": 3.840897369068961
   },
@@ -64,6 +95,10 @@
    "planted_studies": 200,
    "rejections": 200,
    "fwer": 0.06,
+   "fwer_count": 6,
+   "fwer_n": 100,
+   "fwer_lo": 0.022334886071316385,
+   "fwer_hi": 0.12602993458082296,
    "mean_events": 143.315,
    "threshold": 3.878195013240725
   }
@@ -71,20 +106,21 @@
  "answer": {
   "target_power": 0.8,
   "missing_patients": [],
-  "n_80": 248.97959183673476,
+  "n_80": 234.2857142857143,
   "n_80_pointwise_ci_crossings": [
-   200.69324049620835,
-   289.33760780945
+   200.4553891352885,
+   265.25548536252376
   ],
-  "smallest_patients_pointwise_lower_bound_clears_80": 400,
+  "smallest_patients_pointwise_lower_bound_clears_80": 300,
   "max_patients_simulated": 600,
-  "statement": "Simulated power first crosses 80% at about 249 patients (interpolated). The pointwise 95% CI bounds cross 80% at 201 (upper) and 289 (lower); these are pointwise intervals, not a confidence interval for n. Smallest simulated count whose pointwise lower 95% bound is at least 80%: 400.",
+  "statement": "Simulated power first crosses 80% at about 234 patients (interpolated). The pointwise 95% CI bounds cross 80% at 200 (upper) and 265 (lower); these are pointwise intervals, not a confidence interval for n. Smallest simulated count whose pointwise lower 95% bound is at least 80%: 300.",
   "method": "n_80: first crossing of 80% by the simulated power, linear in patients between the bracketing points, no extrapolation. n_80_pointwise_ci_crossings: the same crossing of the per-point 95% Clopper-Pearson upper and lower bounds; pointwise, so not a confidence interval for n_80"
  },
  "metadata": {
   "source_n": 34,
   "source_regions": 125,
   "source_cells": 1000151,
+  "source_hash": "d3993c12d4eb4044426c16263f860883e6d8db3291ac86777674c6c574151dbf",
   "grammar_hash": "adc93e69df4280df4ebc40432d4b3ca84ffb4d8e83513ae1ce883feff981915a",
   "budget": {
    "calibration": 200,
@@ -98,14 +134,18 @@
   "hr_per_source_sd": 2.0,
   "seed": 20261121,
   "backend": "gpu",
-  "bank_draws": 64
+  "bank_draws": 64,
+  "measurement_model": "finite-bank approximation",
+  "mc_interval_scope": "conditional on source, acquisition bank and realized calibration; excludes source and bank-construction uncertainty"
  },
  "raw": [
-  "bench/results/modal-hn-power-20261122T042657Z.json"
+  "bench/results/modal-hn-power-20261122T042657Z.json",
+  "bench/results/modal-hn-power-20261122T053210Z.json"
  ],
  "commit": [
-  "a69073f2dc780b470dbb8d20d1375530188fb469"
+  "a69073f2dc780b470dbb8d20d1375530188fb469",
+  "6dc2bed6cf26d65eb75faa0fe6675cc8d5b3a3a0"
  ],
  "planted_studies_per_point": 200,
- "note": "re-derived from the raw file with bench.hn_power --from-raw after the label change at 35c3891; points and answer identical to the launcher's own summary"
+ "note": "re-derived and validated from the two raw receipts with bench.hn_power --from-raw (five-point run plus the P=300 point Zeus asked for); no simulation rerun"
 }

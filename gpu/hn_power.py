@@ -13,11 +13,9 @@ compute) and bench/results/hn-power-upmc-discovery.json (ESTIMATE); refuses to o
 """
 from __future__ import annotations
 
-import io
 import json
 import os
 import subprocess
-import tarfile
 import tempfile
 import time
 from datetime import datetime, timezone
@@ -35,10 +33,10 @@ image = (modal.Image.from_registry("nvidia/cuda:12.4.1-devel-ubuntu22.04", add_p
          .env({"PYTHONPATH": APP_DIR, "CUDA_HOME": "/usr/local/cuda", "DATA_DIR": "/nonexistent"}))
 
 if modal.is_local():
-    src = Path(tempfile.mkdtemp(prefix="hn-power-"))
-    archive = subprocess.run(["git", "-C", str(REPO), "archive", "HEAD"], capture_output=True, check=True).stdout
-    with tarfile.open(fileobj=io.BytesIO(archive)) as tar:  # tracked files at HEAD only
-        tar.extractall(src, filter="data")
+    from bench import hn_power as _h
+
+    SHA = _h.producer(REPO)  # the one commit that stages the image, builds the payload and is recorded
+    src = _h.stage(REPO, SHA, Path(tempfile.mkdtemp(prefix="hn-power-")))  # tracked files minus the locked manifest
     image = image.uv_sync(str(src)).workdir(APP_DIR).add_local_dir(src, APP_DIR, ignore=["data", "demo", "results"])
 
 
@@ -80,11 +78,13 @@ def run(patients: str = "", timeout_s: int = 0):
     rerun = {int(p): timeout_s or TIMEOUT_S[int(p)] for p in patients.split(",")} if patients else None
     if raw_path.exists() or (rerun is None and summary_path.exists()):
         raise SystemExit(f"refusing to overwrite {summary_path.name} or {raw_path.name}")
+    if h.producer(REPO) != SHA:
+        raise SystemExit("HEAD moved since the image was staged; rerun from a clean checkout")
     cells = h.source(Path(os.environ["DATA_DIR"]))
     case = [cells["patient_names"][i] for i in cells["patient_of_region"]]
     h.check_disjoint(pd.DataFrame({"region_id": cells["region_names"], "case": case}), json.loads(h.LOCK.read_text()))
     assert len(cells["patient_names"]) == 34 and len(cells["region_names"]) == 125, "not the 34 discovery patients"
-    commit = subprocess.run(["git", "-C", str(REPO), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+    commit = SHA
     t0 = time.perf_counter()
     calls = {p: power_point.with_options(timeout=t).spawn(cells, p) for p, t in (rerun or TIMEOUT_S).items()}
     points, rows, meta = [], [], {}
@@ -103,7 +103,8 @@ def run(patients: str = "", timeout_s: int = 0):
                                     "modal_wall_s_total": time.perf_counter() - t0, "points": points},
                                    indent=1, default=_jsonable) + "\n")
     if rows and rerun is None:
-        result = h.summarize(rows, meta)
+        receipt = json.loads(raw_path.read_text())
+        result = h.validate(h.summarize(*h.collect([receipt], tuple(TIMEOUT_S))))
         result.update(raw=f"bench/results/{raw_path.name}", commit=commit, planted_studies_per_point=ALTERNATIVE)
         summary_path.write_text(json.dumps(result, indent=1, default=_jsonable) + "\n")
         print(result["answer"]["statement"])

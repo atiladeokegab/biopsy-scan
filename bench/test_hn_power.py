@@ -1,6 +1,7 @@
 """bench/hn_power.py: the discovery source never reads an outcome column and never holds a locked patient."""
 import json
 import os
+import subprocess
 from pathlib import Path
 
 import numpy as np
@@ -98,3 +99,82 @@ def test_real_discovery_side_is_34_patients_disjoint_from_the_lock():
     assert not set(reg.case) & set(map(str, lock["locked_patients"]))
     if (UPMC.parent / "upmc_cells.discovery.npz").exists():
         h.check_cache(UPMC.parent)
+
+
+# --- the published curve: receipts validated, failures kept, the answer re-derived (Prometheus #133 round 1)
+RAW5 = h.ROOT / "bench" / "results" / "modal-hn-power-20261122T042657Z.json"
+RAW300 = h.ROOT / "bench" / "results" / "modal-hn-power-20261122T053210Z.json"
+
+
+def _receipts():
+    return [json.loads(RAW5.read_text()), json.loads(RAW300.read_text())]
+
+
+def test_the_committed_curve_rederives_from_its_receipts():
+    got = h.from_raw(RAW5, RAW300)
+    assert json.loads(h.RESULT.read_text())["answer"] == got["answer"]
+    assert got["answer"]["missing_patients"] == [] and [p["patients"] for p in got["points"]] == list(h.PLANNED)
+    assert got["metadata"]["measurement_model"] and "conditional" in got["metadata"]["mc_interval_scope"]
+
+
+def test_a_failed_planned_point_makes_the_answer_partial():
+    ds = _receipts()
+    p200 = next(p for p in ds[0]["points"] if p["patients"] == 200)
+    del p200["rows"]
+    p200["error"] = "TimeoutError()"
+    out = h.validate(h.summarize(*h.collect(ds)))
+    assert out["answer"]["missing_patients"] == [200] and out["answer"]["statement"].startswith("PARTIAL")
+
+
+def test_a_point_from_another_source_is_refused():
+    ds = _receipts()
+    next(p for p in ds[0]["points"] if p["patients"] == 400)["rows"][0]["source_hash"] = "0" * 64
+    with pytest.raises(ValueError, match="source_hash"):
+        h.collect(ds)
+
+
+def test_a_point_whose_row_is_for_another_count_is_refused():
+    ds = _receipts()
+    next(p for p in ds[0]["points"] if p["patients"] == 400)["rows"][0]["patients"] = 401
+    with pytest.raises(ValueError, match="one row"):
+        h.collect(ds)
+
+
+def test_conflicting_duplicates_are_refused():
+    ds = _receipts()
+    dup = json.loads(json.dumps(next(p for p in ds[0]["points"] if p["patients"] == 100)))
+    dup["rows"][0]["power_count"] += 1
+    ds[1]["points"].append(dup)
+    with pytest.raises(ValueError, match="conflicting"):
+        h.collect(ds)
+
+
+@pytest.mark.parametrize("edit", [
+    lambda s: s["answer"].__setitem__("n_80", 200.0),
+    lambda s: s["points"][2].__setitem__("power_lo", 0.5),
+    lambda s: s["points"][1].__setitem__("rejections", 5),
+    lambda s: s["points"][0].__setitem__("power_hi", 0.3),  # an interval edit the answer alone would not show
+])
+def test_a_tampered_published_curve_is_refused(edit):
+    s = json.loads(h.RESULT.read_text())
+    h.validate(s)
+    edit(s)
+    with pytest.raises(ValueError):
+        h.validate(s)
+
+
+def test_the_remote_image_never_holds_the_locked_manifest(tmp_path):
+    out = h.stage(h.ROOT, "HEAD", tmp_path)
+    assert (out / "core" / "cohorts.py").exists() and not list(out.rglob("upmc_locked*"))
+
+
+def test_the_payload_producer_refuses_tracked_changes(tmp_path):
+    git = lambda *a: subprocess.run(["git", "-C", str(tmp_path), *a], check=True, capture_output=True)  # noqa: E731
+    git("init", "-q")
+    (tmp_path / "f.py").write_text("a = 1\n")
+    git("add", "f.py")
+    git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "t")
+    assert len(h.producer(tmp_path)) == 40
+    (tmp_path / "f.py").write_text("a = 2\n")
+    with pytest.raises(RuntimeError, match="tracked changes"):
+        h.producer(tmp_path)
