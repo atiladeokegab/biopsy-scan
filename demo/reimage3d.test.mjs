@@ -86,7 +86,7 @@ assert.match(section, /SYNTHETIC imaging/);
 assert.match(html, /<span class="tag measured" id="reimage-tag">MEASURED cells<\/span>/, "MEASURED tag neither accent nor warning");
 assert.doesNotMatch(section, /\bsmall\b/, "no size word the picture can contradict");
 assert.match(html, /<p class="reimage-fallback" id="reimage-fallback" role="status">Loading the region's cells\.<\/p>/, "a loading line until the view starts");
-assert.match(flat(steps), /each on a different region\. Both are drawn here on this one\. In this draw they see [^.]+\./, "says why the fields share a region"); assert.match(flat(steps), /In this draw that is [^.]+\./);
+assert.match(flat(steps), /each on a different region\. Both are drawn here on this region\. In this draw they see [^.]+\./, "says why the fields share a region"); assert.match(flat(steps), /In this draw that is [^.]+\./);
 assert.match(html, /<h2 id="reimage-title">[^<]*fields[^<]*mis-call/, "the title states the answer");
 assert.match(html, />Replay the fly-through</); assert.match(html, />Pause the fly-through</);
 assert.match(html, /<img id="reimage-still"[^>]*src="img\/reimage-end\.jpg"[^>]*loading="lazy"[^>]*hidden/, "a GPU still waits for the no-WebGL case");
@@ -144,6 +144,15 @@ assert.ok(!$("reimage-replay").hidden && !$("reimage-pause").hidden, "controls r
 assert.ok($("reimage-fallback").hidden, "the loading line goes once WebGL runs");
 assert.ok($("reimage-steps").cls.has("playing"), "while it plays, the phone shows the current step by the canvas");
 assert.match(html, /<li value="1">[\s\S]*<li value="4">/, "steps keep their numbers when others are hidden");
+// On a phone a step can show alone, so each names its subject and leads with its point.
+assert.match(flat(steps), /2\.? ?Each dot is one cell|Each dot is one cell, shown close up\./); assert.match(flat(steps), /Each cell the study sees has a 10% chance/);
+assert.doesNotMatch(flat(steps), /\bthis one\b|Each cell it sees/);
+assert.match(html, /<picture class="reimage-still-pic"><source media="\(max-width: 900px\)" srcset="img\/reimage-end-phone\.jpg">/, "the phone gets its own GPU still");
+// Once the take ends, only Replay is offered.
+let ended; $ = page();
+mountReimage($, tissueJSON, { reducedMotion: false, search: "", create: (cv, t, o) => { ended = o.onEnd; return { replay() {}, toggle: () => true }; } });
+assert.equal($("reimage-pause").hidden, false); ended(); assert.equal($("reimage-pause").hidden, true, "no Pause after the end");
+$("reimage-replay").on.click(); assert.equal($("reimage-pause").hidden, false, "Replay brings Pause back");
 $ = page(); mountReimage($, tissueJSON, { reducedMotion: true, search: "", create: () => ({}) });
 assert.ok($("reimage-replay").hidden, "reduced motion: no controls"); assert.ok(!$("reimage-steps").cls.has("playing"), "reduced motion: every step shows");
 
