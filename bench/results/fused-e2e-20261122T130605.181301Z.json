@@ -1,0 +1,1291 @@
+{
+  "status": "MEASURED",
+  "source_commit": "7afe867f9edd7fb30c8bf18f5bcbdeada4478de7",
+  "labels": {
+    "timings": "MEASURED",
+    "outcomes": "SIMULATED",
+    "rates_and_costs": "ESTIMATE"
+  },
+  "modal": {
+    "physical_cores_requested_and_capped": 8,
+    "memory_mib_requested_and_capped": 65536,
+    "gpu": null,
+    "timeout_s": 3600,
+    "profile": "fhl-08"
+  },
+  "scope": "Raw public Charville CSV ZIP and labels already staged in the container. Each arm builds its own cell cache and runs simulation setup, adjacency and JIT as applicable, scoring, threshold and calls. Excludes upload, container startup, reporting and deployment. OS file cache uncontrolled. Arms run sequentially in a paired container and use single-thread workers. Scaling repeats share one container. Fair repeats use separate calls. Costs normalize each arm to 1,000 decided studies at this batch size, including fused calibration, excluding startup and retention.",
+  "data_source": "https://zenodo.org/records/13179600",
+  "spend_receipt": "modal-spend-fused-e2e-20261122T130605.181301Z.json",
+  "runs": [
+    {
+      "kind": "lab-scaling",
+      "repeat": 1,
+      "plan": {
+        "null": 16,
+        "alternative": 16
+      },
+      "host": {
+        "cpu_model": "unknown",
+        "cpu_count": 8,
+        "available_affinity": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "paired_cpu_mask": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "physical_topology_visible": false,
+        "cgroup_cpu_max": null,
+        "task_id": "ta-01M81NT9V8XX6MY83FHY1S3H1R",
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1",
+          "NUMBA_NUM_THREADS": "1",
+          "NUMBA_THREADING_LAYER": "workqueue"
+        },
+        "load_average": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "rows": [
+        {
+          "order": [
+            1,
+            8
+          ],
+          "arms": {
+            "1": {
+              "arm": "lab",
+              "workers": 1,
+              "affinity": [
+                0
+              ],
+              "raw_load_s": 6.037121595999999,
+              "setup": {
+                "prep_s": 13.338678610999999,
+                "adjacency_s": 4.895500000046127e-05,
+                "plant_feature": 0,
+                "expected_event_fraction": {
+                  "null": 0.23899371069182382,
+                  "alternative": 0.23899371069182399
+                }
+              },
+              "warm_s": null,
+              "compute_through_scoring_s": 328.429873924,
+              "threshold_and_calls_s": 0.6824271849999946,
+              "raw_to_answer_s": 349.205276264,
+              "summary": {
+                "studies": {
+                  "calibration": 0,
+                  "null": 16,
+                  "alternative": 16
+                },
+                "rule": "per-study conditional maxT, 1000 within-strata shuffles, p <= 0.05",
+                "fwer": {
+                  "rate": 0.0625,
+                  "k": 1,
+                  "n": 16,
+                  "wilson95": [
+                    0.01111934476464252,
+                    0.28328737570298945
+                  ]
+                },
+                "power": {
+                  "rate": 0.3125,
+                  "k": 5,
+                  "n": 16,
+                  "wilson95": [
+                    0.14164643854782039,
+                    0.5559564416525933
+                  ]
+                }
+              },
+              "stages": {
+                "prep_s": 13.338678610999999,
+                "adjacency_s": 4.895500000046127e-05,
+                "reimage_worker_wall_s": 151.81683266199997,
+                "studies_wall_s": 328.429873924,
+                "scoring_and_calibration_worker_wall_s": 174.89887797999995,
+                "evaluated_studies": 32,
+                "compute_wall_s": 328.429873924,
+                "wall_per_study_s": 10.263433560125,
+                "end_to_end_in_container_s": 347.805723086,
+                "scope": "compute_wall_s = re-imaging every evaluated study (the pool's wall for CPU-reimaged arms) plus batched scoring; excludes data load, outcome prep, adjacency, warm-up and the local threshold-and-calls summary, which end_to_end_in_container_s adds back (all but the summary)"
+              }
+            },
+            "8": {
+              "arm": "lab",
+              "workers": 8,
+              "affinity": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ],
+              "raw_load_s": 1.9514307260000123,
+              "setup": {
+                "prep_s": 12.950138510000045,
+                "adjacency_s": 9.888200003160819e-05,
+                "plant_feature": 0,
+                "expected_event_fraction": {
+                  "null": 0.23899371069182382,
+                  "alternative": 0.23899371069182399
+                }
+              },
+              "warm_s": null,
+              "compute_through_scoring_s": 57.73226038500002,
+              "threshold_and_calls_s": 0.00140462199999547,
+              "raw_to_answer_s": 72.63936122900003,
+              "summary": {
+                "studies": {
+                  "calibration": 0,
+                  "null": 16,
+                  "alternative": 16
+                },
+                "rule": "per-study conditional maxT, 1000 within-strata shuffles, p <= 0.05",
+                "fwer": {
+                  "rate": 0.0625,
+                  "k": 1,
+                  "n": 16,
+                  "wilson95": [
+                    0.01111934476464252,
+                    0.28328737570298945
+                  ]
+                },
+                "power": {
+                  "rate": 0.3125,
+                  "k": 5,
+                  "n": 16,
+                  "wilson95": [
+                    0.14164643854782039,
+                    0.5559564416525933
+                  ]
+                }
+              },
+              "stages": {
+                "prep_s": 12.950138510000045,
+                "adjacency_s": 9.888200003160819e-05,
+                "reimage_worker_wall_s": 164.23455731800004,
+                "studies_wall_s": 57.73226038500002,
+                "scoring_and_calibration_worker_wall_s": 185.78319796100016,
+                "evaluated_studies": 32,
+                "compute_wall_s": 57.73226038500002,
+                "wall_per_study_s": 1.8041331370312506,
+                "end_to_end_in_container_s": 72.6339285030001,
+                "scope": "compute_wall_s = re-imaging every evaluated study (the pool's wall for CPU-reimaged arms) plus batched scoring; excludes data load, outcome prep, adjacency, warm-up and the local threshold-and-calls summary, which end_to_end_in_container_s adds back (all but the summary)"
+              }
+            }
+          },
+          "identical_studies": 32,
+          "scoring_ratio": 5.688844880380477,
+          "raw_to_answer_ratio": 4.807383632726464
+        },
+        {
+          "order": [
+            8,
+            1
+          ],
+          "arms": {
+            "8": {
+              "arm": "lab",
+              "workers": 8,
+              "affinity": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ],
+              "raw_load_s": 2.098038094000003,
+              "setup": {
+                "prep_s": 11.437937212000008,
+                "adjacency_s": 3.182199998263968e-05,
+                "plant_feature": 0,
+                "expected_event_fraction": {
+                  "null": 0.23899371069182382,
+                  "alternative": 0.23899371069182399
+                }
+              },
+              "warm_s": null,
+              "compute_through_scoring_s": 53.19072081799999,
+              "threshold_and_calls_s": 0.0030557370000110495,
+              "raw_to_answer_s": 66.73285741800004,
+              "summary": {
+                "studies": {
+                  "calibration": 0,
+                  "null": 16,
+                  "alternative": 16
+                },
+                "rule": "per-study conditional maxT, 1000 within-strata shuffles, p <= 0.05",
+                "fwer": {
+                  "rate": 0.0625,
+                  "k": 1,
+                  "n": 16,
+                  "wilson95": [
+                    0.01111934476464252,
+                    0.28328737570298945
+                  ]
+                },
+                "power": {
+                  "rate": 0.3125,
+                  "k": 5,
+                  "n": 16,
+                  "wilson95": [
+                    0.14164643854782039,
+                    0.5559564416525933
+                  ]
+                }
+              },
+              "stages": {
+                "prep_s": 11.437937212000008,
+                "adjacency_s": 3.182199998263968e-05,
+                "reimage_worker_wall_s": 151.0208057969998,
+                "studies_wall_s": 53.19072081799999,
+                "scoring_and_calibration_worker_wall_s": 174.91445888200002,
+                "evaluated_studies": 32,
+                "compute_wall_s": 53.19072081799999,
+                "wall_per_study_s": 1.6622100255624996,
+                "end_to_end_in_container_s": 66.72672794599998,
+                "scope": "compute_wall_s = re-imaging every evaluated study (the pool's wall for CPU-reimaged arms) plus batched scoring; excludes data load, outcome prep, adjacency, warm-up and the local threshold-and-calls summary, which end_to_end_in_container_s adds back (all but the summary)"
+              }
+            },
+            "1": {
+              "arm": "lab",
+              "workers": 1,
+              "affinity": [
+                0
+              ],
+              "raw_load_s": 2.2264399530000105,
+              "setup": {
+                "prep_s": 11.493645283999967,
+                "adjacency_s": 1.8415999988974363e-05,
+                "plant_feature": 0,
+                "expected_event_fraction": {
+                  "null": 0.23899371069182382,
+                  "alternative": 0.23899371069182399
+                }
+              },
+              "warm_s": null,
+              "compute_through_scoring_s": 328.90797028899993,
+              "threshold_and_calls_s": 0.0027331389999289968,
+              "raw_to_answer_s": 342.63263280699994,
+              "summary": {
+                "studies": {
+                  "calibration": 0,
+                  "null": 16,
+                  "alternative": 16
+                },
+                "rule": "per-study conditional maxT, 1000 within-strata shuffles, p <= 0.05",
+                "fwer": {
+                  "rate": 0.0625,
+                  "k": 1,
+                  "n": 16,
+                  "wilson95": [
+                    0.01111934476464252,
+                    0.28328737570298945
+                  ]
+                },
+                "power": {
+                  "rate": 0.3125,
+                  "k": 5,
+                  "n": 16,
+                  "wilson95": [
+                    0.14164643854782039,
+                    0.5559564416525933
+                  ]
+                }
+              },
+              "stages": {
+                "prep_s": 11.493645283999967,
+                "adjacency_s": 1.8415999988974363e-05,
+                "reimage_worker_wall_s": 149.94273574900018,
+                "studies_wall_s": 328.90797028899993,
+                "scoring_and_calibration_worker_wall_s": 178.68900678800003,
+                "evaluated_studies": 32,
+                "compute_wall_s": 328.90797028899993,
+                "wall_per_study_s": 10.278374071531248,
+                "end_to_end_in_container_s": 342.6280739419999,
+                "scope": "compute_wall_s = re-imaging every evaluated study (the pool's wall for CPU-reimaged arms) plus batched scoring; excludes data load, outcome prep, adjacency, warm-up and the local threshold-and-calls summary, which end_to_end_in_container_s adds back (all but the summary)"
+              }
+            }
+          },
+          "identical_studies": 32,
+          "scoring_ratio": 6.183559185340011,
+          "raw_to_answer_ratio": 5.13439175338805
+        },
+        {
+          "order": [
+            1,
+            8
+          ],
+          "arms": {
+            "1": {
+              "arm": "lab",
+              "workers": 1,
+              "affinity": [
+                0
+              ],
+              "raw_load_s": 1.9435083930000019,
+              "setup": {
+                "prep_s": 10.62976670699993,
+                "adjacency_s": 1.8004000025939604e-05,
+                "plant_feature": 0,
+                "expected_event_fraction": {
+                  "null": 0.23899371069182382,
+                  "alternative": 0.23899371069182399
+                }
+              },
+              "warm_s": null,
+              "compute_through_scoring_s": 319.752543648,
+              "threshold_and_calls_s": 0.001327972999888516,
+              "raw_to_answer_s": 332.33017206199986,
+              "summary": {
+                "studies": {
+                  "calibration": 0,
+                  "null": 16,
+                  "alternative": 16
+                },
+                "rule": "per-study conditional maxT, 1000 within-strata shuffles, p <= 0.05",
+                "fwer": {
+                  "rate": 0.0625,
+                  "k": 1,
+                  "n": 16,
+                  "wilson95": [
+                    0.01111934476464252,
+                    0.28328737570298945
+                  ]
+                },
+                "power": {
+                  "rate": 0.3125,
+                  "k": 5,
+                  "n": 16,
+                  "wilson95": [
+                    0.14164643854782039,
+                    0.5559564416525933
+                  ]
+                }
+              },
+              "stages": {
+                "prep_s": 10.62976670699993,
+                "adjacency_s": 1.8004000025939604e-05,
+                "reimage_worker_wall_s": 146.36957591100008,
+                "studies_wall_s": 319.752543648,
+                "scoring_and_calibration_worker_wall_s": 173.1223609229994,
+                "evaluated_studies": 32,
+                "compute_wall_s": 319.752543648,
+                "wall_per_study_s": 9.992266989,
+                "end_to_end_in_container_s": 332.325836752,
+                "scope": "compute_wall_s = re-imaging every evaluated study (the pool's wall for CPU-reimaged arms) plus batched scoring; excludes data load, outcome prep, adjacency, warm-up and the local threshold-and-calls summary, which end_to_end_in_container_s adds back (all but the summary)"
+              }
+            },
+            "8": {
+              "arm": "lab",
+              "workers": 8,
+              "affinity": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ],
+              "raw_load_s": 2.0150139090001176,
+              "setup": {
+                "prep_s": 10.564815130999932,
+                "adjacency_s": 2.029899997069151e-05,
+                "plant_feature": 0,
+                "expected_event_fraction": {
+                  "null": 0.23899371069182382,
+                  "alternative": 0.23899371069182399
+                }
+              },
+              "warm_s": null,
+              "compute_through_scoring_s": 52.7522729220002,
+              "threshold_and_calls_s": 0.002473191000035513,
+              "raw_to_answer_s": 65.34212472000013,
+              "summary": {
+                "studies": {
+                  "calibration": 0,
+                  "null": 16,
+                  "alternative": 16
+                },
+                "rule": "per-study conditional maxT, 1000 within-strata shuffles, p <= 0.05",
+                "fwer": {
+                  "rate": 0.0625,
+                  "k": 1,
+                  "n": 16,
+                  "wilson95": [
+                    0.01111934476464252,
+                    0.28328737570298945
+                  ]
+                },
+                "power": {
+                  "rate": 0.3125,
+                  "k": 5,
+                  "n": 16,
+                  "wilson95": [
+                    0.14164643854782039,
+                    0.5559564416525933
+                  ]
+                }
+              },
+              "stages": {
+                "prep_s": 10.564815130999932,
+                "adjacency_s": 2.029899997069151e-05,
+                "reimage_worker_wall_s": 152.86730791600007,
+                "studies_wall_s": 52.7522729220002,
+                "scoring_and_calibration_worker_wall_s": 176.5030026479999,
+                "evaluated_studies": 32,
+                "compute_wall_s": 52.7522729220002,
+                "wall_per_study_s": 1.6485085288125063,
+                "end_to_end_in_container_s": 65.33212226100022,
+                "scope": "compute_wall_s = re-imaging every evaluated study (the pool's wall for CPU-reimaged arms) plus batched scoring; excludes data load, outcome prep, adjacency, warm-up and the local threshold-and-calls summary, which end_to_end_in_container_s adds back (all but the summary)"
+              }
+            }
+          },
+          "identical_studies": 32,
+          "scoring_ratio": 6.06139841824044,
+          "raw_to_answer_ratio": 5.086001924272891
+        }
+      ],
+      "function_wall_s": 1229.938982041
+    },
+    {
+      "kind": "fair",
+      "repeat": 1,
+      "plan": {
+        "lab": {
+          "null": 200,
+          "alternative": 200
+        },
+        "preflight": {
+          "calibration": 1000,
+          "null": 200,
+          "alternative": 200
+        }
+      },
+      "host": {
+        "cpu_model": "unknown",
+        "cpu_count": 8,
+        "available_affinity": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "paired_cpu_mask": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "physical_topology_visible": false,
+        "cgroup_cpu_max": null,
+        "task_id": "ta-01M81NTB069QSF58V280P9WHRR",
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1",
+          "NUMBA_NUM_THREADS": "1",
+          "NUMBA_THREADING_LAYER": "workqueue"
+        },
+        "load_average": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "rows": [
+        {
+          "order": [
+            "lab",
+            "fused"
+          ],
+          "arms": {
+            "lab": {
+              "arm": "lab",
+              "workers": 8,
+              "affinity": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ],
+              "raw_load_s": 3.3057803380000004,
+              "setup": {
+                "prep_s": 31.599830403000002,
+                "adjacency_s": 2.1160999999381147e-05,
+                "plant_feature": 0,
+                "expected_event_fraction": {
+                  "null": 0.23899371069182382,
+                  "alternative": 0.23899371069182399
+                }
+              },
+              "warm_s": null,
+              "compute_through_scoring_s": 417.030166316,
+              "threshold_and_calls_s": 0.6246986440000342,
+              "raw_to_answer_s": 453.130711355,
+              "summary": {
+                "studies": {
+                  "calibration": 0,
+                  "null": 200,
+                  "alternative": 200
+                },
+                "rule": "per-study conditional maxT, 1000 within-strata shuffles, p <= 0.05",
+                "fwer": {
+                  "rate": 0.03,
+                  "k": 6,
+                  "n": 200,
+                  "wilson95": [
+                    0.013820314340111346,
+                    0.06389429245451925
+                  ]
+                },
+                "power": {
+                  "rate": 0.205,
+                  "k": 41,
+                  "n": 200,
+                  "wilson95": [
+                    0.15486176203836208,
+                    0.26625698052422514
+                  ]
+                }
+              },
+              "stages": {
+                "prep_s": 31.599830403000002,
+                "adjacency_s": 2.1160999999381147e-05,
+                "reimage_worker_wall_s": 1814.8585128279983,
+                "studies_wall_s": 417.030166316,
+                "scoring_and_calibration_worker_wall_s": 1416.346716521,
+                "evaluated_studies": 400,
+                "compute_wall_s": 417.030166316,
+                "wall_per_study_s": 1.04257541579,
+                "end_to_end_in_container_s": 451.935798218,
+                "scope": "compute_wall_s = re-imaging every evaluated study (the pool's wall for CPU-reimaged arms) plus batched scoring; excludes data load, outcome prep, adjacency, warm-up and the local threshold-and-calls summary, which end_to_end_in_container_s adds back (all but the summary)"
+              }
+            },
+            "fused": {
+              "arm": "fused",
+              "workers": 8,
+              "affinity": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ],
+              "raw_load_s": 1.8494525620000104,
+              "setup": {
+                "prep_s": 87.80169932300004,
+                "adjacency_s": 64.24007960400002,
+                "plant_feature": 0,
+                "expected_event_fraction": {
+                  "null": 0.23899371069182382,
+                  "alternative": 0.23899371069182399
+                }
+              },
+              "warm_s": 5.495763125000053,
+              "compute_through_scoring_s": 62.71388954400004,
+              "threshold_and_calls_s": 0.012250847000018439,
+              "raw_to_answer_s": 222.11453965700002,
+              "summary": {
+                "studies": {
+                  "calibration": 1000,
+                  "null": 200,
+                  "alternative": 200
+                },
+                "rule": "maxT > design threshold from 1000 independent calibration nulls",
+                "threshold": 4.280528180733615,
+                "identification": {
+                  "rate": 0.075,
+                  "k": 15,
+                  "n": 200,
+                  "wilson95": [
+                    0.04597491718438201,
+                    0.12004361023629456
+                  ]
+                },
+                "fwer": {
+                  "rate": 0.055,
+                  "k": 11,
+                  "n": 200,
+                  "wilson95": [
+                    0.03098534170345884,
+                    0.0957869987723084
+                  ]
+                },
+                "power": {
+                  "rate": 0.15,
+                  "k": 30,
+                  "n": 200,
+                  "wilson95": [
+                    0.10713593562241995,
+                    0.20605579284166659
+                  ]
+                }
+              },
+              "stages": {
+                "prep_s": 87.80169932300004,
+                "adjacency_s": 64.24007960400002,
+                "reimage_worker_wall_s": 465.8364984470006,
+                "studies_wall_s": 62.71388954400004,
+                "scoring_worker_wall_s": 28.16565352499788,
+                "calibration_s": "the calibration stream's studies, inside reimage and scoring",
+                "evaluated_studies": 1400,
+                "compute_wall_s": 62.71388954400004,
+                "wall_per_study_s": 0.04479563538857146,
+                "end_to_end_in_container_s": 222.10088415800016,
+                "scope": "compute_wall_s = re-imaging every evaluated study (the pool's wall for CPU-reimaged arms) plus batched scoring; excludes data load, outcome prep, adjacency, warm-up and the local threshold-and-calls summary, which end_to_end_in_container_s adds back (all but the summary)"
+              }
+            }
+          },
+          "parity": {
+            "x_bitwise": true,
+            "x_compared": 400
+          },
+          "decisions": {
+            "agree": 362,
+            "compared": 400,
+            "calls": {
+              "null": {
+                "lab": 6,
+                "preflight": 11,
+                "n": 200
+              },
+              "alternative": {
+                "lab": 41,
+                "preflight": 30,
+                "n": 200
+              }
+            }
+          },
+          "scoring_ratio": 6.649725752114479,
+          "raw_to_answer_ratio": 2.040076764244008,
+          "usd_per_1000_decided_estimate": {
+            "lab": 0.27967227504830605,
+            "fused": 0.13708909387630042
+          },
+          "usd_per_1000_evaluated_estimate": {
+            "lab": 0.27967227504830605,
+            "fused": 0.03916831253608583
+          }
+        }
+      ],
+      "function_wall_s": 675.916815316
+    },
+    {
+      "kind": "fair",
+      "repeat": 2,
+      "plan": {
+        "lab": {
+          "null": 200,
+          "alternative": 200
+        },
+        "preflight": {
+          "calibration": 1000,
+          "null": 200,
+          "alternative": 200
+        }
+      },
+      "host": {
+        "cpu_model": "unknown",
+        "cpu_count": 8,
+        "available_affinity": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "paired_cpu_mask": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "physical_topology_visible": false,
+        "cgroup_cpu_max": null,
+        "task_id": "ta-01M81NTA77WQSHFJ4PZMG9JAXR",
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1",
+          "NUMBA_NUM_THREADS": "1",
+          "NUMBA_THREADING_LAYER": "workqueue"
+        },
+        "load_average": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "rows": [
+        {
+          "order": [
+            "fused",
+            "lab"
+          ],
+          "arms": {
+            "fused": {
+              "arm": "fused",
+              "workers": 8,
+              "affinity": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ],
+              "raw_load_s": 6.156028915,
+              "setup": {
+                "prep_s": 69.683778464,
+                "adjacency_s": 54.45934772,
+                "plant_feature": 0,
+                "expected_event_fraction": {
+                  "null": 0.23899371069182376,
+                  "alternative": 0.23899371069182399
+                }
+              },
+              "warm_s": 3.838625508000007,
+              "compute_through_scoring_s": 58.06715653399999,
+              "threshold_and_calls_s": 0.40814699200001314,
+              "raw_to_answer_s": 192.92709843,
+              "summary": {
+                "studies": {
+                  "calibration": 1000,
+                  "null": 200,
+                  "alternative": 200
+                },
+                "rule": "maxT > design threshold from 1000 independent calibration nulls",
+                "threshold": 4.280528180733615,
+                "identification": {
+                  "rate": 0.075,
+                  "k": 15,
+                  "n": 200,
+                  "wilson95": [
+                    0.04597491718438201,
+                    0.12004361023629456
+                  ]
+                },
+                "fwer": {
+                  "rate": 0.055,
+                  "k": 11,
+                  "n": 200,
+                  "wilson95": [
+                    0.03098534170345884,
+                    0.0957869987723084
+                  ]
+                },
+                "power": {
+                  "rate": 0.15,
+                  "k": 30,
+                  "n": 200,
+                  "wilson95": [
+                    0.10713593562241995,
+                    0.20605579284166659
+                  ]
+                }
+              },
+              "stages": {
+                "prep_s": 69.683778464,
+                "adjacency_s": 54.45934772,
+                "reimage_worker_wall_s": 429.8688926050006,
+                "studies_wall_s": 58.06715653399999,
+                "scoring_worker_wall_s": 31.63778514999896,
+                "calibration_s": "the calibration stream's studies, inside reimage and scoring",
+                "evaluated_studies": 1400,
+                "compute_wall_s": 58.06715653399999,
+                "wall_per_study_s": 0.04147654038142857,
+                "end_to_end_in_container_s": 192.204937141,
+                "scope": "compute_wall_s = re-imaging every evaluated study (the pool's wall for CPU-reimaged arms) plus batched scoring; excludes data load, outcome prep, adjacency, warm-up and the local threshold-and-calls summary, which end_to_end_in_container_s adds back (all but the summary)"
+              }
+            },
+            "lab": {
+              "arm": "lab",
+              "workers": 8,
+              "affinity": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ],
+              "raw_load_s": 1.5699722989999998,
+              "setup": {
+                "prep_s": 25.200625960000025,
+                "adjacency_s": 2.630800000247291e-05,
+                "plant_feature": 0,
+                "expected_event_fraction": {
+                  "null": 0.23899371069182376,
+                  "alternative": 0.23899371069182399
+                }
+              },
+              "warm_s": null,
+              "compute_through_scoring_s": 381.276966731,
+              "threshold_and_calls_s": 0.0008469750000585918,
+              "raw_to_answer_s": 408.04888280000006,
+              "summary": {
+                "studies": {
+                  "calibration": 0,
+                  "null": 200,
+                  "alternative": 200
+                },
+                "rule": "per-study conditional maxT, 1000 within-strata shuffles, p <= 0.05",
+                "fwer": {
+                  "rate": 0.03,
+                  "k": 6,
+                  "n": 200,
+                  "wilson95": [
+                    0.013820314340111346,
+                    0.06389429245451925
+                  ]
+                },
+                "power": {
+                  "rate": 0.205,
+                  "k": 41,
+                  "n": 200,
+                  "wilson95": [
+                    0.15486176203836208,
+                    0.26625698052422514
+                  ]
+                }
+              },
+              "stages": {
+                "prep_s": 25.200625960000025,
+                "adjacency_s": 2.630800000247291e-05,
+                "reimage_worker_wall_s": 1719.4516358360013,
+                "studies_wall_s": 381.276966731,
+                "scoring_and_calibration_worker_wall_s": 1248.864817217,
+                "evaluated_studies": 400,
+                "compute_wall_s": 381.276966731,
+                "wall_per_study_s": 0.9531924168275,
+                "end_to_end_in_container_s": 408.04759129800004,
+                "scope": "compute_wall_s = re-imaging every evaluated study (the pool's wall for CPU-reimaged arms) plus batched scoring; excludes data load, outcome prep, adjacency, warm-up and the local threshold-and-calls summary, which end_to_end_in_container_s adds back (all but the summary)"
+              }
+            }
+          },
+          "parity": {
+            "x_bitwise": true,
+            "x_compared": 400
+          },
+          "decisions": {
+            "agree": 362,
+            "compared": 400,
+            "calls": {
+              "null": {
+                "lab": 6,
+                "preflight": 11,
+                "n": 200
+              },
+              "alternative": {
+                "lab": 41,
+                "preflight": 30,
+                "n": 200
+              }
+            }
+          },
+          "scoring_ratio": 6.566138063050348,
+          "raw_to_answer_ratio": 2.115041827304799,
+          "usd_per_1000_decided_estimate": {
+            "fused": 0.11907460515099601,
+            "lab": 0.25184777046416
+          },
+          "usd_per_1000_evaluated_estimate": {
+            "lab": 0.25184777046416,
+            "fused": 0.03402131575742743
+          }
+        }
+      ],
+      "function_wall_s": 601.479562896
+    },
+    {
+      "kind": "fair",
+      "repeat": 3,
+      "plan": {
+        "lab": {
+          "null": 200,
+          "alternative": 200
+        },
+        "preflight": {
+          "calibration": 1000,
+          "null": 200,
+          "alternative": 200
+        }
+      },
+      "host": {
+        "cpu_model": "unknown",
+        "cpu_count": 8,
+        "available_affinity": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "paired_cpu_mask": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "physical_topology_visible": false,
+        "cgroup_cpu_max": null,
+        "task_id": "ta-01M81NT9J5S2HNQ8JTP6Y5EJ4R",
+        "thread_environment": {
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1",
+          "NUMBA_NUM_THREADS": "1",
+          "NUMBA_THREADING_LAYER": "workqueue"
+        },
+        "load_average": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "rows": [
+        {
+          "order": [
+            "lab",
+            "fused"
+          ],
+          "arms": {
+            "lab": {
+              "arm": "lab",
+              "workers": 8,
+              "affinity": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ],
+              "raw_load_s": 3.2732596239999996,
+              "setup": {
+                "prep_s": 31.20877692,
+                "adjacency_s": 1.6842999997379593e-05,
+                "plant_feature": 0,
+                "expected_event_fraction": {
+                  "null": 0.23899371069182382,
+                  "alternative": 0.23899371069182399
+                }
+              },
+              "warm_s": null,
+              "compute_through_scoring_s": 404.22779654799996,
+              "threshold_and_calls_s": 0.629272407999963,
+              "raw_to_answer_s": 439.832115842,
+              "summary": {
+                "studies": {
+                  "calibration": 0,
+                  "null": 200,
+                  "alternative": 200
+                },
+                "rule": "per-study conditional maxT, 1000 within-strata shuffles, p <= 0.05",
+                "fwer": {
+                  "rate": 0.03,
+                  "k": 6,
+                  "n": 200,
+                  "wilson95": [
+                    0.013820314340111346,
+                    0.06389429245451925
+                  ]
+                },
+                "power": {
+                  "rate": 0.205,
+                  "k": 41,
+                  "n": 200,
+                  "wilson95": [
+                    0.15486176203836208,
+                    0.26625698052422514
+                  ]
+                }
+              },
+              "stages": {
+                "prep_s": 31.20877692,
+                "adjacency_s": 1.6842999997379593e-05,
+                "reimage_worker_wall_s": 1772.8845245869986,
+                "studies_wall_s": 404.22779654799996,
+                "scoring_and_calibration_worker_wall_s": 1365.3717699469996,
+                "evaluated_studies": 400,
+                "compute_wall_s": 404.22779654799996,
+                "wall_per_study_s": 1.0105694913699999,
+                "end_to_end_in_container_s": 438.7098499349999,
+                "scope": "compute_wall_s = re-imaging every evaluated study (the pool's wall for CPU-reimaged arms) plus batched scoring; excludes data load, outcome prep, adjacency, warm-up and the local threshold-and-calls summary, which end_to_end_in_container_s adds back (all but the summary)"
+              }
+            },
+            "fused": {
+              "arm": "fused",
+              "workers": 8,
+              "affinity": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ],
+              "raw_load_s": 1.9690722240000014,
+              "setup": {
+                "prep_s": 84.14826391899999,
+                "adjacency_s": 63.801165332000096,
+                "plant_feature": 0,
+                "expected_event_fraction": {
+                  "null": 0.23899371069182382,
+                  "alternative": 0.23899371069182399
+                }
+              },
+              "warm_s": 5.953861286000006,
+              "compute_through_scoring_s": 66.76240989300004,
+              "threshold_and_calls_s": 0.024369598000021142,
+              "raw_to_answer_s": 222.66088729300003,
+              "summary": {
+                "studies": {
+                  "calibration": 1000,
+                  "null": 200,
+                  "alternative": 200
+                },
+                "rule": "maxT > design threshold from 1000 independent calibration nulls",
+                "threshold": 4.280528180733615,
+                "identification": {
+                  "rate": 0.075,
+                  "k": 15,
+                  "n": 200,
+                  "wilson95": [
+                    0.04597491718438201,
+                    0.12004361023629456
+                  ]
+                },
+                "fwer": {
+                  "rate": 0.055,
+                  "k": 11,
+                  "n": 200,
+                  "wilson95": [
+                    0.03098534170345884,
+                    0.0957869987723084
+                  ]
+                },
+                "power": {
+                  "rate": 0.15,
+                  "k": 30,
+                  "n": 200,
+                  "wilson95": [
+                    0.10713593562241995,
+                    0.20605579284166659
+                  ]
+                }
+              },
+              "stages": {
+                "prep_s": 84.14826391899999,
+                "adjacency_s": 63.801165332000096,
+                "reimage_worker_wall_s": 499.4422711820024,
+                "studies_wall_s": 66.76240989300004,
+                "scoring_worker_wall_s": 28.88973799700193,
+                "calibration_s": "the calibration stream's studies, inside reimage and scoring",
+                "evaluated_studies": 1400,
+                "compute_wall_s": 66.76240989300004,
+                "wall_per_study_s": 0.04768743563785717,
+                "end_to_end_in_container_s": 222.63477265400013,
+                "scope": "compute_wall_s = re-imaging every evaluated study (the pool's wall for CPU-reimaged arms) plus batched scoring; excludes data load, outcome prep, adjacency, warm-up and the local threshold-and-calls summary, which end_to_end_in_container_s adds back (all but the summary)"
+              }
+            }
+          },
+          "parity": {
+            "x_bitwise": true,
+            "x_compared": 400
+          },
+          "decisions": {
+            "agree": 362,
+            "compared": 400,
+            "calls": {
+              "null": {
+                "lab": 6,
+                "preflight": 11,
+                "n": 200
+              },
+              "alternative": {
+                "lab": 41,
+                "preflight": 30,
+                "n": 200
+              }
+            }
+          },
+          "scoring_ratio": 6.054721469699115,
+          "raw_to_answer_ratio": 1.9753452040421622,
+          "usd_per_1000_decided_estimate": {
+            "lab": 0.2714643818976824,
+            "fused": 0.1374262996372396
+          },
+          "usd_per_1000_evaluated_estimate": {
+            "lab": 0.2714643818976824,
+            "fused": 0.039264657039211316
+          }
+        }
+      ],
+      "function_wall_s": 663.2907298709999
+    }
+  ],
+  "spread": {
+    "fair": {
+      "scoring_ratio": {
+        "n": 3,
+        "median": 6.566138063050348,
+        "min": 6.054721469699115,
+        "max": 6.649725752114479
+      },
+      "raw_to_answer_ratio": {
+        "n": 3,
+        "median": 2.040076764244008,
+        "min": 1.9753452040421622,
+        "max": 2.115041827304799
+      },
+      "raw_to_answer_s": {
+        "lab": {
+          "n": 3,
+          "median": 439.832115842,
+          "min": 408.04888280000006,
+          "max": 453.130711355
+        },
+        "fused": {
+          "n": 3,
+          "median": 222.11453965700002,
+          "min": 192.92709843,
+          "max": 222.66088729300003
+        }
+      },
+      "usd_per_1000_decided_estimate": {
+        "lab": {
+          "n": 3,
+          "median": 0.2714643818976824,
+          "min": 0.25184777046416,
+          "max": 0.27967227504830605
+        },
+        "fused": {
+          "n": 3,
+          "median": 0.13708909387630042,
+          "min": 0.11907460515099601,
+          "max": 0.1374262996372396
+        }
+      },
+      "usd_per_1000_evaluated_estimate": {
+        "lab": {
+          "n": 3,
+          "median": 0.2714643818976824,
+          "min": 0.25184777046416,
+          "max": 0.27967227504830605
+        },
+        "fused": {
+          "n": 3,
+          "median": 0.03916831253608583,
+          "min": 0.03402131575742743,
+          "max": 0.039264657039211316
+        }
+      }
+    },
+    "lab_scaling": {
+      "scoring_ratio": {
+        "n": 3,
+        "median": 6.06139841824044,
+        "min": 5.688844880380477,
+        "max": 6.183559185340011
+      },
+      "raw_to_answer_ratio": {
+        "n": 3,
+        "median": 5.086001924272891,
+        "min": 4.807383632726464,
+        "max": 5.13439175338805
+      }
+    }
+  },
+  "design": {
+    "patients": 159,
+    "regions_per_patient": 2,
+    "fov_um": 400,
+    "eps": 0.1,
+    "seed": 0,
+    "hr_per_sd": 2.0,
+    "alpha": 0.05,
+    "lab_randomizations_per_study": 1000,
+    "root_seed": 20261121,
+    "seed_streams": {
+      "calibration": 101,
+      "null": 202,
+      "alternative": 303
+    }
+  },
+  "prior_scaling_comparison": {
+    "status": "RETIRED as a scaling claim",
+    "prior_ratio": 8.77,
+    "reason": "The prior figure divided medians from different containers and study counts. This experiment pairs identical studies on one host."
+  },
+  "data_sha256": {
+    "charville_labels.csv": "d3bb7dbc389f1a8ba3069e963418fb3b37e1b9b3ed37a70383fc6808c158e1f9",
+    "charville_raw_data.zip": "695d385c0f48ca158fd0aa6c2f654601adcdb7050eba6dffd37f93f47cb8808b"
+  },
+  "receipt_postprocessing": "Cumulative spend, evaluated-study costs, launch design and data digests were recorded from the saved receipt after execution. Timed rows retain the launch source_commit."
+}
