@@ -90,7 +90,11 @@ has(2, `range ${Math.round(exr.external_pipeline_vs_fused_full.min)}–${Math.ro
 has(2, `${Math.round(exr.external_with_checks_vs_fused_full.median)}× with them`); has(2, `${Math.round(exr.external_pipeline_vs_fused_matched.median)}× on the identical 48 studies`);
 assert.ok(!plain(rows[2]).includes("cross-run"), "row 2 still says cross-run");
 has(2, `${sweep.fair.spread.ratio.median.toFixed(1)}×`); has(2, "8 workers against 8");
-has(2, "reference recount and agreement checks timed separately"); has(2, "top pick the same in 16 of 16 on a matched config"); // docs/external-agreement.md, #174
+has(2, "reference recount and agreement checks timed separately");
+// Scope beside 534x and 312x (basis keys in the same-host file); 547x is the closest to the old combined-checks basis.
+has(2, "the whole off-the-shelf call per study"); has(2, "each result returned to the parent");
+has(2, "re-imaging and scoring only, the calibrated threshold and calls a separate step, excluded");
+has(2, "the closest scope to the old 583× combined-checks basis"); has(2, "top pick the same in 16 of 16 on a matched config"); // docs/external-agreement.md, #174
 has(2, "per decided study with calibration charged");
 has(2, `${sweep.scaling.spread.speedup_64_cores.median.toFixed(1)}×`); has(2, `${sweep.scaling.repeats.length} repeats`);
 has(2, `${sweep.fleet.spread.speedup_compute_span.median.toFixed(1)}× less compute span`);
