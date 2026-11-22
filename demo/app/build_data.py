@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[2]
 HERE = ROOT / "demo" / "app"
 OUT, CELLS = HERE / "data.json", HERE / "cells.json"
 COHORT = "results/charville-v2.json"
-CURRENT = "bench/results/external-baseline-20261122T043823Z.json"
+CURRENT = "bench/results/same-host-20261122T140908Z.json"  # same-host rerun (#185), pipeline only
 OURS = "bench/results/gpu-fused-h100-20261122T141815Z.json"  # the H100 fused kernel (#182), one GPU
 GRID = "demo/data/grid.json"
 HPA = "demo/workflow/img/hpa_manifest.json"
@@ -35,10 +35,9 @@ def read(rel):
 def build():
     cohort, cur, ours, grid = read(COHORT), read(CURRENT), read(OURS), read(GRID)
     cells = json.loads(CELLS.read_text())
-    s = cur["summary"]
     assert ours["status"] == "MEASURED" and ours["parity"]["all"] is True, "Ours source must be MEASURED with full CPU parity"
     studies = grid["studies_per_point"]
-    cur_s, ours_s = s["seconds_per_study"], ours["headline"]["gpu_wall_per_study_s_median"]
+    cur_s, ours_s = cur["summary"]["external_pipeline_s_per_study"]["median"], ours["headline"]["gpu_wall_per_study_s_median"]
     scale = OURS_FINISH_S / (studies * ours_s)  # race seconds per real second
     photos = {p["gene"]: p for p in read(HPA)}
     for gene, marker in PAIR:
@@ -51,8 +50,8 @@ def build():
         "studies": studies,
         "race": {"seconds": RACE_S, "ours_finish_s": OURS_FINISH_S, "race_s_per_real_s": scale,
                  "current_studies_at_end": int(RACE_S / scale / cur_s)},
-        "current": {"s_per_study": cur_s, "workers": s["workers"],
-                    "worker_s_per_study": statistics.median(r["study_s"] for r in cur["records"]),
+        "current": {"s_per_study": cur_s, "workers": cur["repeats"][0]["arms"]["external"]["workers"],
+                    "worker_s_per_study": statistics.median(r["arms"]["external"]["worker_study_s"]["median"] for r in cur["repeats"]),
                     "total_s": studies * cur_s},
         "ours": {"s_per_study": ours_s, "gpus": 1, "gpu": ours["headline"]["gpu_sku"], "source": OURS, "total_s": studies * ours_s},
         "ratio": cur_s / ours_s,

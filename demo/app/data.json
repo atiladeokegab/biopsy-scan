@@ -2,7 +2,7 @@
  "schema": "preflight-race-ihc/1",
  "sources": [
   "results/charville-v2.json",
-  "bench/results/external-baseline-20261122T043823Z.json",
+  "bench/results/same-host-20261122T140908Z.json",
   "bench/results/gpu-fused-h100-20261122T141815Z.json",
   "demo/data/grid.json",
   "demo/workflow/img/hpa_manifest.json",
@@ -23,10 +23,10 @@
   "current_studies_at_end": 1
  },
  "current": {
-  "s_per_study": 24.443413085459998,
+  "s_per_study": 22.345451116541668,
   "workers": 8,
-  "worker_s_per_study": 170.3515378875,
-  "total_s": 24443.413085459997
+  "worker_s_per_study": 174.46732260899998,
+  "total_s": 22345.451116541666
  },
  "ours": {
   "s_per_study": 0.0020690243156666764,
@@ -35,7 +35,7 @@
   "source": "bench/results/gpu-fused-h100-20261122T141815Z.json",
   "total_s": 2.0690243156666766
  },
- "ratio": 11813.980580302603,
+ "ratio": 10799.994445372946,
  "markers": [
   "DAPI",
   "PanCK",

@@ -23,7 +23,7 @@ def test_race_numbers_follow_the_founder_ruling():
     assert abs(ours["s_per_study"] - 0.0020690) < 1e-6 and 2.0 < ours["total_s"] < 2.2  # about 2.1 s for 1,000 on one H100
     assert abs(DATA["studies"] * ours["s_per_study"] * r["race_s_per_real_s"] - r["ours_finish_s"]) < 1e-9
     assert r["current_studies_at_end"] == 1  # about 1 of 1,000 by 10 s
-    assert 6 * 3600 + 40 * 60 < cur["total_s"] < 6 * 3600 + 50 * 60  # about 6 h 47 m
+    assert 6 * 3600 + 10 * 60 < cur["total_s"] < 6 * 3600 + 15 * 60  # about 6 h 12 m (same-host 22.35 s/study)
     assert set(DATA["kept"]) <= set(DATA["markers"])
 
 

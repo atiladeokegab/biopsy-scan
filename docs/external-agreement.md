@@ -11,7 +11,8 @@ The off-the-shelf baseline (#132, `bench/external_baseline.py`, result
 Preflight in **14 of 50 studies, MEASURED** (null stream 5/25, alternative 9/25; outcomes SIMULATED). In none of the
 36 misses did the two pick the same (tumour type, neighbour type, radius) with the other statistic (from that file's
 records). Median top-10 overlap was **4.5** of 10 (`summary.agreement_median.top10_overlap` in the same file). All
-MEASURED.
+MEASURED. The speed figure for this pipeline is now the same-host rerun (#185,
+`bench/results/same-host-20261122T140908Z.json`): 534×, median of 3 fresh containers (range 511–547×), MEASURED.
 
 ## Short answer
 
