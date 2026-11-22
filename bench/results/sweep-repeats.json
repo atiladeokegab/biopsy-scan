@@ -227,5 +227,65 @@
         ]
       }
     ]
+  },
+  "scaling": {
+    "status": "MEASURED",
+    "prior": "modal-scaling-20261121T201008Z.json",
+    "repeats": [
+      {
+        "file": "r1-modal-scaling-20261122T063144Z.json",
+        "file_sha256": "fc69fa624476d2283e260fec7e0cc0ada3138ca24062299e0edecada3fd0dc17",
+        "run_id": "ta-01M80Z86H3VDM4FR3WZ7N3NW4R",
+        "source_commit": "8d4a773824e90242163cf2920624f7351dcd5b6c",
+        "values": {
+          "speedup_64_cores": 24.934069925901014,
+          "wall_per_study_1_core_s": 0.791956714285,
+          "wall_per_study_64_cores_s": 0.03176203149499999
+        },
+        "parity_vs_prior": "every core count: all 1000 studies' features bitwise and maxT within 1e-09 of the prior sweep's 1-core run"
+      },
+      {
+        "file": "r2-modal-scaling-20261122T063145Z.json",
+        "file_sha256": "66fbcea1f5de90ba75eaba43e162dd9122436034bc076d89e01c1e2cea43b510",
+        "run_id": "ta-01M80Z88JH1XT3G459FMQ048NR",
+        "source_commit": "8d4a773824e90242163cf2920624f7351dcd5b6c",
+        "values": {
+          "speedup_64_cores": 33.09400932624354,
+          "wall_per_study_1_core_s": 1.309849826368,
+          "wall_per_study_64_cores_s": 0.039579665717000015
+        },
+        "parity_vs_prior": "every core count: all 1000 studies' features bitwise and maxT within 1e-09 of the prior sweep's 1-core run"
+      },
+      {
+        "file": "r3-modal-scaling-20261122T063147Z.json",
+        "file_sha256": "9ab1c0592f8bf7eca3d20d9fd8b4a86287ad9838e891d1f364f70feaf9c2311b",
+        "run_id": "ta-01M80Z8ADWTXS2WWC2WMYB2X4R",
+        "source_commit": "8d4a773824e90242163cf2920624f7351dcd5b6c",
+        "values": {
+          "speedup_64_cores": 27.985477106637703,
+          "wall_per_study_1_core_s": 1.131661959052,
+          "wall_per_study_64_cores_s": 0.040437472434
+        },
+        "parity_vs_prior": "every core count: all 1000 studies' features bitwise and maxT within 1e-09 of the prior sweep's 1-core run"
+      }
+    ],
+    "spread": {
+      "speedup_64_cores": {
+        "median": 27.985477106637703,
+        "min": 24.934069925901014,
+        "max": 33.09400932624354
+      },
+      "wall_per_study_1_core_s": {
+        "median": 1.131661959052,
+        "min": 0.791956714285,
+        "max": 1.309849826368
+      },
+      "wall_per_study_64_cores_s": {
+        "median": 0.039579665717000015,
+        "min": 0.03176203149499999,
+        "max": 0.040437472434
+      }
+    },
+    "failed_attempts": []
   }
 }
