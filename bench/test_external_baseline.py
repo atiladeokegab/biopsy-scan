@@ -101,10 +101,12 @@ def test_failed_fits_are_excluded_from_agreement_ranks_and_counted():
     zs = zo.copy()
     zs[:3] = np.nan  # three failed fits, ours ranks them highest
     part = eb.agreement(X, X, zs, zo)
-    assert part["z_excluded"] == 3 and part["top1_same"] and part["top_ours"] == part["top_lifelines"] == 3
-    assert part["top10_overlap"] == 9  # only 9 features are finite on both sides
+    # each method ranks its own finite features: ours's best (0) is invalid for lifelines, whose best is 3
+    assert part["z_excluded"] == 3 and part["top_lifelines"] == 3 and part["top_ours"] == 0
+    assert part["top1_same"] is False
+    assert part["top10_overlap"] == 7  # lifelines' top 10 is its 9 finite (3..11); ours is 0..9
     s = eb.summarize({"records": [_rec(none), _rec(part)], "pool_wall_s": 10.0, "workers": 1, "plant_feature": 0})
-    assert s["top1_same"] == {"k": 1, "of": 1} and s["z_excluded"] == 15
+    assert s["top1_same"] == {"k": 0, "of": 1} and s["z_excluded"] == 15
 
 
 def test_headline_per_study_is_the_measured_pool_wall_and_worker_time_is_a_separate_derived_rate():
