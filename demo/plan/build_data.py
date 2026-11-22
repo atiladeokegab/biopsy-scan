@@ -67,6 +67,7 @@ def main() -> None:
         },
         "cohorts": {c: cohort(c) for c in COHORTS},
         "stains": {"status": translate["step1_panels"]["status"], "reason": translate["step1_panels"]["reason"],
+                   "n_patients": translate["step1_panels"]["n_patients"], "n_events": translate["step1_panels"]["n_events"],
                    "source": "results/upmc-translate.json", "code": "translate/panels.py"},
     }
     out = ROOT / "demo/plan/data.json"

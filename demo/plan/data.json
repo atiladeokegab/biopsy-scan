@@ -2491,7 +2491,9 @@
  },
  "stains": {
   "status": "UNMEASURED",
-  "reason": "UPMC raw files missing in data_dir (run on Modal with mounted data)",
+  "reason": "C_full <= 0.5 (0.2941)",
+  "n_patients": 34,
+  "n_events": 6,
   "source": "results/upmc-translate.json",
   "code": "translate/panels.py"
  }
