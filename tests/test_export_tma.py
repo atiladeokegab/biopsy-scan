@@ -22,7 +22,7 @@ def test_tma_json_shape():
     assert d["markers"] == ["DAPI", "PanCK", "CD8", "CD68", "aSMA", "CD20"]
     hero = cores[d["pick"]]
     assert hero["region"] == "Charville_c003_v001_r001_reg112" and hero["patient"] == "CHV-24133"
-    assert len(hero["cells"]) == hero["n_cells"]
+    assert len(hero["cells"]) == hero["n_cells"] >= 2500 and len({r[2] for r in hero["cells"]}) >= 12
     assert all(len(c["cells"]) <= 1200 for i, c in enumerate(cores) if i != d["pick"])
 
 
