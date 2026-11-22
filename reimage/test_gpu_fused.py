@@ -4,7 +4,6 @@ import subprocess
 import sys
 
 import numpy as np
-import pytest
 
 DESIGNS = (dict(patients=12, regions_per_patient=1, fov_um=60.0, eps=0.2),  # region choice, crops, mis-calls
            dict(patients=None, regions_per_patient=None, fov_um=None, eps=0.0))  # the truth layer: no draws at all
@@ -59,6 +58,7 @@ def test_cuda_simulator_matches_the_fused_arm_bit_for_bit():
 
 
 def test_real_device_matches_the_fused_arm_bit_for_bit():
+    import pytest
     from numba import cuda
     if not cuda.is_available() or cuda.config.ENABLE_CUDASIM:
         pytest.skip("no CUDA device")
@@ -66,6 +66,7 @@ def test_real_device_matches_the_fused_arm_bit_for_bit():
 
 
 def test_gpu_backend_refuses_without_a_device():
+    import pytest
     from numba import cuda
     from reimage import gpu_fused as gf
     if cuda.is_available():
