@@ -5,8 +5,7 @@
 **Preflight simulates thousands of cell-by-cell spatial-biomarker studies on real CODEX tissue before you image a slide, screens every candidate pattern with honest multiple-testing correction, and tests how much signal survives one- or two-stain clinical IHC.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-Live interactive demo: <https://preflight-demo-5zvig7nbvq-nw.a.run.app/> (Google Cloud Run; GitHub Pages fallback: <https://atiladeokegab.github.io/sota-parallelism-nov21/>)  
-A recorded walkthrough accompanies the submission.
+Run the interactive demo locally with `make demo`.
 
 ![Preflight 3D tissue viewer and power gap demo](docs/assets/demo-1280.png)
 
@@ -14,7 +13,7 @@ Every number below carries its evidence label — **MEASURED**, **ESTIMATE**, **
 
 **Headline speed, on `8` CPU cores (the fused kernel is not a GPU kernel):** `534×` vs off-the-shelf squidpy + lifelines, same host, median of `3` fresh containers (range `511–547×`; `22.35 s` per study over `48` studies vs `0.0426 s` per evaluated study over `3,000`, `8` workers each; timings **MEASURED**, outcomes **SYNTHETIC**; pipeline only, our reference recount and agreement checks timed separately, `547×` with them, the closest scope to the old `583×` combined-checks basis; `312×` on the same `48` studies; for `534×` and `312×` the external time is the whole off-the-shelf call per study (cells, squidpy, lifelines, Bonferroni call, each result returned to the parent) and the fused time is re-imaging and scoring only, the calibrated threshold and calls a separate step, excluded; different statistics, top pick the same in `16/16` on a matched config, [`docs/external-agreement.md`](docs/external-agreement.md); [`same-host-20261122T140908Z.json`](bench/results/same-host-20261122T140908Z.json)); `21×` vs an optimised lab-method rewrite (`0.881 s` vs `0.0419 s` per evaluated study, cross-run; `14.0×` per whole design point, `1,761.88 s` vs `125.73 s` compute wall; the fused kernel re-images, scoring and the cutoff are a separate step, and the cutoff and calls are outside the timing; **MEASURED**; [`modal-design-20261121T205536Z.json`](bench/results/modal-design-20261121T205536Z.json)); `5.5×` fair 8 v 8, compute per decided study with calibration charged, Numba arm, not the fused kernel (median of `3` repeats, range `4.6–5.6×`, **MEASURED**; [`sweep-repeats.json`](bench/results/sweep-repeats.json)). Rows below.
 
-## Committed Results (on `integration`)
+## Committed Results (on `main`)
 
 | Finding | Result & Label | Source |
 |---|---|---|

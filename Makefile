@@ -1,4 +1,4 @@
-.PHONY: smoke install test data summary heldout demo tissue tma race-local deploy modal-gpu-tests modal-ladder modal-ab modal-gpu-vs
+.PHONY: smoke install test data summary heldout demo tissue tma race-local modal-gpu-tests modal-ladder modal-ab modal-gpu-vs
 
 install:
 	uv sync --dev
@@ -6,7 +6,7 @@ install:
 test:
 	uv run pytest -q
 
-# The event smoke: offline, tiny invented fixture, no real data. Plus the demo's race regression (Node).
+# Smoke: offline, tiny invented fixture, no real data. Plus the demo's race regression (Node).
 smoke: install test
 	python3 -I demo/check_data.py demo/data
 	node demo/race.test.mjs
@@ -50,12 +50,6 @@ tma: data
 race-local: install data
 	uv run python -m bench.race_local $(if $(RACE_STUDIES),--studies $(RACE_STUDIES)) $(if $(RACE_WORKERS),--workers $(RACE_WORKERS))
 
-# The public demo: .github/workflows/pages.yml publishes demo/ to GitHub Pages on every push to
-# integration. This target checks the data the workflow will publish and prints the URL.
-PAGES_URL ?= https://atiladeokegab.github.io/sota-parallelism-nov21/
-deploy:
-	python3 -I demo/check_data.py demo/data
-	@echo "Deployed by .github/workflows/pages.yml on push to integration: $(PAGES_URL)"
 
 # Real GPUs on Modal (docs/GPU.md). Needs `uv run modal setup` once; GPU=A100-40GB|A100-80GB|H100|L4.
 GPU ?= A100-40GB
