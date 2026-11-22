@@ -4,7 +4,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const { miscall, randomCrop, inCrop, heightField, boundaryPoint, timeline, END, FOV_UM, EPS, WINDOWS, TYPES,
-  clock, inView, captureTime, mountReimage } = await import("./reimage3d.js");
+  clock, inView, captureTime, mountReimage, groupMatrix, callFrom, fitView } = await import("./reimage3d.js");
+const THREE = await import("./vendor/three/three.module.min.js");
 
 // miscall follows core/reimage_ref.py: keep the type with prob 1 - eps, else a uniform other type,
 // chosen as the first k with cumsum(M[type])[k] > u. Rows for eps 0.1, K 3: [.9 .05 .05], [.05 .9 .05].
@@ -75,7 +76,17 @@ const tissueJSON = JSON.parse(readFileSync(new URL("./data/tissue.json", import.
 const nTypes = Object.keys(tissueJSON.meta.display_classes).length;
 const flat = (x) => x.replace(/<[^>]+>/g, "").replace(/\s+/g, " ");
 assert.ok(flat(steps).includes(`${nTypes} measured cell types`) && flat(steps).includes(`${TYPES.length} colour groups`), "steps say types are grouped");
-assert.match(flat(steps), /mis-call inside one group does not show here/);
+assert.ok(flat(steps).includes(`10% chance of a mis-call among the ${nTypes} types`), "one rate, the study's");
+assert.match(flat(steps), /Only a mis-call into another colour group shows here\./);
+// One idea per sentence: no semicolons or colon-joined clauses in the visible copy; one word per idea.
+const section = flat(html.match(/<section class="reimage"[\s\S]*?<\/section>/)[0]);
+assert.doesNotMatch(section, /;/, "no semicolon-joined ideas");
+assert.doesNotMatch(section, /\blook\b|\bcore\b|SIMULATED/, "glossary: region, imaging, SYNTHETIC");
+assert.match(section, /SYNTHETIC imaging/);
+assert.doesNotMatch(html, /id="reimage-tag"[^>]*class|class="tag ok" id="reimage-tag"/, "MEASURED tag off the accent");
+assert.match(html, /<h2 id="reimage-title">[^<]*fields[^<]*mis-call/, "the title states the answer");
+assert.match(html, />Replay the fly-through</); assert.match(html, />Pause the fly-through</);
+assert.match(html, /<img id="reimage-still"[^>]*src="img\/reimage-end\.jpg"[^>]*loading="lazy"[^>]*hidden/, "a GPU still waits for the no-WebGL case");
 assert.doesNotMatch(flat(steps), /mis-calls 10% of the cells/, "no exact achieved fraction");
 const aria = html.match(/<canvas id="reimage"[^>]*aria-label="([^"]+)"/)[1];
 assert.match(aria, /10% chance/); assert.match(aria, /colour groups/);
@@ -111,12 +122,45 @@ mountReimage($, synth, { reducedMotion: false, search: "", create: () => { throw
 assert.equal($("reimage-tag").textContent, "SYNTHETIC cells"); assert.ok(!$("reimage-tag").cls.has("ok"), "no MEASURED styling");
 assert.ok($("reimage-replay").hidden && $("reimage-pause").hidden, "no dead controls without WebGL");
 assert.ok($("reimage").hidden, "canvas hidden without WebGL");
-assert.match($("reimage-credit").textContent, /WebGL/); assert.match($("reimage-fallback").textContent, /SYNTHETIC/);
+assert.doesNotMatch($("reimage-credit").textContent, /WebGL/, "the credit does not repeat the fallback");
+assert.match($("reimage-fallback").textContent, /SYNTHETIC/); assert.match($("reimage-fallback").textContent, /hardware acceleration|another browser/, "says how to recover");
+assert.equal($("reimage-still").hidden, false, "the GPU still shows in the well");
 let got; $ = page();
 mountReimage($, tissueJSON, { reducedMotion: false, search: "?t3d=nope", create: (cv, t, o) => { got = o; return { replay() {}, toggle: () => false }; } });
 assert.equal(got.freezeAt, null, "malformed t3d plays normally");
-assert.ok($("reimage-tag").cls.has("ok") && $("reimage-tag").textContent === "", "MEASURED tag left as the HTML has it"); assert.match($("reimage-credit").textContent, /Zenodo 13179600/);
+assert.match($("reimage-credit").textContent, /Zenodo 13179600/);
 assert.ok(!$("reimage-replay").hidden && !$("reimage-pause").hidden, "controls revealed once WebGL runs");
 $ = page(); mountReimage($, tissueJSON, { reducedMotion: true, search: "", create: () => ({}) });
 assert.ok($("reimage-replay").hidden, "reduced motion: no controls");
+
+// The mis-calls drawn are Preflight's 15-type model seen through the 3 colour groups: a type in group g is called
+// as another type with prob eps, uniform over the other 14, so it lands in group h != g with prob eps * n_h / 14.
+const sizes = TYPES.map((g) => Object.values(tissueJSON.meta.display_classes).filter((v) => v === g).length);
+assert.deepEqual(sizes, [7, 3, 5], "tumour 7, stroma 3, immune 5 source types");
+const M = groupMatrix(sizes, EPS);
+M.forEach((row) => assert.ok(Math.abs(row.reduce((a, b) => a + b) - 1) < 1e-12, "rows sum to 1"));
+assert.ok(Math.abs(M[0][1] - 0.1 * 3 / 14) < 1e-12 && Math.abs(M[0][0] - (1 - 0.1 * 8 / 14)) < 1e-12, "tumour row");
+assert.ok(Math.abs(M[1][1] - (1 - 0.1 * 12 / 14)) < 1e-12, "stroma row");
+// Brute force: draw the 15-type model directly and compare the group-crossing rate.
+const types15 = Object.values(tissueJSON.meta.display_classes);
+for (let g = 0; g < 3; g++) {
+  const src = types15.findIndex((v) => v === TYPES[g]); let cross = 0, cross15 = 0; const r2 = (() => { let a = 99; return () => ((a = (a * 1103515245 + 12345) % 2147483648) / 2147483648); })();
+  for (let i = 0; i < 200000; i++) {
+    if (callFrom(M[g], r2()) !== g) cross++;
+    const u = r2(); if (u < EPS) { const others = types15.filter((_, k) => k !== src); if (others[Math.floor(r2() * 14)] !== TYPES[g]) cross15++; }
+  }
+  assert.ok(Math.abs(cross - cross15) / 200000 < 0.004, `group ${TYPES[g]}: projected ${cross} vs 15-type ${cross15}`);
+}
+
+// Framing: each shot is fitted to its subject at the canvas's own aspect, so the 390 view is redrawn, not cropped.
+const pts = [...Array(32)].map((_, i) => new THREE.Vector3(300 * Math.cos(i / 5), 20, 300 * Math.sin(i / 5)));
+for (const aspect of [1280 / 600, 900 / 600, 390 / 340]) {
+  const { target, dist } = fitView(pts, 1.0, -0.55, 34, aspect, 0.9);
+  const cam = new THREE.PerspectiveCamera(34, aspect, 1, 1e5);
+  cam.position.set(target.x + dist * Math.cos(1.0) * Math.sin(-0.55), target.y + dist * Math.sin(1.0), target.z + dist * Math.cos(1.0) * Math.cos(-0.55));
+  cam.lookAt(target); cam.updateMatrixWorld(); cam.updateProjectionMatrix();
+  const ndc = pts.map((p) => p.clone().project(cam));
+  const edge = Math.max(...ndc.map((q) => Math.max(Math.abs(q.x), Math.abs(q.y))));
+  assert.ok(edge <= 0.9 + 1e-6 && edge > 0.85, `aspect ${aspect.toFixed(2)}: subject fills the frame inside the margin (${edge.toFixed(3)})`);
+}
 console.log("reimage3d.test.mjs: ok");
