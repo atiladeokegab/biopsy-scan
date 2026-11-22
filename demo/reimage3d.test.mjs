@@ -60,6 +60,7 @@ assert.ok(flips / 2 / (t1 - t0) <= 3, `flash rate ${flips / 2 / (t1 - t0)} per s
 
 // The page: the section and its labels exist, and the proof take's anchors are untouched.
 const html = readFileSync(new URL("./index.html", import.meta.url), "utf8");
+const app = readFileSync(new URL("./app.js", import.meta.url), "utf8"), src = readFileSync(new URL("./reimage3d.js", import.meta.url), "utf8");
 for (const id of ["speed-race", "speed-interim", "run", "verdict", "tissue-caption", "reimage", "reimage-steps"])
   assert.equal(html.split(`id="${id}"`).length, 2, `exactly one #${id}`);
 assert.ok(html.indexOf('id="speed-race"') < html.indexOf('id="reimage"'), "the 3D view sits below the race");
@@ -116,7 +117,7 @@ assert.equal(captureTime("9.8"), 9.8); assert.equal(captureTime("0"), 0);
 // Setup: provenance first, controls only after WebGL starts, an honest fallback without it.
 const fakeEl = () => { const e = { textContent: "", hidden: false, attrs: {}, cls: new Set(["measured"]), on: {}, firstChild: { textContent: "" },
   setAttribute(k, v) { this.attrs[k] = v; }, removeAttribute(k) { delete this.attrs[k]; }, addEventListener(t, f) { this.on[t] = f; } };
-  e.classList = { remove: (k) => e.cls.delete(k), add: (k) => e.cls.add(k) }; return e; };
+  e.classList = { remove: (k) => e.cls.delete(k), add: (k) => e.cls.add(k), toggle: (k, on) => (on ? e.cls.add(k) : e.cls.delete(k)) }; return e; };
 const page = () => { const els = {}; const $ = (id) => (els[id] ??= fakeEl());
   $("reimage-replay").hidden = $("reimage-pause").hidden = true; $("reimage-steps").children = [1, 2, 3, 4].map(fakeEl); return $; };
 const synth = { source: "SYNTHETIC", patients: [{ id: "S-1", region: "r1", cells_in_region: 2, cells: [{ x: 0, y: 0, type: "tumour" }, { x: 9, y: 9, type: "stroma" }] }] };
@@ -150,9 +151,16 @@ assert.doesNotMatch(flat(steps), /\bthis one\b|Each cell it sees/);
 assert.match(html, /<picture class="reimage-still-pic"><source media="\(max-width: 900px\)" srcset="img\/reimage-end-phone\.jpg">/, "the phone gets its own GPU still");
 // Once the take ends, only Replay is offered.
 let ended; $ = page();
-mountReimage($, tissueJSON, { reducedMotion: false, search: "", create: (cv, t, o) => { ended = o.onEnd; return { replay() {}, toggle: () => true }; } });
+mountReimage($, tissueJSON, { reducedMotion: false, search: "", create: (cv, t, o) => { ended = o.onEnd; return { replay() {}, toggle: () => false }; } });
 assert.equal($("reimage-pause").hidden, false); ended(); assert.equal($("reimage-pause").hidden, true, "no Pause after the end");
+assert.ok(!$("reimage-steps").cls.has("playing"), "at the end the phone shows every step");
 $("reimage-replay").on.click(); assert.equal($("reimage-pause").hidden, false, "Replay brings Pause back");
+assert.ok($("reimage-steps").cls.has("playing"), "Replay plays again: the current step alone on the phone");
+$("reimage-pause").on.click(); assert.ok(!$("reimage-steps").cls.has("playing"), "paused: every step shows");
+// The well holds no blank canvas while the data loads; the canvas shows once WebGL is tried.
+assert.match(html, /<canvas id="reimage" hidden /, "canvas hidden until mounted");
+assert.match(app, /reimage-still"\)\.hidden = false/, "data failure keeps the GPU still in the well");
+assert.doesNotMatch(src, /Above: the last frame/, "the recovery line sits above the still");
 $ = page(); mountReimage($, tissueJSON, { reducedMotion: true, search: "", create: () => ({}) });
 assert.ok($("reimage-replay").hidden, "reduced motion: no controls"); assert.ok(!$("reimage-steps").cls.has("playing"), "reduced motion: every step shows");
 
