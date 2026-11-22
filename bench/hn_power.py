@@ -36,7 +36,7 @@ TARGET_EVENT_FRACTION = 0.2389937106918239
 DESIGN = ["--cohorts", "upmc", "--regions", "2", "--fov-um", "400", "--eps", "0.1", "--hr", "2.0",
           "--seed", "20261121", "--calibration", "200", "--null", "100", "--alternative", "300", "--nested", "0",
           "--permutations", "999", "--batch", "8"]
-LABEL = "ESTIMATE"
+LABEL = "ESTIMATE; simulated cohorts resampled from 34 UPMC discovery patients' tissue; outcomes SYNTHETIC"
 CAVEATS = {
     "outcomes": "SYNTHETIC: planted Weibull outcomes, HR 2 per source SD; no real UPMC outcome was read",
     "source": "34 discovery patients resampled with replacement up to 600: every simulated cohort reuses the "
@@ -134,14 +134,25 @@ def summarize(rows: list[dict], meta: dict) -> dict:
         points.append({"patients": int(r["patients"]), "power": k / n, "power_lo": lo, "power_hi": hi,
                        "planted_studies": n, "rejections": k, "fwer": float(r["fwer"]),
                        "mean_events": float(r["alternative_mean_events"]), "threshold": float(r["threshold"])})
-    return {"label": LABEL, "outcomes": "SYNTHETIC", "source": "34 discovery patients resampled",
+    return {"label": LABEL, "outcomes": "SYNTHETIC", "source": "simulated cohorts of 50-600 resampled with replacement from 34 UPMC discovery patients' tissue",
+            "interval": "per point: Clopper-Pearson 95% on rejections / planted studies (200 per point on Modal)",
             "cohort": "UPMC head and neck, discovery split only", "caveats": CAVEATS, "points": points,
             "answer": answer(points), "metadata": {k: meta.get(k) for k in
                                                    ("source_n", "source_regions", "source_cells", "grammar_hash",
                                                     "budget", "hr_per_source_sd", "seed", "backend", "bank_draws")}}
 
 
-if __name__ == "__main__":
+def from_raw(raw: Path) -> dict:
+    """The summary re-derived from a gpu/hn_power.py raw file (its rows are the measured record)."""
+    d = json.loads(Path(raw).read_text())
+    ok = [p for p in d["points"] if "rows" in p]
+    out = summarize([r for p in ok for r in p["rows"]], ok[0]["metadata"])
+    return {**out, "raw": f"bench/results/{Path(raw).name}", "commit": d["commit"]}
+
+
+if __name__ == "__main__" and sys.argv[1] == "--from-raw":
+    print(json.dumps(from_raw(Path(sys.argv[2])), indent=1))
+elif __name__ == "__main__":
     out = Path(sys.argv[1])
     run(out, out / "cache", source(Path(__import__("os").environ["DATA_DIR"])), extra=sys.argv[2:])
     print(json.dumps(summarize(*read_run(out))["answer"]["statement"]))
