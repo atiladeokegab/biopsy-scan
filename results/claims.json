@@ -1286,7 +1286,7 @@
    "quotes": [
     {
      "file": "README.md",
-     "text": "| **CPU strong scaling** (Numba arm, Charville, the same `{studies}` {stream} studies at `{cores_lo}–{cores_hi}` Modal cores, one concurrent sweep, #115) | One sweep. Studies wall per study `{wall_1} s` on 1 core vs `{wall_64} s` on 64 cores: `{speedup_64}×`. The 4- and 8-core points beat linear (`{speedup_4}×`, `{speedup_8}×`); one sweep, not separated from host variance (each core count on its own host, CPU models unknown, RAM grows with cores; host, cache and scheduling effects not isolated): observed ratios, not a guaranteed speed-up. X sha256 bit-equal at every core count; z within `1e-9` relative of the 8-core z (**{label}**) | [`bench/results/modal-scaling-20261121T201008Z.json`](bench/results/modal-scaling-20261121T201008Z.json) ([caveats](bench/results/modal-scaling-20261121T201008Z.caveats.json)) |"
+     "text": "| **CPU strong scaling** (Numba arm, Charville, the same `{studies}` {stream} studies at `{cores_lo}–{cores_hi}` Modal cores, one concurrent sweep, #115) | **Superseded** by the repeats row above (`28.0×`; this sweep lies above its range). One sweep. Studies wall per study `{wall_1} s` on 1 core vs `{wall_64} s` on 64 cores: `{speedup_64}×`. The 4- and 8-core points beat linear (`{speedup_4}×`, `{speedup_8}×`); one sweep, not separated from host variance (each core count on its own host, CPU models unknown, RAM grows with cores; host, cache and scheduling effects not isolated): observed ratios, not a guaranteed speed-up. X sha256 bit-equal at every core count; z within `1e-9` relative of the 8-core z (**{label}**) | [`bench/results/modal-scaling-20261121T201008Z.json`](bench/results/modal-scaling-20261121T201008Z.json) ([caveats](bench/results/modal-scaling-20261121T201008Z.caveats.json)) |"
     }
    ]
   },
@@ -1392,10 +1392,332 @@
    "quotes": [
     {
      "file": "README.md",
-     "text": "| **Matched end to end** (lab vs Preflight, same container, design and seeds, #123) | Matched workflow comparison through scoring (re-imaging plus each study's test or screen; excludes data load, threshold and calls): lab `{lab} s` per study (`{lab_n}` studies) vs Preflight `{pf} s` per decided study (`{pf_n}` decided, its `{calib}` calibration nulls paid for): `{ratio}×`; `{ratio_setup}×` including setup (outcome simulation, adjacency, warm-up). `{lab_w}` lab core vs `{pf_w}` Preflight workers; different procedures (per-study permutation vs one calibrated threshold). Features bitwise on `{x_n}` shared studies; decisions agree `{agree}/{compared}` (**{label}**, outcomes SYNTHETIC) | [`bench/results/matched-e2e-20261121T201925Z.json`](bench/results/matched-e2e-20261121T201925Z.json) |"
+     "text": "| **Matched end to end** (lab vs Preflight, same container, design and seeds, #123) | **Superseded** by the repeats row above (`40.0×`). Matched workflow comparison through scoring (re-imaging plus each study's test or screen; excludes data load, threshold and calls): lab `{lab} s` per study (`{lab_n}` studies) vs Preflight `{pf} s` per decided study (`{pf_n}` decided, its `{calib}` calibration nulls paid for): `{ratio}×`; `{ratio_setup}×` including setup (outcome simulation, adjacency, warm-up). `{lab_w}` lab core vs `{pf_w}` Preflight workers; different procedures (per-study permutation vs one calibrated threshold). Features bitwise on `{x_n}` shared studies; decisions agree `{agree}/{compared}` (**{label}**, outcomes SYNTHETIC) | [`bench/results/matched-e2e-20261121T201925Z.json`](bench/results/matched-e2e-20261121T201925Z.json) |"
     }
    ],
    "note": "26.7× uses the stored wall.with_setup per-study totals; not cross-checked against the setup stage timers."
+  },
+  {
+   "id": "fleet-repeats-6.3x",
+   "claim": "8 vs 1 A100 compute-span ratio 6.3x, median of 2 fresh repeats (6.18-6.42x); 1 attempt failed the same-model check",
+   "source": "bench/results/sweep-repeats.json",
+   "pr": 134,
+   "label": "MEASURED",
+   "label_path": "fleet.status",
+   "values": [
+    {
+     "name": "med",
+     "path": "fleet.spread.speedup_compute_span.median",
+     "rule": "fixed:1",
+     "expect": "6.3"
+    },
+    {
+     "name": "lo",
+     "path": "fleet.spread.speedup_compute_span.min",
+     "rule": "fixed:2",
+     "expect": "6.18"
+    },
+    {
+     "name": "hi",
+     "path": "fleet.spread.speedup_compute_span.max",
+     "rule": "fixed:2",
+     "expect": "6.42"
+    },
+    {
+     "name": "n",
+     "len": "fleet.repeats",
+     "rule": "eq",
+     "expect": "2"
+    },
+    {
+     "name": "failed",
+     "len": "fleet.failed_attempts",
+     "rule": "eq",
+     "expect": "1"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "Compute-span ratio `{med}×`, median of `{n}` fresh repeats (range `{lo}–{hi}×`); `{failed}` attempt failed the same-GPU-model check and is excluded. Each fleet bit-equal to its own 1-container run; median and min–max of the fresh repeats: descriptive, not a confidence interval (**{label}**)"
+    }
+   ]
+  },
+  {
+   "id": "cpu-scaling-repeats-28.0x",
+   "claim": "Numba arm 1 to 64 Modal cores 28.0x, median of 3 fresh repeats (24.9-33.1x); supersedes #115's 38.2x",
+   "source": "bench/results/sweep-repeats.json",
+   "pr": 135,
+   "label": "MEASURED",
+   "label_path": "scaling.status",
+   "values": [
+    {
+     "name": "med",
+     "path": "scaling.spread.speedup_64_cores.median",
+     "rule": "fixed:1",
+     "expect": "28.0"
+    },
+    {
+     "name": "lo",
+     "path": "scaling.spread.speedup_64_cores.min",
+     "rule": "fixed:1",
+     "expect": "24.9"
+    },
+    {
+     "name": "hi",
+     "path": "scaling.spread.speedup_64_cores.max",
+     "rule": "fixed:1",
+     "expect": "33.1"
+    },
+    {
+     "name": "n",
+     "len": "scaling.repeats",
+     "rule": "eq",
+     "expect": "3"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "`{med}×` from `1` to `64` cores, median of `{n}` fresh repeats (range `{lo}–{hi}×`)"
+    },
+    {
+     "file": "README.md",
+     "text": "**Superseded** by the repeats row above (`{med}×`; this sweep lies above its range)"
+    }
+   ]
+  },
+  {
+   "id": "matched-repeats-40.0x",
+   "claim": "Matched through scoring 40.0x, median of 3 fresh repeats (37.3-40.2x), 25.3x with setup; supersedes #123's 42.1x",
+   "source": "bench/results/sweep-repeats.json",
+   "pr": 134,
+   "label": "MEASURED",
+   "label_path": "matched.status",
+   "values": [
+    {
+     "name": "med",
+     "path": "matched.spread.ratio.median",
+     "rule": "fixed:1",
+     "expect": "40.0"
+    },
+    {
+     "name": "lo",
+     "path": "matched.spread.ratio.min",
+     "rule": "fixed:1",
+     "expect": "37.3"
+    },
+    {
+     "name": "hi",
+     "path": "matched.spread.ratio.max",
+     "rule": "fixed:1",
+     "expect": "40.2"
+    },
+    {
+     "name": "setup",
+     "path": "matched.spread.ratio_with_setup.median",
+     "rule": "fixed:1",
+     "expect": "25.3"
+    },
+    {
+     "name": "n",
+     "len": "matched.repeats",
+     "rule": "eq",
+     "expect": "3"
+    },
+    {
+     "name": "agree",
+     "path": "matched.repeats[0].decisions_agree",
+     "rule": "eq",
+     "expect": "[89, 100]"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "Through scoring, as in #123: `{med}×`, median of `{n}` fresh repeats (range `{lo}–{hi}×`); `{setup}×` with setup."
+    },
+    {
+     "file": "README.md",
+     "text": "**Superseded** by the repeats row above (`{med}×`). Matched workflow"
+    }
+   ]
+  },
+  {
+   "id": "fair-8v8-5.5x",
+   "claim": "Fair 8 vs 8 workers, Numba arm, 5.5x through scoring, median of 3 fresh repeats (4.6-5.6x), 3.7x with setup",
+   "source": "bench/results/sweep-repeats.json",
+   "pr": 134,
+   "label": "MEASURED",
+   "label_path": "fair.status",
+   "values": [
+    {
+     "name": "med",
+     "path": "fair.spread.ratio.median",
+     "rule": "fixed:1",
+     "expect": "5.5"
+    },
+    {
+     "name": "lo",
+     "path": "fair.spread.ratio.min",
+     "rule": "fixed:1",
+     "expect": "4.6"
+    },
+    {
+     "name": "hi",
+     "path": "fair.spread.ratio.max",
+     "rule": "fixed:1",
+     "expect": "5.6"
+    },
+    {
+     "name": "setup",
+     "path": "fair.spread.ratio_with_setup.median",
+     "rule": "fixed:1",
+     "expect": "3.7"
+    },
+    {
+     "name": "n",
+     "len": "fair.repeats",
+     "rule": "eq",
+     "expect": "3"
+    },
+    {
+     "name": "agree",
+     "path": "fair.repeats[0].decisions_agree",
+     "rule": "eq",
+     "expect": "[362, 400]"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "Through scoring: `{med}×`, median of `{n}` fresh repeats (range `{lo}–{hi}×`); `{setup}×` with setup. Decisions agree 362 of 400 in every repeat."
+    }
+   ]
+  },
+  {
+   "id": "external-ladder-24.4",
+   "claim": "squidpy + lifelines on 8 cores 24.4 s/study; 27.7x and 583x cross-run against lab and fused; top pattern matches 14/50",
+   "source": "bench/results/external-baseline-20261122T043823Z.json",
+   "pr": 132,
+   "label": "MEASURED",
+   "label_path": "status",
+   "values": [
+    {
+     "name": "s",
+     "path": "summary.seconds_per_study",
+     "rule": "fixed:1",
+     "expect": "24.4"
+    },
+    {
+     "name": "vlab",
+     "path": "summary.ratio_vs_lab",
+     "rule": "fixed:1",
+     "expect": "27.7"
+    },
+    {
+     "name": "vfused",
+     "path": "summary.ratio_vs_fused",
+     "rule": "fixed:0",
+     "expect": "583"
+    },
+    {
+     "name": "lab",
+     "path": "summary.lab.value",
+     "rule": "fixed:3",
+     "expect": "0.881"
+    },
+    {
+     "name": "fused",
+     "path": "summary.fused.value",
+     "rule": "fixed:4",
+     "expect": "0.0419"
+    },
+    {
+     "name": "k",
+     "path": "summary.top1_same.k",
+     "rule": "eq",
+     "expect": "14"
+    },
+    {
+     "name": "of",
+     "path": "summary.top1_same.of",
+     "rule": "eq",
+     "expect": "50"
+    },
+    {
+     "name": "studies",
+     "path": "summary.studies",
+     "rule": "eq",
+     "expect": "50"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "`{studies}` studies, #132) | `{s} s/study` (**{label}**: pool wall over studies; instrumented, so it includes our reference recount and agreement checks). Against the hand-written lab arm `{lab} s` (#113) and the fused kernel `{fused} s` (#120): `{vlab}×` and `{vfused}×`, cross-run, same container class"
+    },
+    {
+     "file": "README.md",
+     "text": "the top pattern matches in `{k}/{of}` studies"
+    }
+   ]
+  },
+  {
+   "id": "hn-power-234",
+   "claim": "Head and neck: about 234 patients for 80% power on simulated cohorts resampled from 34 UPMC discovery patients; pointwise crossings 200 and 265",
+   "source": "bench/results/hn-power-upmc-discovery.json",
+   "pr": 133,
+   "label": "ESTIMATE; simulated cohorts resampled from 34 UPMC discovery patients' tissue; outcomes SYNTHETIC",
+   "label_path": "label",
+   "values": [
+    {
+     "name": "n80",
+     "path": "answer.n_80",
+     "rule": "fixed:0",
+     "expect": "234"
+    },
+    {
+     "name": "lo",
+     "path": "answer.n_80_pointwise_ci_crossings[0]",
+     "rule": "fixed:0",
+     "expect": "200"
+    },
+    {
+     "name": "hi",
+     "path": "answer.n_80_pointwise_ci_crossings[1]",
+     "rule": "fixed:0",
+     "expect": "265"
+    },
+    {
+     "name": "src",
+     "path": "metadata.source_n",
+     "rule": "eq",
+     "expect": "34"
+    },
+    {
+     "name": "lab",
+     "path": "label",
+     "rule": "re:^([A-Z]+)",
+     "expect": "ESTIMATE"
+    },
+    {
+     "name": "out",
+     "path": "outcomes",
+     "rule": "eq",
+     "expect": "SYNTHETIC"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "About `{n80}` patients reach `80%` power (linear interpolation of simulated power between simulated sizes). The pointwise 95% bounds cross `80%` at `{lo}` and `{hi}`: pointwise, not a confidence interval for n."
+    },
+    {
+     "file": "README.md",
+     "text": "a different source cohort (`{src}` patients reused up to `600`), censoring and grammar (**{lab}**, outcomes **{out}**)"
+    }
+   ]
   }
  ],
  "stale": [
