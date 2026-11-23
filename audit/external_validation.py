@@ -74,35 +74,37 @@ def acquisition_features(cells, indices, uniforms):
     return dense, crops
 
 
-def event_ceiling(orders, event, include):
+def event_ceiling(orders, event, include, *, small_arm=PATIENTS[1]):
     # B is nested within A, so only B's observed event count can bind this ceiling.
-    return sum(int(event[order[include[order]][:PATIENTS[1]]].sum() >= 5) for order in orders)
+    return sum(int(event[order[include[order]][:small_arm]].sum() >= 5) for order in orders)
 
 
-def _fit(x, time, event, minimum_events):
+def _fit(x, time, event, minimum_events, strata):
     keep = np.isfinite(x)
     count, events = int(keep.sum()), int(event[keep].sum())
     estimate = None
     if events >= minimum_events:
         try:
-            estimate = _cox(x[keep], time[keep], event[keep], None)
+            estimate = _cox(x[keep], time[keep], event[keep], None if strata is None else strata[keep])
         except FitFailed:
             pass
     return estimate, count, events
 
 
-def _comparison(dense, crops, orders, time, event, include):
-    reference, n, events = _fit(dense[include], time[include], event[include], 10)
+def _comparison(dense, crops, orders, time, event, include, patients, strata):
+    reference, n, events = _fit(dense[include], time[include], event[include], 10,
+                                None if strata is None else strata[include])
     counts = np.zeros((2, DRAWS, 2), dtype=int)
     log_hr = np.full((2, DRAWS), np.nan)
     differences = []
     for draw, order in enumerate(orders):
         order = order[include[order]]
-        if len(order) < PATIENTS[0]:
-            raise ValueError("the 60-patient acquisition does not fit after block deletion")
-        for arm, size in enumerate(PATIENTS):
+        if len(order) < patients[0]:
+            raise ValueError("the larger patient acquisition does not fit after block deletion")
+        for arm, size in enumerate(patients):
             sampled = order[:size]
-            estimate, measured, observed = _fit(crops[arm, draw, sampled], time[sampled], event[sampled], 5)
+            estimate, measured, observed = _fit(crops[arm, draw, sampled], time[sampled], event[sampled], 5,
+                                                 None if strata is None else strata[sampled])
             counts[arm, draw] = (measured, observed)
             if estimate is not None:
                 log_hr[arm, draw] = estimate[0]
@@ -112,12 +114,13 @@ def _comparison(dense, crops, orders, time, event, include):
     return reference, n, events, counts, log_hr, np.asarray(differences)
 
 
-def compare(dense, crops, orders, time, event, partition, scale):
+def compare(dense, crops, orders, time, event, partition, scale, *, patients=PATIENTS, strata=None):
     mean, sd = scale
     dense = (dense - mean) / sd
     crops = (crops - mean) / sd
     include = np.ones(len(dense), dtype=bool)
-    reference, count, events, counts, log_hr, differences = _comparison(dense, crops, orders, time, event, include)
+    reference, count, events, counts, log_hr, differences = _comparison(
+        dense, crops, orders, time, event, include, patients, strata)
     interval = conditional = average = None
     leave_out = []
     if len(differences) >= 140:
@@ -126,7 +129,7 @@ def compare(dense, crops, orders, time, event, partition, scale):
         conditional = np.quantile(sample.mean(axis=1), [0.025, 0.975]).tolist()
         block = np.arange(len(dense)) % BLOCKS
         for omitted in range(BLOCKS):
-            *_, delta = _comparison(dense, crops, orders, time, event, block != omitted)
+            *_, delta = _comparison(dense, crops, orders, time, event, block != omitted, patients, strata)
             leave_out.append(float(delta.mean()) if len(delta) >= 140 else None)
         if all(value is not None for value in leave_out):
             estimates = np.asarray(leave_out)
@@ -140,8 +143,9 @@ def compare(dense, crops, orders, time, event, partition, scale):
     arms = {}
     for arm, name in enumerate(("A", "B")):
         coeff = log_hr[arm, np.isfinite(log_hr[arm])]
-        arms[name] = {"patients_per_draw": PATIENTS[arm], "side_um": SIDES_UM[arm], "area_mm2": 5.4,
-                      "measured_fraction": float(counts[arm, :, 0].mean() / PATIENTS[arm]),
+        arms[name] = {"patients_per_draw": patients[arm], "side_um": SIDES_UM[arm],
+                      "area_mm2": patients[0] * SIDES_UM[0] ** 2 / 1e6,
+                      "measured_fraction": float(counts[arm, :, 0].mean() / patients[arm]),
                       "measured_min_median_max": np.quantile(counts[arm, :, 0], [0, 0.5, 1]).tolist(),
                       "events_min_median_max": np.quantile(counts[arm, :, 1], [0, 0.5, 1]).tolist(),
                       "log_hr_min_median_max": np.quantile(coeff, [0, 0.5, 1]).tolist() if len(coeff) else None,
