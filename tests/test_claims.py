@@ -83,6 +83,8 @@ MUTANTS = [  # (kind, file, published text, mutant): each must make the check fa
     ("prose", "README.md", "**MEASURED**, cross-run)", "**MEASURED**, same run)"),
     ("value", "README.md", "| 22.35 s |", "| 12.35 s |"),
     ("value", "README.md", "| 0.881 s |", "| 0.781 s |"),
+    ("value", "README.md", "312× on the same 48 studies", "412× on the same 48 studies"),
+    ("prose", "README.md", "; different statistics;", "; same statistics;"),
     ("value", "README.md", "| **27.0%** (95% CI 22.1–32.4%) |", "| **37.0%** (95% CI 22.1–32.4%) |"),
     ("value", "README.md", "| 80.1% |", "| 90.1% |"),
     ("label", "README.md", "Schoenfeld formula (**ANALYTIC**)", "Schoenfeld formula (**MEASURED**)"),
