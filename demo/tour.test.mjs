@@ -10,7 +10,7 @@ for (const { target } of STEPS) {
   const re = target[0] === "#" ? new RegExp(`id="${name}"`) : new RegExp(`class="[^"]*\\b${name}\\b`);
   assert.match(html, re, `tour target ${target} is on the page`);
 }
-assert.equal(STEPS[0].target, "#workflow-app", "the tour opens on the Preflight workflow");
+assert.equal(STEPS[0].target, "#workflow-app", "the tour opens on the Biopsy Scan workflow");
 assert.match(html, /id="tour-btn"[^>]*aria-label="Start tour"/, "a Start tour button is always in the bar");
 assert.equal(step(0, "back"), 0);
 assert.equal(step(0, "next"), 1);

@@ -1,4 +1,4 @@
-# Preflight Design System & Demo Spec
+# Biopsy Scan Design System & Demo Spec
 
 Owner: Hephaestus (design), implemented in `demo/` by Zeus (`#7`).
 Binding token file: `demo/tokens.css`. Only `docs/design.md` and `demo/tokens.css` hold system tokens and visual specification; `demo/` components must reference `var(--...)` from `demo/tokens.css` with zero inline hexes or off-scale sizes.
@@ -7,10 +7,10 @@ Binding token file: `demo/tokens.css`. Only `docs/design.md` and `demo/tokens.cs
 
 ## 1. Intent & One Job
 
-- **Product:** Preflight — Rehearse a spatial-biology study before imaging a single slide.
+- **Product:** Biopsy Scan — Rehearse a spatial-biology study before imaging a single slide.
 - **Audience:** Spatial-biology study leads and hackathon judges watching a 3-minute demonstration.
 - **One job of the page:** Let a user dial study design parameters (`Patients`, `Regions per patient`, `Field of view`, `Mis-call rate`), see how region count, crop size, and cell-type mis-calls affect observed tissue, compare CPU-vs-GPU runtime, and answer whether the study can find the pattern for the fixed planted-effect scenario in `grid.json` as `Power %` and `Identification %` on their cohort's atlas (conditional on that planted scenario, never a universal adequacy guarantee).
-- **Brand posture:** Precision scientific instrument on a deep slate ground (`#0B1018`). Calm, legible typography in `Inter`, domain-authentic tissue colors (`#FF7A59` tumour, `#F5C451` immune, `#56687A` stroma), and **no dot mark** next to the `Preflight` wordmark.
+- **Brand posture:** Precision scientific instrument on a deep slate ground (`#0B1018`). Calm, legible typography in `Inter`, domain-authentic tissue colors (`#FF7A59` tumour, `#F5C451` immune, `#56687A` stroma), and **no dot mark** next to the `Biopsy Scan` wordmark.
 
 ---
 
@@ -31,7 +31,7 @@ Binding token file: `demo/tokens.css`. Only `docs/design.md` and `demo/tokens.cs
   3. **3D section motion** (`#reimage`, "What a study sees: two fields of view, with their mis-calls"): one 15 s fly-through, played once when 35% of the canvas is on screen. The clock pauses while the canvas is off screen. Camera moves ease in-out cubic, with distance interpolated in log space: whole region (0–0.8 s), zoom to cell level (0.8–4.6 s), hold (4.6–6.2 s), pull back (6.2–9.0 s), fields of view light up (9.0–10.4 s), the rest dims (10.0–10.8 s), settle on the fields (10.6–12.2 s), then mis-calls flicker on 0.4 s beats, under 3 flashes a second (12.2–14.6 s), and keep the wrong colour, ringed. The step captions follow at 0, 4.6, 8.4 and 11.2 s. The take ends still at 15 s, with only `Replay the fly-through` offered; `Pause the fly-through` shows while it plays. `prefers-reduced-motion: reduce` draws the last frame still, shows every step and hides both controls.
   Zero decorative fade-in/slide-up reveals, zero hover card lifts, zero pulsing status dots.
 - **Explicitly cut:**
-  - **No dot mark** beside the `Preflight` wordmark.
+  - **No dot mark** beside the `Biopsy Scan` wordmark.
   - **No tracked ALL-CAPS eyebrow chips/kickers** above headings.
   - **No secondary charts, multi-card SaaS marketing grids, gradients, glassmorphism, glow borders, or nested cards.**
   - **No clinical efficacy claims** or unmeasured speedup multipliers (`UNMEASURED` and `SYNTHETIC` tags render plainly until `bench/` and `atlas/` produce measured JSONs).
@@ -49,7 +49,7 @@ flowchart LR
 
 | Section | Shows | User Can |
 |---|---|---|
-| Top bar (`48px`) | Plain text wordmark `Preflight` (left), `Team Dry Lab` + data provenance tag (`SYNTHETIC` / `MEASURED`) (right) | Inspect provenance cleanly |
+| Top bar (`48px`) | Plain text wordmark `Biopsy Scan` (left), `Team Dry Lab` + data provenance tag (`SYNTHETIC` / `MEASURED`) (right) | Inspect provenance cleanly |
 | Hero & Stage (First Fold) | Page `h1` (the tagline), 1-line subtitle, dominant 3D tissue canvas (`#tissue`), legend (`Tumour`, `Stroma`, `Immune`, `Field of view`), design controls (`Patients`, `Regions per patient`, `Field of view`, `Mis-call rate`), primary CTA (`Run the studies`), answer (`Power %` + `Identification %`) | Drag/rotate 3D slabs, pause spin, tune 4 sliders, trigger replay |
 | 3D re-imaging (`#reimage`) | One real Charville region in 3D (MEASURED cells), two simulated 400 µm fields of view and the cells mis-called into another colour group (SYNTHETIC), four numbered steps, legend, source credit; a GPU still and a recovery line when WebGL is off | Watch the fly-through once, pause it, replay it |
 | Study Race | Side-by-side 2D study-tile grids: `CPU (all cores, Numba)` vs `GPU (batched studies)`, tile counts, neutral measured seconds (or `UNMEASURED` placeholder) | Compare fair all-core CPU vs batched GPU runtime |
@@ -111,7 +111,7 @@ flowchart LR
 
 | Concept | Exact Term Used Everywhere |
 |---|---|
-| Product mark | `Preflight` (wordmark only, no dot mark) |
+| Product mark | `Biopsy Scan` (wordmark only, no dot mark) |
 | Primary CTA | `Run the studies` |
 | Axis 1 / 2 / 3 / 4 | `Patients`, `Regions per patient`, `Field of view`, `Mis-call rate` |
 | Cell classes | `Tumour`, `Stroma`, `Immune` |

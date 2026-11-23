@@ -1,4 +1,4 @@
-// "Preflight your study" (data/preflight.json, built by collect_preflight.py from two committed power files).
+// "Plan your study" (data/preflight.json, built by collect_preflight.py from two committed power files).
 // Pure, so preflight.test.mjs checks every number before it reaches the page. No network, no simulation: a simulated
 // point is shown as stored; between two points it is linear in patients and labelled ESTIMATE (interpolated);
 // outside a design's simulated range, or for a window and mis-call pair nobody simulated, there is no number.

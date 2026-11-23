@@ -1,0 +1,37 @@
+cff-version: 1.2.0
+message: "If you use Biopsy Scan, please cite it as below."
+title: "Biopsy Scan: Cell-by-Cell Spatial-Biomarker Study Simulation and Clinical IHC Translation"
+type: software
+authors:
+  - name: "Team Dry Lab"
+repository-code: "https://github.com/atiladeokegab/biopsy-scan"
+license: MIT
+version: 0.1.0
+date-released: 2026-11-22
+keywords:
+  - spatial biology
+  - CODEX
+  - study design
+  - statistical power
+  - survival analysis
+  - multiple testing
+  - immunohistochemistry
+references:
+  - type: data
+    title: "Processed CODEX Datasets from - Graph deep learning for the characterization of tumour microenvironments from spatial protein profiles in tissue specimens"
+    authors:
+      - family-names: Wu
+        given-names: Zhenqin
+      - family-names: Trevino
+        given-names: Alexandro
+      - name: "Enable Medicine"
+    date-released: 2024-08-03
+    doi: "10.5281/zenodo.13179600"
+    url: "https://zenodo.org/records/13179600"
+    license: CC-BY-4.0
+  - type: article
+    title: "Graph deep learning for the characterization of tumour microenvironments from spatial protein profiles in tissue specimens"
+    authors:
+      - name: "Wu et al."
+    journal: "Nature Biomedical Engineering"
+    year: 2022

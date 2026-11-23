@@ -2,8 +2,8 @@
 // Every value shown is a recorded sample: the last one at or before the replay time; nothing is interpolated.
 const ARMS = {
   current: { tag: "Current · off-the-shelf", name: "squidpy + lifelines", how: "8 CPU workers; the A100 sits idle", cls: "current" },
-  fused: { tag: "Preflight · CPU", name: "Fused kernel", how: "8 CPU workers, same studies" },
-  gpu: { tag: "Preflight · GPU", name: "A100 path", how: "one process; re-imaging and scoring on the A100" },
+  fused: { tag: "Biopsy Scan · CPU", name: "Fused kernel", how: "8 CPU workers, same studies" },
+  gpu: { tag: "Biopsy Scan · GPU", name: "A100 path", how: "one process; re-imaging and scoring on the A100" },
 };
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const $ = (id) => document.getElementById(id);
@@ -38,11 +38,11 @@ function build() {
   end = Math.max(...views.map((v) => v.a.wall_s)) + 0.5;
   const w = Object.fromEntries(views.map((v) => [v.key, v.a.wall_s]));
   if (w.current && w.fused) $("lede").innerHTML = `The same ${views[0].a.studies} studies on the same A100 machine: off the shelf takes ` +
-    `${secs(w.current)}; Preflight's CPU kernel takes <em>${secs(w.fused)}</em>.`;
+    `${secs(w.current)}; Biopsy Scan's CPU kernel takes <em>${secs(w.fused)}</em>.`;
   const src = data.source;
   $("caption").innerHTML = `Replay of measured utilisation, sampled every 100 ms (${data.label}) · source <a href="${REPO}${src}">${src}</a> · ` +
     `each container shows ${views[0].a.cores} cores, ${views[0].a.cores_reserved} reserved; time 0 is each arm's first study (load and warm-up not shown) · squidpy and lifelines never touch the GPU · ` +
-    "at 8 studies each Preflight worker's start-up dominates; at 3,000 studies the fused kernel runs 0.042 s/study " +
+    "at 8 studies each Biopsy Scan worker's start-up dominates; at 3,000 studies the fused kernel runs 0.042 s/study " +
     `(<a href="${REPO}bench/results/modal-design-20261121T205536Z.json">modal-design-20261121T205536Z.json</a>).`;
 }
 

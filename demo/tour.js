@@ -4,7 +4,7 @@
 export const SEEN_KEY = "preflight-tour-v1";
 
 export const STEPS = [
-  { target: "#workflow-app", title: "Start here: the Preflight workflow",
+  { target: "#workflow-app", title: "Start here: the Biopsy Scan workflow",
     text: "It plays itself: four steps on real Charville tumour tissue, from the measured cells to a study design tested before the trial." },
   { target: ".wf-steps", title: "Four steps, any order",
     text: "Tissue context, Decode the tumour, Stress-test, Routine stains. Click a step to jump to it; once the tour is closed, the arrow keys step too." },
@@ -15,12 +15,12 @@ export const STEPS = [
   { target: ".speed", title: "Run the studies",
     text: "Press the button to replay one design point, 1,000 simulated studies, five ways. Bars fill at their measured rates; a bar with no measured time stays PENDING." },
   { target: ".reimage", title: "What a study sees",
-    text: "Real cell positions from one patient. The study images two fields of view, and some cells are mis-called. That is the gap Preflight simulates." },
+    text: "Real cell positions from one patient. The study images two fields of view, and some cells are mis-called. That is the gap Biopsy Scan simulates." },
   { target: ".power-card", title: "Would the study find it?",
     text: "Power simulated on real tissue, beside what the textbook formula promises for the same patients." },
   { target: ".honest", title: "When nothing is there, it says so",
     text: "The false-alarm rate under the null, with its interval. A negative result is shown as plainly as a positive one." },
-  { target: "#preflight", title: "Preflight your own study",
+  { target: "#preflight", title: "Plan your own study",
     text: "Set patients, imaged window and mis-call rate. The power appears at once from studies already run; nothing computes live." },
   { target: "#explore", title: "Explore the design space",
     text: "Four sliders over a SYNTHETIC grid, with the tissue cores and the power curve. Every number on the page keeps its label." },

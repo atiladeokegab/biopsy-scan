@@ -1,0 +1,41 @@
+site_name: Biopsy Scan
+site_description: Simulate a spatial-biology study cell by cell on real tissue before you image a slide
+repo_url: https://github.com/atiladeokegab/biopsy-scan
+repo_name: atiladeokegab/biopsy-scan
+edit_uri: blob/main/
+docs_dir: docs
+theme:
+  name: material
+  features: [navigation.sections, navigation.top, content.code.copy, search.highlight]
+hooks:
+  - scripts/mkdocs_hooks.py
+markdown_extensions:
+  - tables
+  - admonition
+  - toc: {permalink: true}
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+nav:
+  - Home: index.md
+  - Getting started:
+      - Architecture: ARCHITECTURE.md
+      - Results: RESULTS.md
+      - GPU runs: GPU.md
+      - Data and licences: data.md
+  - Methods:
+      - Design: design.md
+      - Contract: CONTRACT.md
+      - Pre-registration: PREREGISTRATION.md
+      - Prior work: PRIOR-WORK.md
+      - External agreement: external-agreement.md
+      - Negative result: negative-result.md
+  - Project:
+      - Contributing: CONTRIBUTING.md
+      - Code of conduct: CODE_OF_CONDUCT.md
+      - Security: SECURITY.md
+      - Product requirements: PRD.md
+      - Judging notes: JUDGING.md
+      - Hackathon submission (historical): SUBMISSION.md

@@ -1,4 +1,4 @@
-// The 3D re-imaging view's model: Preflight's mis-call and crop rules, the scene's timeline, and the page
+// The 3D re-imaging view's model: Biopsy Scan's mis-call and crop rules, the scene's timeline, and the page
 // it lives on (node demo/reimage3d.test.mjs; exit 1 on failure).
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -74,7 +74,7 @@ assert.ok(html.indexOf('id="speed-race"') < html.indexOf('id="reimage"'), "the 3
 const label = html.match(/id="reimage-label"[^>]*>([\s\S]*?)<\/p>/)[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ");
 assert.match(label, /Real cell positions and types/);
 assert.match(label, /one patient in the Charville cohort \(colorectal, not head and neck\)\./, "the cohort is not the patient");
-assert.match(label, /Imaging simulated by Preflight\./);
+assert.match(label, /Imaging simulated by Biopsy Scan\./);
 // The steps name the design the code draws.
 const steps = html.match(/id="reimage-steps"[^>]*>([\s\S]*?)<\/ol>/)[1];
 assert.ok(steps.includes(`${["", "one", "two"][WINDOWS]} ${FOV_UM} µm fields`) && steps.includes(`${EPS * 100}% chance`), "steps match the design");
@@ -177,7 +177,7 @@ assert.doesNotMatch(src, /Above: the last frame/, "the recovery line sits above 
 $ = page(); mountReimage($, tissueJSON, { reducedMotion: true, search: "", create: () => ({}) });
 assert.ok($("reimage-replay").hidden, "reduced motion: no controls"); assert.ok(!$("reimage-steps").cls.has("playing"), "reduced motion: every step shows");
 
-// The mis-calls drawn are Preflight's 15-type model seen through the 3 colour groups: a type in group g is called
+// The mis-calls drawn are Biopsy Scan's 15-type model seen through the 3 colour groups: a type in group g is called
 // as another type with prob eps, uniform over the other 14, so it lands in group h != g with prob eps * n_h / 14.
 const sizes = TYPES.map((g) => Object.values(tissueJSON.meta.display_classes).filter((v) => v === g).length);
 assert.deepEqual(sizes, [7, 3, 5], "tumour 7, stroma 3, immune 5 source types");

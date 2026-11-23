@@ -1,6 +1,6 @@
 # Contract
 
-Preflight's shared shapes. Written by the lead's agent; every area builds against it; only the lead
+Biopsy Scan's shared shapes. Written by the lead's agent; every area builds against it; only the lead
 changes it. `core/` owns the data and grammar,
 `reimage/` the kernels, `stats/` the statistic.
 
@@ -10,7 +10,7 @@ Re-image thousands of simulated spatial-biomarker studies cell by cell from real
 Charville), so a lab can see, before imaging a slide, which study designs (patients, regions per
 patient, field of view, mis-call rate) can find a survival-linked spatial pattern.
 
-There is no backend service, app factory, store or gateway: Preflight is a Python library plus saved
+There is no backend service, app factory, store or gateway: Biopsy Scan is a Python library plus saved
 runs. `core/` is the shared core; other areas import it and never re-implement it.
 
 ## Data

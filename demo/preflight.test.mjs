@@ -1,4 +1,4 @@
-// The "Preflight your study" panel (node demo/preflight.test.mjs; exit 1 on failure): every number it prints is a
+// The "Plan your study" panel (node demo/preflight.test.mjs; exit 1 on failure): every number it prints is a
 // stored point of the two committed power files, a labelled interpolation between two of them, or nothing.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

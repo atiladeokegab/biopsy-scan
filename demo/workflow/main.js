@@ -1,4 +1,4 @@
-// "Preflight workflow": a four-step walkthrough of real Charville tissue. start(root) renders TEMPLATE into root
+// "Biopsy Scan workflow": a four-step walkthrough of real Charville tissue. start(root) renders TEMPLATE into root
 // (#wf-root by default), loads data/tma.json and data/preflight.json, mounts each step's module into its .wf-vis,
 // auto-plays (one step every STEP_MS[i], holding on the last) and steps on a click or the arrow keys.
 // It starts itself when the page has a #wf-root.
@@ -6,7 +6,7 @@ const STEP_MS = [7000, 7000, 10500, 13500];
 
 export const TEMPLATE = `<div class="wf" id="flow" role="region" aria-labelledby="wf-title" aria-roledescription="walkthrough">
   <div class="wf-copy">
-    <p class="wf-eyebrow">Preflight workflow</p>
+    <p class="wf-eyebrow">Biopsy Scan workflow</p>
     <h2 class="wf-head" id="wf-title">Know whether a study can work before the first slide is stained.</h2>
     <div class="wf-text" data-step="0"><h3>Start from real tumour tissue</h3><p>Real head and neck cancer biopsies, each stained for one marker a lab already runs. These photos are other patients' cores from the Human Protein Atlas. Our analysis runs on the Charville cell tables: every cell's position, type and 40 measured channels.</p></div>
     <div class="wf-text" data-step="1" hidden><h3>Read every cell, then test every pattern</h3><p>Every cell carries one of the 15 cell types published with the data; the screen tests 3,780 neighbourhood patterns (cell type, neighbour, distance, protein) against recorded outcomes. Exploratory result: the best pattern scores z 3.96, maxT p 0.098, within chance.</p></div>

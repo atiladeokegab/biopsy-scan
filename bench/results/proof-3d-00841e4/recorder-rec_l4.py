@@ -10,7 +10,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-WT = Path("/home/atilade/code/sota-parallelism-nov21/.worktrees/proof-video")
+WT = Path(__file__).resolve().parents[3]  # repo root
 sys.path.insert(0, str(WT / "gpu"))
 import fps_l4 as f  # noqa: E402
 
