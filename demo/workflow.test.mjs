@@ -1,4 +1,4 @@
-// The "Preflight workflow" section (node demo/workflow.test.mjs; exit 1 on failure): first on the page, four
+// The "Biopsy Scan workflow" section (node demo/workflow.test.mjs; exit 1 on failure): first on the page, four
 // clickable steps in our own words, a label and the Charville credit on every visual, and the screen result
 // equal to the merged audit/results/charville.json.
 import assert from "node:assert/strict";
@@ -13,7 +13,7 @@ assert.ok(html.indexOf('id="workflow-app"') < html.indexOf('class="hero"'), "the
 const { TEMPLATE: wf, start } = await import("./workflow/main.js");
 assert.equal(typeof start, "function");
 assert.match(wf, /^<div class="wf" id="flow"/);
-assert.match(plain(wf), /Preflight workflow/);
+assert.match(plain(wf), /Biopsy Scan workflow/);
 
 const steps = [...wf.matchAll(/<button type="button" class="wf-node"[^>]*data-step="(\d)"[^>]*>([\s\S]*?)<\/button>/g)];
 assert.deepEqual(steps.map((m) => [m[1], plain(m[2]).replace(/^0\d /, "")]),
@@ -31,7 +31,7 @@ assert.ok(plain(wf).includes(credit), "the Charville credit");
 for (const t of ["SIMULATED fields and mis-calls", "ANALYTIC formula", "ESTIMATE simulation"]) assert.ok(plain(vis[2][2]).includes(t), `step 3 lacks ${t}`);
 assert.match(plain(vis[3][2]), /ILLUSTRATION/);
 const { PICKED } = await import("./workflow/step4.js"); // step 4 draws the HPA credit in its frame
-assert.match(PICKED.credit, /Human Protein Atlas.*CC BY-SA 3\.0/);
+assert.match(PICKED.credit, /Human Protein Atlas.*CC BY 4\.0/);
 assert.doesNotMatch(plain(wf), /clinical practice|ready for (pathology|the clinic)/i);
 const texts = [...wf.matchAll(/<div class="wf-text" data-step="(\d)"[^>]*>([\s\S]*?)<\/div>/g)];
 assert.equal(texts.length, 4, "four step texts");

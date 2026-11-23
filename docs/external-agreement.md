@@ -8,7 +8,7 @@ Results: `bench/results/external-agreement-20261122T133722Z.json` (run 1) and
 
 The off-the-shelf baseline (#132, `bench/external_baseline.py`, result
 `bench/results/external-baseline-20261122T043823Z.json`, `summary.top1_same`) picked the same top feature as
-Preflight in **14 of 50 studies, MEASURED** (null stream 5/25, alternative 9/25; outcomes SIMULATED). In none of the
+Biopsy Scan in **14 of 50 studies, MEASURED** (null stream 5/25, alternative 9/25; outcomes SIMULATED). In none of the
 36 misses did the two pick the same (tumour type, neighbour type, radius) with the other statistic (from that file's
 records). Median top-10 overlap was **4.5** of 10 (`summary.agreement_median.top10_overlap` in the same file). All
 MEASURED. The speed figure for this pipeline is now the same-host rerun (#185,
@@ -19,9 +19,9 @@ evaluations, MEASURED.
 ## Short answer
 
 The two pipelines are not computing the same statistic. Three definitions differ: the enrichment half of the features
-(squidpy's `nhood_enrichment` returns a permutation z-score; Preflight's enrichment is a ratio to the region's
+(squidpy's `nhood_enrichment` returns a permutation z-score; Biopsy Scan's enrichment is a ratio to the region's
 cell-type mix), the fraction weighting, and the Cox test (Wald versus score). Each was measured on its own subset,
-listed below. This work does not apportion the 36 misses among them. When squidpy's graph is used with Preflight's
+listed below. This work does not apportion the 36 misses among them. When squidpy's graph is used with Biopsy Scan's
 per-cell definition, and lifelines' own Efron score is taken at beta = 0, the two agree to floating-point rounding:
 **top-1 16/16 MEASURED** on the studies run locally.
 
@@ -29,7 +29,7 @@ per-cell definition, and lifelines' own Efron score is taken at beta = 0, the tw
 
 The numbering is for reference, not a ranking. No row's effect is extrapolated to the 36 misses.
 
-| # | What | Preflight | Baseline (#132) | Effect (MEASURED unless stated) |
+| # | What | Biopsy Scan | Baseline (#132) | Effect (MEASURED unless stated) |
 |---|---|---|---|---|
 | 1 | Enrichment statistic | per focal cell `fraction / p_j`, with `p_j` the share of type j among the region's visible cells: `core/truth.py:65,72`, `reimage/fused.py:62`, `core/grammar.py:5-6` | squidpy permutation z, `(count - mean(perms)) / std(perms)` over 1,000 label shuffles: `bench/external_baseline.py:97,104`; squidpy 1.8.2 `squidpy/gr/_nhood.py:220` | Feature Spearman against ours, median **0.79** (#132, 50 studies). Swapping only the enrichment half into our X and keeping our score test moved top-1 away from ours in the one null study run (picked 625, ours 359). Alt study: top-1 kept. 2 studies, too few to give a rate |
 | 1a | Shuffle scope of that z | (no permutation: the ratio uses each region's own mix) | `nhood_enrichment` is called without `library_key` (`bench/external_baseline.py:97`), so labels are shuffled across both of a patient's regions (`_nhood.py:452-458`) | Part of row 1. It cannot be split out without the z |

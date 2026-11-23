@@ -1,5 +1,5 @@
 // Workflow step 3, "Stress-test before the trial": the pick core (real Charville cells, coloured by type), two
-// 400 µm fields of view land on it, 10% of the cells they see flicker to another type's colour (Preflight's mis-call:
+// 400 µm fields of view land on it, 10% of the cells they see flicker to another type's colour (Biopsy Scan's mis-call:
 // keep the type with prob 1 - eps, else a uniform other type), then the formula's power against the simulated power
 // at 200 patients, both read from preflight.json. The shell draws the labels and the credit.
 import { TYPE_COLORS } from "./palette.js";

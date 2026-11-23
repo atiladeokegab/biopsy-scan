@@ -1,4 +1,4 @@
-// The Preflight demo. Hero: the pattern (biomarker.json, #82), "Run the studies" and the speed race (baseline.json),
+// The Biopsy Scan demo. Hero: the pattern (biomarker.json, #82), "Run the studies" and the speed race (baseline.json),
 // then the power and honesty results (claims.json). Below: explore a design (grid.json, tissue.json, four sliders).
 // Every file is local, so a served checkout replays the committed results with no network (schemas in README.md).
 import { createTissue } from "./tissue.js";
@@ -159,7 +159,7 @@ async function hero() {
 
 }
 
-// "Preflight your study": every control redraws the answer from data/preflight.json at once; no network after load.
+// "Plan your study": every control redraws the answer from data/preflight.json at once; no network after load.
 async function preflight() {
   const data = await getJSON("data/preflight.json");
   const form = $("pf-form");

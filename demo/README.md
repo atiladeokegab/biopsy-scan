@@ -1,4 +1,4 @@
-# The Preflight demo
+# The Biopsy Scan demo
 
 One dark page with three linked views, driven by four sliders: patients, regions per patient,
 field of view and mis-call rate. It uses plain HTML, CSS and ES-module JS, with no build step and
@@ -22,11 +22,13 @@ shows this command instead.
      every square dim.
    - The mis-call slider recolours that fraction of cells at random, so you can see the noise.
 2. **Live demo (`demo/app/`).** One screen, side by side on the same real biopsy photo: off-the-shelf
-   squidpy + lifelines on the left, Preflight on the right, 8 CPU cores each. One Run starts both;
-   each paints a stain overlay computed in the browser at its replay pace. Preflight finishes in
-   1.0 s while the left crawls at the measured 583× ratio (24.4 s vs 0.042 s per study, cross-run,
-   same container class, `bench/results/external-baseline-20261122T043823Z.json`), with
-   "Skip to end".
+   squidpy + lifelines on the left (8 CPU workers), Biopsy Scan's fused kernel on one H100 on the
+   right. One Run starts both; each paints a stain overlay computed in the browser at its replay
+   pace. The pace replays two measurements from separate runs: 22.35 s per study for the whole
+   off-the-shelf call (`bench/results/same-host-20261122T140908Z.json`) against 0.00207 s per
+   evaluation for re-imaging and scoring on the H100
+   (`bench/results/gpu-fused-h100-20261122T141815Z.json`), about 10,800×. The same-host CPU
+   comparison, 534×, is in [RESULTS.md](../RESULTS.md).
 3. **The answer.** Power and identification rate for the grid point nearest the sliders, and the
    one chart: power against patients, one line per regions value. The chart marks the current
    design (white ring) and our cohort (green).
@@ -144,7 +146,7 @@ A row no file feeds keeps its committed value.
   "rows": [{
     "id": "lab-cpu",             // unique; bench files address rows by id
     "method": "The lab way: a shuffle test in every study, all CPU cores",
-    "role": "baseline",          // "baseline" (grey bar) or "screen" (Preflight, accent bar)
+    "role": "baseline",          // "baseline" (grey bar) or "screen" (Biopsy Scan, accent bar)
     "label": "PENDING",          // MEASURED, ESTIMATE, SYNTHETIC, UNMEASURED or PENDING
     "seconds": null,             // compute seconds; null when PENDING or UNMEASURED, a positive number otherwise
     "startup_s": null,           // optional, shown apart
@@ -197,7 +199,7 @@ shows `km.label` ("exploratory, cutoff chosen on the same cohort, no p-value") b
 region's counts. `check_data.py` refuses a file without `exploratory: true`, with a p-value, or without "no
 p-value" in its label. The hit cannot be tested in our second cohort (UPMC has no PD1 stain), and the page says so; it never says "not replicated".
 
-## `data/preflight.json` (`preflight-panel/2`): "Preflight your study", built by `collect_preflight.py`
+## `data/preflight.json` (`preflight-panel/2`): "Plan your study", built by `collect_preflight.py`
 
 Built only from `bench/results/power-at-scale.json` (two 400 µm fields, 10% mis-called, 40 to 1,000 patients) and
 `bench/results/vs-schoenfeld-300.json` (the whole-core, no-mis-call control from 40 to 300 patients, plus the

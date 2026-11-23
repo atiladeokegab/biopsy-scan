@@ -17,7 +17,7 @@
     },
     {
       "id": "preflight-cpu",
-      "method": "Preflight on 8 CPU cores (Numba): one calibrated threshold per design",
+      "method": "Biopsy Scan on 8 CPU cores (Numba): one calibrated threshold per design",
       "role": "screen",
       "label": "MEASURED",
       "seconds": 375.26,
@@ -30,7 +30,7 @@
     },
     {
       "id": "gpu-1",
-      "method": "Preflight on 1 A100: re-imaging and batched scoring",
+      "method": "Biopsy Scan on 1 A100: re-imaging and batched scoring",
       "role": "screen",
       "label": "MEASURED",
       "seconds": 2266.85,
@@ -43,7 +43,7 @@
     },
     {
       "id": "hybrid",
-      "method": "Preflight hybrid: re-imaging on 8 CPU cores feeding batched A100 scoring",
+      "method": "Biopsy Scan hybrid: re-imaging on 8 CPU cores feeding batched A100 scoring",
       "role": "screen",
       "label": "MEASURED",
       "seconds": 377.67,
@@ -153,6 +153,6 @@
   ],
   "scope": {
     "comparison": "Compute MEASURED on one container class (Modal A100 + 8 cores + 64 GiB); outcomes SYNTHETIC (atlas/simulation.py at 79a7792); FWER and power are ESTIMATE. Seconds: in-container study and scoring wall time; load, outcome prep, adjacency and warm-up apart in start-up; the cutoff and rate summary not timed. The lab and batched lanes run different test and calibration procedures, not equal statistical work. Parity: X sha256 on every shared study; z in full for the A100 lane, through per-study maxT for the hybrid; the fused lane: same features, same top score (X sha256 on every shared study, maxT through each study)",
-    "calibration": "Lab: 1,000 within-strata shuffles in every study. Preflight lanes: one threshold from 1,000 independent calibration nulls; evaluating those studies is timed inside each lane, computing the cutoff from them is not"
+    "calibration": "Lab: 1,000 within-strata shuffles in every study. Biopsy Scan lanes: one threshold from 1,000 independent calibration nulls; evaluating those studies is timed inside each lane, computing the cutoff from them is not"
   }
 }

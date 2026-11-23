@@ -72,20 +72,20 @@
    "gene": "KRT5",
    "marker": "PanCK",
    "photo": "../workflow/img/hpa_best_01_KRT5.webp",
-   "page": "https://www.proteinatlas.org/ENSG00000186081-KRT5/cancer/head+and+neck+cancer",
-   "credit": "Human Protein Atlas, proteinatlas.org (Uhlen et al.), CC BY-SA 3.0"
+   "page": "https://v25.proteinatlas.org/ENSG00000186081-KRT5/cancer/head+and+neck+cancer",
+   "credit": "Human Protein Atlas v25, proteinatlas.org (Uhlen et al., Science 2015), CC BY 4.0"
   },
   {
    "gene": "CD8A",
    "marker": "CD8",
    "photo": "../workflow/img/hpa_best_12_CD8A.webp",
-   "page": "https://www.proteinatlas.org/ENSG00000153563-CD8A/cancer/head+and+neck+cancer",
-   "credit": "Human Protein Atlas, proteinatlas.org (Uhlen et al.), CC BY-SA 3.0"
+   "page": "https://v25.proteinatlas.org/ENSG00000153563-CD8A/cancer/head+and+neck+cancer",
+   "credit": "Human Protein Atlas v25, proteinatlas.org (Uhlen et al., Science 2015), CC BY 4.0"
   }
  ],
  "cells_credit": "Charville CODEX, Wu et al. 2022, Zenodo 13179600, CC-BY-4.0; real cells, every cell of each region",
  "scope": {
   "race": "Current: whole squidpy + lifelines pipeline, 8 CPU workers. Ours: fused kernel on one H100. 10,800\u00d7 faster per study: 22.35 s vs 0.00207 s, measured in separate runs.",
-  "ihc": "Illustration only: PanCK/CD8 examples picked by hand from Human Protein Atlas samples (other patients), not scored. Preflight issued no validated stain recommendation."
+  "ihc": "Illustration only: PanCK/CD8 examples picked by hand from Human Protein Atlas samples (other patients), not scored. Biopsy Scan issued no validated stain recommendation."
  }
 }

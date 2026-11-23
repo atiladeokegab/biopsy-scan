@@ -11,7 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LEDGER = "results/claims.json"
-DOCS = ("README.md", "docs/JUDGING.md", "docs/SUBMISSION.md", "demo/index.html", "demo/*.js")
+DOCS = ("README.md", "RESULTS.md", "docs/JUDGING.md", "docs/SUBMISSION.md", "demo/index.html", "demo/*.js")
 
 
 def lookup(data, path):

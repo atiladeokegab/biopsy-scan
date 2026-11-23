@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions
+    url: https://github.com/atiladeokegab/biopsy-scan/discussions
+    about: Ask how to use Biopsy Scan or what a result means.
+  - name: Security issue
+    url: https://github.com/atiladeokegab/biopsy-scan/security/advisories/new
+    about: Report a vulnerability privately.

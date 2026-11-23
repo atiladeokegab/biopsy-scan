@@ -1,6 +1,6 @@
 {
  "schema": "preflight-claim-ledger/1",
- "about": "One entry per headline claim. tests/test_claims.py recomputes each named value from its committed source file and fails on any drift. Each `quotes` entry binds the claim to its published text: `text` is filled with the rendered values ({name}, {label}) and must appear verbatim in `file`; a demo data quote (`path` + `value`) must equal the source value exactly, numbers in type and value. scripts/check_claims.py also scans README.md, docs/JUDGING.md, docs/SUBMISSION.md and the demo page for stale wording. Only claims whose source is on integration are listed; add new results as new entries when they merge.",
+ "about": "One entry per headline claim. tests/test_claims.py recomputes each named value from its committed source file and fails on any drift. Each `quotes` entry binds the claim to its published text: `text` is filled with the rendered values ({name}, {label}) and must appear verbatim in `file`; a demo data quote (`path` + `value`) must equal the source value exactly, numbers in type and value. scripts/check_claims.py also scans README.md, RESULTS.md, docs/JUDGING.md, docs/SUBMISSION.md and the demo page for stale wording. Only claims whose source is on integration are listed; add new results as new entries when they merge.",
  "rules": {
   "fixed:N": "format the number with N decimals",
   "pct:N": "multiply by 100 and format with N decimals",
@@ -63,7 +63,7 @@
    ],
    "quotes": [
     {
-     "file": "README.md",
+     "file": "RESULTS.md",
      "text": "{label}, observed {ratio}× compute-span reduction {w1}→{w8} s for {studies} Charville re-imaging/feature-generation studies, 8 A100-SXM4-40GB vs 1, one sweep; outputs bit-identical; inference outside timing"
     }
    ]
@@ -106,7 +106,7 @@
    ],
    "quotes": [
     {
-     "file": "README.md",
+     "file": "RESULTS.md",
      "text": "`{speedup}×` (median): NumPy `{numpy} s` vs GPU `{gpu} s`, exact parity (**{label}**)"
     }
    ]
@@ -205,7 +205,7 @@
    ],
    "quotes": [
     {
-     "file": "README.md",
+     "file": "RESULTS.md",
      "text": "(`{cores}` Modal cores, `{rounds} rounds × {studies} studies` per mode, #94) | Numba `{lo}–{hi}×` faster than NumPy per study, by threading mode (**{label}**)"
     }
    ]
@@ -263,7 +263,7 @@
    ],
    "quotes": [
     {
-     "file": "README.md",
+     "file": "RESULTS.md",
      "text": "Clinical-null parametric bootstrap FWER `{rate}` (`{rej}/{n}`, `[{lo}, {hi}]` CP 95%) vs `{unadj}` (`{unadj_rej}/{n}`) unadjusted (**{label}**)"
     },
     {
@@ -319,7 +319,7 @@
    ],
    "quotes": [
     {
-     "file": "README.md",
+     "file": "RESULTS.md",
      "text": "`{p400}%` `[{lo}, {hi}]` at `400` patients; about `{n80}` patients for `80%`, interpolated between `500` and `600` (**{label}** (SIMULATED))"
     }
    ]
@@ -419,7 +419,7 @@
    ],
    "quotes": [
     {
-     "file": "README.md",
+     "file": "RESULTS.md",
      "text": "(`n = {patients}`, `HR = {hr}/SD`, `M = {m}`, `alpha = {alpha}`) | Schoenfeld formula predicts `{analytic}%` (**{analytic_label}**); cell-by-cell real-tissue simulation gives `{sim}%`, 95% CI `[{lo}%, {hi}%]` over `{n}` studies (**{label}**)"
     },
     {
@@ -465,6 +465,18 @@
      "file": "demo/data/claims.json",
      "path": "power.patients",
      "value": "patients"
+    },
+    {
+     "file": "README.md",
+     "text": "| {patients} simulated patients, HR {hr} per SD, {m} candidate patterns, Bonferroni at α = {alpha} |"
+    },
+    {
+     "file": "README.md",
+     "text": "| Schoenfeld formula (**{analytic_label}**) | {analytic}% |"
+    },
+    {
+     "file": "README.md",
+     "text": "| **{sim}%** (95% CI {lo}–{hi}%) |"
     }
    ]
   },
@@ -572,7 +584,7 @@
    ],
    "quotes": [
     {
-     "file": "README.md",
+     "file": "RESULTS.md",
      "text": "(`{patients}` patients, `{events}` events, `{n_features}` patterns: v1's `{n_v1}` plus `{n_v2}` on the same patients, `10` channels) | maxT p = {p} over {n_features} patterns (top `Tumor 5\\|Macrophage\\|100um\\|PD1`, `z = {z}`, `{resamples}` resamples; omnibus p = `{omnibus4}`; NumPy ref `{wall} s`) (**{label}**, exploratory)"
     },
     {
@@ -719,7 +731,7 @@
    ],
    "quotes": [
     {
-     "file": "README.md",
+     "file": "RESULTS.md",
      "text": "`{n_patients}` locked patients, `{n_events}` events) | Locked feature `{feature_md}`: HR per SD `{hr_per_sd}` `[{hr_lo}, {hr_hi}]`, one-sided p `{p_one_sided}`, C-index `{c_index}`; the locked test does not pass. **{label}** (underpowered: conditional power `{power}%` < `{min_power}%` with `{design_events}` design events), so these numbers are inconclusive."
     },
     {
@@ -735,7 +747,7 @@
      "text": "one pre-registered locked test (R-16), which is {label} (underpowered) and inconclusive: `results/upmc-rediscovery.json`."
     },
     {
-     "file": "README.md",
+     "file": "RESULTS.md",
      "text": "The Charville top hit is {charville_testable} on UPMC ({charville_marker} absent)."
     },
     {
@@ -767,7 +779,7 @@
    ],
    "quotes": [
     {
-     "file": "README.md",
+     "file": "RESULTS.md",
      "text": "Discovery rank `{rank}` of `{of}` (**{label}**, discovery patients only)"
     },
     {
@@ -782,7 +794,7 @@
    "label": "MEASURED",
    "label_path": "labels.compute",
    "id": "race-lane-walls",
-   "claim": "One design point on real Charville tissue, one A100 + 8-core container class: compute wall (re-imaging and scoring) lab 1761.88 s over 2,000 studies, Preflight Numba 375.26 s, 1 A100 2266.85 s and hybrid 377.67 s over 3,000 each; per evaluated study 0.881 / 0.125 / 0.756 / 0.126 s",
+   "claim": "One design point on real Charville tissue, one A100 + 8-core container class: compute wall (re-imaging and scoring) lab 1761.88 s over 2,000 studies, Biopsy Scan Numba 375.26 s, 1 A100 2266.85 s and hybrid 377.67 s over 3,000 each; per evaluated study 0.881 / 0.125 / 0.756 / 0.126 s",
    "values": [
     {
      "name": "lab_wall",
@@ -906,7 +918,7 @@
    "label": "MEASURED",
    "label_path": "labels.compute",
    "id": "race-7.0x",
-   "claim": "Preflight on 8 CPU cores (Numba) is 7.0× faster per evaluated study than the lab way (0.881 s vs 0.125 s; Preflight's 3,000 studies include its 1,000 calibration nulls); totals for the same design-point output 4.70× (1,761.88 s vs 375.26 s); different procedures",
+   "claim": "Biopsy Scan on 8 CPU cores (Numba) is 7.0× faster per evaluated study than the lab way (0.881 s vs 0.125 s; Biopsy Scan's 3,000 studies include its 1,000 calibration nulls); totals for the same design-point output 4.70× (1,761.88 s vs 375.26 s); different procedures",
    "values": [
     {
      "name": "speedup",
@@ -983,8 +995,8 @@
    ],
    "quotes": [
     {
-     "file": "README.md",
-     "text": "(Charville, one A100 + 8-core container class, `{per_stream}` studies per stream, one sweep, #113) | In-container study and scoring wall time per evaluated study (excludes load, prep, adjacency, warm-up, cutoff and rate summary): lab `{lab} s` vs Preflight on 8 CPU cores (Numba) `{numba} s`, `{speedup}×` per evaluated study; Preflight's `{numba_studies}` studies include its `{calib}` calibration nulls, the lab's `{lab_studies}` have none. Totals for the same design-point output: lab `{lab_total} s` vs Preflight `{numba_total} s`, `{total_ratio}×`. Different procedures: per-study permutation vs one calibrated threshold."
+     "file": "RESULTS.md",
+     "text": "(Charville, one A100 + 8-core container class, `{per_stream}` studies per stream, one sweep, #113) | In-container study and scoring wall time per evaluated study (excludes load, prep, adjacency, warm-up, cutoff and rate summary): lab `{lab} s` vs Biopsy Scan on 8 CPU cores (Numba) `{numba} s`, `{speedup}×` per evaluated study; Biopsy Scan's `{numba_studies}` studies include its `{calib}` calibration nulls, the lab's `{lab_studies}` have none. Totals for the same design-point output: lab `{lab_total} s` vs Biopsy Scan `{numba_total} s`, `{total_ratio}×`. Different procedures: per-study permutation vs one calibrated threshold."
     }
    ]
   },
@@ -1032,7 +1044,7 @@
    ],
    "quotes": [
     {
-     "file": "README.md",
+     "file": "RESULTS.md",
      "text": "Hybrid (CPU re-imaging feeding A100 scoring) `{hybrid} s` per study, a tie with Numba: re-imaging is `{hybrid_share}%` and `{numba_share}%` of their time."
     }
    ]
@@ -1072,14 +1084,14 @@
    ],
    "quotes": [
     {
-     "file": "README.md",
+     "file": "RESULTS.md",
      "text": "Numba vs A100 z agree to `{gpu}` relative; hybrid checked through each study's maxT (**{label}**)"
     }
    ]
   },
   {
    "id": "race-power-gap",
-   "claim": "Power 15.3% (153/1,000) with Preflight's one calibrated threshold vs 20.3% (203/1,000) with the lab's per-study permutation: different procedures, a method difference, not a speed artefact",
+   "claim": "Power 15.3% (153/1,000) with Biopsy Scan's one calibrated threshold vs 20.3% (203/1,000) with the lab's per-study permutation: different procedures, a method difference, not a speed artefact",
    "source": "bench/results/modal-design-20261121T194458Z.json",
    "pr": 113,
    "label": "ESTIMATE (FWER and power: binomial rates with Wilson 95% intervals)",
@@ -1136,8 +1148,8 @@
    ],
    "quotes": [
     {
-     "file": "README.md",
-     "text": "(`{n}` alternative studies each, #113) | Power `{p}%` (`{k}/{n}`) with Preflight's one calibrated threshold vs `{lab_p}%` (`{lab_k}/{lab_n}`) with the lab's per-study permutation: different procedures, so a method difference, not a speed artefact (rates **{rates_label}**, compute **{compute_label}**)"
+     "file": "RESULTS.md",
+     "text": "(`{n}` alternative studies each, #113) | Power `{p}%` (`{k}/{n}`) with Biopsy Scan's one calibrated threshold vs `{lab_p}%` (`{lab_k}/{lab_n}`) with the lab's per-study permutation: different procedures, so a method difference, not a speed artefact (rates **{rates_label}**, compute **{compute_label}**)"
     }
    ]
   },
@@ -1194,7 +1206,7 @@
    ],
    "quotes": [
     {
-     "file": "README.md",
+     "file": "RESULTS.md",
      "text": "same `{n}` alternative studies, #117) | Power `{two}%` two-bin vs `{pooled}%` pooled: paired gain `{gain}` pp `[{lo}, {hi}]` (paired bootstrap 95%), no clear recovery of the power gap (**{label}**)"
     }
    ]
@@ -1285,14 +1297,14 @@
    ],
    "quotes": [
     {
-     "file": "README.md",
+     "file": "RESULTS.md",
      "text": "| **CPU strong scaling** (Numba arm, Charville, the same `{studies}` {stream} studies at `{cores_lo}–{cores_hi}` Modal cores, one concurrent sweep, #115) | **Superseded** by the repeats row above (`28.0×`; this sweep lies above its range). One sweep. Studies wall per study `{wall_1} s` on 1 core vs `{wall_64} s` on 64 cores: `{speedup_64}×`. The 4- and 8-core points beat linear (`{speedup_4}×`, `{speedup_8}×`); one sweep, not separated from host variance (each core count on its own host, CPU models unknown, RAM grows with cores; host, cache and scheduling effects not isolated): observed ratios, not a guaranteed speed-up. X sha256 bit-equal at every core count; z within `1e-9` relative of the 8-core z (**{label}**) | [`bench/results/modal-scaling-20261121T201008Z.json`](bench/results/modal-scaling-20261121T201008Z.json) ([caveats](bench/results/modal-scaling-20261121T201008Z.caveats.json)) |"
     }
    ]
   },
   {
    "id": "matched-e2e-42.1x",
-   "claim": "Matched workflow comparison through scoring (excludes data load, threshold and calls): lab 8.818 s per study vs Preflight 0.2096 s per decided study, 42.1x; 26.7x including setup; 1 lab core vs 8 Preflight workers; different procedures; features bitwise on 100 shared studies, decisions agree 89/100",
+   "claim": "Matched workflow comparison through scoring (excludes data load, threshold and calls): lab 8.818 s per study vs Biopsy Scan 0.2096 s per decided study, 42.1x; 26.7x including setup; 1 lab core vs 8 Biopsy Scan workers; different procedures; features bitwise on 100 shared studies, decisions agree 89/100",
    "source": "bench/results/matched-e2e-20261121T201925Z.json",
    "pr": 123,
    "label": "MEASURED",
@@ -1391,8 +1403,8 @@
    ],
    "quotes": [
     {
-     "file": "README.md",
-     "text": "| **Matched end to end** (lab vs Preflight, same container, design and seeds, #123) | **Superseded** by the repeats row above (`40.0×`). Matched workflow comparison through scoring (re-imaging plus each study's test or screen; excludes data load, threshold and calls): lab `{lab} s` per study (`{lab_n}` studies) vs Preflight `{pf} s` per decided study (`{pf_n}` decided, its `{calib}` calibration nulls paid for): `{ratio}×`; `{ratio_setup}×` including setup (outcome simulation, adjacency, warm-up). `{lab_w}` lab core vs `{pf_w}` Preflight workers; different procedures (per-study permutation vs one calibrated threshold). Features bitwise on `{x_n}` shared studies; decisions agree `{agree}/{compared}` (**{label}**, outcomes SYNTHETIC) | [`bench/results/matched-e2e-20261121T201925Z.json`](bench/results/matched-e2e-20261121T201925Z.json) |"
+     "file": "RESULTS.md",
+     "text": "| **Matched end to end** (lab vs Biopsy Scan, same container, design and seeds, #123) | **Superseded** by the repeats row above (`40.0×`). Matched workflow comparison through scoring (re-imaging plus each study's test or screen; excludes data load, threshold and calls): lab `{lab} s` per study (`{lab_n}` studies) vs Biopsy Scan `{pf} s` per decided study (`{pf_n}` decided, its `{calib}` calibration nulls paid for): `{ratio}×`; `{ratio_setup}×` including setup (outcome simulation, adjacency, warm-up). `{lab_w}` lab core vs `{pf_w}` Biopsy Scan workers; different procedures (per-study permutation vs one calibrated threshold). Features bitwise on `{x_n}` shared studies; decisions agree `{agree}/{compared}` (**{label}**, outcomes SYNTHETIC) | [`bench/results/matched-e2e-20261121T201925Z.json`](bench/results/matched-e2e-20261121T201925Z.json) |"
     }
    ],
    "note": "26.7× uses the stored wall.with_setup per-study totals; not cross-checked against the setup stage timers."
@@ -1462,7 +1474,7 @@
    ],
    "quotes": [
     {
-     "file": "README.md",
+     "file": "RESULTS.md",
      "text": "| **GPU fleet, repeats** (`1,000` Charville studies, `8` vs `1` A100-SXM4-40GB, same GPU model, #134) | Compute-span ratio `{med}×`, median of `{n}` fresh repeats (range `{lo}–{hi}×`); `{failed}` attempt failed the same-GPU-model check and is excluded. Each fleet bit-equal to its own 1-container run; median and min–max of the fresh repeats: descriptive, not a confidence interval (**{label}**) | [`bench/results/sweep-repeats.json`](bench/results/sweep-repeats.json) |"
     },
     {
@@ -1516,11 +1528,11 @@
    ],
    "quotes": [
     {
-     "file": "README.md",
+     "file": "RESULTS.md",
      "text": "| **CPU strong scaling, repeats** (Numba arm, Charville, `1` vs `64` Modal cores, #135) | `{med}×` from `1` to `64` cores, median of `{n}` fresh repeats (range `{lo}–{hi}×`). Every core count's features bitwise and maxT within 1e-9 of the #115 sweep's 1-core run; median and min–max of the fresh repeats: descriptive, not a confidence interval (**{label}**) | [`bench/results/sweep-repeats.json`](bench/results/sweep-repeats.json) |"
     },
     {
-     "file": "README.md",
+     "file": "RESULTS.md",
      "text": "**Superseded** by the repeats row above (`{med}×`; this sweep lies above its range)"
     },
     {
@@ -1622,16 +1634,16 @@
    ],
    "quotes": [
     {
-     "file": "README.md",
-     "text": "| **Matched end to end, repeats** (lab vs Preflight, Numba arm, #134) | Through scoring, as in #123: `{med}×`, median of `{n}` fresh repeats (range `{lo}–{hi}×`); `{setup}×` with setup. One lab core vs eight Preflight workers; different procedures, as in #123. Decisions agree {agree0} of {of0} in every repeat; median and min–max of the fresh repeats: descriptive, not a confidence interval (timings **{label}**, outcomes **{outcomes}**) | [`bench/results/sweep-repeats.json`](bench/results/sweep-repeats.json) |"
+     "file": "RESULTS.md",
+     "text": "| **Matched end to end, repeats** (lab vs Biopsy Scan, Numba arm, #134) | Through scoring, as in #123: `{med}×`, median of `{n}` fresh repeats (range `{lo}–{hi}×`); `{setup}×` with setup. One lab core vs eight Biopsy Scan workers; different procedures, as in #123. Decisions agree {agree0} of {of0} in every repeat; median and min–max of the fresh repeats: descriptive, not a confidence interval (timings **{label}**, outcomes **{outcomes}**) | [`bench/results/sweep-repeats.json`](bench/results/sweep-repeats.json) |"
     },
     {
-     "file": "README.md",
+     "file": "RESULTS.md",
      "text": "**Superseded** by the repeats row above (`{med}×`). Matched workflow"
     },
     {
      "file": "docs/JUDGING.md",
-     "text": "| Matched workflow comparison through scoring, repeats (#134; Numba arm): as in #123 below, the lab way on 1 core against Preflight on 8 single-thread workers, with the same exclusions | {med}×, median of {n} fresh repeats (range {lo}–{hi}×); {setup}× with setup. One lab core against eight Preflight cores, running different procedures. Calls agree on {agree0} of {of0} in every repeat. Supersedes #123's single sweep (42.1×, next row). Median and min–max of the fresh repeats: descriptive, not a confidence interval | `bench/results/sweep-repeats.json` `matched` (#134) | {label}; outcomes {outcomes} |"
+     "text": "| Matched workflow comparison through scoring, repeats (#134; Numba arm): as in #123 below, the lab way on 1 core against Biopsy Scan on 8 single-thread workers, with the same exclusions | {med}×, median of {n} fresh repeats (range {lo}–{hi}×); {setup}× with setup. One lab core against eight Biopsy Scan cores, running different procedures. Calls agree on {agree0} of {of0} in every repeat. Supersedes #123's single sweep (42.1×, next row). Median and min–max of the fresh repeats: descriptive, not a confidence interval | `bench/results/sweep-repeats.json` `matched` (#134) | {label}; outcomes {outcomes} |"
     },
     {
      "file": "docs/JUDGING.md",
@@ -1639,7 +1651,7 @@
     },
     {
      "file": "docs/SUBMISSION.md",
-     "text": "Matched workflow comparison through scoring (#134, `bench/results/sweep-repeats.json`; Numba arm; excludes data load, the threshold calculation and the final calls): {med}×, median of {n} fresh repeats (range {lo}–{hi}×), {setup}× with setup; 1 lab core against 8 Preflight cores; calls agree on {agree0} of {of0} in every repeat; supersedes #123's single sweep (42.1×)."
+     "text": "Matched workflow comparison through scoring (#134, `bench/results/sweep-repeats.json`; Numba arm; excludes data load, the threshold calculation and the final calls): {med}×, median of {n} fresh repeats (range {lo}–{hi}×), {setup}× with setup; 1 lab core against 8 Biopsy Scan cores; calls agree on {agree0} of {of0} in every repeat; supersedes #123's single sweep (42.1×)."
     }
    ]
   },
@@ -1732,12 +1744,12 @@
    ],
    "quotes": [
     {
-     "file": "README.md",
-     "text": "| **Fair, 8 vs 8** (lab and Preflight each on `8` workers, Numba arm, #134) | Through scoring: `{med}×`, median of `{n}` fresh repeats (range `{lo}–{hi}×`); `{setup}×` with setup. Decisions agree {agree0} of {of0} in every repeat. The Numba kernel, not the fused kernel behind the `21.0×` row; different procedures; median and min–max of the fresh repeats: descriptive, not a confidence interval (timings **{label}**, outcomes **{outcomes}**) | [`bench/results/sweep-repeats.json`](bench/results/sweep-repeats.json) |"
+     "file": "RESULTS.md",
+     "text": "| **Fair, 8 vs 8** (lab and Biopsy Scan each on `8` workers, Numba arm, #134) | Through scoring: `{med}×`, median of `{n}` fresh repeats (range `{lo}–{hi}×`); `{setup}×` with setup. Decisions agree {agree0} of {of0} in every repeat. The Numba kernel, not the fused kernel behind the `21.0×` row; different procedures; median and min–max of the fresh repeats: descriptive, not a confidence interval (timings **{label}**, outcomes **{outcomes}**) | [`bench/results/sweep-repeats.json`](bench/results/sweep-repeats.json) |"
     },
     {
      "file": "docs/JUDGING.md",
-     "text": "| Fair, 8 against 8 (#134; Numba arm): the lab way and Preflight each on 8 workers, compute through scoring | {med}×, median of {n} fresh repeats (range {lo}–{hi}×); {setup}× with setup. Calls agree on {agree0} of {of0} in every repeat. This is the Numba kernel, not the fused kernel behind 21× (#120); different procedures. Median and min–max of the fresh repeats: descriptive, not a confidence interval | `bench/results/sweep-repeats.json` `fair` (#134) | {label}; outcomes {outcomes} |"
+     "text": "| Fair, 8 against 8 (#134; Numba arm): the lab way and Biopsy Scan each on 8 workers, compute through scoring | {med}×, median of {n} fresh repeats (range {lo}–{hi}×); {setup}× with setup. Calls agree on {agree0} of {of0} in every repeat. This is the Numba kernel, not the fused kernel behind 21× (#120); different procedures. Median and min–max of the fresh repeats: descriptive, not a confidence interval | `bench/results/sweep-repeats.json` `fair` (#134) | {label}; outcomes {outcomes} |"
     },
     {
      "file": "docs/SUBMISSION.md",
@@ -1877,15 +1889,21 @@
      "path": "summary.fused_full_s_per_study.median",
      "rule": "fixed:4",
      "expect": "0.0426"
+    },
+    {
+     "name": "workers",
+     "path": "headline",
+     "rule": "re:(\\d+) workers per arm",
+     "expect": "8"
     }
    ],
    "quotes": [
     {
-     "file": "README.md",
+     "file": "RESULTS.md",
      "text": "`{r}×` vs off-the-shelf squidpy + lifelines, same host, median of `{n}` fresh containers (range `{rmin}–{rmax}×`; `{ext} s` per study over `48` studies vs `{fused} s` per evaluated study over `3,000`"
     },
     {
-     "file": "README.md",
+     "file": "RESULTS.md",
      "text": "`{m}×` on the same `48` studies"
     },
     {
@@ -1903,6 +1921,18 @@
     {
      "file": "docs/SUBMISSION.md",
      "text": "{m}× on the same 48 studies"
+    },
+    {
+     "file": "README.md",
+     "text": "same host with {workers} CPU workers per side"
+    },
+    {
+     "file": "README.md",
+     "text": "**{r}× faster** per study"
+    },
+    {
+     "file": "README.md",
+     "text": "off-the-shelf squidpy + lifelines pipeline; the timing windows differ"
     }
    ]
   },
@@ -1959,7 +1989,7 @@
    ],
    "quotes": [
     {
-     "file": "README.md",
+     "file": "RESULTS.md",
      "text": "| **Head and neck sample size** (UPMC tissue, simulated cohorts of `50–600` resampled from `{src}` discovery patients, HR `2` per source SD, #133) | About `{n80}` patients reach `80%` power (linear interpolation of simulated power between simulated sizes). The pointwise 95% bounds cross `80%` at `{lo}` and `{hi}`: pointwise, not a confidence interval for n. Not comparable with Charville's `524`: a different source cohort (`{src}` patients reused up to `600`), censoring and grammar (**{lab}**, outcomes **{out}**) | [`bench/results/hn-power-upmc-discovery.json`](bench/results/hn-power-upmc-discovery.json) |"
     },
     {
@@ -1969,6 +1999,52 @@
     {
      "file": "docs/SUBMISSION.md",
      "text": "head and neck: about {n80} patients for 80% (pointwise 95% bounds cross 80% at {lo} and {hi}, {pointwise}; resampled from {src} UPMC discovery patients; not comparable with Charville's 524; `bench/results/hn-power-upmc-discovery.json`, #133); the shared-threshold procedure had lower estimated power, 15.3% against the lab's 20.3% (#113), and event-count calibration does not close it, +0.2 points [−0.7, +1.1] (#117); Charville v2 maxT p = 0.098 over 3,780 patterns (`results/charville-v2.json`, #47); UPMC locked test inconclusive at 18% simulated power (`results/upmc-rediscovery.json`, #109) | Schoenfeld formula ANALYTIC; simulated power, power at scale, head and neck sample size (outcomes {out}) and calibration {lab}; Charville MEASURED, exploratory; UPMC UNMEASURED (underpowered) |"
+    }
+   ]
+  },
+  {
+   "id": "demo-race-replay",
+   "claim": "the demo race replays 22.35 s per study (off-the-shelf, 8 CPU workers, same-host run) against 0.00207 s per evaluation (fused kernel, one H100, separate run): about 10,800x, a replay pace, not a like-for-like speedup",
+   "source": "demo/app/data.json",
+   "pr": 198,
+   "label": "preflight-race-ihc/1",
+   "label_path": "schema",
+   "values": [
+    {
+     "name": "current",
+     "path": "current.s_per_study",
+     "rule": "fixed:2",
+     "expect": "22.35"
+    },
+    {
+     "name": "ours",
+     "path": "ours.s_per_study",
+     "rule": "fixed:5",
+     "expect": "0.00207"
+    },
+    {
+     "name": "ratio",
+     "path": "ratio",
+     "rule": "comma:0",
+     "expect": "10,800"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "RESULTS.md",
+     "text": "`{current} s` per study for the whole off-the-shelf squidpy + lifelines call"
+    },
+    {
+     "file": "RESULTS.md",
+     "text": "`{ours} s` per evaluation for re-imaging and scoring on one H100"
+    },
+    {
+     "file": "RESULTS.md",
+     "text": "about `{ratio}×`, mixes hardware and timing windows"
+    },
+    {
+     "file": "RESULTS.md",
+     "text": "the median of `3` timed runs of `3,000` evaluations each"
     }
    ]
   }

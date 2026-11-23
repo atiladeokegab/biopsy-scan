@@ -5,7 +5,7 @@
 import { MARKER_COLORS, DAB, HAEMATOXYLIN } from "./palette.js";
 
 export const SEARCH_LABEL = "ILLUSTRATION · search not yet run on real outcomes";
-export const HPA_CREDIT = "Human Protein Atlas (proteinatlas.org), head and neck cancer, CC BY-SA 3.0";
+export const HPA_CREDIT = "Human Protein Atlas v25 (v25.proteinatlas.org), head and neck cancer, CC BY 4.0; Uhlén et al., Science 2015; cropped and resized";
 export const IHC = [ // real cores: file, gene, antibody (img/hpa_manifest.json), the CODEX channel it stands next to
   { file: "hpa_best_01_KRT5.webp", gene: "KRT5", antibody: "CAB000027", channel: "PanCK", note: "tumour cells (keratin)" },
   { file: "hpa_best_12_CD8A.webp", gene: "CD8A", antibody: "CAB000012", channel: "CD8", note: "cytotoxic T cells" },
@@ -32,6 +32,15 @@ export function mount(el, data) {
   const cv = document.createElement("canvas"), g = cv.getContext("2d");
   cv.style.cssText = "display:block;width:100%;height:100%";
   el.appendChild(cv);
+  // clickable source credit for the two real IHC photos; URLs live in img/hpa_manifest.json (the demo source names none)
+  const credit = el.appendChild(document.createElement("p"));
+  credit.className = "wf-hpa-credit"; credit.hidden = true;
+  credit.style.cssText = "position:absolute;left:0;right:0;bottom:6px;text-align:center";
+  fetch(new URL("./img/hpa_manifest.json", import.meta.url)).then((r) => r.json()).then((m) => {
+    const page = Object.fromEntries(m.map((e) => [e.file, e.page_url])), a = (u, t) => `<a href="${u}" target="_blank" rel="noopener">${t}</a>`;
+    credit.innerHTML = `Photos: ${a(m[0].release_url, "Human Protein Atlas v25")} (${IHC.map((c) => a(page[c.file], c.gene)).join(", ")}), `
+      + `${a(m[0].licence_url, "CC BY 4.0")}; Uhlén et al., ${a(m[0].reference_url, "Science 2015")}. Cropped and resized.`;
+  }).catch(() => {});
   const { markers } = data.tma, core = data.tma.cores[data.tma.pick];
   const [w, h = w] = [core.size_um].flat(), half = Math.max(w, h) / 2;
   const cells = core.cells.map(([x, y, , ...m]) => ({ u: (x - w / 2) / half, v: (y - h / 2) / half, m }))
@@ -46,6 +55,7 @@ export function mount(el, data) {
 
   function draw(t) {
     const W = el.clientWidth || 720, H = el.clientHeight || 450, d = window.devicePixelRatio || 1, narrow = W < 560;
+    credit.hidden = true; // shown again below once the real IHC photos fade in
     if (cv.width !== Math.round(W * d) || cv.height !== Math.round(H * d)) { cv.width = Math.round(W * d); cv.height = Math.round(H * d); }
     g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, W, H);
     const font = getComputedStyle(document.body).fontFamily || "sans-serif", n = markers.length;
@@ -117,7 +127,7 @@ export function mount(el, data) {
       });
       g.save(); g.globalAlpha = ihc; g.font = `600 11px ${font}`; g.fillStyle = body; g.textAlign = "center";
       g.fillText(real ? "REAL IHC · other patients · not scored here" : "SIMULATED IHC", W / 2, y2 + r2 + 20, W - 24);
-      if (real) { g.font = `400 11px ${font}`; g.fillStyle = muted; g.fillText(HPA_CREDIT, W / 2, y2 + r2 + 36, W - 24); }
+      credit.hidden = !(real && ihc > 0.5);
       g.restore();
     }
   }

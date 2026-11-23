@@ -14,7 +14,7 @@ const LIFT = 64; // µm of terrain at the densest point
 const DIM = 0.14; // how much of a cell's colour survives outside every field of view
 const SEED = 16; // the one simulated look shown: window placement and per-cell mis-call draws
 
-// Preflight's mis-call (core/reimage_ref.py::miscall with confusion_matrix): keep the type with prob 1 - eps,
+// Biopsy Scan's mis-call (core/reimage_ref.py::miscall with confusion_matrix): keep the type with prob 1 - eps,
 // else a uniform other type; the called type is the first k with cumsum(M[type])[k] > u.
 export function miscall(type, u, eps, K) {
   let cum = 0;
@@ -51,7 +51,7 @@ export function fitView(points, elev, azim, fovDeg, aspect, margin) {
   return { target, dist: hi };
 }
 
-// Preflight's random_crop: a square of side s placed uniformly inside the bounding box [lo, hi], null if s covers it.
+// Biopsy Scan's random_crop: a square of side s placed uniformly inside the bounding box [lo, hi], null if s covers it.
 export function randomCrop(lo, hi, s, a) {
   if (s >= Math.max(hi[0] - lo[0], hi[1] - lo[1])) return null;
   return [0, 1].map((i) => lo[i] + a[i] * Math.max(hi[i] - lo[i] - s, 0)).concat(s);
@@ -180,7 +180,7 @@ export const inView = (e) => e.isIntersecting && e.intersectionRatio >= VISIBLE;
 // ?t3d=<seconds> holds the scene for stills; anything but a finite number plays it normally.
 export const captureTime = (v) => (v !== null && v.trim() !== "" && Number.isFinite(+v) ? +v : null);
 
-// One simulated look, in Preflight's draw order: the crops, then a uniform u per cell for the mis-call. It needs no
+// One simulated look, in Biopsy Scan's draw order: the crops, then a uniform u per cell for the mis-call. It needs no
 // WebGL, so the counts show even when the view cannot start.
 export function drawStudy(tissue) {
   const p = pickPatient(tissue);
@@ -392,7 +392,7 @@ export function mountReimage($, tissue, { reducedMotion, search, create = create
     ? `all ${n.toLocaleString("en-GB")} cells`
     : `${n.toLocaleString("en-GB")} of its ${p.cells_in_region.toLocaleString("en-GB")} cells`;
   if (!real) {
-    $("reimage-label").firstChild.textContent = "SYNTHETIC cells. Real Charville data is not loaded. Imaging simulated by Preflight. ";
+    $("reimage-label").firstChild.textContent = "SYNTHETIC cells. Real Charville data is not loaded. Imaging simulated by Biopsy Scan. ";
     $("reimage-tag").textContent = "SYNTHETIC cells";
     $("reimage-tag").classList.remove("measured");
     $("reimage").setAttribute("aria-label", "A synthetic tumour region in 3D. Two simulated fields of view, the rest dimmed. Each cell in view has a 10% chance of a mis-call. Those that cross colour groups are ringed.");
