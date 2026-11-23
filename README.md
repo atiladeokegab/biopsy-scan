@@ -144,8 +144,8 @@ with the attribution above:
 - **Aggregates:** the per-design results under `atlas/results/` and the benchmark outputs under
   `bench/results/` hold summary statistics, not cells.
 
-The six routine IHC photos in the demo, and in the closing frames of the race GIF and the Routine IHC screenshot
-above, come from the
+The routine IHC photos in the demo (six in total; two appear in the closing frames of the race GIF
+and in the Routine IHC screenshot above) come from the
 [Human Protein Atlas](https://v25.proteinatlas.org/) version 25, under
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). They are cropped to the tissue core,
 resized and, in the demo, shown with coloured overlays. Each image's source page is listed in
