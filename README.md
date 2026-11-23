@@ -89,7 +89,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT
 
 ```bibtex
 @software{biopsyscan_2026,
-  author  = {{Team Dry Lab}},
+  author  = {Oke, Atilade and Lawan, Faisal},
   title   = {Biopsy Scan: Cell-by-Cell Spatial-Biomarker Study Simulation and Clinical IHC Translation},
   year    = {2026},
   url     = {https://github.com/atiladeokegab/biopsy-scan},
