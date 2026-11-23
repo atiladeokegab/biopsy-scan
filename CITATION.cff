@@ -4,7 +4,7 @@ title: "Preflight: Cell-by-Cell Spatial-Biomarker Study Simulation and Clinical 
 type: software
 authors:
   - name: "Team Dry Lab"
-repository-code: "https://github.com/atiladeokegab/sota-parallelism-nov21"
+repository-code: "https://github.com/atiladeokegab/biopsy-scan"
 license: MIT
 version: 0.1.0
 date-released: 2026-11-22

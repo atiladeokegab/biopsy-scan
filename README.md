@@ -5,8 +5,9 @@
 **Know whether your spatial-biology study can work before you image a single slide.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![smoke](https://github.com/atiladeokegab/sota-parallelism-nov21/actions/workflows/smoke.yml/badge.svg)](https://github.com/atiladeokegab/sota-parallelism-nov21/actions/workflows/smoke.yml)
+[![smoke](https://github.com/atiladeokegab/biopsy-scan/actions/workflows/smoke.yml/badge.svg)](https://github.com/atiladeokegab/biopsy-scan/actions/workflows/smoke.yml)
 ![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)
+[![Documentation](https://readthedocs.org/projects/biopsy-scan/badge/?version=latest)](https://biopsy-scan.readthedocs.io/)
 
 Preflight simulates thousands of cell-by-cell spatial-biomarker studies on real CODEX tumour tissue.
 For a planned study (number of patients, regions per patient, field of view, cell mis-call rate), it
@@ -51,7 +52,7 @@ You need `git`, `make`, [`uv`](https://docs.astral.sh/uv/), a system `python3` (
 Node.js. uv installs the pinned Python 3.11 for you.
 
 ```sh
-git clone https://github.com/atiladeokegab/sota-parallelism-nov21.git
+git clone https://github.com/atiladeokegab/biopsy-scan.git
 cd sota-parallelism-nov21
 make smoke   # installs, runs the offline test suite and the demo checks (no data or GPU needed)
 make demo    # serves the demo at http://localhost:8000 (PORT=8001 if busy)
@@ -124,6 +125,28 @@ The tissue photos in the demo and in the images above come from the
 [Human Protein Atlas](https://www.proteinatlas.org/) (Uhlen et al.) under
 [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/), not MIT.
 
+## Documentation
+
+Full documentation, with the architecture, methods, pre-registration and every result, is at
+**[biopsy-scan.readthedocs.io](https://biopsy-scan.readthedocs.io/)**. To build it locally:
+
+```sh
+uv run --no-project --with-requirements docs/requirements.txt mkdocs serve
+```
+
+## Contact
+
+- **Questions** ("how do I…?", "what does this number mean?"): start a thread in
+  [Discussions](https://github.com/atiladeokegab/biopsy-scan/discussions).
+- **Bugs and feature requests:** open an [issue](https://github.com/atiladeokegab/biopsy-scan/issues).
+- **Security issues:** report privately, see [SECURITY.md](SECURITY.md).
+- **The authors:**
+
+| | GitHub | LinkedIn |
+|---|---|---|
+| Atilade Oke | [@atiladeokegab](https://github.com/atiladeokegab) | [atiladeoke](https://www.linkedin.com/in/atiladeoke/) |
+| Faisal Lawan | [@FHL-08](https://github.com/FHL-08) | [faisal-lawan](https://www.linkedin.com/in/faisal-lawan/) |
+
 ## Contributing
 
 Issues and pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md) and the
@@ -143,7 +166,7 @@ GitHub's "Cite this repository" button reads [CITATION.cff](CITATION.cff). Or us
   author  = {{Team Dry Lab}},
   title   = {Preflight: Cell-by-Cell Spatial-Biomarker Study Simulation and Clinical IHC Translation},
   year    = {2026},
-  url     = {https://github.com/atiladeokegab/sota-parallelism-nov21},
+  url     = {https://github.com/atiladeokegab/biopsy-scan},
   license = {MIT}
 }
 ```

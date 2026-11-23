@@ -3,7 +3,7 @@
 ## Reporting a vulnerability
 
 Please don't open a public issue. Report it privately through GitHub's
-[private vulnerability reporting](https://github.com/atiladeokegab/sota-parallelism-nov21/security/advisories/new).
+[private vulnerability reporting](https://github.com/atiladeokegab/biopsy-scan/security/advisories/new).
 We aim to reply within a week.
 
 ## Scope
