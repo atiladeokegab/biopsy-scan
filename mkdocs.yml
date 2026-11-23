@@ -30,6 +30,8 @@ nav:
   - Validation:
       - Pre-registration: PREREGISTRATION.md
       - External agreement: external-agreement.md
+      - METABRIC external validation: external-validation-metabric.md
+      - METABRIC validation protocol: external-validation-protocol-v2.md
       - Basel external validation: external-validation.md
       - Basel validation protocol: external-validation-protocol.md
       - Negative result: negative-result.md
