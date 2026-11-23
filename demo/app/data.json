@@ -85,7 +85,7 @@
  ],
  "cells_credit": "Charville CODEX, Wu et al. 2022, Zenodo 13179600, CC-BY-4.0; real cells, every cell of each region",
  "scope": {
-  "race": "Current: whole squidpy + lifelines pipeline, 8 CPU workers. Ours: fused kernel on one H100. 10,800\u00d7 faster per study: 22.35 s vs 0.00207 s, measured in separate runs.",
+  "race": "Current: whole squidpy + lifelines pipeline, 8 CPU workers. Ours: fused kernel on one H100. 10,800\u00d7 replay pace: one H100 vs 8 CPU workers, separate runs (22.35 s per study vs 0.00207 s per evaluated study).",
   "ihc": "Illustration only: PanCK/CD8 examples picked by hand from Human Protein Atlas samples (other patients), not scored. Biopsy Scan issued no validated stain recommendation."
  }
 }

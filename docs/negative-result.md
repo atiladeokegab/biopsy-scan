@@ -61,8 +61,8 @@ The other candidates:
 - **Too little work per thread:** a secondary factor (MEASURED). About 150 visible cells per thread per call is small. Even with workqueue, 8 threads did not beat 1 thread under this load.
 
 Whether spinning workers also slow the NumPy reference in the same process is not established
-(ESTIMATE). The NumPy times next to active-wait Numba were 18.2 s in one run and 9.7 s in
-another; next to passive-wait Numba they were 8.7 s and 12.0 s. The load moved too much between
+(ESTIMATE). The NumPy times next to active-wait Numba were 22.0 s, 18.2 s and 9.7 s in three
+runs; next to passive-wait Numba they were 8.7 s and 12.0 s. The load moved too much between
 runs to separate the two effects.
 
 ## What would fix it

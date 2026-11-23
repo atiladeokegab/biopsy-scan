@@ -1,6 +1,8 @@
 # Biopsy Scan Design System & Demo Spec
 
-Owner: Hephaestus (design), implemented in `demo/` by Zeus (`#7`).
+> **Historical.** Historical design spec for the hackathon demo; [`demo/tokens.css`](../demo/tokens.css) and [`demo/style.css`](../demo/style.css) are authoritative.
+
+Implemented in `demo/` (`#7`).
 Binding token file: `demo/tokens.css`. Only `docs/design.md` and `demo/tokens.css` hold system tokens and visual specification; `demo/` components must reference `var(--...)` from `demo/tokens.css` with zero inline hexes or off-scale sizes.
 
 ---

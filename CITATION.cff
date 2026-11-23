@@ -3,7 +3,10 @@ message: "If you use Biopsy Scan, please cite it as below."
 title: "Biopsy Scan: Cell-by-Cell Spatial-Biomarker Study Simulation and Clinical IHC Translation"
 type: software
 authors:
-  - name: "Team Dry Lab"
+  - family-names: Oke
+    given-names: Atilade
+  - family-names: Lawan
+    given-names: Faisal
 repository-code: "https://github.com/atiladeokegab/biopsy-scan"
 license: MIT
 version: 0.1.0
@@ -32,6 +35,40 @@ references:
   - type: article
     title: "Graph deep learning for the characterization of tumour microenvironments from spatial protein profiles in tissue specimens"
     authors:
-      - name: "Wu et al."
+      - family-names: Wu
+        given-names: Zhenqin
+      - family-names: Trevino
+        given-names: Alexandro E.
+      - name: "et al."
     journal: "Nature Biomedical Engineering"
     year: 2022
+    volume: 6
+    issue: 12
+    start: 1435
+    end: 1448
+    doi: "10.1038/s41551-022-00951-w"
+  - type: article
+    title: "Multiparameter imaging reveals clinically relevant cancer cell-stroma interaction dynamics in head and neck cancer"
+    authors:
+      - family-names: Punovuori
+        given-names: Karolina
+      - name: "et al."
+    journal: "Cell"
+    year: 2024
+    volume: 187
+    issue: 25
+    start: 7267
+    end: 7284
+    doi: "10.1016/j.cell.2024.09.046"
+  - type: article
+    title: "Tissue-based map of the human proteome"
+    authors:
+      - family-names: Uhlén
+        given-names: Mathias
+      - name: "et al."
+    journal: "Science"
+    year: 2015
+    volume: 347
+    issue: 6220
+    start: 1260419
+    doi: "10.1126/science.1260419"

@@ -28,7 +28,7 @@ to one change, and say what it changes and how you checked it.
 
 ### Setting up
 
-You need Python 3.11, [uv](https://docs.astral.sh/uv/) and Node.js (for the demo tests). From the
+You need `python3` (3.9+) for the demo checks, [uv](https://docs.astral.sh/uv/) (it installs the pinned Python 3.11) and Node.js (for the demo tests). From the
 repository root:
 
 ```sh
@@ -42,7 +42,7 @@ runs offline on a small invented fixture.
 
 ```sh
 make test      # the Python test suite
-make smoke     # tests + demo checks: the same check CI runs on every pull request
+make smoke     # tests + demo checks, about 7 minutes: the same check CI runs on every pull request
 ```
 
 ### Building the documentation

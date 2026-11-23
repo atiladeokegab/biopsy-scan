@@ -1,4 +1,8 @@
-# sota-parallelism-nov21: PRD v5
+# Product requirements v5 (hackathon, 22 Nov 2026)
+
+> **Historical.** This is the hackathon product requirements document as written on 22 Nov 2026. The hosted demo is
+> retired: run the demo locally with `make demo`. Current results are in
+> [RESULTS.md](https://github.com/atiladeokegab/biopsy-scan/blob/main/RESULTS.md).
 
 ## Problem
 After surgery for head and neck cancer, treatment is chosen on stage and margins, which cannot see the tissue patterns that predict relapse. Finding one such pattern took the Helsinki team years and 18 hand-picked tests, and turning it into a hospital test needs proof that it survives fewer stains, imaging error and small cohorts. Testing that honestly means re-imaging thousands of simulated studies cell by cell from real tissue, each running every pattern's survival test with 10,000 shuffles: CPU-days today (rung 0: 7.52 s per study on one core, MEASURED).

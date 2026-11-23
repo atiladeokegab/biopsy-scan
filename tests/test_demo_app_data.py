@@ -63,7 +63,8 @@ def test_current_receipt_gate_rejects_a_doctored_receipt():
 def test_scope_lines_give_the_combined_ratio_only_on_the_race_line_as_separate_runs():
     race, ihc = DATA["scope"]["race"], DATA["scope"]["ihc"]
     assert race == ("Current: whole squidpy + lifelines pipeline, 8 CPU workers. Ours: fused kernel on one H100. "
-                    "10,800× faster per study: 22.35 s vs 0.00207 s, measured in separate runs.")  # founder ruling wording
+                    "10,800× replay pace: one H100 vs 8 CPU workers, separate runs "
+                    "(22.35 s per study vs 0.00207 s per evaluated study).")  # founder ruling: ratio labelled as separate runs
     combined = round(DATA["ratio"], -2)
     assert re.search(rf"{combined // 1000:.0f},{combined % 1000:03.0f}×.*separate runs", race)  # only here, labelled
     assert not re.search(rf"{combined // 1000:.0f},?{combined % 1000:03.0f}", ihc)

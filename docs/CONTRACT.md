@@ -1,7 +1,6 @@
 # Contract
 
-Biopsy Scan's shared shapes. Written by the lead's agent; every area builds against it; only the lead
-changes it. `core/` owns the data and grammar,
+Biopsy Scan's shared data shapes and interfaces; changes go through review. `core/` owns the data and grammar,
 `reimage/` the kernels, `stats/` the statistic.
 
 ## Assignment
@@ -84,6 +83,14 @@ coverslip groups).
 
 `make summary` prints these; every saved run records the hash.
 
+**Grammar v2** (`core.grammar.grammar_v2`) keeps the v1 features above, in the same order, and appends
+per-channel neighbour expression and morphology means, ordered `(t, j, r, m)` over M channels
+(cohort z-scored). A design opts in with `design["grammar"] = "v2"` and cells that carry channels;
+`reimage.run` defaults to v1. On Charville, M = 10 channels (`PD1`, `PDL1`, `Ki67`, `GranzymeB`, `HLA-DR`,
+`aSMA`, `CollagenIV`, `Vimentin`, `Podoplanin`, `SIZE`) give 630 + 3,150 = **3,780** features, grammar v2
+sha256 `26a745f831ef71ec2c8ae5bf65f3668d29fd0f53ab97699cf52ac0cc13f11564` (recorded in
+`results/charville-v2.json` next to the v1 hash; the atlas metadata records the v1 hash).
+
 ## Design and the random stream
 
 `design = dict(patients, regions_per_patient, fov_um, eps, seed)`:
@@ -143,5 +150,6 @@ cell. A batched backend may run many studies per launch, but it must reproduce t
 
 ## Check
 
-`make smoke` = `uv sync --dev` + `uv run pytest -q` over `core/ stats/ reimage/ bench/ audit/ atlas/ tests/`, tiny invented
-fixtures, offline, no real data.
+`make smoke` = `uv sync --dev` + `uv run pytest -q` over `core/ stats/ reimage/ bench/ audit/ atlas/ translate/ tests/`
+(pyproject `testpaths`), then the demo data check (`demo/check_data.py`, `demo/collect_preflight.py --check`) and the
+demo's Node tests. Tiny invented fixtures, offline, no real data.

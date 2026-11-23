@@ -12,7 +12,8 @@ numbers come from [Modal](https://modal.com) through `gpu/modal_app.py`.
 | `make modal-gpu-vs STUDIES=1000` | the same studies on one A100-40GB and one H100, block by block | seconds and dollars per study, bit-identical across GPUs |
 | `make modal-ladder GPU=A100-40GB CONTAINERS=4 STUDIES=16 REPS=5` | `bench/real_cpu.py`'s Charville design point, NumPy reference vs GPU, same seeds, exact parity; the same studies on 1 and N GPU containers, merged bit-identical; R-15's `stats.screen` on the GPU when it is importable | one file |
 
-`GPU` is `A100-40GB` (default), `A100-80GB`, `H100` or `L4`: an exact type, since plain `A100` mixed 40 GB and 80 GB cards in one curve. The cohort lives in the `preflight-data` Modal volume.
+`GPU` is `A100-40GB` (default), `A100-80GB`, `H100` or `L4`: an exact type, since plain `A100` mixed 40 GB and 80 GB cards in one curve. The cohort lives in the `preflight-data` Modal volume (the name is kept from the project's earlier name, Preflight).
+`LADDER_FLEET` (optional, empty by default) adds fleet sizes to `make modal-ladder`, comma-separated: `make modal-ladder CONTAINERS=4 LADDER_FLEET=2,8 STUDIES=16` times 1, 2, 4 and 8 containers. Every size must be between 1 and `STUDIES`, so no container gets zero studies.
 Zenodo answers 403 to Modal's IPs, so upload it once from a machine that has `make data`'s files:
 `uv run modal volume put preflight-data data/charville_raw_data.zip /charville_raw_data.zip` (and
 `charville_labels.csv`). Runs stop with that hint when the files are missing.

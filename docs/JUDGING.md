@@ -1,4 +1,10 @@
-# Biopsy Scan against the four judging criteria
+# Judging evidence (hackathon, historical)
+
+> **Historical.** This is the hackathon judging evidence as written on 22 Nov 2026. The hosted demo is
+> retired: run the demo locally with `make demo`. Current results are in
+> [RESULTS.md](https://github.com/atiladeokegab/biopsy-scan/blob/main/RESULTS.md).
+
+Biopsy Scan against the four judging criteria.
 
 Every number below is copied from a committed results file. Where that file is on an open PR, the row names the PR. Labels:
 - **MEASURED**: a committed results file from a real run.
@@ -51,7 +57,7 @@ All real-data results are exploratory: the outcomes have already been seen.
 
 ## 3. Speed-up against a credible baseline
 
-Headline, all on 8 CPU cores (the fused kernel is not a GPU kernel): 534× against off-the-shelf squidpy + lifelines, same host, median of 3 fresh containers (range 511–547×; 22.35 s per study over 48 studies against 0.0426 s per evaluated study over 3,000, 8 workers each; pipeline only, our reference recount and agreement checks timed separately, 547× with them, the closest scope to the old 583× combined-checks basis; 312× on the same 48 studies; for 534× and 312× the external time is the whole off-the-shelf call per study (cells, squidpy, lifelines, Bonferroni call, each result returned to the parent) and the fused time is re-imaging and scoring only, the calibrated threshold and calls a separate step, excluded; different statistics, top pick the same in 16 of 16 on a matched config); 21× against an optimised lab-method rewrite (per evaluated study, cross-run; 14.0× per whole design point; the fused kernel re-images, scoring and the cutoff are a separate step, and the cutoff and calls are outside the timing); 5.5× fair 8 against 8 on the Numba kernel (compute per decided study, calibration charged). Each is a row below, with its source and label.
+Headline, all on 8 CPU cores (the 534× fused arm ran on CPU; a GPU port is timed separately, see [Demo race replay](../RESULTS.md#demo-race-replay)): 534× against off-the-shelf squidpy + lifelines, same host, median of 3 fresh containers (range 511–547×; 22.35 s per study over 48 studies against 0.0426 s per evaluated study over 3,000, 8 workers each; pipeline only, our reference recount and agreement checks timed separately, 547× with them, the closest scope to the old 583× combined-checks basis; 312× on the same 48 studies; for 534× and 312× the external time is the whole off-the-shelf call per study (cells, squidpy, lifelines, Bonferroni call, each result returned to the parent) and the fused time is re-imaging and scoring only, the calibrated threshold and calls a separate step, excluded; different statistics, top pick the same in 16 of 16 on a matched config); 21× against an optimised lab-method rewrite (per evaluated study, cross-run; 14.0× per whole design point; the fused time covers re-imaging and batched scoring; the cutoff and calls are outside the timing); 5.5× fair 8 against 8 on the Numba kernel (compute per decided study, calibration charged). Each is a row below, with its source and label.
 
 | Workload | Result | Source | Label |
 |---|---|---|---|
