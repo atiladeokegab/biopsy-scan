@@ -30,6 +30,8 @@ nav:
   - Validation:
       - Pre-registration: PREREGISTRATION.md
       - External agreement: external-agreement.md
+      - Basel external validation: external-validation.md
+      - Basel validation protocol: external-validation-protocol.md
       - Negative result: negative-result.md
       - Prior work: PRIOR-WORK.md
   - Contribute:
