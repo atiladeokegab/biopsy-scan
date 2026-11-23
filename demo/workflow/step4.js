@@ -5,7 +5,7 @@
 import { MARKER_COLORS, DAB, HAEMATOXYLIN } from "./palette.js";
 
 export const SEARCH_LABEL = "ILLUSTRATION · search not yet run on real outcomes";
-export const HPA_CREDIT = "Human Protein Atlas (proteinatlas.org), head and neck cancer, CC BY 4.0";
+export const HPA_CREDIT = "Human Protein Atlas v25 (v25.proteinatlas.org), head and neck cancer, CC BY 4.0; Uhlén et al., Science 2015; cropped and resized";
 export const IHC = [ // real cores: file, gene, antibody (img/hpa_manifest.json), the CODEX channel it stands next to
   { file: "hpa_best_01_KRT5.webp", gene: "KRT5", antibody: "CAB000027", channel: "PanCK", note: "tumour cells (keratin)" },
   { file: "hpa_best_12_CD8A.webp", gene: "CD8A", antibody: "CAB000012", channel: "CD8", note: "cytotoxic T cells" },

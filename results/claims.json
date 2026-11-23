@@ -626,7 +626,11 @@
     },
     {
      "file": "README.md",
-     "text": "Joint screen of {n_features} patterns (Charville, {patients} patients):** best `maxT` p = {p},"
+     "text": "Joint screen of {n_features} patterns (Charville, {patients} patients):** best `maxT` p = {p}, so no"
+    },
+    {
+     "file": "README.md",
+     "text": "pattern reached corrected significance, and Biopsy Scan reports that instead of a finding"
     }
    ]
   },
@@ -1901,6 +1905,12 @@
      "path": "summary.fused_full_s_per_study.median",
      "rule": "fixed:4",
      "expect": "0.0426"
+    },
+    {
+     "name": "workers",
+     "path": "headline",
+     "rule": "re:(\\d+) workers per arm",
+     "expect": "8"
     }
    ],
    "quotes": [
@@ -1935,6 +1945,14 @@
     {
      "file": "README.md",
      "text": "range {rmin}–{rmax}×; {m}× on the same 48 studies"
+    },
+    {
+     "file": "README.md",
+     "text": "{workers} CPU workers per side"
+    },
+    {
+     "file": "README.md",
+     "text": "off-the-shelf time is the whole call per study, the fused time is re-imaging and scoring only"
     }
    ]
   },
@@ -2059,6 +2077,10 @@
     {
      "file": "README.md",
      "text": "about {ratio}× ([source]"
+    },
+    {
+     "file": "RESULTS.md",
+     "text": "the median of `3` timed runs of `3,000` evaluations each"
     }
    ]
   }

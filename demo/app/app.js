@@ -268,6 +268,7 @@ async function start() {
   }
   document.querySelectorAll("[data-scope]").forEach((el) => { el.textContent = D.scope[el.dataset.scope]; });
   $("stack").title = D.cells_credit; $("ihc").title = D.ihc.map((p) => `${p.gene}: ${p.credit}`).join("\n");
+  $("ihc-credit").innerHTML = `Photos: Human Protein Atlas v25 (${D.ihc.map((p) => `<a href="${p.page}" target="_blank" rel="noopener">${p.gene}</a>`).join(", ")}), <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>; Uhlén et al., <a href="https://doi.org/10.1126/science.1260419" target="_blank" rel="noopener">Science 2015</a>. Cropped, resized, shown with stain overlays.`;
   $("tab-1").onclick = () => show(1); $("tab-2").onclick = () => unlocked && show(2); $("to-ihc").onclick = () => show(2);
   $("run").onclick = run; $("reset").onclick = reset;
   addEventListener("resize", () => { cache.clear(); oursFinal = false; kick(); });

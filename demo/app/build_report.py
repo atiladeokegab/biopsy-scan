@@ -12,6 +12,8 @@ from reportlab.lib.styles import ParagraphStyle
 HERE = Path(__file__).resolve().parent
 SRC = HERE.parent / "workflow" / "img"
 OUT = str(HERE / "report.pdf")
+import json
+PAGE = {e["file"]: e["page_url"] for e in json.loads((SRC / "hpa_manifest.json").read_text())}
 
 INK, MUTED, RULE = HexColor("#14181C"), HexColor("#5A636B"), HexColor("#DDE2E6")
 EMERALD, CORAL = HexColor("#2BD4A4"), HexColor("#E86F51")
@@ -48,6 +50,7 @@ for i, (f, gene, ab) in enumerate(photos):
     x = M + i * (pw + gap)
     buf = io.BytesIO(); im.resize((1000, round(1000 * im.height / im.width)), Image.LANCZOS).save(buf, "JPEG", quality=88); buf.seek(0)
     c.drawImage(ImageReader(buf), x, y - ph, pw, ph)
+    c.linkURL(PAGE[f], (x, y - ph, x + pw, y), relative=0)
     c.setStrokeColor(RULE); c.setLineWidth(0.6); c.rect(x, y - ph, pw, ph)
     c.setFillColor(INK); c.setFont("Helvetica-Bold", 10.5); c.drawString(x, y - ph - 16, gene)
     c.setFillColor(MUTED); c.setFont("Helvetica", 9.5)
@@ -85,8 +88,12 @@ y = para("Off-the-shelf squidpy + lifelines 22.35 s per study over 48 external s
 
 # footer
 c.setStrokeColor(RULE); c.line(M, M + 46, W - M, M + 46)
-para("Photos: Human Protein Atlas, proteinatlas.org (Uhlen et al.), CC BY 4.0. Head and neck cancer sections "
-     "from other patients, not scored by Biopsy Scan. Illustration only; not for clinical use.",
+para("Photos: Human Protein Atlas v25 ("
+     + ", ".join(f'<a href="{PAGE[f]}" color="#5A636B"><u>{g}</u></a>' for f, g, _ in photos)
+     + '), <a href="https://creativecommons.org/licenses/by/4.0/" color="#5A636B"><u>CC BY 4.0</u></a>; '
+     'Uhlén et al., <a href="https://doi.org/10.1126/science.1260419" color="#5A636B"><u>Science 2015</u></a>. '
+     "Cropped and resized. Head and neck cancer sections from other patients, not scored by Biopsy Scan. "
+     "Illustration only; not for clinical use.",
      M, M + 38, W - 2 * M, size=8.5, color=MUTED)
 c.save()
 print(OUT)

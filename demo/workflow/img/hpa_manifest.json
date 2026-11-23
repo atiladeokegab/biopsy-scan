@@ -11,7 +11,10 @@
   "sha256": "116d19d2f4360703cfbc60f791951c2cd16211e616829978fe5fff9ad3ed5895",
   "antibody": "CAB000027",
   "antibody_source": "real-biopsy MANIFEST.json (image_url id)",
-  "note": "resized to 800 px for the demo; sha256 is of the 1600 px source"
+  "note": "resized to 800 px for the demo; sha256 is of the 1600 px source",
+  "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+  "reference_url": "https://doi.org/10.1126/science.1260419",
+  "release_url": "https://v25.proteinatlas.org/"
  },
  {
   "file": "hpa_best_12_CD8A.webp",
@@ -25,7 +28,10 @@
   "sha256": "82172a5a581ba7d1e95bec8101ae63729b8d3c6255fa8838a88294215d3eb847",
   "antibody": "CAB000012",
   "antibody_source": "real-biopsy MANIFEST.json (image_url id)",
-  "note": "resized to 800 px for the demo; sha256 is of the 1600 px source"
+  "note": "resized to 800 px for the demo; sha256 is of the 1600 px source",
+  "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+  "reference_url": "https://doi.org/10.1126/science.1260419",
+  "release_url": "https://v25.proteinatlas.org/"
  },
  {
   "file": "hpa_best_07_ACTA2.webp",
@@ -36,7 +42,10 @@
   "image_url": "https://images.proteinatlas.org/2/221_A_2_7.jpg",
   "licence": "CC BY 4.0",
   "attribution": "Human Protein Atlas v25, proteinatlas.org (Uhlen et al., Science 2015)",
-  "sha256": "404d9ba9ac0f99e6687a78d204ba303ad08a5a4e1b76d253017d36a42618fc0d"
+  "sha256": "404d9ba9ac0f99e6687a78d204ba303ad08a5a4e1b76d253017d36a42618fc0d",
+  "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+  "reference_url": "https://doi.org/10.1126/science.1260419",
+  "release_url": "https://v25.proteinatlas.org/"
  },
  {
   "file": "hpa_best_08_PTPRC.webp",
@@ -47,7 +56,10 @@
   "image_url": "https://images.proteinatlas.org/440/155128_A_2_5.jpg",
   "licence": "CC BY 4.0",
   "attribution": "Human Protein Atlas v25, proteinatlas.org (Uhlen et al., Science 2015)",
-  "sha256": "99a492798f44c2a0219b442d14daa126eb15365d2aaed6beb692d0da260580f6"
+  "sha256": "99a492798f44c2a0219b442d14daa126eb15365d2aaed6beb692d0da260580f6",
+  "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+  "reference_url": "https://doi.org/10.1126/science.1260419",
+  "release_url": "https://v25.proteinatlas.org/"
  },
  {
   "file": "hpa_best_11_CD3E.webp",
@@ -58,7 +70,10 @@
   "image_url": "https://images.proteinatlas.org/43955/160072_A_2_5.jpg",
   "licence": "CC BY 4.0",
   "attribution": "Human Protein Atlas v25, proteinatlas.org (Uhlen et al., Science 2015)",
-  "sha256": "1ee0c5e53724b6ba4c931a25acd935a0316f4a44055b7ddbda9ae3974bf3bc8b"
+  "sha256": "1ee0c5e53724b6ba4c931a25acd935a0316f4a44055b7ddbda9ae3974bf3bc8b",
+  "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+  "reference_url": "https://doi.org/10.1126/science.1260419",
+  "release_url": "https://v25.proteinatlas.org/"
  },
  {
   "file": "hpa_best_13_CD68.webp",
@@ -69,6 +84,9 @@
   "image_url": "https://images.proteinatlas.org/72862/157171_A_2_5.jpg",
   "licence": "CC BY 4.0",
   "attribution": "Human Protein Atlas v25, proteinatlas.org (Uhlen et al., Science 2015)",
-  "sha256": "7a2df5b56cb47b125cd9799ff233c635faa611f3c4a8177daafa3a7e61475b91"
+  "sha256": "7a2df5b56cb47b125cd9799ff233c635faa611f3c4a8177daafa3a7e61475b91",
+  "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+  "reference_url": "https://doi.org/10.1126/science.1260419",
+  "release_url": "https://v25.proteinatlas.org/"
  }
 ]

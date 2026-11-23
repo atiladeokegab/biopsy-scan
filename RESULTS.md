@@ -8,7 +8,7 @@ Every committed result, with its evidence label and source file. Labels: **MEASU
 
 ## Demo race replay
 
-The race in the demo (`demo/app/`) replays two measurements taken in separate runs; it was not run on one machine. The left lane runs at `22.35 s` per study for the whole off-the-shelf squidpy + lifelines call, `8` CPU workers ([`same-host-20261122T140908Z.json`](bench/results/same-host-20261122T140908Z.json)). The right lane runs at `0.00207 s` per evaluation for re-imaging and scoring on one H100, the median over `3,000` studies per launch ([`gpu-fused-h100-20261122T141815Z.json`](bench/results/gpu-fused-h100-20261122T141815Z.json)). Their ratio, about `10,800×`, mixes hardware and timing windows: it sets the replay pace and isn't a like-for-like speedup. Timings **MEASURED**; the pace is computed in [`demo/app/data.json`](demo/app/data.json).
+The race in the demo (`demo/app/`) replays two measurements taken in separate runs; it was not run on one machine. The left lane runs at `22.35 s` per study for the whole off-the-shelf squidpy + lifelines call, `8` CPU workers ([`same-host-20261122T140908Z.json`](bench/results/same-host-20261122T140908Z.json)). The right lane runs at `0.00207 s` per evaluation for re-imaging and scoring on one H100, the median of `3` timed runs of `3,000` evaluations each ([`gpu-fused-h100-20261122T141815Z.json`](bench/results/gpu-fused-h100-20261122T141815Z.json)). Their ratio, about `10,800×`, mixes hardware and timing windows: it sets the replay pace and isn't a like-for-like speedup. Timings **MEASURED**; the pace is computed in [`demo/app/data.json`](demo/app/data.json).
 
 ## All results
 

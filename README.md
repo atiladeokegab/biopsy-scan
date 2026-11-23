@@ -38,7 +38,7 @@ The gap depends on the design: across the 7 patient counts tested, the formula o
 - **Re-images real tissue.** Takes cells from public CODEX cohorts and simulates new studies with your
   design: field of view, regions per patient, mis-called cells.
 - **Screens every pattern fairly.** Stratified Cox score tests with Westfall–Young `maxT`
-  permutations across thousands of candidate patterns, so a lucky hit isn't reported as a finding.
+  permutations, which adjust for testing thousands of candidate patterns at once.
 - **Translates to the clinic.** Searches one- and two-marker IHC panels and simulates single
   slides, serial sections and tiles.
 - **Runs fast.** On the same host with 8 CPU workers per side, the fused Numba kernel is
@@ -144,7 +144,8 @@ with the attribution above:
 - **Aggregates:** the per-design results under `atlas/results/` and the benchmark outputs under
   `bench/results/` hold summary statistics, not cells.
 
-The six routine IHC photos in the demo, and in the GIF and screenshots above, come from the
+The six routine IHC photos in the demo, and in the closing frames of the race GIF and the Routine IHC screenshot
+above, come from the
 [Human Protein Atlas](https://v25.proteinatlas.org/) version 25, under
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). They are cropped to the tissue core,
 resized and, in the demo, shown with coloured overlays. Each image's source page is listed in

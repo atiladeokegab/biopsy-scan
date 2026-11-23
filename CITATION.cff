@@ -17,11 +17,15 @@ keywords:
   - multiple testing
   - immunohistochemistry
 references:
-  - type: dataset
-    title: "CODEX colorectal and head and neck cancer cohorts (data for Wu et al., Nature Biomedical Engineering, 2022)"
+  - type: data
+    title: "Processed CODEX Datasets from - Graph deep learning for the characterization of tumour microenvironments from spatial protein profiles in tissue specimens"
     authors:
-      - name: "Wu et al."
-    year: 2024
+      - family-names: Wu
+        given-names: Zhenqin
+      - family-names: Trevino
+        given-names: Alexandro
+      - name: "Enable Medicine"
+    date-released: 2024-08-03
     doi: "10.5281/zenodo.13179600"
     url: "https://zenodo.org/records/13179600"
     license: CC-BY-4.0

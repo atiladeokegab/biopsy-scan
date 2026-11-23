@@ -12,11 +12,11 @@ Who uses Biopsy Scan, and what it depends on.
 C4Context
   title Biopsy Scan: system context
   Person(researcher, "Study designer", "Plans a spatial-biomarker study: patients, regions, field of view, stains")
-  System(preflight, "Biopsy Scan", "Simulates thousands of studies on real tissue, screens every pattern, and translates the result to routine IHC")
+  System(preflight, "Biopsy Scan", "Simulates thousands of studies on real tissue, screens every pattern, and simulates the frozen, pre-registered R-16 biomarker on routine IHC")
   System_Ext(zenodo, "Zenodo 13179600", "Public CODEX cohorts (Charville, UPMC), CC BY 4.0")
   System_Ext(hpa, "Human Protein Atlas", "Routine IHC photos used by the demo (v25), CC BY 4.0")
   System_Ext(modal, "Modal", "Cloud CPUs and GPUs for the large runs")
-  Rel(researcher, preflight, "Chooses a design, reads power and the stain recommendation")
+  Rel(researcher, preflight, "Chooses a design, reads power and the routine-IHC simulation of the R-16 biomarker")
   Rel(preflight, zenodo, "make data downloads cell tables")
   Rel(preflight, modal, "Runs large sweeps and GPU kernels")
   Rel(preflight, hpa, "Shows example stains")
