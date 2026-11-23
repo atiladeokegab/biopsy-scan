@@ -1,4 +1,4 @@
-// Preflight demo (Team Dry Lab). Every number and name comes from data.json (built by build_data.py from the result files);
+// Biopsy Scan demo (Team Dry Lab). Every number and name comes from data.json (built by build_data.py from the result files);
 // every core is real cohort cells from cells.json, drawn in the browser: raw multiplex from each cell's marker
 // values at its real position, segmentation as the Voronoi of the real centroids, clipped to a cell radius,
 // coloured by real cell type. Step 2 overlays the DAB signal of real HPA photos (Ruifrok & Johnston 2001 H-DAB).

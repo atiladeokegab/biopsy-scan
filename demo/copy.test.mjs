@@ -79,7 +79,7 @@ const { lab, fused } = fusedRun.arms;
 assert.equal(lab.workers, 8); assert.equal(fused.workers, 8);
 has(1, `${Math.round(lab.stages.wall_per_study_s / fused.stages.wall_per_study_s)}×`); has(1, "8 workers against 8");
 has(1, "per evaluated study"); has(1, `${n(lab.stages.evaluated_studies)} lab studies`);
-has(1, `${n(fused.stages.evaluated_studies)} Preflight studies`);
+has(1, `${n(fused.stages.evaluated_studies)} Biopsy Scan studies`);
 has(1, `${n(fused.summary.studies.calibration)} calibration nulls`); has(1, "setup excluded"); has(1, "different procedures");
 has(1, "cross-run"); has(1, `${(lab.stages.compute_wall_s / fused.stages.compute_wall_s).toFixed(1)}× per whole design point`);
 has(1, "re-images each study"); has(1, "the cutoff and calls are outside the timing");

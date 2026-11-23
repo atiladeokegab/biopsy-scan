@@ -1,4 +1,4 @@
-site_name: Preflight
+site_name: Biopsy Scan
 site_description: Simulate a spatial-biology study cell by cell on real tissue before you image a slide
 repo_url: https://github.com/atiladeokegab/biopsy-scan
 repo_name: atiladeokegab/biopsy-scan
@@ -37,4 +37,4 @@ nav:
       - Security: SECURITY.md
       - Product requirements: PRD.md
       - Judging notes: JUDGING.md
-      - Submission: SUBMISSION.md
+      - Hackathon submission (historical): SUBMISSION.md

@@ -1,11 +1,11 @@
 ---
 name: Feature request
-about: Something Preflight can't answer yet
+about: Something Biopsy Scan can't answer yet
 labels: enhancement
 ---
 
 **The study or question**
 
-**What you'd like Preflight to do**
+**What you'd like Biopsy Scan to do**
 
 **Other tools that already do it** (links)

@@ -1,4 +1,4 @@
-// Preflight workflow palette, in the design system's families (tokens.css): tumour types are coral tints of --tumour
+// Biopsy Scan workflow palette, in the design system's families (tokens.css): tumour types are coral tints of --tumour
 // #FF7A59, immune types amber/gold tints of --immune #F5C451, stroma/vessel/other slate tints of --stroma #56687A,
 // told apart within a family by lightness and saturation. Emerald --accent #2BD4A4 is for highlights only: never a
 // cell type. Index = tma.json type_names index.

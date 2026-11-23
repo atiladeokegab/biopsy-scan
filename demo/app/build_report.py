@@ -18,7 +18,7 @@ EMERALD, CORAL = HexColor("#2BD4A4"), HexColor("#E86F51")
 W, Hp = A4
 M = 54  # generous margin
 c = canvas.Canvas(OUT, pagesize=A4)
-c.setTitle("Preflight · Biopsy report")
+c.setTitle("Biopsy Scan · Biopsy report")
 
 def para(text, x, y_top, width, size=10.5, color=INK, font="Helvetica", lead=None):
     p = Paragraph(text, ParagraphStyle("p", fontName=font, fontSize=size, leading=lead or size * 1.4, textColor=color))
@@ -29,7 +29,7 @@ def para(text, x, y_top, width, size=10.5, color=INK, font="Helvetica", lead=Non
 # accent bar + title
 c.setFillColor(EMERALD); c.rect(M, Hp - M - 4, 40, 4, stroke=0, fill=1)
 y = Hp - M - 40
-c.setFillColor(INK); c.setFont("Times-Roman", 30); c.drawString(M, y, "Preflight · Biopsy report")
+c.setFillColor(INK); c.setFont("Times-Roman", 30); c.drawString(M, y, "Biopsy Scan · Biopsy report")
 # coral DEMO tag
 tag = "DEMO · illustration, not a clinical result"
 c.setFont("Helvetica-Bold", 9.5); tw = c.stringWidth(tag, "Helvetica-Bold", 9.5)
@@ -58,7 +58,7 @@ y = y - ph - 46
 c.setFillColor(INK); c.setFont("Times-Roman", 17)
 c.drawString(M, y, "Example routine stains: ")
 c.setFont("Times-Bold", 17); c.drawString(M + c.stringWidth("Example routine stains: ", "Times-Roman", 17), y, "KRT5 and CD8A")
-y = para("Preflight's aim is to tell the pathologist which one or two routine stains carry the signal, "
+y = para("Biopsy Scan's aim is to tell the pathologist which one or two routine stains carry the signal, "
          "so a hospital can act on a stain it already runs.", M, y - 10, W - 2 * M, color=MUTED)
 
 # risk analysis box
@@ -71,12 +71,12 @@ c.setFillColor(MUTED); c.setFont("Courier-Bold", 8.5)
 c.drawString(M + 18, y - 20, "MEASURED · Exploratory Charville survival screen, results/charville-v2.json")
 c.setFillColor(INK); c.setFont("Times-Roman", 20); c.drawString(M + 18, y - 46, "Overall survival")
 para("No validated risk score issued. None of the 3,780 features passed the 0.05 threshold (maxT p = 0.0981). "
-     "Preflight withholds a score rather than guess.", M + 18, y - 56, W - 2 * M - 36, size=10.5)
+     "Biopsy Scan withholds a score rather than guess.", M + 18, y - 56, W - 2 * M - 36, size=10.5)
 y -= bh + 28
 
 # speed
 c.setFillColor(INK); c.setFont("Helvetica-Bold", 11); c.drawString(M, y, "Speed")
-y = para("Off-the-shelf squidpy + lifelines 22.35 s per study over 48 external studies vs Preflight 0.0426 s per study "
+y = para("Off-the-shelf squidpy + lifelines 22.35 s per study over 48 external studies vs Biopsy Scan 0.0426 s per study "
          "over 3,000 fused evaluations, 8 workers each: <b>534×</b>, the median of paired per-repeat ratios over "
          "3 fresh containers on the same host (bench/results/same-host-20261122T140908Z.json). The external time "
          "is the whole off-the-shelf call per study; the fused time is re-imaging and scoring, with the calibrated "
@@ -85,8 +85,8 @@ y = para("Off-the-shelf squidpy + lifelines 22.35 s per study over 48 external s
 
 # footer
 c.setStrokeColor(RULE); c.line(M, M + 46, W - M, M + 46)
-para("Photos: Human Protein Atlas, proteinatlas.org (Uhlen et al.), CC BY-SA 3.0. Head and neck cancer sections "
-     "from other patients, not scored by Preflight. Illustration only; not for clinical use.",
+para("Photos: Human Protein Atlas, proteinatlas.org (Uhlen et al.), CC BY 4.0. Head and neck cancer sections "
+     "from other patients, not scored by Biopsy Scan. Illustration only; not for clinical use.",
      M, M + 38, W - 2 * M, size=8.5, color=MUTED)
 c.save()
 print(OUT)

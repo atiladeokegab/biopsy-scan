@@ -61,7 +61,7 @@ def four_arms(name, d):
                                   "per-study maxT for the hybrid"
                                   + ("; the fused lane: same features, same top score (X sha256 on every shared "
                                      "study, maxT through each study)" if "fused" in d["arms"] else ""),
-                    "calibration": "Lab: 1,000 within-strata shuffles in every study. Preflight lanes: one threshold "
+                    "calibration": "Lab: 1,000 within-strata shuffles in every study. Biopsy Scan lanes: one threshold "
                                    "from 1,000 independent calibration nulls; evaluating those studies is timed inside "
                                    "each lane, computing the cutoff from them is not"}
     # the five-arm file fills only its new lane; the four-arm file it copies from refreshes the other four

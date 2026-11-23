@@ -1,6 +1,6 @@
 cff-version: 1.2.0
-message: "If you use Preflight, please cite it as below."
-title: "Preflight: Cell-by-Cell Spatial-Biomarker Study Simulation and Clinical IHC Translation"
+message: "If you use Biopsy Scan, please cite it as below."
+title: "Biopsy Scan: Cell-by-Cell Spatial-Biomarker Study Simulation and Clinical IHC Translation"
 type: software
 authors:
   - name: "Team Dry Lab"
@@ -17,11 +17,17 @@ keywords:
   - multiple testing
   - immunohistochemistry
 references:
-  - type: article
-    title: "Data from: Wu et al., Nature Biomedical Engineering (2022)"
+  - type: dataset
+    title: "CODEX colorectal and head and neck cancer cohorts (data for Wu et al., Nature Biomedical Engineering, 2022)"
     authors:
       - name: "Wu et al."
+    year: 2024
+    doi: "10.5281/zenodo.13179600"
+    url: "https://zenodo.org/records/13179600"
+    license: CC-BY-4.0
+  - type: article
+    title: "Graph deep learning for the characterization of tumour microenvironments from spatial protein profiles in tissue specimens"
+    authors:
+      - name: "Wu et al."
+    journal: "Nature Biomedical Engineering"
     year: 2022
-    identifiers:
-      - type: url
-        value: "https://zenodo.org/records/13179600"

@@ -1,10 +1,10 @@
-# Contributing to Preflight
+# Contributing to Biopsy Scan
 
 Thanks for your interest. Questions, bug reports, new results and code are all welcome.
 
 ## Questions about study design or the statistics?
 
-If you're using Preflight and want to ask "how do I do X?" or "what does this number mean?", the
+If you're using Biopsy Scan and want to ask "how do I do X?" or "what does this number mean?", the
 best place is [Discussions](https://github.com/atiladeokegab/biopsy-scan/discussions). General
 survival-analysis questions also do well at [stats.stackexchange.com](https://stats.stackexchange.com/).
 
@@ -16,7 +16,7 @@ the command you ran, its output, your OS and Python version, and the commit you'
 
 ## Requesting features
 
-Open an issue with as much context as you can: the study you're planning, what Preflight can't
+Open an issue with as much context as you can: the study you're planning, what Biopsy Scan can't
 answer yet, and links to other tools that already do it.
 
 ## Submitting code or other changes

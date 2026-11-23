@@ -1,20 +1,20 @@
 # Architecture
 
-How Preflight fits together, from the outside in. The diagrams follow the
+How Biopsy Scan fits together, from the outside in. The diagrams follow the
 [C4 model](https://c4model.com/): system context, then containers, then the components of the
 simulation engine. GitHub renders them from the Mermaid source below.
 
 ## 1. System context
 
-Who uses Preflight, and what it depends on.
+Who uses Biopsy Scan, and what it depends on.
 
 ```mermaid
 C4Context
-  title Preflight: system context
+  title Biopsy Scan: system context
   Person(researcher, "Study designer", "Plans a spatial-biomarker study: patients, regions, field of view, stains")
-  System(preflight, "Preflight", "Simulates thousands of studies on real tissue, screens every pattern, and translates the result to routine IHC")
+  System(preflight, "Biopsy Scan", "Simulates thousands of studies on real tissue, screens every pattern, and translates the result to routine IHC")
   System_Ext(zenodo, "Zenodo 13179600", "Public CODEX cohorts (Charville, UPMC), CC BY 4.0")
-  System_Ext(hpa, "Human Protein Atlas", "Routine IHC photos used by the demo, CC BY-SA 3.0")
+  System_Ext(hpa, "Human Protein Atlas", "Routine IHC photos used by the demo (v25), CC BY 4.0")
   System_Ext(modal, "Modal", "Cloud CPUs and GPUs for the large runs")
   Rel(researcher, preflight, "Chooses a design, reads power and the stain recommendation")
   Rel(preflight, zenodo, "make data downloads cell tables")
@@ -28,13 +28,13 @@ The runnable pieces and how data moves between them. Everything runs locally exc
 
 ```mermaid
 C4Container
-  title Preflight: containers
+  title Biopsy Scan: containers
   Person(researcher, "Study designer")
   System_Ext(zenodo, "Zenodo cohorts")
   System_Ext(modal, "Modal")
   Container_Boundary(repo, "This repository") {
     Container(engine, "Simulation engine", "Python 3.11, NumPy, Numba, CUDA", "core/, reimage/, stats/, atlas/: re-imaging, survival statistics, design calibration")
-    Container(translate, "Clinical translation", "Python", "translate/: IHC panel search and slide, section and tile simulation")
+    Container(translate, "Clinical translation", "Python", "translate/: IHC panel search and slide, section and tile simulation for the frozen, pre-registered R-16 biomarker")
     Container(audit, "Real-cohort audits", "Python", "audit/: pre-registered, exploratory audits of the real cohorts")
     Container(bench, "Benchmarks", "Python", "bench/, gpu/: baselines, off-the-shelf comparison, Modal jobs")
     ContainerDb(results, "Committed results", "JSON, Parquet", "bench/results/, results/, audit/results/, results/claims.json")
@@ -45,6 +45,7 @@ C4Container
   Rel(bench, modal, "Submits jobs")
   Rel(bench, engine, "Times and calls")
   Rel(translate, engine, "Uses the frozen grammar and statistics")
+  Rel(translate, audit, "Takes the pre-registered R-16 biomarker definition")
   Rel(audit, engine, "Uses loaders and statistics")
   Rel(bench, results, "Writes")
   Rel(audit, results, "Writes")

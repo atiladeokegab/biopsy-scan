@@ -53,7 +53,7 @@ def build():
     scope = {"race": f"Current: whole squidpy + lifelines pipeline, {workers} CPU workers. Ours: fused kernel on one {gpu}. "
                      f"{round(cur_s / ours_s, -2):,.0f}× faster per study: {cur_s:.2f} s vs {ours_s:.5f} s, measured in separate runs.",
              "ihc": f"Illustration only: {'/'.join(m for _, m in PAIR)} examples picked by hand from Human Protein Atlas samples "
-                    "(other patients), not scored. Preflight issued no validated stain recommendation."}
+                    "(other patients), not scored. Biopsy Scan issued no validated stain recommendation."}
     for gene, marker in PAIR:
         assert gene in photos and marker in cells["markers"], (gene, marker)
     return {

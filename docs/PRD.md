@@ -13,7 +13,7 @@ After surgery for head and neck cancer, treatment is chosen on stage and margins
 - **Test whether a biomarker survives the real world, thousands of simulated studies in seconds**: A lab sees what its design can and cannot find before it images a slide. Measure: One design point of 1,000 re-imaged studies, timed end to end on a named GPU and labelled MEASURED; no number before it is measured
 - **Quote every speed-up against what a lab runs today**: The performance criterion is scored against a real baseline, not our own slowest bar. Measure: The ladder JSON has rung 0 (per-study cKDTree recount plus a permutation test) and every ratio is computed against it
 - **Show the parallelism on stage**: Studies are independent, so the fleet slide makes the reshaping visible. Measure: bench/fleet.py reports studies/s at 1, 2, 4 and 8 GPUs, each MEASURED or UNMEASURED, with results bit-identical to one device
-- **Show why a textbook formula is not enough**: Scientific value: imaging error and spatial sampling change power. Measure: bench/results/vs-schoenfeld.json compares Schoenfeld power with Preflight simulated power on the same design points
+- **Show why a textbook formula is not enough**: Scientific value: imaging error and spatial sampling change power. Measure: bench/results/vs-schoenfeld.json compares Schoenfeld power with Biopsy Scan simulated power on the same design points
 
 ## Principles
 - Build in rank order; stop when time runs out: main is always demoable
@@ -24,7 +24,7 @@ After surgery for head and neck cancer, treatment is chosen on stage and margins
 - Every re-imaging speed-up is quoted against rung 0, what a lab runs today. A GPU analysis-half speed-up is quoted only against the same statistic and resampling workload on the CPU (R-15); the full-fit comparison against Implementation A (R-14) is a workflow comparison, labelled as one
 - The tagline is the h1: "Find the tissue patterns that decide a cancer patient's treatment, prove they are not luck, and check they still work as a test a hospital can run." The button reads "Run the studies". Until after freeze (2026-11-22 16:00Z) the demo/ h1 keeps the old tagline, "Thousands of studies, simulated in seconds, before you image a slide." The phrase "Can my study find it?" appears nowhere in the project
 - Tests come from the goal: unseen geometries and tied studies, a planted signal and a hard negative; a check is believed only after it has been seen red
-- Novelty goal (not yet measured): Preflight aims to produce new biology by combining protein expression, cell morphology, neighbourhood relations and stromal architecture at single-cell resolution, with an algorithm parallelised on GPU clusters, much faster than on a CPU
+- Novelty goal (not yet measured): Biopsy Scan aims to produce new biology by combining protein expression, cell morphology, neighbourhood relations and stromal architecture at single-cell resolution, with an algorithm parallelised on GPU clusters, much faster than on a CPU
 - No discovery code reads the locked UPMC patients; they are opened once, for the R-16 score, after the search is frozen
 
 ## Non-goals
@@ -97,10 +97,10 @@ Why: The pitch must show the parallelism: studies are independent
 - A-6.1@1 Scenario: --devices N shards study seeds deterministically and the merged result is bit-identical to one device. Built on branch 33-gpu-fleet (PR #34), not in integration yet (`reimage/test_fleet.py`)
 - A-6.2@1 Scenario: bench/fleet.py reports studies/s at 1, 2, 4 and 8 GPUs, each MEASURED on named GPUs or UNMEASURED. Not yet measured on hardware (`reimage/test_fleet.py`)
 
-### R-7 [P1 · Schoenfeld] Textbook formula versus Preflight simulated power
+### R-7 [P1 · Schoenfeld] Textbook formula versus Biopsy Scan simulated power
 rank 7 · state approved · needs R-4 · touches `bench/vs_schoenfeld.py`, `bench/results/vs-schoenfeld.json`
 Why: Scientific value: shows what the imaging design does that a formula cannot see
-- A-7.1@1 Scenario: bench/results/vs-schoenfeld.json gives, per design point, Schoenfeld power (ANALYTIC) and Preflight simulated power with its interval. Code on branch 32-vs-schoenfeld; the results file is not yet built (`bench/test_vs_schoenfeld.py`)
+- A-7.1@1 Scenario: bench/results/vs-schoenfeld.json gives, per design point, Schoenfeld power (ANALYTIC) and Biopsy Scan simulated power with its interval. Code on branch 32-vs-schoenfeld; the results file is not yet built (`bench/test_vs_schoenfeld.py`)
 
 ### R-8 [P1 · Audit] Real-data audit, exploratory and already seen
 rank 8 · state built · needs R-1, R-2 · touches `audit/`
