@@ -7,7 +7,7 @@ const STEP_MS = [7000, 7000, 10500, 13500];
 export const TEMPLATE = `<div class="wf" id="flow" role="region" aria-labelledby="wf-title" aria-roledescription="walkthrough">
   <div class="wf-copy">
     <p class="wf-eyebrow">Biopsy Scan workflow</p>
-    <h2 class="wf-head" id="wf-title">Know whether a study can work before the first slide is stained.</h2>
+    <h2 class="wf-head" id="wf-title">Test a study's design on real tissue before you run it.</h2>
     <div class="wf-text" data-step="0"><h3>Start from real tumour tissue</h3><p>Real head and neck cancer biopsies, each stained for one marker a lab already runs. These photos are other patients' cores from the Human Protein Atlas. Our analysis runs on the Charville cell tables: every cell's position, type and 40 measured channels.</p></div>
     <div class="wf-text" data-step="1" hidden><h3>Read every cell, then test every pattern</h3><p>Every cell carries one of the 15 cell types published with the data; the screen tests 3,780 neighbourhood patterns (cell type, neighbour, distance, protein) against recorded outcomes. Exploratory result: the best pattern scores z 3.96, maxT p 0.098, within chance.</p></div>
     <div class="wf-text" data-step="2" hidden><h3>Stress-test the design before the trial</h3><p>A hospital images two 400 µm fields per patient, one crop on each of two regions, and mis-calls one cell in ten. For 200 patients the textbook formula promises 80% power; simulated on this tissue, it is 27%. The picture illustrates the design on one core.</p></div>

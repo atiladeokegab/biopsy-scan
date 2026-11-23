@@ -7,7 +7,11 @@ import { execFileSync } from "node:child_process";
 const html = readFileSync(new URL("./index.html", import.meta.url), "utf8");
 const text = (re) => (html.match(re)?.[1] ?? "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
 
-assert.equal(text(/<h1[^>]*>([\s\S]*?)<\/h1>/), "Thousands of studies, simulated in seconds, before you image a slide.");
+assert.equal(text(/<h1[^>]*>([\s\S]*?)<\/h1>/), "Simulate your survival-biomarker study on real tissue before you run it.");
+const wf = readFileSync(new URL("./workflow/main.js", import.meta.url), "utf8");
+assert.equal(wf.match(/id="wf-title">([^<]*)</)?.[1], "Test a study's design on real tissue before you run it.");
+// The retired overclaims stay out of every visible demo heading and lede.
+for (const src of [html, wf]) assert.doesNotMatch(src, /before (you image|it images|the first slide)|without false positives|decides a patient/i);
 assert.equal(text(/<button[^>]*id="run"[^>]*>([\s\S]*?)<\/button>/), "Run the studies");
 
 // The old question in any form (my, your, our study, ...), in every tracked file.
