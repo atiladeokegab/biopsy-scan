@@ -103,7 +103,7 @@ rule comes from Punovuori et al.
 
 ## License
 
-The code is [MIT](LICENSE) © 2026 Team Dry Lab. The data keep their own licences: the cohorts come from
+The code is [MIT](LICENSE) © 2026 Atilade Oke and Faisal Lawan. The data keep their own licences: the cohorts come from
 Wu et al., *Nature Biomedical Engineering* (2022), Zenodo
 [13179600](https://zenodo.org/records/13179600), CC BY 4.0, and some derived cell-level extracts
 are committed under the same licence. The IHC photos are from the
