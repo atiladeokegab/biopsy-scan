@@ -49,9 +49,11 @@ def build():
     scale = OURS_FINISH_S / (studies * ours_s)  # race seconds per real second
     photos = {p["gene"]: p for p in read(HPA)}
     gpu = ours["headline"]["gpu_sku"].split()[1]
-    # Founder ruling: the race line gives the per-study ratio, labelled as separate runs, rounded to the nearest 100.
+    # Founder ruling: the race line gives the ratio, labelled as separate runs, rounded to the nearest 100;
+    # it is a replay pace, not a like-for-like speedup (RESULTS.md, Demo race replay).
     scope = {"race": f"Current: whole squidpy + lifelines pipeline, {workers} CPU workers. Ours: fused kernel on one {gpu}. "
-                     f"{round(cur_s / ours_s, -2):,.0f}× faster per study: {cur_s:.2f} s vs {ours_s:.5f} s, measured in separate runs.",
+                     f"{round(cur_s / ours_s, -2):,.0f}× replay pace: one {gpu} vs {workers} CPU workers, separate runs "
+                     f"({cur_s:.2f} s per study vs {ours_s:.5f} s per evaluation).",
              "ihc": f"Illustration only: {'/'.join(m for _, m in PAIR)} examples picked by hand from Human Protein Atlas samples "
                     "(other patients), not scored. Biopsy Scan issued no validated stain recommendation."}
     for gene, marker in PAIR:
