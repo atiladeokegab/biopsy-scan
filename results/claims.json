@@ -1850,7 +1850,11 @@
    "quotes": [
     {
      "file": "README.md",
-     "text": "| The lab method, optimised: neighbour recount and a permutation test per study, {workers} workers each | **{vlf}× faster** per evaluated study (**{label}**, {cross}) |"
+     "text": "| **Best current method, reimplemented and optimised:** neighbour recount and a permutation test per study | {lab} s | **{vlf}× faster** per evaluated study ({workers} workers each; **{label}**, {cross}) |"
+    },
+    {
+     "file": "README.md",
+     "text": "(same host), {fused} s (cross-run)"
     }
    ]
   },
@@ -1938,7 +1942,11 @@
     },
     {
      "file": "README.md",
-     "text": "| Off-the-shelf squidpy + lifelines, the standard open-source stack; same host with {workers} CPU workers per side | **{r}× faster** per study (**{label}**; the timing windows differ) |"
+     "text": "| **Industry standard:** off-the-shelf squidpy + lifelines | {ext} s | **{r}× faster** per study (same host with {workers} CPU workers per side; **{label}**; the timing windows differ) |"
+    },
+    {
+     "file": "README.md",
+     "text": "| **Biopsy Scan**, fused kernel | {fused} s (same host),"
     }
    ]
   },

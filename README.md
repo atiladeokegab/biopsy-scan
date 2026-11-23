@@ -31,12 +31,14 @@ modelled scenario on the Charville colorectal cohort, they are far too optimisti
 
 The gap depends on the design (the formula overstated power at 6 of 7 patient counts tested).
 
-Simulating thousands of studies per design needs speed. Per simulated study, against the tools labs use today:
+Simulating thousands of studies per design needs speed. Each pipeline below runs one simulated study
+(re-image every patient, score every candidate pattern) on 8 CPU workers:
 
-| Compared with | Biopsy Scan's fused kernel |
-|---|---|
-| Off-the-shelf squidpy + lifelines, the standard open-source stack; same host with 8 CPU workers per side | **534× faster** per study (**MEASURED**; the timing windows differ) |
-| The lab method, optimised: neighbour recount and a permutation test per study, 8 workers each | **21× faster** per evaluated study (**MEASURED**, cross-run) |
+| Pipeline | Seconds per study | Biopsy Scan's fused kernel is |
+|---|---|---|
+| **Industry standard:** off-the-shelf squidpy + lifelines | 22.35 s | **534× faster** per study (same host with 8 CPU workers per side; **MEASURED**; the timing windows differ) |
+| **Best current method, reimplemented and optimised:** neighbour recount and a permutation test per study | 0.881 s | **21× faster** per evaluated study (8 workers each; **MEASURED**, cross-run) |
+| **Biopsy Scan**, fused kernel | 0.0426 s (same host), 0.0419 s (cross-run) | |
 
 Speed doesn't cost accuracy. Every re-imaging kernel is tested against a float64 reference implementation
 (bit-equal features, or within a stated tolerance), and on a matched configuration Biopsy Scan's top
