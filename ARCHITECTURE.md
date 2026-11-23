@@ -2,7 +2,7 @@
 
 How Biopsy Scan fits together, from the outside in. The diagrams follow the
 [C4 model](https://c4model.com/): system context, then containers, then the components of the
-simulation engine. GitHub renders them from the Mermaid source below.
+simulation engine. GitHub and the docs site render them from the Mermaid source below.
 
 ## 1. System context
 

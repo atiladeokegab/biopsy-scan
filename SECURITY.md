@@ -16,4 +16,4 @@ credentials.
 ## Data
 
 The repository contains no patient-identifiable data. The cohorts are public and are downloaded
-by `make data`; the full cell tables are never committed. Some derived extracts (coded patient labels and follow-up times, as published in the Zenodo record) are committed under CC BY 4.0; see the README's Data section.
+by `make data`; the full cell tables are never committed. Some derived extracts (coded patient labels and follow-up times, as published in the Zenodo record) are committed under CC BY 4.0; see [Data and licences](docs/data.md).

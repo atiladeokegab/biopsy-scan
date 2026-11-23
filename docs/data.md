@@ -21,7 +21,7 @@ download. They are redistributed under the same CC BY 4.0 licence with the attri
 ## Human Protein Atlas photos
 
 The routine IHC photos in the demo (six in total; two appear in the closing frames of the race GIF
-and in the Routine IHC screenshot in the README) come from the
+and in the Routine IHC screenshot on the Home page (README)) come from the
 [Human Protein Atlas](https://v25.proteinatlas.org/) version 25, under
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). They are cropped to the tissue core,
 resized and, in the demo, shown with coloured overlays. Each image's source page is listed in

@@ -20,22 +20,24 @@ markdown_extensions:
           format: !!python/name:pymdownx.superfences.fence_code_format
 nav:
   - Home: index.md
-  - Getting started:
-      - Architecture: ARCHITECTURE.md
-      - Results: RESULTS.md
+  - Results: RESULTS.md
+  - Get started:
       - GPU runs: GPU.md
       - Data and licences: data.md
-  - Methods:
-      - Design: design.md
+  - How it works:
+      - Architecture: ARCHITECTURE.md
       - Contract: CONTRACT.md
+  - Validation:
       - Pre-registration: PREREGISTRATION.md
-      - Prior work: PRIOR-WORK.md
       - External agreement: external-agreement.md
       - Negative result: negative-result.md
-  - Project:
+      - Prior work: PRIOR-WORK.md
+  - Contribute:
       - Contributing: CONTRIBUTING.md
       - Code of conduct: CODE_OF_CONDUCT.md
       - Security: SECURITY.md
-      - Product requirements: PRD.md
-      - Judging notes: JUDGING.md
-      - Hackathon submission (historical): SUBMISSION.md
+  - Hackathon archive (historical):
+      - Product requirements v5: PRD.md
+      - Judging evidence: JUDGING.md
+      - Submission: SUBMISSION.md
+      - Demo design spec: design.md

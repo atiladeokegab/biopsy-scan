@@ -24,7 +24,7 @@ A live 5-minute pitch to the judges, including a live demo of about 60 s, with t
 | Item | Where | Status |
 |---|---|---|
 | Deck | PDF exported at freeze to `docs/assets/preflight-deck.pdf` | not yet exported |
-| Live demo | https://preflight-demo-5zvig7nbvq-nw.a.run.app/ | live on Google Cloud Run (europe-west2); /, /app/, /plan/, /usage/ answered HTTP 200 on 22 Nov. Fallback: https://atiladeokegab.github.io/sota-parallelism-nov21/ (GitHub Pages) |
+| Live demo | `preflight-demo-5zvig7nbvq-nw.a.run.app` (retired) | was live on Google Cloud Run (europe-west2); /, /app/, /plan/, /usage/ answered HTTP 200 on 22 Nov. Fallback: `atiladeokegab.github.io/sota-parallelism-nov21` (retired; GitHub Pages) |
 | Offline fallback | `make demo` (checks `demo/data`, then serves `demo/` locally) | in integration |
 | Demo video (backup) | `docs/film/` | recorded (proof-v5); attached at submission |
 | README | `README.md`: what it is, how to run it, a screenshot from the final run | not yet refreshed |

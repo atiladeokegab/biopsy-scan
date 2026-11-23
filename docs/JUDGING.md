@@ -1,4 +1,10 @@
-# Biopsy Scan against the four judging criteria
+# Judging evidence (hackathon, historical)
+
+> **Historical.** This is the hackathon judging evidence as written on 22 Nov 2026. The hosted demo is
+> retired: run the demo locally with `make demo`. Current results are in
+> [RESULTS.md](https://github.com/atiladeokegab/biopsy-scan/blob/main/RESULTS.md).
+
+Biopsy Scan against the four judging criteria.
 
 Every number below is copied from a committed results file. Where that file is on an open PR, the row names the PR. Labels:
 - **MEASURED**: a committed results file from a real run.

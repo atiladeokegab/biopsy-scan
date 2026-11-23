@@ -1,6 +1,6 @@
 # Preregistration: Prospective Analysis Plan for Final Runs (`stats-9`, `upmc-9`, and Scaling)
 
-**Baseline commit:** recorded at `origin/integration` (`5e5dab3`, 2026-11-22).  
+**Baseline commit:** `5e5dab3` (on main, 2026-11-22).  
 **Prospective scope vs. pre-run protocols and retrospective documentation:** Prospective claims are bounded strictly to protocols fixed **before each respective run started**. Specifically: (1) previously inspected simulation, benchmark, and real-data outputs committed before `5e5dab3` (`atlas/results/production/`, `bench/results/*`, `stats/results/hard-negative-f458ad1.json`, `results/charville-*.json`, and the historical one-time R-16 run in `results/upmc-rediscovery.json`) are **retrospective methods documentation**, not newly pre-registered endpoints; (2) the `GO-FOR-9` performance runs launched at `13:06Z` prior to this revision follow their already-declared paired protocol (including three lab one-vs-eight-worker scaling pairs executed inside one job on the same host, with fair lab/fused repeats running separately); and (3) newly scheduled statistical/replication and post-merge scaling runs (`stats-9`, `upmc-9`, and subsequent scaling jobs) follow the protocols fixed in this document.  
 **Data status and labels:** Public survival outcomes in both cohorts (Wu et al., *Nature Biomedical Engineering* 2022, Zenodo `13179600`, CC BY 4.0) were previously published and inspected; therefore real-cohort results carry **MEASURED (exploratory, already-seen outcomes)** or **UNMEASURED** when underpowered, model-generated simulations carry **SYNTHETIC** (outcomes) and **ESTIMATE** (rates/intervals), closed-form comparisons carry **ANALYTIC**, and invariant checks in code carry **TESTED**. No clinical claim is made.
 
@@ -8,7 +8,7 @@
 
 ## 1. Null Method (`stats/screen.py`)
 
-New `stats-9` and `upmc-9` screens use `NULL_METHOD = "clinical-null parametric bootstrap"` implemented in `stats/screen.py` (`screen`, `screen_batch`, `screen_studies`, `_bootstrap`, `_null_draws`, `_phreg`, `_newton`).
+New `stats-9` and `upmc-9` screens use `NULL_METHOD["name"] = "clinical-null parametric bootstrap"` implemented in `stats/screen.py` (`screen`, `screen_batch`, `screen_studies`, `_bootstrap`, `_null_draws`, `_phreg`, `_newton`).
 
 1. **Observed-data null fit (`screen` -> `_groups` -> `_phreg`):** For each distinct complete-case patient mask across candidate columns (`keep_all`), after verifying via `_newton` that the observed clinical-null likelihood has a finite maximum, `statsmodels.duration.hazard_regression.PHReg` (`ties="breslow"`, stratified by coverslip group) fits the observed clinical-null model on `C` alone. Zero-covariate mode (`C = None`, e.g. Charville) fixes linear predictor `eta = 0`.
 2. **Parametric bootstrap generating model (`_null_draws` -> `_fit_or_raise`):** On the eligible base cohort (`base`: patients with finite nonnegative `time`, `event in {0, 1}`, finite `strata`, and complete `C`), zero-span covariates in `C` are dropped and `C` is mean-centered. Both the event model (`e`) and censoring model (`1 - e`) are fitted by **batched Newton** (`_newton`), which raises if any generating likelihood is monotone (`no finite maximum`).
@@ -99,7 +99,7 @@ All power curves remain strictly **conditional on their own source cohorts** (`C
 - **Event & time definitions:** `time_days = float(survival_day)`; `event = float(survival_status)` (`1` = all-cause event, `0` = censored).
 - **Stratified Locked Split (`core/heldout.py`, `core/upmc_locked.json`):** `SEED = 20261121`, `FRACTION = 0.3`, stratified on `survival_status` (manifest SHA-256 `05b38abae377177a097f2db0cd42188178c275a338aa44ec79c1be8ecd3969e3`), verified against `upmc_labels.csv` SHA-256.
   - **Discovery verified cases (**MEASURED**):** `34` patients, `125` regions, `6` events (disjoint caches `upmc_{cells,channels}.discovery.npz`, `LockedPatientError` enforced).
-  - **Locked verified cases (**MEASURED**):** `16` patients, `63` verified case regions (`97` total locked regions across `23` unit rows), `4` verified-case events.
+  - **Locked verified cases (**MEASURED**):** `16` patients, `63` verified case regions (`97` total locked regions across `23` locked patients (`24` split units)), `4` verified-case events.
 - **Single-opening guard (`audit/rediscovery.py:main`):** Enforces independent validation gates: (1) `--open-locked` flag, (2) `--events` matching `4`, (3) `--out` does not already exist, (4) `RULE_SHA256 == PREREG_SHA256`, (5) **separately**, clean committed git HEAD via `_code_state()` (no modified tracked files), (6) `_split_preflight()` verifying split API and approved manifest SHA-256, (7) absence of atomic marker file `opening_record(rule_sha, manifest_sha)`, (8) `MEASURED` discovery rank, and (9) atomic file reservation + marker write prior to reading locked outcomes.
 
 ---
