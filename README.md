@@ -118,8 +118,12 @@ The C4 diagrams (context, containers, engine components) are in [ARCHITECTURE.md
 
 The cohorts come from Wu et al., *Nature Biomedical Engineering* (2022), Zenodo record
 [13179600](https://zenodo.org/records/13179600), under
-[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The data isn't in this repository:
-`make data` downloads it.
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The full cell tables aren't in this
+repository: `make data` downloads them. Some derived extracts are committed so the results and the
+demo can be checked without the download (for example the demo's tissue and biomarker files under
+`demo/data/` and the per-design results under `atlas/results/`). They contain the cohorts' coded
+patient labels and follow-up times, as published in the Zenodo record, and are redistributed under
+the same CC BY 4.0 licence with the attribution above.
 
 The tissue photos in the demo and in the images above come from the
 [Human Protein Atlas](https://www.proteinatlas.org/) (Uhlen et al.) under
