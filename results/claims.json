@@ -1836,9 +1836,27 @@
      "path": "summary.comparison",
      "rule": "re:^(what a lab would run off the shelf, not Preflight's speedup)",
      "expect": "what a lab would run off the shelf, not Preflight's speedup"
+    },
+    {
+     "name": "vlf",
+     "ratio": [
+      "summary.lab.value",
+      "summary.fused.value"
+     ],
+     "rule": "fixed:0",
+     "expect": "21"
     }
    ],
-   "quotes": []
+   "quotes": [
+    {
+     "file": "README.md",
+     "text": "| **Lab method, our optimised rewrite:** neighbour recount and a permutation test per study | {lab} s | **{vlf}× faster** per evaluated study ({workers} workers each; **{label}**, {cross}) |"
+    },
+    {
+     "file": "README.md",
+     "text": "(same host), {fused} s (cross-run)"
+    }
+   ]
   },
   {
    "id": "same-host-534x",
@@ -1924,15 +1942,11 @@
     },
     {
      "file": "README.md",
-     "text": "same host with {workers} CPU workers per side"
+     "text": "| **Biopsy Scan**, fused kernel | {fused} s (same host),"
     },
     {
      "file": "README.md",
-     "text": "**{r}× faster** per study"
-    },
-    {
-     "file": "README.md",
-     "text": "off-the-shelf squidpy + lifelines pipeline; the timing windows differ"
+     "text": "| {ext} s | **{r}× faster** per evaluated study (same host with {workers} CPU workers per side; **{label}**; different statistics; the timing windows differ; {m}× on the same 48 studies) |"
     }
    ]
   },

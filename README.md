@@ -17,7 +17,8 @@ across every candidate pattern.
 ![The Biopsy Scan race: off-the-shelf tools vs Biopsy Scan on the same biopsy](docs/assets/race.gif)
 
 <sub>The race replays two separately measured rates: off-the-shelf squidpy + lifelines on 8 CPU workers vs
-Biopsy Scan's fused kernel on one H100. Details in [RESULTS.md](RESULTS.md#demo-race-replay).</sub>
+Biopsy Scan's fused kernel on one H100, so the GIF's 10,800× mixes hardware; the same-hardware figures are in the
+table below. Details in [RESULTS.md](RESULTS.md#demo-race-replay).</sub>
 
 ## Why it matters
 
@@ -29,10 +30,27 @@ modelled scenario on the Charville colorectal cohort, they are far too optimisti
 | Schoenfeld formula (**ANALYTIC**) | 80.1% |
 | Biopsy Scan, simulated on real tissue, 300 studies (**ESTIMATE**) | **27.0%** (95% CI 22.1–32.4%) |
 
-The gap depends on the design (the formula overstated power at 6 of 7 patient counts tested). On the
-same host with 8 CPU workers per side, the fused kernel is **534× faster** per study than an
-off-the-shelf squidpy + lifelines pipeline; the timing windows differ. Every number, with its
-evidence label, source file and caveats: **[RESULTS.md](RESULTS.md)**.
+The gap depends on the design (the formula overstated power at 6 of 7 patient counts tested).
+
+Simulating thousands of studies per design needs speed. Each pipeline below times one simulated study on
+8 CPU workers; what each timing includes differs (see [RESULTS.md](RESULTS.md)):
+
+| Pipeline | Seconds per study | Biopsy Scan's fused kernel is |
+|---|---|---|
+| **Off the shelf** (what a lab would run today): squidpy + lifelines | 22.35 s | **534× faster** per evaluated study (same host with 8 CPU workers per side; **MEASURED**; different statistics; the timing windows differ; 312× on the same 48 studies) |
+| **Lab method, our optimised rewrite:** neighbour recount and a permutation test per study | 0.881 s | **21× faster** per evaluated study (8 workers each; **MEASURED**, cross-run) |
+| **Biopsy Scan**, fused kernel | 0.0426 s (same host), 0.0419 s (cross-run) | |
+
+<sub>Medians. 534× is the median of the per-container ratios, so it differs slightly from 22.35 / 0.0426. Biopsy Scan's time covers re-imaging and scoring; its calibrated threshold and calls are a separate step, not timed.</sub>
+
+Speed doesn't change the features: every re-imaging kernel is tested against a float64 reference
+implementation (bit-equal features, or within a stated tolerance). When squidpy's neighbour graph and
+lifelines' score test are given Biopsy Scan's feature definition, the top pattern agrees in 16 of 16
+simulated studies; squidpy + lifelines as documented compute different statistics and agree in 14 of 50
+([details](docs/external-agreement.md)). One calibrated threshold instead of a permutation test per study
+does cost some power at the race's design point (15.3% vs 20.3%).
+
+Every number, with its evidence label, source file and caveats: **[RESULTS.md](RESULTS.md)**.
 
 | Start from real tissue | Race the off-the-shelf tools | Take it to routine IHC |
 |---|---|---|
@@ -70,8 +88,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT
 ## Citation
 
 ```bibtex
-@software{preflight_2026,
-  author  = {{Team Dry Lab}},
+@software{biopsyscan_2026,
+  author  = {Oke, Atilade and Lawan, Faisal},
   title   = {Biopsy Scan: Cell-by-Cell Spatial-Biomarker Study Simulation and Clinical IHC Translation},
   year    = {2026},
   url     = {https://github.com/atiladeokegab/biopsy-scan},
