@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use Preflight, please cite it as below."
+title: "Preflight: Cell-by-Cell Spatial-Biomarker Study Simulation and Clinical IHC Translation"
+type: software
+authors:
+  - name: "Team Dry Lab"
+repository-code: "https://github.com/atiladeokegab/sota-parallelism-nov21"
+license: MIT
+version: 0.1.0
+date-released: 2026-11-22
+keywords:
+  - spatial biology
+  - CODEX
+  - study design
+  - statistical power
+  - survival analysis
+  - multiple testing
+  - immunohistochemistry
+references:
+  - type: article
+    title: "Data from: Wu et al., Nature Biomedical Engineering (2022)"
+    authors:
+      - name: "Wu et al."
+    year: 2022
+    identifiers:
+      - type: url
+        value: "https://zenodo.org/records/13179600"

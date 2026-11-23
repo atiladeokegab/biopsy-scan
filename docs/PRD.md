@@ -57,9 +57,7 @@ Atilade (lead), Team Dry Lab
 - Tag: stopping_rule: build in rank order; stop when time runs out
 - Tag: conflict_rule: merged code and real data win over prose
 - Tag: labels: MEASURED, SYNTHETIC, UNMEASURED, ESTIMATE, ANALYTIC
-- Tag: submission: live 5-minute pitch with a PDF deck from the Slides artifact https://claude.ai/artifact/HsYFYZZygbAzNALjz2bm5Q; demo video is the backup
-- Tag: deck_design: design/deck/system.md (hub project dir)
-- Tag: plan_of_record: ~/hub/projects/sota-parallelism-nov21/IDEA.md (v6 and v5 overrides beat older text); coverage map prd-coverage.md beside it
+- Tag: submission: live 5-minute pitch with a PDF deck; demo video is the backup
 - Tag: freeze: code freeze 2026-11-22T16:00Z, submit 2026-11-22T17:00Z (HACKATHON.md UTC column)
 
 ## Requirements
