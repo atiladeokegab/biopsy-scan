@@ -321,14 +321,6 @@
     {
      "file": "RESULTS.md",
      "text": "`{p400}%` `[{lo}, {hi}]` at `400` patients; about `{n80}` patients for `80%`, interpolated between `500` and `600` (**{label}** (SIMULATED))"
-    },
-    {
-     "file": "README.md",
-     "text": "{p400}% power at 400 patients (95% CI"
-    },
-    {
-     "file": "README.md",
-     "text": "{lo}–{hi}%); about {n80} patients for 80%"
     }
    ]
   },
@@ -623,14 +615,6 @@
      "file": "demo/data/claims.json",
      "path": "maxT.label",
      "value": "label"
-    },
-    {
-     "file": "README.md",
-     "text": "Joint screen of {n_features} patterns (Charville, {patients} patients):** best `maxT` p = {p}, so no"
-    },
-    {
-     "file": "README.md",
-     "text": "pattern reached corrected significance, and Biopsy Scan reports that instead of a finding"
     }
    ]
   },
@@ -1940,19 +1924,15 @@
     },
     {
      "file": "README.md",
+     "text": "same host with {workers} CPU workers per side"
+    },
+    {
+     "file": "README.md",
      "text": "**{r}× faster** per study"
     },
     {
      "file": "README.md",
-     "text": "range {rmin}–{rmax}×; {m}× on the same 48 studies"
-    },
-    {
-     "file": "README.md",
-     "text": "{workers} CPU workers per side"
-    },
-    {
-     "file": "README.md",
-     "text": "off-the-shelf time is the whole call per study, the fused time is re-imaging and scoring only"
+     "text": "off-the-shelf squidpy + lifelines pipeline; the timing windows differ"
     }
    ]
   },
@@ -2019,14 +1999,6 @@
     {
      "file": "docs/SUBMISSION.md",
      "text": "head and neck: about {n80} patients for 80% (pointwise 95% bounds cross 80% at {lo} and {hi}, {pointwise}; resampled from {src} UPMC discovery patients; not comparable with Charville's 524; `bench/results/hn-power-upmc-discovery.json`, #133); the shared-threshold procedure had lower estimated power, 15.3% against the lab's 20.3% (#113), and event-count calibration does not close it, +0.2 points [−0.7, +1.1] (#117); Charville v2 maxT p = 0.098 over 3,780 patterns (`results/charville-v2.json`, #47); UPMC locked test inconclusive at 18% simulated power (`results/upmc-rediscovery.json`, #109) | Schoenfeld formula ANALYTIC; simulated power, power at scale, head and neck sample size (outcomes {out}) and calibration {lab}; Charville MEASURED, exploratory; UPMC UNMEASURED (underpowered) |"
-    },
-    {
-     "file": "README.md",
-     "text": "about {n80} patients for 80% power, on simulated cohorts resampled from"
-    },
-    {
-     "file": "README.md",
-     "text": "the tissue of {src} discovery patients"
     }
    ]
   },
@@ -2069,14 +2041,6 @@
     {
      "file": "RESULTS.md",
      "text": "about `{ratio}×`, mixes hardware and timing windows"
-    },
-    {
-     "file": "README.md",
-     "text": "pipeline ({current} s per study, 8 CPU workers) against the fused kernel on one H100 ({ours} s per"
-    },
-    {
-     "file": "README.md",
-     "text": "about {ratio}× ([source]"
     },
     {
      "file": "RESULTS.md",

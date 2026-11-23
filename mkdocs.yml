@@ -24,6 +24,7 @@ nav:
       - Architecture: ARCHITECTURE.md
       - Results: RESULTS.md
       - GPU runs: GPU.md
+      - Data and licences: data.md
   - Methods:
       - Design: design.md
       - Contract: CONTRACT.md
