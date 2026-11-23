@@ -2,17 +2,18 @@
 
 # Biopsy Scan
 
-**Know whether your spatial-biology study can work before you image a single slide.**
-
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![smoke](https://github.com/atiladeokegab/biopsy-scan/actions/workflows/smoke.yml/badge.svg)](https://github.com/atiladeokegab/biopsy-scan/actions/workflows/smoke.yml)
 ![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)
 [![Docs](https://img.shields.io/badge/docs-read%20the%20docs-blue?logo=readthedocs&logoColor=white)](https://atiladeokegab.github.io/biopsy-scan/)
 
-Biopsy Scan simulates thousands of spatial-biomarker studies cell by cell on real CODEX tumour tissue.
-Give it a study design (patients, regions per patient, field of view, cell mis-call rate) and it tells
-you how likely the study is to find a survival-linked cell pattern, with multiple-testing correction
-across every candidate pattern.
+Studies that look for tumour cell patterns linked to patient survival are usually sized with a
+textbook formula that assumes perfect measurement. Biopsy Scan instead simulates the planned study on
+real tumour tissue, cell by cell, and runs hundreds of those simulations in seconds by parallelising
+the work across CPUs and GPUs. On colorectal tissue the formula promised 80% power where the
+simulation gave 27%; on head-and-neck tissue the two nearly agreed, so the answer has to come from
+real tissue. It is a planning tool for researchers; it has not itself discovered or validated a
+biomarker.
 
 ![The Biopsy Scan race: off-the-shelf tools vs Biopsy Scan on the same biopsy](docs/assets/race.gif)
 
