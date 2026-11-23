@@ -53,7 +53,7 @@ def build():
     # it is a replay pace, not a like-for-like speedup (RESULTS.md, Demo race replay).
     scope = {"race": f"Current: whole squidpy + lifelines pipeline, {workers} CPU workers. Ours: fused kernel on one {gpu}. "
                      f"{round(cur_s / ours_s, -2):,.0f}× replay pace: one {gpu} vs {workers} CPU workers, separate runs "
-                     f"({cur_s:.2f} s per study vs {ours_s:.5f} s per evaluation).",
+                     f"({cur_s:.2f} s per study vs {ours_s:.5f} s per evaluated study).",
              "ihc": f"Illustration only: {'/'.join(m for _, m in PAIR)} examples picked by hand from Human Protein Atlas samples "
                     "(other patients), not scored. Biopsy Scan issued no validated stain recommendation."}
     for gene, marker in PAIR:

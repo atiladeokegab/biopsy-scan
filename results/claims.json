@@ -1754,6 +1754,10 @@
     {
      "file": "docs/SUBMISSION.md",
      "text": "Fair, 8 against 8 (#134, Numba arm, not the fused kernel behind 21×): {med}× (range {lo}–{hi}×), {setup}× with setup; calls agree on {agree0} of {of0}."
+    },
+    {
+     "file": "README.md",
+     "text": "| **Lab method vs Biopsy Scan's Numba kernel** (not the fused kernel), each on 8 workers, through scoring with calibration charged; different procedures | **{med}× faster** (median of {n} fresh repeats, range {lo}–{hi}×); {setup}× with setup; decisions agree on {agree0} of {of0} (timings **{label}**, outcomes **{outcomes}**) |"
     }
    ]
   },
@@ -2017,8 +2021,202 @@
    ]
   },
   {
+   "id": "fused-21.0x",
+   "claim": "Fused Numba kernel vs the optimised lab rewrite, 8 workers each, cross-run: 0.881 s vs 0.0419 s per evaluated study, 21.0x; 14.0x per whole design point (1,761.88 s vs 125.73 s); fused time covers re-imaging and batched scoring, cutoff and calls outside the timing",
+   "source": "bench/results/modal-design-20261121T205536Z.json",
+   "pr": 120,
+   "label": "MEASURED",
+   "label_path": "labels.compute",
+   "values": [
+    {
+     "name": "lab",
+     "path": "arms.lab.stages.wall_per_study_s",
+     "rule": "fixed:3",
+     "expect": "0.881"
+    },
+    {
+     "name": "fused",
+     "path": "arms.fused.stages.wall_per_study_s",
+     "rule": "fixed:4",
+     "expect": "0.0419"
+    },
+    {
+     "name": "ratio",
+     "ratio": [
+      "arms.lab.stages.wall_per_study_s",
+      "arms.fused.stages.wall_per_study_s"
+     ],
+     "rule": "fixed:1",
+     "expect": "21.0"
+    },
+    {
+     "name": "ratio0",
+     "ratio": [
+      "arms.lab.stages.wall_per_study_s",
+      "arms.fused.stages.wall_per_study_s"
+     ],
+     "rule": "fixed:0",
+     "expect": "21"
+    },
+    {
+     "name": "whole",
+     "ratio": [
+      "arms.lab.stages.compute_wall_s",
+      "arms.fused.stages.compute_wall_s"
+     ],
+     "rule": "fixed:1",
+     "expect": "14.0"
+    },
+    {
+     "name": "lab_total",
+     "path": "arms.lab.stages.compute_wall_s",
+     "rule": "comma:2",
+     "expect": "1,761.88"
+    },
+    {
+     "name": "fused_total",
+     "path": "arms.fused.stages.compute_wall_s",
+     "rule": "fixed:2",
+     "expect": "125.73"
+    },
+    {
+     "name": "lab_n",
+     "path": "arms.lab.stages.evaluated_studies",
+     "rule": "comma",
+     "expect": "2,000"
+    },
+    {
+     "name": "fused_n",
+     "path": "arms.fused.stages.evaluated_studies",
+     "rule": "comma",
+     "expect": "3,000"
+    },
+    {
+     "name": "calib",
+     "path": "arms.fused.summary.studies.calibration",
+     "rule": "comma",
+     "expect": "1,000"
+    },
+    {
+     "name": "workers",
+     "path": "arms.fused.workers",
+     "rule": "eq",
+     "expect": "8"
+    },
+    {
+     "name": "lab_workers",
+     "path": "arms.lab.workers",
+     "rule": "eq",
+     "expect": "8"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "RESULTS.md",
+     "text": "`{ratio0}×` vs an optimised lab-method rewrite (`{lab} s` vs `{fused} s` per evaluated study, cross-run; `{whole}×` per whole design point, `{lab_total} s` vs `{fused_total} s` compute wall; the fused time covers re-imaging and batched scoring; the cutoff and calls are outside the timing; **{label}**;"
+    },
+    {
+     "file": "RESULTS.md",
+     "text": "lab `{lab} s` (`{lab_n}` studies) vs fused Numba `{fused} s` (`{fused_n}` studies, its `{calib}` calibration nulls included), `{ratio}×`, cross-run (the lab time is copied from the #113 race run). `{workers}` single-thread workers in each arm."
+    },
+    {
+     "file": "docs/JUDGING.md",
+     "text": "{ratio0}× against an optimised lab-method rewrite (per evaluated study, cross-run; {whole}× per whole design point; the fused time covers re-imaging and batched scoring; the cutoff and calls are outside the timing)"
+    },
+    {
+     "file": "docs/SUBMISSION.md",
+     "text": "{ratio0}× against an optimised lab-method rewrite ({lab} s against {fused} s per evaluated study, cross-run; {whole}× per whole design point, {lab_total} s against {fused_total} s compute wall; the fused time covers re-imaging and batched scoring; the cutoff and calls are outside the timing; #120, `bench/results/modal-design-20261121T205536Z.json`)"
+    },
+    {
+     "file": "demo/index.html",
+     "text": "<b>{ratio0}×</b> less compute wall per evaluated study than an optimised rewrite of the lab method, on {workers} CPU cores, cross-run ({whole}× per whole design point): a fused, compiled Numba kernel re-images and scores each study in batches; the calibrated cutoff and calls sit outside the timing. {lab_n} lab studies against {fused_n} Biopsy Scan studies ({calib} calibration nulls included)"
+    }
+   ]
+  },
+  {
+   "id": "h100-fused-19.5x",
+   "claim": "Fused kernel on one H100 vs the same fused kernel on 8 CPU workers, one container, same scope (re-imaging and batched scoring; cutoff and calls outside the timing): 0.00207 s vs 0.0404 s per evaluated study, 19.5x, median of 3 timed runs; features bit-equal 3,000/3,000; calls agree 2,000/2,000",
+   "source": "bench/results/gpu-fused-h100-20261122T141815Z.json",
+   "pr": 182,
+   "label": "MEASURED",
+   "label_path": "labels.timings",
+   "values": [
+    {
+     "name": "gpu",
+     "path": "headline.gpu_wall_per_study_s_median",
+     "rule": "fixed:5",
+     "expect": "0.00207"
+    },
+    {
+     "name": "cpu",
+     "path": "cpu_fused.wall_per_study_s.median",
+     "rule": "fixed:4",
+     "expect": "0.0404"
+    },
+    {
+     "name": "ratio",
+     "path": "headline.cpu_over_gpu",
+     "rule": "fixed:1",
+     "expect": "19.5"
+    },
+    {
+     "name": "workers",
+     "path": "cpu_fused.workers",
+     "rule": "eq",
+     "expect": "8"
+    },
+    {
+     "name": "studies",
+     "path": "evaluated_studies",
+     "rule": "comma",
+     "expect": "3,000"
+    },
+    {
+     "name": "xk",
+     "path": "parity.x_bitwise_k",
+     "rule": "comma",
+     "expect": "3,000"
+    },
+    {
+     "name": "xn",
+     "path": "parity.x_compared",
+     "rule": "comma",
+     "expect": "3,000"
+    },
+    {
+     "name": "dk",
+     "path": "parity.decisions_agree_k",
+     "rule": "comma",
+     "expect": "2,000"
+    },
+    {
+     "name": "dn",
+     "path": "parity.decisions_compared",
+     "rule": "comma",
+     "expect": "2,000"
+    },
+    {
+     "name": "status",
+     "path": "status",
+     "rule": "eq",
+     "expect": "MEASURED"
+    }
+   ],
+   "quotes": [
+    {
+     "file": "RESULTS.md",
+     "text": "| **Fused kernel on one H100** (Charville, the race's design point, `{studies}` evaluated studies, CPU and GPU arms in one container, #182) | Compute wall per evaluated study (re-imaging and batched scoring; the calibrated cutoff and calls are outside the timing, as are load, prep, adjacency and warm-up): fused GPU `{gpu} s` vs the same fused kernel on `{workers}` CPU workers `{cpu} s`, `{ratio}×` (median of `3` timed runs each). Features bit-equal on `{xk}/{xn}` studies; z and maxT within `4.4e-15`; calls agree `{dk}/{dn}`. The `{ratio}×` is within one container. Against the CPU fused `0.0419 s` from the A100 container (the same re-imaging and batched-scoring scope) it is cross-run and cross-hardware; against the off-the-shelf `22.35 s` the timing windows also differ (**{label}**) | [`bench/results/gpu-fused-h100-20261122T141815Z.json`](bench/results/gpu-fused-h100-20261122T141815Z.json) |"
+    },
+    {
+     "file": "README.md",
+     "text": "| **Fused kernel on one H100 vs the same fused kernel on {workers} CPU workers**, one container, same timing scope (re-imaging and batched scoring) | **{ratio}× faster** ({gpu} s vs {cpu} s per evaluated study); features bit-equal on {xk}/{xn} studies (**{label}**) |"
+    }
+   ],
+   "note": "The 3 timed runs per arm are not stored as a list in the source; `3` is plain text in the quote."
+  },
+  {
    "id": "demo-race-replay",
-   "claim": "the demo race replays 22.35 s per study (off-the-shelf, 8 CPU workers, same-host run) against 0.00207 s per evaluation (fused kernel, one H100, separate run): about 10,800x, a replay pace, not a like-for-like speedup",
+   "claim": "the demo race replays 22.35 s per study (off-the-shelf, 8 CPU workers, same-host run) against 0.00207 s per evaluated study (fused kernel, one H100, separate run): about 10,800x, a replay pace, not a like-for-like speedup",
    "source": "demo/app/data.json",
    "pr": 198,
    "label": "preflight-race-ihc/1",
@@ -2050,7 +2248,7 @@
     },
     {
      "file": "RESULTS.md",
-     "text": "`{ours} s` per evaluation for re-imaging and scoring on one H100"
+     "text": "`{ours} s` per evaluated study for re-imaging and scoring on one H100"
     },
     {
      "file": "RESULTS.md",

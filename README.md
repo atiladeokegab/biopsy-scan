@@ -43,6 +43,13 @@ Simulating thousands of studies per design needs speed. Each pipeline below time
 
 <sub>Medians. 534× is the median of the per-container ratios, so it differs slightly from 22.35 / 0.0426. Biopsy Scan's time covers re-imaging and scoring; its calibrated threshold and calls are a separate step, not timed.</sub>
 
+**Fair comparisons.** The table above sets different statistics or separate runs side by side. These rows compare like with like:
+
+| Like for like | Speed-up |
+|---|---|
+| **Lab method vs Biopsy Scan's Numba kernel** (not the fused kernel), each on 8 workers, through scoring with calibration charged; different procedures | **5.5× faster** (median of 3 fresh repeats, range 4.6–5.6×); 3.7× with setup; decisions agree on 362 of 400 (timings **MEASURED**, outcomes **SYNTHETIC**) |
+| **Fused kernel on one H100 vs the same fused kernel on 8 CPU workers**, one container, same timing scope (re-imaging and batched scoring) | **19.5× faster** (0.00207 s vs 0.0404 s per evaluated study); features bit-equal on 3,000/3,000 studies (**MEASURED**) |
+
 Speed doesn't change the features: every re-imaging kernel is tested against a float64 reference
 implementation (bit-equal features, or within a stated tolerance). When squidpy's neighbour graph and
 lifelines' score test are given Biopsy Scan's feature definition, the top pattern agrees in 16 of 16
