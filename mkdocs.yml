@@ -1,5 +1,5 @@
 site_name: Biopsy Scan
-site_description: Simulate a spatial-biology study cell by cell on real tissue before you image a slide
+site_description: Simulate a spatial-biomarker survival study cell by cell on real tumour tissue before you run it
 repo_url: https://github.com/atiladeokegab/biopsy-scan
 repo_name: atiladeokegab/biopsy-scan
 edit_uri: blob/main/

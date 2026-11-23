@@ -2,17 +2,18 @@
 
 # Biopsy Scan
 
-**Know whether your spatial-biology study can work before you image a single slide.**
-
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![smoke](https://github.com/atiladeokegab/biopsy-scan/actions/workflows/smoke.yml/badge.svg)](https://github.com/atiladeokegab/biopsy-scan/actions/workflows/smoke.yml)
 ![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)
 [![Docs](https://img.shields.io/badge/docs-read%20the%20docs-blue?logo=readthedocs&logoColor=white)](https://atiladeokegab.github.io/biopsy-scan/)
 
-Biopsy Scan simulates thousands of spatial-biomarker studies cell by cell on real CODEX tumour tissue.
-Give it a study design (patients, regions per patient, field of view, cell mis-call rate) and it tells
-you how likely the study is to find a survival-linked cell pattern, with multiple-testing correction
-across every candidate pattern.
+Studies that look for tumour cell patterns linked to patient survival are usually sized with a
+textbook formula that assumes perfect measurement. Biopsy Scan instead simulates the planned study on
+real tumour tissue, cell by cell, and parallelises the re-imaging and scoring across CPUs and GPUs so
+that hundreds of simulated studies take seconds. In one 200-patient design on colorectal tissue the
+formula promised 80% power where the simulation gave 27%; in the same design on head-and-neck tissue
+the two came much closer, so the answer has to come from real tissue. It is a planning tool for
+researchers; it has not itself discovered or validated a biomarker.
 
 ![The Biopsy Scan race: off-the-shelf tools vs Biopsy Scan on the same biopsy](docs/assets/race.gif)
 
@@ -30,7 +31,9 @@ modelled scenario on the Charville colorectal cohort, they are far too optimisti
 | Schoenfeld formula (**ANALYTIC**) | 80.1% |
 | Biopsy Scan, simulated on real tissue, 300 studies (**ESTIMATE**) | **27.0%** (95% CI 22.1–32.4%) |
 
-The gap depends on the design (the formula overstated power at 6 of 7 patient counts tested).
+The gap depends on the design (the formula overstated power at 6 of 7 patient counts tested) and on the
+cohort: in the same 200-patient design on head-and-neck (UPMC) tissue, formula and simulation came much
+closer, and the Charville gap did not replicate there ([`upmc-replication.json`](bench/results/upmc-replication.json)).
 
 Simulating thousands of studies per design needs speed. Each pipeline below times one simulated study on
 8 CPU workers; what each timing includes differs (see [RESULTS.md](RESULTS.md)):
@@ -97,7 +100,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT
 ```bibtex
 @software{biopsyscan_2026,
   author  = {Oke, Atilade and Lawan, Faisal},
-  title   = {Biopsy Scan: Cell-by-Cell Spatial-Biomarker Study Simulation and Clinical IHC Translation},
+  title   = {Biopsy Scan: Cell-by-Cell Spatial-Biomarker Study Simulation},
   year    = {2026},
   url     = {https://github.com/atiladeokegab/biopsy-scan},
   license = {MIT}

@@ -477,6 +477,10 @@
     {
      "file": "README.md",
      "text": "| **{sim}%** (95% CI {lo}–{hi}%) |"
+    },
+    {
+     "file": "README.md",
+     "text": "the\nformula promised {analytic0}% power where the simulation gave {sim0}%"
     }
    ]
   },

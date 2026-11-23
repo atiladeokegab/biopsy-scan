@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use Biopsy Scan, please cite it as below."
-title: "Biopsy Scan: Cell-by-Cell Spatial-Biomarker Study Simulation and Clinical IHC Translation"
+title: "Biopsy Scan: Cell-by-Cell Spatial-Biomarker Study Simulation"
 type: software
 authors:
   - family-names: Oke
