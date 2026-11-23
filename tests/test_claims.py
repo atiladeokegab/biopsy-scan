@@ -79,6 +79,8 @@ def test_a_derived_range_follows_its_source(copy):
 MUTANTS = [  # (kind, file, published text, mutant): each must make the check fail
     ("value", "README.md", "**534× faster**", "**634× faster**"),
     ("prose", "README.md", "the timing windows differ", "the timing windows match"),
+    ("value", "README.md", "**21× faster**", "**31× faster**"),
+    ("prose", "README.md", "(**MEASURED**, cross-run)", "(**MEASURED**, same run)"),
     ("value", "README.md", "| **27.0%** (95% CI 22.1–32.4%) |", "| **37.0%** (95% CI 22.1–32.4%) |"),
     ("value", "README.md", "| 80.1% |", "| 90.1% |"),
     ("label", "README.md", "Schoenfeld formula (**ANALYTIC**)", "Schoenfeld formula (**MEASURED**)"),

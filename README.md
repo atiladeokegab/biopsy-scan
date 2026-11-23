@@ -29,10 +29,20 @@ modelled scenario on the Charville colorectal cohort, they are far too optimisti
 | Schoenfeld formula (**ANALYTIC**) | 80.1% |
 | Biopsy Scan, simulated on real tissue, 300 studies (**ESTIMATE**) | **27.0%** (95% CI 22.1–32.4%) |
 
-The gap depends on the design (the formula overstated power at 6 of 7 patient counts tested). On the
-same host with 8 CPU workers per side, the fused kernel is **534× faster** per study than an
-off-the-shelf squidpy + lifelines pipeline; the timing windows differ. Every number, with its
-evidence label, source file and caveats: **[RESULTS.md](RESULTS.md)**.
+The gap depends on the design (the formula overstated power at 6 of 7 patient counts tested).
+
+Simulating thousands of studies per design needs speed. Per simulated study, against the tools labs use today:
+
+| Compared with | Biopsy Scan's fused kernel |
+|---|---|
+| Off-the-shelf squidpy + lifelines, the standard open-source stack; same host with 8 CPU workers per side | **534× faster** per study (**MEASURED**; the timing windows differ) |
+| The lab method, optimised: neighbour recount and a permutation test per study, 8 workers each | **21× faster** per evaluated study (**MEASURED**, cross-run) |
+
+Speed doesn't cost accuracy. Every re-imaging kernel is tested against a float64 reference implementation
+(bit-equal features, or within a stated tolerance), and on a matched configuration Biopsy Scan's top
+pattern agrees with squidpy + lifelines in 16 of 16 studies ([details](docs/external-agreement.md)).
+
+Every number, with its evidence label, source file and caveats: **[RESULTS.md](RESULTS.md)**.
 
 | Start from real tissue | Race the off-the-shelf tools | Take it to routine IHC |
 |---|---|---|
