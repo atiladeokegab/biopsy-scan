@@ -2130,6 +2130,10 @@
     {
      "file": "demo/index.html",
      "text": "<b>{ratio0}×</b> less compute wall per evaluated study than an optimised rewrite of the lab method, on {workers} CPU cores, cross-run ({whole}× per whole design point): a fused, compiled Numba kernel re-images and scores each study in batches; the calibrated cutoff and calls sit outside the timing. {lab_n} lab studies against {fused_n} Biopsy Scan studies ({calib} calibration nulls included)"
+    },
+    {
+     "file": "docs/JUDGING.md",
+     "text": "the lab way and Biopsy Scan each on {workers} single-thread CPU workers, no GPU | Per evaluated study (re-imaging and scoring; load, prep, adjacency and warm-up excluded): lab {lab} s ({lab_n} studies) against fused Numba {fused} s ({fused_n} studies, its {calib} calibration nulls included), {ratio}×."
     }
    ]
   },

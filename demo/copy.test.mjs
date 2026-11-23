@@ -34,7 +34,7 @@ const rows = [...judges.matchAll(/<p class="pf-scenario"[^>]*>([\s\S]*?)<\/p>/g)
 const plain = (s) => s.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
 assert.deepEqual(rows.map((r) => plain(r).split(".")[0]),
   ["Correctness and assumptions", "Fundamental reshaping", "Meaningful performance", "Scientific value", "Honest limits"]);
-const BLOB = "https://github.com/atiladeokegab/sota-parallelism-nov21/blob/integration/";
+const BLOB = "https://github.com/atiladeokegab/biopsy-scan/blob/main/";
 const SRC = {
   fa: "stats/results/hard-negative-f458ad1.json", cv: "results/charville-v2.json", upmc: "results/upmc-rediscovery.json",
   fused: "bench/results/modal-design-20261121T205536Z.json", sweep: "bench/results/sweep-repeats.json",
@@ -82,7 +82,7 @@ has(1, "per evaluated study"); has(1, `${n(lab.stages.evaluated_studies)} lab st
 has(1, `${n(fused.stages.evaluated_studies)} Biopsy Scan studies`);
 has(1, `${n(fused.summary.studies.calibration)} calibration nulls`); has(1, "setup excluded"); has(1, "different procedures");
 has(1, "cross-run"); has(1, `${(lab.stages.compute_wall_s / fused.stages.compute_wall_s).toFixed(1)}× per whole design point`);
-has(1, "re-images each study"); has(1, "the cutoff and calls are outside the timing");
+has(1, "re-images and scores each study in batches"); has(1, "the calibrated cutoff and calls sit outside the timing");
 // Row 2: 534x off the shelf, same host, pipeline only, with its range; 5.5x is the fair 8 v 8 median; 6.3x is compute span, not Modal wall.
 const exr = ext.summary.ratios;
 has(2, `${Math.round(exr.external_pipeline_vs_fused_full.median)}×`); has(2, `${ext.summary.external_pipeline_s_per_study.median.toFixed(2)} s`); has(2, "same host");
@@ -93,7 +93,7 @@ has(2, `${sweep.fair.spread.ratio.median.toFixed(1)}×`); has(2, "8 workers agai
 has(2, "reference recount and agreement checks timed separately");
 // Scope beside 534x and 312x (basis keys in the same-host file); 547x is the closest to the old combined-checks basis.
 has(2, "the whole off-the-shelf call per study"); has(2, "each result returned to the parent");
-has(2, "re-imaging and scoring only, the calibrated threshold and calls a separate step, excluded");
+has(2, "the fused time covers re-imaging and batched scoring, and the calibrated cutoff and calls sit outside it");
 has(2, "the closest scope to the old 583× combined-checks basis"); has(2, "top pick the same in 16 of 16 in a separate matched-feature, matched-score experiment"); // docs/external-agreement.md, #174
 // Both denominators beside 534x: the external arm's studies and the fused arm's evaluations (3 streams of full_studies_per_stream).
 has(2, "median of the paired per-repeat ratios"); has(2, `over ${ext.repeats[0].arms.external.studies} external studies`);

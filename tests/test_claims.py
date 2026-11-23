@@ -115,6 +115,7 @@ MUTANTS = [  # (kind, file, published text, mutant): each must make the check fa
     ("value", "README.md", "**5.5× faster**", "**6.5× faster**"),
     ("value", "README.md", "decisions agree on 362 of 400", "decisions agree on 352 of 400"),
     ("value", "README.md", "**19.5× faster**", "**29.5× faster**"),
+    ("value", "docs/JUDGING.md", "calibration nulls included), 21.0×.", "calibration nulls included), 31.0×."),
     ("value", "demo/data/baseline.json", '"seconds": 377.67,', '"seconds": 37.67,'),
     ("label", "demo/data/baseline.json", '"label": "MEASURED",\n      "seconds": 375.26,', '"label": "ESTIMATE",\n      "seconds": 375.26,'),
     ("value", "RESULTS.md", "`7.0×` per evaluated study", "`7.9×` per evaluated study"),

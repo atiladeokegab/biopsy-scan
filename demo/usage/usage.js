@@ -7,7 +7,7 @@ const ARMS = {
 };
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const $ = (id) => document.getElementById(id);
-const REPO = "https://github.com/atiladeokegab/sota-parallelism-nov21/blob/integration/";
+const REPO = "https://github.com/atiladeokegab/biopsy-scan/blob/main/";
 let data, views = [], t0 = 0, raf = 0, last = -1, end = 0, cur = 0, ymax = 1;
 
 const at = (rows, t) => { // last sample with time <= t (rows sorted by time)
