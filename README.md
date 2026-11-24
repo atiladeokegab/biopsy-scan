@@ -19,23 +19,49 @@ Because we built Biopsy Scan during the 24-hour SoTA Scientific Parallelism Hack
 
 ## How it works
 
-- **Single fused CUDA kernel.** Instead of running hospital cell mis-calls, neighbour counting, and survival scoring as three separate passes, Biopsy Scan fuses them into one compiled CUDA kernel (`reimage/gpu_fused.py`). Each GPU thread processes one tissue region, counts cell neighbours at 25, 50, and 100 microns in a single walk, and steps NumPy's exact 128-bit PCG64 random stream directly on the GPU. All 3,000 benchmark runs match the CPU reference bit for bit.
-- **Batched survival scoring as matrix multiplication.** Standard pipelines fit a survival model one spatial pattern at a time across 3,780 patterns. Biopsy Scan compresses each patient's survival history into a single residual score under the stratified Cox score test, turning the entire 3,780-pattern screen into one batched matrix multiply (`stats/screen.py`).
-- **False-positive control in one more matrix multiply.** When thousands of spatial patterns are tested together, some look strong by chance alone. Biopsy Scan shuffles patient outcomes across permutations and reruns the entire screen in one additional matrix multiply, keeping only the highest chance score from each shuffle (`maxT`) to hold the family-wise false-positive rate near 5%.
+1. **Single fused CUDA kernel.** Instead of running hospital cell mis-calls, neighbour counting, and survival scoring as three separate passes, Biopsy Scan fuses them into one compiled CUDA kernel (`reimage/gpu_fused.py`). Each GPU thread processes one tissue region, counts cell neighbours at 25, 50, and 100 microns in a single walk, and steps NumPy's exact 128-bit PCG64 random stream directly on the GPU. All 3,000 benchmark runs match the CPU reference bit for bit.
+
+   ![Single-pass GPU neighbour counting across 25, 50, and 100 microns](docs/assets/how-neighbourhood.gif)
+
+2. **Batched survival scoring as matrix multiplication.** Standard pipelines fit a survival model one spatial pattern at a time across 3,780 patterns. Biopsy Scan compresses each patient's survival history into a single residual score under the stratified Cox score test, turning the entire 3,780-pattern screen into one batched matrix multiply (`stats/screen.py`).
+
+   ![Scoring 3,780 spatial patterns in one batched matrix multiplication](docs/assets/how-matrix-screen.gif)
+
+3. **False-positive control in one more matrix multiply.** When thousands of spatial patterns are tested together, some look strong by chance alone. Biopsy Scan shuffles patient outcomes across permutations and reruns the entire screen in one additional matrix multiply, keeping only the highest chance score from each shuffle (`maxT`) to hold the family-wise false-positive rate near 5%.
+
+   ![Permutation shuffle false-positive control with maxT](docs/assets/how-maxt.gif)
 
 ## Benchmarks
 
-Each pipeline below times one evaluated study run on 8 CPU workers; what each timing window includes differs (see [RESULTS.md](RESULTS.md)):
+### Full speed ladder (up to 1 NVIDIA H100)
 
-| Pipeline | Seconds per study | Biopsy Scan's fused kernel is |
+The table below shows the full progression from off-the-shelf tools to our fused CUDA kernel on one NVIDIA H100 (same design point; `10,800×`, `426×`, and `61×` compare separate runs, while `19.5×` is measured side by side in the same container):
+
+| Pipeline | Hardware | Seconds per study | Biopsy Scan on 1 H100 (`0.00207 s`) is |
+|---|---|---|---|
+| **Off the shelf** (`squidpy` + `lifelines`) | 8 CPU workers | 22.35 s | **10,800× faster** (separate runs) |
+| **Lab method, faithful rewrite** (neighbour recount + permutation per study) | 8 CPU workers | 0.881 s | **426× faster** (separate runs) |
+| **First GPU try** (scoring only, not fused) | 1 A100 | 0.126 s | **61× faster** (separate runs, A100 vs H100) |
+| **Biopsy Scan, fused kernel (CPU)** | 8 CPU cores | 0.0404 s | **19.5× faster** (same container, same timing scope) |
+| **Biopsy Scan, fused kernel (GPU)** | 1 NVIDIA H100 | **0.00207 s** | **1× (H100 baseline)** |
+
+<sub>H100 time covers re-imaging, neighbour counting, and batched scoring (`3,000` studies in `6.1 s` for about `$0.50`); the final threshold step is excluded. Across all 253 one- and two-stain candidate panels (`1,000` runs each, which is `253,000` runs in total), `22.35 s/study` takes roughly 65 days, whereas `0.00207 s/study` on one H100 finishes in under 9 minutes.</sub>
+
+### 8-core CPU benchmarks (Biopsy Scan fused CPU kernel)
+
+To separate algorithmic speedup from GPU hardware, each row below compares 8 CPU workers against Biopsy Scan's **8-core CPU fused kernel** (`0.0426 s` same host, `0.0419 s` cross-run; see [RESULTS.md](RESULTS.md) for what each timing window includes):
+
+| Pipeline | Seconds per study | Biopsy Scan's fused CPU kernel is |
 |---|---|---|
 | **Off the shelf** (what a lab would run today): squidpy + lifelines | 22.35 s | **534× faster** per evaluated study (same host with 8 CPU workers per side; **MEASURED**; different statistics; the timing windows differ; 312× on the same 48 studies) |
 | **Lab method, our optimised rewrite:** neighbour recount and a permutation test per study | 0.881 s | **21× faster** per evaluated study (8 workers each; **MEASURED**, cross-run) |
-| **Biopsy Scan**, fused kernel | 0.0426 s (same host), 0.0419 s (cross-run) | |
+| **Biopsy Scan**, fused kernel | 0.0426 s (same host), 0.0419 s (cross-run) | **1× (8-core CPU fused baseline)** |
 
 <sub>Medians. 534× is the median of the per-container ratios, so it differs slightly from 22.35 / 0.0426. Biopsy Scan's time covers re-imaging and scoring; its calibrated threshold and calls are a separate step, not timed.</sub>
 
-**Controlled comparisons.** The table above sets different statistics or separate runs side by side. These rows match worker count or timing scope, as indicated; only the H100 kernel pair runs the exact same workload:
+### Controlled same-container comparisons
+
+These rows match worker count or timing scope directly; only the H100 vs. 8-core CPU fused kernel pair runs the exact same workload:
 
 | Comparison | Speed-up |
 |---|---|
