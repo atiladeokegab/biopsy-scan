@@ -1758,10 +1758,6 @@
     {
      "file": "docs/SUBMISSION.md",
      "text": "Fair, 8 against 8 (#134, Numba arm, not the fused kernel behind 21×): {med}× (range {lo}–{hi}×), {setup}× with setup; calls agree on {agree0} of {of0}."
-    },
-    {
-     "file": "README.md",
-     "text": "| **Lab method vs Biopsy Scan's Numba kernel** (not the fused kernel), each on 8 workers, through scoring with calibration charged; different procedures | **{med}× faster** (median of {n} fresh repeats, range {lo}–{hi}×); {setup}× with setup; decisions agree on {agree0} of {of0} (timings **{label}**, outcomes **{outcomes}**) |"
     }
    ]
   },
@@ -1855,16 +1851,7 @@
      "expect": "21"
     }
    ],
-   "quotes": [
-    {
-     "file": "README.md",
-     "text": "| **Lab method, our optimised rewrite:** neighbour recount and a permutation test per study | {lab} s | **{vlf}× faster** per evaluated study ({workers} workers each; **{label}**, {cross}) |"
-    },
-    {
-     "file": "README.md",
-     "text": "(same host), {fused} s (cross-run)"
-    }
-   ]
+   "quotes": []
   },
   {
    "id": "same-host-534x",
@@ -1947,14 +1934,6 @@
     {
      "file": "docs/SUBMISSION.md",
      "text": "{m}× on the same 48 studies"
-    },
-    {
-     "file": "README.md",
-     "text": "| **Biopsy Scan**, fused kernel | {fused} s (same host),"
-    },
-    {
-     "file": "README.md",
-     "text": "| {ext} s | **{r}× faster** per evaluated study (same host with {workers} CPU workers per side; **{label}**; different statistics; the timing windows differ; {m}× on the same 48 studies) |"
     }
    ]
   },
@@ -2214,10 +2193,6 @@
     {
      "file": "RESULTS.md",
      "text": "| **Fused kernel on one H100** (Charville, the race's design point, `{studies}` evaluated studies, CPU and GPU arms in one container, #182) | Compute wall per evaluated study (re-imaging and batched scoring; the calibrated cutoff and calls are outside the timing, as are load, prep, adjacency and warm-up): fused GPU `{gpu} s` vs the same fused kernel on `{workers}` CPU workers `{cpu} s`, `{ratio}×` (median of `3` timed runs each). Features bit-equal on `{xk}/{xn}` studies; z and maxT within `4.4e-15`; calls agree `{dk}/{dn}`. The `{ratio}×` is within one container. Against the CPU fused `0.0419 s` from the A100 container (the same re-imaging and batched-scoring scope) it is cross-run and cross-hardware; against the off-the-shelf `22.35 s` the timing windows also differ (**{label}**) | [`bench/results/gpu-fused-h100-20261122T141815Z.json`](bench/results/gpu-fused-h100-20261122T141815Z.json) |"
-    },
-    {
-     "file": "README.md",
-     "text": "| **Fused kernel on one H100 vs the same fused kernel on {workers} CPU workers**, one container, same timing scope (re-imaging and batched scoring) | **{ratio}× faster** ({gpu} s vs {cpu} s per evaluated study); features bit-equal on {xk}/{xn} studies (**{label}**) |"
     }
    ],
    "note": "The 3 timed runs per arm are not stored as a list in the source; `3` is plain text in the quote."

@@ -33,42 +33,9 @@ Because we built Biopsy Scan during the 24-hour SoTA Scientific Parallelism Hack
 
 ## Benchmarks
 
-### Full speed ladder (up to 1 NVIDIA H100)
+![Biopsy Scan speed ladder: 10,800× faster than off-the-shelf squidpy + lifelines](docs/assets/benchmark-ladder.png)
 
-The table below shows the full progression from off-the-shelf tools to our fused CUDA kernel on one NVIDIA H100 (same design point; `10,800×`, `426×`, and `61×` compare separate runs, while `19.5×` is measured side by side in the same container):
-
-| Pipeline | Hardware | Seconds per study | Biopsy Scan on 1 H100 (`0.00207 s`) is |
-|---|---|---|---|
-| **Off the shelf** (`squidpy` + `lifelines`) | 8 CPU workers | 22.35 s | **10,800× faster** (separate runs) |
-| **Lab method, faithful rewrite** (neighbour recount + permutation per study) | 8 CPU workers | 0.881 s | **426× faster** (separate runs) |
-| **First GPU try** (scoring only, not fused) | 1 A100 | 0.126 s | **61× faster** (separate runs, A100 vs H100) |
-| **Biopsy Scan, fused kernel (CPU)** | 8 CPU cores | 0.0404 s | **19.5× faster** (same container, same timing scope) |
-| **Biopsy Scan, fused kernel (GPU)** | 1 NVIDIA H100 | **0.00207 s** | **1× (H100 baseline)** |
-
-<sub>H100 time covers re-imaging, neighbour counting, and batched scoring (`3,000` studies in `6.1 s` for about `$0.50`); the final threshold step is excluded. Across all 253 one- and two-stain candidate panels (`1,000` runs each, which is `253,000` runs in total), `22.35 s/study` takes roughly 65 days, whereas `0.00207 s/study` on one H100 finishes in under 9 minutes.</sub>
-
-### 8-core CPU benchmarks (Biopsy Scan fused CPU kernel)
-
-To separate algorithmic speedup from GPU hardware, each row below compares 8 CPU workers against Biopsy Scan's **8-core CPU fused kernel** (`0.0426 s` same host, `0.0419 s` cross-run; see [RESULTS.md](RESULTS.md) for what each timing window includes):
-
-| Pipeline | Seconds per study | Biopsy Scan's fused CPU kernel is |
-|---|---|---|
-| **Off the shelf** (what a lab would run today): squidpy + lifelines | 22.35 s | **534× faster** per evaluated study (same host with 8 CPU workers per side; **MEASURED**; different statistics; the timing windows differ; 312× on the same 48 studies) |
-| **Lab method, our optimised rewrite:** neighbour recount and a permutation test per study | 0.881 s | **21× faster** per evaluated study (8 workers each; **MEASURED**, cross-run) |
-| **Biopsy Scan**, fused kernel | 0.0426 s (same host), 0.0419 s (cross-run) | **1× (8-core CPU fused baseline)** |
-
-<sub>Medians. 534× is the median of the per-container ratios, so it differs slightly from 22.35 / 0.0426. Biopsy Scan's time covers re-imaging and scoring; its calibrated threshold and calls are a separate step, not timed.</sub>
-
-### Controlled same-container comparisons
-
-These rows match worker count or timing scope directly; only the H100 vs. 8-core CPU fused kernel pair runs the exact same workload:
-
-| Comparison | Speed-up |
-|---|---|
-| **Lab method vs Biopsy Scan's Numba kernel** (not the fused kernel), each on 8 workers, through scoring with calibration charged; different procedures | **5.5× faster** (median of 3 fresh repeats, range 4.6–5.6×); 3.7× with setup; decisions agree on 362 of 400 (timings **MEASURED**, outcomes **SYNTHETIC**) |
-| **Fused kernel on one H100 vs the same fused kernel on 8 CPU workers**, one container, same timing scope (re-imaging and batched scoring) | **19.5× faster** (0.00207 s vs 0.0404 s per evaluated study); features bit-equal on 3,000/3,000 studies (**MEASURED**) |
-
-Speed does not change the features: every re-imaging kernel is tested against a float64 reference implementation (bit-equal features, or within a stated tolerance). When squidpy's neighbour graph and lifelines' score test are given Biopsy Scan's feature definition, the top pattern agrees in 16 of 16 runs; squidpy and lifelines as documented compute different statistics and agree in 14 of 50 ([details](docs/external-agreement.md)). One calibrated threshold instead of a permutation test per study does cost some power at the race's design point (15.3% vs 20.3%).
+Every re-imaging kernel is verified against a float64 reference implementation (bit-equal features across all 3,000 benchmark studies, or within a stated tolerance). When `squidpy`'s neighbour graph and `lifelines`' score test are given Biopsy Scan's feature definition, the top pattern agrees in 16 of 16 runs; `squidpy` and `lifelines` as documented compute different statistics and agree in 14 of 50 ([details](docs/external-agreement.md)). Full same-hardware tables, timing scopes, and evidence labels live in **[RESULTS.md](RESULTS.md)**.
 
 ## Stress-testing study designs on public tissue
 
