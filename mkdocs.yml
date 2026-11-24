@@ -1,5 +1,5 @@
 site_name: Biopsy Scan
-site_description: Simulate a spatial-biomarker survival study cell by cell on real tumour tissue before you run it
+site_description: GPU-accelerated spatial biomarker discovery and clinical stain translation for cancer biopsies
 repo_url: https://github.com/atiladeokegab/biopsy-scan
 repo_name: atiladeokegab/biopsy-scan
 edit_uri: blob/main/

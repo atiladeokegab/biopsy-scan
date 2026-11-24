@@ -11,15 +11,15 @@ Who uses Biopsy Scan, and what it depends on.
 ```mermaid
 C4Context
   title Biopsy Scan: system context
-  Person(researcher, "Study designer", "Plans a spatial-biomarker study: patients, regions, field of view, stains")
-  System(preflight, "Biopsy Scan", "Simulates thousands of studies on real tissue, screens every pattern, and simulates the frozen, pre-registered R-16 biomarker on routine IHC")
-  System_Ext(zenodo, "Zenodo 13179600", "Public CODEX cohorts (Charville, UPMC), CC BY 4.0")
+  Person(researcher, "Research lab", "Runs spatial biomarker discovery on cell-level biopsy cohorts and translates 22-stain panels to 1 or 2 routine hospital stains")
+  System(biopsy_scan, "Biopsy Scan", "GPU-accelerated spatial biomarker screening, permutation false-positive control, routine IHC panel translation, and study-design stress testing")
+  System_Ext(zenodo, "Zenodo 13179600", "Public CODEX cohorts (Charville, UPMC) used for benchmarking and validation, CC BY 4.0")
   System_Ext(hpa, "Human Protein Atlas", "Routine IHC photos used by the demo (v25), CC BY 4.0")
-  System_Ext(modal, "Modal", "Cloud CPUs and GPUs for the large runs")
-  Rel(researcher, preflight, "Chooses a design, reads power and the routine-IHC simulation of the R-16 biomarker")
-  Rel(preflight, zenodo, "make data downloads cell tables")
-  Rel(preflight, modal, "Runs large sweeps and GPU kernels")
-  Rel(preflight, hpa, "Shows example stains")
+  System_Ext(modal, "Modal", "Cloud CPUs and GPUs for large sweeps and H100 benchmarks")
+  Rel(researcher, biopsy_scan, "Supplies biopsy cohorts, screens spatial patterns, and evaluates 1- or 2-stain hospital panels")
+  Rel(biopsy_scan, zenodo, "make data downloads public benchmark cell tables")
+  Rel(biopsy_scan, modal, "Runs large sweeps and GPU kernels")
+  Rel(biopsy_scan, hpa, "Shows example stains")
 ```
 
 ## 2. Containers
@@ -29,11 +29,11 @@ The runnable pieces and how data moves between them. Everything runs locally exc
 ```mermaid
 C4Container
   title Biopsy Scan: containers
-  Person(researcher, "Study designer")
+  Person(researcher, "Research lab")
   System_Ext(zenodo, "Zenodo cohorts")
   System_Ext(modal, "Modal")
   Container_Boundary(repo, "This repository") {
-    Container(engine, "Simulation engine", "Python 3.11, NumPy, Numba, CUDA", "core/, reimage/, stats/, atlas/: re-imaging, survival statistics, design calibration")
+    Container(engine, "GPU discovery & re-imaging engine", "Python 3.11, NumPy, Numba, CUDA", "core/, reimage/, stats/, atlas/: fused neighbour counting, hospital noise perturbations, batched survival screening, and power calibration")
     Container(translate, "Clinical translation", "Python", "translate/: IHC panel search and slide, section and tile simulation for the frozen, pre-registered R-16 biomarker")
     Container(audit, "Real-cohort audits", "Python", "audit/: pre-registered, exploratory audits of the real cohorts")
     Container(bench, "Benchmarks", "Python", "bench/, gpu/: baselines, off-the-shelf comparison, Modal jobs")
