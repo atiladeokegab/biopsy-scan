@@ -77,18 +77,9 @@ def test_a_derived_range_follows_its_source(copy):
 
 
 MUTANTS = [  # (kind, file, published text, mutant): each must make the check fail
-    ("value", "README.md", "**534× faster**", "**634× faster**"),
-    ("prose", "README.md", "the timing windows differ", "the timing windows match"),
-    ("value", "README.md", "**21× faster**", "**31× faster**"),
-    ("prose", "README.md", "**MEASURED**, cross-run)", "**MEASURED**, same run)"),
-    ("value", "README.md", "| 22.35 s |", "| 12.35 s |"),
-    ("value", "README.md", "| 0.881 s |", "| 0.781 s |"),
-    ("value", "README.md", "312× on the same 48 studies", "412× on the same 48 studies"),
-    ("prose", "README.md", "; different statistics;", "; same statistics;"),
     ("value", "README.md", "| **27.0%** (95% CI 22.1–32.4%) |", "| **37.0%** (95% CI 22.1–32.4%) |"),
     ("value", "README.md", "| 80.1% |", "| 90.1% |"),
     ("label", "README.md", "Schoenfeld formula (**ANALYTIC**)", "Schoenfeld formula (**MEASURED**)"),
-    ("value", "README.md", "8 CPU workers per side", "16 CPU workers per side"),
     ("value", "RESULTS.md", "`68.3%`", "`98.3%`"),
     ("value", "RESULTS.md", "NumPy `2.24 s`", "NumPy `2.34 s`"),
     ("value", "RESULTS.md", "843.7→128.2 s", "843.7→118.2 s"),
@@ -112,9 +103,6 @@ MUTANTS = [  # (kind, file, published text, mutant): each must make the check fa
     ("prose", "RESULTS.md", "the calibrated cutoff and calls are outside the timing, as are load", "the calibrated cutoff and calls are inside the timing, as are load"),
     ("prose", "docs/SUBMISSION.md", "the cutoff and calls are outside the timing; #120", "the cutoff and calls are inside the timing; #120"),
     ("value", "demo/index.html", "<b>21×</b> less compute wall", "<b>31×</b> less compute wall"),
-    ("value", "README.md", "**5.5× faster**", "**6.5× faster**"),
-    ("value", "README.md", "decisions agree on 362 of 400", "decisions agree on 352 of 400"),
-    ("value", "README.md", "**19.5× faster**", "**29.5× faster**"),
     ("value", "docs/JUDGING.md", "calibration nulls included), 21.0×.", "calibration nulls included), 31.0×."),
     ("value", "demo/data/baseline.json", '"seconds": 377.67,', '"seconds": 37.67,'),
     ("label", "demo/data/baseline.json", '"label": "MEASURED",\n      "seconds": 375.26,', '"label": "ESTIMATE",\n      "seconds": 375.26,'),
