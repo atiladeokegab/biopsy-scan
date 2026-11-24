@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use Biopsy Scan, please cite it as below."
-title: "Biopsy Scan: Cell-by-Cell Spatial-Biomarker Study Simulation"
+title: "Biopsy Scan: GPU-Accelerated Spatial Biomarker Discovery and Clinical Stain Translation"
 type: software
 authors:
   - family-names: Oke
@@ -13,9 +13,10 @@ version: 0.1.0
 date-released: 2026-11-22
 keywords:
   - spatial biology
+  - GPU
+  - CUDA
   - CODEX
-  - study design
-  - statistical power
+  - biomarker discovery
   - survival analysis
   - multiple testing
   - immunohistochemistry

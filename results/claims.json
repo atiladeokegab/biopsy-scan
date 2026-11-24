@@ -480,7 +480,7 @@
     },
     {
      "file": "README.md",
-     "text": "the\nformula promised {analytic0}% power where the simulation gave {sim0}%"
+     "text": "the standard formula promised {analytic0}% power where the real-tissue simulation gave {sim0}%"
     }
    ]
   },

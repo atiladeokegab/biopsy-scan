@@ -1,7 +1,7 @@
 [project]
 name = "preflight"
 version = "0.1.0"
-description = "Re-image simulated spatial-biomarker studies from real CODEX tissue to see which designs can find a survival-linked pattern."
+description = "GPU-accelerated spatial biomarker discovery, permutation screening, and routine IHC stain translation for cancer biopsies."
 requires-python = ">=3.11,<3.12"
 dependencies = [
     "numpy>=1.26",
