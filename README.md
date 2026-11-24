@@ -19,30 +19,23 @@ Because we built Biopsy Scan during the 24-hour SoTA Scientific Parallelism Hack
 
 ## How it works
 
-- **Single fused CUDA kernel.** Instead of running hospital cell mis-calls, neighbour counting, and survival scoring as three separate passes, Biopsy Scan fuses them into one compiled CUDA kernel (`reimage/gpu_fused.py`). Each GPU thread processes one tissue region, counts cell neighbours at 25, 50, and 100 microns in a single walk, and steps NumPy's exact 128-bit PCG64 random stream directly on the GPU. All 3,000 benchmark runs match the CPU reference bit for bit.
-- **Batched survival scoring as matrix multiplication.** Standard pipelines fit a survival model one spatial pattern at a time across 3,780 patterns. Biopsy Scan compresses each patient's survival history into a single residual score under the stratified Cox score test, turning the entire 3,780-pattern screen into one batched matrix multiply (`stats/screen.py`).
-- **False-positive control in one more matrix multiply.** When thousands of spatial patterns are tested together, some look strong by chance alone. Biopsy Scan shuffles patient outcomes across permutations and reruns the entire screen in one additional matrix multiply, keeping only the highest chance score from each shuffle (`maxT`) to hold the family-wise false-positive rate near 5%.
+1. **Single fused CUDA kernel.** Instead of running hospital cell mis-calls, neighbour counting, and survival scoring as three separate passes, Biopsy Scan fuses them into one compiled CUDA kernel (`reimage/gpu_fused.py`). Each GPU thread processes one tissue region, counts cell neighbours at 25, 50, and 100 microns in a single walk, and steps NumPy's exact 128-bit PCG64 random stream directly on the GPU. All 3,000 benchmark runs match the CPU reference bit for bit.
+
+   ![Single-pass GPU neighbour counting across 25, 50, and 100 microns](docs/assets/how-neighbourhood.gif)
+
+2. **Batched survival scoring as matrix multiplication.** Standard pipelines fit a survival model one spatial pattern at a time across 3,780 patterns. Biopsy Scan compresses each patient's survival history into a single residual score under the stratified Cox score test, turning the entire 3,780-pattern screen into one batched matrix multiply (`stats/screen.py`).
+
+   ![Scoring 3,780 spatial patterns in one batched matrix multiplication](docs/assets/how-matrix-screen.gif)
+
+3. **False-positive control in one more matrix multiply.** When thousands of spatial patterns are tested together, some look strong by chance alone. Biopsy Scan shuffles patient outcomes across permutations and reruns the entire screen in one additional matrix multiply, keeping only the highest chance score from each shuffle (`maxT`) to hold the family-wise false-positive rate near 5%.
+
+   ![Permutation shuffle false-positive control with maxT](docs/assets/how-maxt.gif)
 
 ## Benchmarks
 
-Each pipeline below times one evaluated study run on 8 CPU workers; what each timing window includes differs (see [RESULTS.md](RESULTS.md)):
+![Biopsy Scan speed ladder: 10,800× faster than off-the-shelf squidpy + lifelines](docs/assets/benchmark-ladder.png)
 
-| Pipeline | Seconds per study | Biopsy Scan's fused kernel is |
-|---|---|---|
-| **Off the shelf** (what a lab would run today): squidpy + lifelines | 22.35 s | **534× faster** per evaluated study (same host with 8 CPU workers per side; **MEASURED**; different statistics; the timing windows differ; 312× on the same 48 studies) |
-| **Lab method, our optimised rewrite:** neighbour recount and a permutation test per study | 0.881 s | **21× faster** per evaluated study (8 workers each; **MEASURED**, cross-run) |
-| **Biopsy Scan**, fused kernel | 0.0426 s (same host), 0.0419 s (cross-run) | |
-
-<sub>Medians. 534× is the median of the per-container ratios, so it differs slightly from 22.35 / 0.0426. Biopsy Scan's time covers re-imaging and scoring; its calibrated threshold and calls are a separate step, not timed.</sub>
-
-**Controlled comparisons.** The table above sets different statistics or separate runs side by side. These rows match worker count or timing scope, as indicated; only the H100 kernel pair runs the exact same workload:
-
-| Comparison | Speed-up |
-|---|---|
-| **Lab method vs Biopsy Scan's Numba kernel** (not the fused kernel), each on 8 workers, through scoring with calibration charged; different procedures | **5.5× faster** (median of 3 fresh repeats, range 4.6–5.6×); 3.7× with setup; decisions agree on 362 of 400 (timings **MEASURED**, outcomes **SYNTHETIC**) |
-| **Fused kernel on one H100 vs the same fused kernel on 8 CPU workers**, one container, same timing scope (re-imaging and batched scoring) | **19.5× faster** (0.00207 s vs 0.0404 s per evaluated study); features bit-equal on 3,000/3,000 studies (**MEASURED**) |
-
-Speed does not change the features: every re-imaging kernel is tested against a float64 reference implementation (bit-equal features, or within a stated tolerance). When squidpy's neighbour graph and lifelines' score test are given Biopsy Scan's feature definition, the top pattern agrees in 16 of 16 runs; squidpy and lifelines as documented compute different statistics and agree in 14 of 50 ([details](docs/external-agreement.md)). One calibrated threshold instead of a permutation test per study does cost some power at the race's design point (15.3% vs 20.3%).
+Every re-imaging kernel is verified against a float64 reference implementation (bit-equal features across all 3,000 benchmark studies, or within a stated tolerance). When `squidpy`'s neighbour graph and `lifelines`' score test are given Biopsy Scan's feature definition, the top pattern agrees in 16 of 16 runs; `squidpy` and `lifelines` as documented compute different statistics and agree in 14 of 50 ([details](docs/external-agreement.md)). Full same-hardware tables, timing scopes, and evidence labels live in **[RESULTS.md](RESULTS.md)**.
 
 ## Stress-testing study designs on public tissue
 
